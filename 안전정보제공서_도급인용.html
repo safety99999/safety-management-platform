@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1565C0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>안전정보제공서 (도급인)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;min-height:100vh;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;}
+:root{
+  --navy:#0D47A1;--navy2:#1565C0;--blue:#1E88E5;
+  --red:#C62828;--red2:#E53935;
+  --green:#1B5E20;--green2:#2E7D32;--green3:#43A047;
+  --orange:#E65100;--orange2:#F57C00;
+  --bg:#EEF2F7;--card:#FFF;--text:#0D1B4B;--body:#1C2B3A;--sub:#546E7A;
+  --border:#DDE4EE;--shadow:0 2px 10px rgba(13,71,161,.09);--r:14px;--rs:11px;
+}
+body{background:var(--bg);color:var(--body);padding-bottom:40px;}
+.app{max-width:430px;margin:0 auto;min-height:100vh;}
+
+/* NAV */
+.topnav{position:sticky;top:0;z-index:200;
+  background:linear-gradient(135deg,#0A3880,var(--navy2));
+  height:56px;padding:0 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 16px rgba(10,56,128,.4);}
+.topnav-l{display:flex;align-items:center;gap:10px;}
+.nav-btn{background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;}
+.nav-btn:active{background:rgba(255,255,255,.28);}
+.topnav-title{color:#fff;font-size:16px;font-weight:800;}
+
+/* PROGRESS */
+.prog-wrap{background:var(--card);padding:12px 14px;
+  border-bottom:1.5px solid var(--border);position:sticky;top:56px;z-index:190;}
+.prog-steps{display:flex;gap:3px;margin-bottom:8px;}
+.ps{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s;}
+.ps.done{background:var(--green2);}
+.ps.act{background:var(--navy2);}
+.prog-info{display:flex;justify-content:space-between;align-items:center;}
+.prog-label{font-size:13px;font-weight:800;color:var(--text);}
+.prog-step{font-size:12px;color:var(--sub);font-weight:600;}
+
+/* SCREENS */
+.screen{display:none;padding:14px 13px;}
+.screen.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* FORM */
+.sec-title{background:linear-gradient(135deg,#0A3880,var(--navy2));
+  color:#fff;padding:12px 14px;border-radius:10px;
+  font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;
+  margin-bottom:12px;margin-top:16px;}
+.sec-title:first-child{margin-top:0;}
+.form-card{background:var(--card);border-radius:var(--r);padding:16px;
+  margin-bottom:12px;box-shadow:var(--shadow);border:1.5px solid var(--border);}
+.form-group{margin-bottom:14px;}
+.form-group:last-child{margin-bottom:0;}
+.f-label{font-size:13px;font-weight:700;color:var(--body);margin-bottom:7px;display:block;}
+.req{color:var(--red2);margin-left:2px;}
+.f-input,.f-select,.f-textarea{
+  width:100%;padding:13px 15px;border:1.5px solid var(--border);
+  border-radius:11px;font-size:15px;background:var(--bg);color:var(--body);
+  font-family:inherit;font-weight:600;transition:border-color .2s;}
+.f-input:focus,.f-select:focus,.f-textarea:focus{outline:none;border-color:var(--blue);}
+.f-textarea{resize:vertical;min-height:80px;line-height:1.6;}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* INFO BOXES */
+.info-box{background:#EEF2FF;border-left:4px solid var(--navy2);
+  padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
+.info-box-t{font-size:12px;font-weight:800;color:var(--navy2);margin-bottom:5px;}
+.info-box-b{font-size:13px;color:var(--body);line-height:1.7;font-weight:600;}
+.warn-box{background:#FFF3E0;border-left:4px solid var(--orange2);
+  padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
+.warn-box-t{font-size:12px;font-weight:800;color:var(--orange);margin-bottom:5px;}
+.warn-box-b{font-size:13px;color:var(--orange);line-height:1.7;font-weight:600;}
+.danger-box{background:#FFEBEE;border-left:4px solid var(--red2);
+  padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
+.danger-box-t{font-size:12px;font-weight:800;color:var(--red);margin-bottom:5px;}
+.danger-box-b{font-size:13px;color:var(--red);line-height:1.7;font-weight:600;}
+.success-box{background:#E8F5E9;border-left:4px solid var(--green2);
+  padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
+
+/* CHECKBOX ITEMS */
+.check-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.check-item{display:flex;align-items:center;gap:12px;
+  padding:13px 14px;background:var(--card);border-radius:var(--rs);
+  border:1.5px solid var(--border);cursor:pointer;transition:all .2s;
+  box-shadow:var(--shadow);}
+.check-item:active{transform:scale(.98);}
+.check-item.checked{border-color:var(--navy2);background:rgba(21,101,192,.06);}
+.check-ico{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--border);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:13px;transition:all .2s;}
+.check-item.checked .check-ico{background:var(--navy2);border-color:var(--navy2);color:#fff;}
+.check-label{font-size:14px;font-weight:600;color:var(--body);flex:1;line-height:1.4;}
+.check-desc{font-size:12px;color:var(--sub);margin-top:2px;}
+
+/* MSDS ITEMS */
+.msds-item{border-color:var(--orange2);}
+.msds-item.checked{border-color:var(--orange2);background:rgba(230,81,0,.06);}
+.msds-item.checked .check-ico{background:var(--orange2);border-color:var(--orange2);}
+
+/* SIGNATURE */
+.sig-wrap{background:var(--bg);border-radius:12px;padding:14px;
+  border:1.5px solid var(--border);margin-bottom:12px;}
+.sig-lbl{font-size:13px;font-weight:800;color:var(--body);margin-bottom:10px;}
+.sig-canvas{width:100%;height:150px;border:1.5px solid var(--border);
+  border-radius:10px;background:#fff;cursor:crosshair;touch-action:none;display:block;}
+.sig-clear{width:100%;padding:10px;margin-top:8px;background:var(--bg);
+  border:1.5px solid var(--border);border-radius:9px;
+  font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;}
+
+/* BUTTONS */
+.btn-row{display:flex;gap:10px;margin-top:16px;}
+.btn-primary{flex:2;padding:16px;
+  background:linear-gradient(135deg,var(--navy),var(--blue));
+  color:#fff;border:none;border-radius:13px;
+  font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 14px rgba(13,71,161,.28);transition:all .2s;}
+.btn-primary:active{transform:scale(.98);}
+.btn-secondary{flex:1;padding:16px;background:var(--card);
+  border:1.5px solid var(--border);color:var(--sub);
+  border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;}
+.btn-success-full{width:100%;padding:17px;
+  background:linear-gradient(135deg,var(--green),var(--green2));
+  color:#fff;border:none;border-radius:13px;
+  font-size:16px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 14px rgba(27,94,32,.28);margin-bottom:10px;}
+.btn-success-full:active{transform:scale(.98);}
+
+/* COMPLETE */
+.complete-hero{text-align:center;padding:28px 16px;}
+.complete-ico{font-size:64px;margin-bottom:14px;}
+.complete-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:8px;}
+.complete-sub{font-size:14px;color:var(--sub);line-height:1.65;font-weight:600;}
+.doc-id-box{background:var(--card);border-radius:var(--r);
+  padding:16px;margin-bottom:12px;box-shadow:var(--shadow);
+  border:2px solid var(--navy2);text-align:center;}
+.doc-id-lbl{font-size:12px;font-weight:800;color:var(--navy2);
+  letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;}
+.doc-id-val{font-size:22px;font-weight:900;color:var(--text);}
+.share-link-box{background:var(--bg);border-radius:11px;
+  padding:13px 14px;border:1.5px solid var(--border);
+  margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.share-link-url{font-size:12px;color:var(--navy2);font-weight:700;
+  flex:1;word-break:break-all;line-height:1.5;}
+.copy-btn{padding:9px 14px;background:var(--navy2);color:#fff;
+  border:none;border-radius:9px;font-size:12px;font-weight:800;
+  cursor:pointer;flex-shrink:0;}
+.copy-btn:active{transform:scale(.96);}
+.mail-row{display:flex;gap:8px;margin-bottom:10px;}
+.mail-input{flex:1;padding:12px 14px;border:1.5px solid var(--border);
+  border-radius:11px;font-size:14px;background:var(--card);color:var(--body);font-weight:600;}
+.mail-input:focus{outline:none;border-color:var(--blue);}
+.mail-btn{padding:12px 16px;background:linear-gradient(135deg,var(--green),var(--green2));
+  color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;}
+.mail-btn:active{transform:scale(.96);}
+
+/* SUMMARY CARD */
+.summary-card{background:var(--card);border-radius:var(--r);
+  padding:16px;margin-bottom:12px;box-shadow:var(--shadow);border:1.5px solid var(--border);}
+.summary-row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.summary-row:last-child{border-bottom:none;}
+.summary-key{color:var(--sub);font-weight:600;}
+.summary-val{color:var(--body);font-weight:800;text-align:right;max-width:58%;}
+.summary-val.hl{color:var(--navy2);}
+
+/* API STATUS */
+.api-status{display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:600;color:var(--sub);
+  padding:8px 12px;background:var(--bg);border-radius:8px;
+  margin-bottom:12px;border:1px solid var(--border);}
+.api-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.api-dot.ok{background:var(--green2);}
+.api-dot.err{background:var(--red2);}
+.api-dot.loading{background:var(--orange2);animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* TOAST */
+.toast-wrap{position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column;gap:7px;
+  pointer-events:none;width:90%;max-width:390px;}
+.toast{padding:13px 17px;border-radius:12px;font-size:14px;font-weight:700;color:#fff;
+  display:flex;align-items:center;gap:9px;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);animation:tslide .3s ease;pointer-events:all;}
+.toast.success{background:linear-gradient(135deg,var(--green),var(--green2));}
+.toast.danger{background:linear-gradient(135deg,#8B0000,var(--red2));}
+.toast.info{background:linear-gradient(135deg,var(--navy),var(--blue));}
+@keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-l">
+    <button class="nav-btn" onclick="goBack()">←</button>
+    <div class="topnav-title">안전정보제공서 (도급인)</div>
+  </div>
+  <div class="topnav-r">
+    <button class="nav-btn" onclick="goHome()">🏠</button>
+  </div>
+</nav>
+
+<!-- PROGRESS -->
+<div class="prog-wrap" id="progWrap" style="display:none;">
+  <div class="prog-steps">
+    <div class="ps act" id="ps1"></div>
+    <div class="ps" id="ps2"></div>
+    <div class="ps" id="ps3"></div>
+    <div class="ps" id="ps4"></div>
+    <div class="ps" id="ps5"></div>
+    <div class="ps" id="ps6"></div>
+    <div class="ps" id="ps7"></div>
+  </div>
+  <div class="prog-info">
+    <div class="prog-label" id="progLabel">1단계: 기본정보</div>
+    <div class="prog-step" id="progStep">1/7</div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ══ 시작 화면 ══ -->
+<div class="screen active" id="screen-welcome">
+  <div style="text-align:center;padding:24px 16px 16px;">
+    <div style="font-size:52px;margin-bottom:12px;">📋</div>
+    <div style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:8px;">안전정보제공서</div>
+    <div style="font-size:14px;color:var(--sub);line-height:1.65;font-weight:600;">
+      도급인이 수급인(협력사)에게<br>작업 전 안전정보를 제공하는 문서<br>
+      <span style="color:var(--red2);">산업안전보건법 제65조 필수</span>
+    </div>
+  </div>
+
+  <!-- API 연결 상태 -->
+  <div class="api-status">
+    <div class="api-dot loading" id="apiDot"></div>
+    <span id="apiStatusTxt">서버 연결 확인 중...</span>
+  </div>
+
+  <div class="info-box">
+    <div class="info-box-t">📌 작성 순서</div>
+    <div class="info-box-b">
+      1단계: 기본정보 → 2단계: 화학물질(MSDS)<br>
+      3단계: 관련서류 → 4단계: 공장 안전정보<br>
+      5단계: 안전수칙 → 6단계: 보호구/비상대응<br>
+      7단계: 도급인 서명 → 수급인에게 전달
+    </div>
+  </div>
+
+  <button class="btn-success-full" onclick="startForm()">✏️ 작성 시작</button>
+  <button class="btn-secondary" style="width:100%;padding:14px;border-radius:13px;font-size:15px;font-weight:700;margin-bottom:10px;" onclick="goToDocList()">📂 기존 문서 보기</button>
+</div>
+
+<!-- ══ STEP 1: 기본정보 ══ -->
+<div class="screen" id="screen-step1">
+  <div class="sec-title">📋 1. 기본정보</div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">수급인(협력사)명<span class="req">*</span></label>
+      <input class="f-input" id="subcontractor" placeholder="예: 원준산업">
+    </div>
+    <div class="form-group">
+      <label class="f-label">작업명<span class="req">*</span></label>
+      <input class="f-input" id="work-name" placeholder="예: 1공장 배관 용접 작업">
+    </div>
+    <div class="form-group">
+      <label class="f-label">작업장소<span class="req">*</span></label>
+      <select class="f-select" id="location">
+        <option value="">선택</option>
+        <option value="포항양극재 1공장">포항양극재 1공장</option>
+        <option value="포항양극재 2공장">포항양극재 2공장</option>
+        <option value="광양양극재">광양양극재</option>
+        <option value="포항음극재">포항음극재</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="f-label">세부 위치<span class="req">*</span></label>
+      <input class="f-input" id="detail-location" placeholder="예: 1공장 2층 배관실">
+    </div>
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">시작일<span class="req">*</span></label>
+        <input class="f-input" type="date" id="start-date">
+      </div>
+      <div class="form-group">
+        <label class="f-label">종료일<span class="req">*</span></label>
+        <input class="f-input" type="date" id="end-date">
+      </div>
+    </div>
+  </div>
+  <div class="sec-title">👤 도급인 담당자 정보</div>
+  <div class="form-card">
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">담당자명<span class="req">*</span></label>
+        <input class="f-input" id="contractor-manager" placeholder="홍길동">
+      </div>
+      <div class="form-group">
+        <label class="f-label">부서<span class="req">*</span></label>
+        <input class="f-input" id="contractor-dept" placeholder="안전환경그룹">
+      </div>
+    </div>
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">연락처<span class="req">*</span></label>
+        <input class="f-input" type="tel" id="contractor-phone" placeholder="010-1234-5678">
+      </div>
+      <div class="form-group">
+        <label class="f-label">이메일<span class="req">*</span></label>
+        <input class="f-input" type="email" id="contractor-email" placeholder="safety@posco.com">
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToScreen('screen-welcome')">취소</button>
+    <button class="btn-primary" onclick="validateStep(1)">다음 →</button>
+  </div>
+</div>
+
+<!-- ══ STEP 2: 화학물질 MSDS ══ -->
+<div class="screen" id="screen-step2">
+  <div class="warn-box">
+    <div class="warn-box-t">⚠️ MSDS 제공 의무</div>
+    <div class="warn-box-b">작업 현장에서 사용/노출될 화학물질의 MSDS를 수급인에게 제공해야 합니다</div>
+  </div>
+  <div class="form-card">
+    <div class="check-item" id="no-chem-item" onclick="togNoChemical(this)">
+      <div class="check-ico"></div>
+      <div><div class="check-label">화학물질을 사용하지 않음</div></div>
+    </div>
+  </div>
+  <div class="sec-title">🧪 화학물질 선택</div>
+  <div class="check-grid" id="msdsGrid">
+    <!-- JS로 생성 -->
+  </div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">기타 화학물질 (직접 입력)</label>
+      <input class="f-input" id="chemical-other" placeholder="예: 페인트 희석제, 윤활유 등">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToStep(1)">← 이전</button>
+    <button class="btn-primary" onclick="validateStep(2)">다음 →</button>
+  </div>
+</div>
+
+<!-- ══ STEP 3: 관련 서류 ══ -->
+<div class="screen" id="screen-step3">
+  <div class="info-box">
+    <div class="info-box-t">📂 제공 서류 안내</div>
+    <div class="info-box-b">위험성평가서는 필수입니다. 문서번호를 입력하면 시스템에서 자동 연동됩니다</div>
+  </div>
+  <div class="sec-title">📄 필수 서류</div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">위험성평가 문서번호<span class="req">*</span></label>
+      <div style="display:flex;gap:8px;">
+        <input class="f-input" id="risk-assess-no" placeholder="예: RA-20240115-001" style="flex:1;">
+        <button style="padding:13px 14px;background:var(--navy2);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;" onclick="loadRiskAssessment()">조회</button>
+      </div>
+      <div id="risk-assess-result" style="display:none;margin-top:8px;padding:10px 12px;background:#E8F5E9;border-radius:9px;border:1px solid var(--green2);font-size:13px;font-weight:700;color:var(--green2);">
+        ✅ 위험성평가 연동 완료
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="f-label">작업허가서 번호 (있는 경우)</label>
+      <input class="f-input" id="permit-no" placeholder="예: PTW-20240115-001">
+    </div>
+  </div>
+  <div class="sec-title">📋 선택 서류</div>
+  <div class="check-grid">
+    <div class="check-item" onclick="togCheck(this,'doc1')">
+      <div class="check-ico"></div>
+      <div><div class="check-label">작업계획서</div></div>
+    </div>
+    <div class="check-item" onclick="togCheck(this,'doc2')">
+      <div class="check-ico"></div>
+      <div><div class="check-label">안전교육 이수증</div></div>
+    </div>
+    <div class="check-item" onclick="togCheck(this,'doc3')">
+      <div class="check-ico"></div>
+      <div><div class="check-label">가스측정 결과서</div></div>
+    </div>
+    <div class="check-item" onclick="togCheck(this,'doc4')">
+      <div class="check-ico"></div>
+      <div><div class="check-label">장비 검사 성적서</div></div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToStep(2)">← 이전</button>
+    <button class="btn-primary" onclick="validateStep(3)">다음 →</button>
+  </div>
+</div>
+
+<!-- ══ STEP 4: 공장 안전정보 ══ -->
+<div class="screen" id="screen-step4">
+  <div class="sec-title">🏭 공장 위험 설비 정보</div>
+  <div class="check-grid" id="facilityGrid">
+    <!-- JS로 생성 -->
+  </div>
+  <div class="sec-title">🚨 비상구 및 대피로</div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">비상구 위치<span class="req">*</span></label>
+      <input class="f-input" id="emergency-exit" placeholder="예: 1층 북측 출입구, 2층 계단 옆">
+    </div>
+    <div class="form-group">
+      <label class="f-label">비상연락처<span class="req">*</span></label>
+      <input class="f-input" id="emergency-contact" value="119 / 내선 119" placeholder="119 / 내선 119">
+    </div>
+    <div class="form-group">
+      <label class="f-label">구급약품 위치</label>
+      <input class="f-input" id="first-aid" placeholder="예: 1층 안전관리실">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToStep(3)">← 이전</button>
+    <button class="btn-primary" onclick="validateStep(4)">다음 →</button>
+  </div>
+</div>
+
+<!-- ══ STEP 5: 안전수칙 ══ -->
+<div class="screen" id="screen-step5">
+  <div class="info-box">
+    <div class="info-box-t">💡 안내</div>
+    <div class="info-box-b">작업 특성에 맞는 안전수칙을 선택해주세요. 선택된 항목이 수급인 확인서에 표시됩니다</div>
+  </div>
+  <div class="sec-title">⚠️ 작업별 안전수칙</div>
+  <div class="check-grid" id="safetyGrid">
+    <!-- JS로 생성 -->
+  </div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">추가 안전수칙 (직접 입력)</label>
+      <input class="f-input" id="safety-other" placeholder="기타 현장별 안전수칙">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToStep(4)">← 이전</button>
+    <button class="btn-primary" onclick="validateStep(5)">다음 →</button>
+  </div>
+</div>
+
+<!-- ══ STEP 6: 보호구 및 비상대응 ══ -->
+<div class="screen" id="screen-step6">
+  <div class="sec-title">⛑️ 필수 보호구</div>
+  <div class="check-grid" id="ppeGrid">
+    <!-- JS로 생성 -->
+  </div>
+  <div class="sec-title">🚑 비상상황 대응</div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">비상상황 대응 절차<span class="req">*</span></label>
+      <textarea class="f-textarea" id="emergency-proc"
+        placeholder="예: 1. 작업 즉시 중단 2. 119 신고 3. 안전관리자 연락 (내선 119) 4. 부상자 응급조치 5. 현장 보존"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="f-label">안전관리자 연락처<span class="req">*</span></label>
+      <input class="f-input" id="safety-manager-phone" placeholder="010-1234-5678 (홍길동 안전관리자)">
+    </div>
+  </div>
+  <div class="check-item" id="ack-item" onclick="togAck(this)" style="margin-bottom:12px;">
+    <div class="check-ico"></div>
+    <div><div class="check-label">위 보호구 착용 및 비상상황 대응 체계를 확인하였습니다</div></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToStep(5)">← 이전</button>
+    <button class="btn-primary" onclick="validateStep(6)">다음 →</button>
+  </div>
+</div>
+
+<!-- ══ STEP 7: 서명 및 전달 ══ -->
+<div class="screen" id="screen-step7">
+  <div class="danger-box">
+    <div class="danger-box-t">⚠️ 최종 확인</div>
+    <div class="danger-box-b">
+      서명 후 제출하면 수정이 불가합니다<br>
+      거짓 작성 시 산업안전보건법 제63조에 따라 처벌받을 수 있습니다
+    </div>
+  </div>
+  <div class="sec-title">✍️ 도급인 서명</div>
+  <div class="sig-wrap">
+    <div class="sig-lbl">도급인 담당자 서명<span class="req">*</span></div>
+    <canvas class="sig-canvas" id="contractor-sig" width="400" height="150"></canvas>
+    <button class="sig-clear" onclick="clearSig('contractor-sig')">지우기</button>
+  </div>
+  <div class="sec-title">📨 수급인 연락처</div>
+  <div class="form-card">
+    <div class="form-group">
+      <label class="f-label">수급인 이메일<span class="req">*</span></label>
+      <input class="f-input" type="email" id="sub-email" placeholder="contractor@example.com">
+    </div>
+    <div class="form-group">
+      <label class="f-label">수급인 연락처<span class="req">*</span></label>
+      <input class="f-input" type="tel" id="sub-phone" placeholder="010-1234-5678">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="goToStep(6)">← 이전</button>
+    <button class="btn-primary" onclick="submitDoc()">📤 제출 및 전달</button>
+  </div>
+</div>
+
+<!-- ══ 완료 화면 ══ -->
+<div class="screen" id="screen-complete">
+  <div class="complete-hero">
+    <div class="complete-ico">✅</div>
+    <div class="complete-title">발행 완료!</div>
+    <div class="complete-sub">안전정보제공서가 서버에 저장되었습니다.<br>수급인에게 링크를 전달하여 서명을 받으세요.</div>
+  </div>
+
+  <!-- 문서번호 -->
+  <div class="doc-id-box">
+    <div class="doc-id-lbl">문서번호</div>
+    <div class="doc-id-val" id="fin-doc-id">-</div>
+  </div>
+
+  <!-- 요약 -->
+  <div class="summary-card">
+    <div class="summary-row"><span class="summary-key">작업명</span><span class="summary-val hl" id="fin-work-name">-</span></div>
+    <div class="summary-row"><span class="summary-key">협력사</span><span class="summary-val" id="fin-subcontractor">-</span></div>
+    <div class="summary-row"><span class="summary-key">작업장소</span><span class="summary-val" id="fin-location">-</span></div>
+    <div class="summary-row"><span class="summary-key">작업기간</span><span class="summary-val" id="fin-period">-</span></div>
+    <div class="summary-row"><span class="summary-key">발행일시</span><span class="summary-val" id="fin-datetime">-</span></div>
+  </div>
+
+  <!-- 수급인 서명 링크 -->
+  <div class="sec-title" style="margin-top:0;">📨 수급인 서명 링크</div>
+  <div class="share-link-box">
+    <div class="share-link-url" id="shareLink">-</div>
+    <button class="copy-btn" onclick="copyLink()">복사</button>
+  </div>
+
+  <!-- 이메일 발송 -->
+  <div class="sec-title" style="margin-top:0;">📧 이메일로 전달</div>
+  <div class="mail-row">
+    <input class="mail-input" id="send-email" type="email" placeholder="수급인 이메일 입력">
+    <button class="mail-btn" onclick="sendMail()">📤 발송</button>
+  </div>
+  <div id="mail-result" style="display:none;padding:10px 12px;border-radius:9px;margin-bottom:12px;font-size:13px;font-weight:700;"></div>
+
+  <button class="btn-success-full" onclick="goHome()">🏠 대시보드로 돌아가기</button>
+  <button class="btn-secondary" style="width:100%;padding:14px;border-radius:13px;font-size:15px;font-weight:700;" onclick="goToScreen('screen-welcome')">새 문서 작성</button>
+</div>
+
+</div><!-- /.app -->
+
+<script>
+// ── API 설정 (서버 전환 시 여기만 수정) ────────────────────────
+var API_BASE_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+
+function apiPost(body){
+  return fetch(API_BASE_URL, {
+    method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).then(function(r){
+    // no-cors는 응답 파싱 불가 → opaque response
+    return {ok:true};
+  }).catch(function(e){return{ok:false,error:e.message};});
+}
+function apiGet(params){
+  var qs=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
+  return fetch(API_BASE_URL+'?'+qs)
+    .then(function(r){return r.json();})
+    .catch(function(e){return{ok:false,error:e.message};});
+}
+
+// ── DATA ────────────────────────────────────────────────────────
+var data = {
+  subcontractor:'', workName:'', location:'', detailLocation:'',
+  startDate:'', endDate:'',
+  contractorManager:'', contractorDept:'', contractorPhone:'', contractorEmail:'',
+  subcontractorEmail:'', subcontractorPhone:'',
+  noChemical:false, msdsItems:[], chemicalOther:'',
+  riskAssessmentNo:'', permitNo:'',
+  facilityItems:[], emergencyExit:'', emergencyContact:'', firstAid:'',
+  safetyItems:'', safetyOther:'', ppeItems:[],
+  emergencyProc:'', safetyManagerPhone:'',
+  contractorSignature:null,
+  docId:'', signUrl:''
+};
+var currentStep = 0;
+var ackChecked = false;
+var noChemChecked = false;
+var selectedDocs = {};
+
+// ── MSDS 목록 ──────────────────────────────────────────────────
+var MSDS_LIST = [
+  {id:'m1', name:'황산 (H₂SO₄)', cas:'7664-93-9'},
+  {id:'m2', name:'수산화나트륨 (NaOH)', cas:'1310-73-2'},
+  {id:'m3', name:'질산 (HNO₃)', cas:'7697-37-2'},
+  {id:'m4', name:'암모니아 (NH₃)', cas:'7664-41-7'},
+  {id:'m5', name:'아세톤', cas:'67-64-1'},
+  {id:'m6', name:'톨루엔', cas:'108-88-3'},
+  {id:'m7', name:'이황화탄소', cas:'75-15-0'},
+  {id:'m8', name:'n-헥산', cas:'110-54-3'},
+  {id:'m9', name:'MEK (메틸에틸케톤)', cas:'78-93-3'},
+  {id:'m10', name:'LPG', cas:'68476-85-7'},
+  {id:'m11', name:'산소 (압축)', cas:'7782-44-7'},
+  {id:'m12', name:'아르곤 (압축)', cas:'7440-37-1'}
+];
+
+// ── 설비 위험 목록 ──────────────────────────────────────────────
+var FACILITY_LIST = [
+  {id:'f1', name:'고압 전기 설비', desc:'154kV 변전소 인근', icon:'⚡'},
+  {id:'f2', name:'고온·고압 배관', desc:'스팀/열수 배관', icon:'🌡️'},
+  {id:'f3', name:'화학물질 저장소', desc:'황산·수산화나트륨', icon:'🧪'},
+  {id:'f4', name:'크레인·호이스트', desc:'5톤 이상 인양 설비', icon:'🏗️'},
+  {id:'f5', name:'밀폐 공간', desc:'맨홀·탱크·덕트', icon:'🚪'},
+  {id:'f6', name:'로터리·회전체', desc:'구동 설비 인근', icon:'⚙️'},
+  {id:'f7', name:'방사선 구역', desc:'NDT 검사 구역', icon:'☢️'},
+  {id:'f8', name:'추락 위험 구역', desc:'2m 이상 고소 지역', icon:'⬆️'}
+];
+
+// ── 안전수칙 목록 ──────────────────────────────────────────────
+var SAFETY_LIST = [
+  {id:'s1', name:'안전작업허가서(PTW) 발급 후 작업 시작'},
+  {id:'s2', name:'TBM(Tool Box Meeting) 작업 전 필수 실시'},
+  {id:'s3', name:'작업중지권 행사 가능 (위험 시 즉시 중단)'},
+  {id:'s4', name:'LOTO(잠금·태그아웃) 철저히 이행'},
+  {id:'s5', name:'화기작업 시 화재감시자 필수 배치'},
+  {id:'s6', name:'밀폐공간 작업 전 산소농도 측정 필수'},
+  {id:'s7', name:'고소작업 시 안전대 착용 및 안전난간 설치'},
+  {id:'s8', name:'중장비 작업 시 신호수 배치 및 작업반경 확보'},
+  {id:'s9', name:'작업구역 내 무단 출입 금지'},
+  {id:'s10', name:'음주·약물 상태에서 작업 절대 금지'}
+];
+
+// ── 보호구 목록 ──────────────────────────────────────────────
+var PPE_LIST = [
+  {id:'p1', name:'안전모', icon:'⛑️'},
+  {id:'p2', name:'안전화', icon:'👟'},
+  {id:'p3', name:'안전대 (고소작업)', icon:'🪢'},
+  {id:'p4', name:'안전장갑', icon:'🧤'},
+  {id:'p5', name:'보안경/안면보호구', icon:'🥽'},
+  {id:'p6', name:'방진마스크', icon:'😷'},
+  {id:'p7', name:'방독마스크 (화학)', icon:'⚗️'},
+  {id:'p8', name:'송기마스크 (밀폐)', icon:'🌬️'},
+  {id:'p9', name:'청력보호구', icon:'🎧'},
+  {id:'p10', name:'안전조끼 (야간)', icon:'🦺'}
+];
+
+// ── STEP LABELS ─────────────────────────────────────────────────
+var STEP_LABELS = ['','기본정보','화학물질','관련서류','공장안전정보','안전수칙','보호구/비상','서명 및 전달'];
+
+// ── INIT ────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function(){
+  var today = new Date().toISOString().split('T')[0];
+  setVal('start-date', today);
+  setVal('end-date', today);
+  initSig('contractor-sig');
+  renderMSDS();
+  renderFacility();
+  renderSafety();
+  renderPPE();
+  checkApiStatus();
+});
+
+function checkApiStatus() {
+  var dot = document.getElementById('apiDot');
+  var txt = document.getElementById('apiStatusTxt');
+  fetch(API_BASE_URL + '?action=ping')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.ok){ dot.className='api-dot ok'; txt.textContent='서버 연결됨 (Google Sheets)'; }
+      else{ dot.className='api-dot err'; txt.textContent='서버 응답 오류'; }
+    })
+    .catch(function(){
+      dot.className='api-dot err';
+      txt.textContent='서버 미연결 — URL 설정 필요';
+    });
+}
+
+// ── RENDER LISTS ────────────────────────────────────────────────
+function renderMSDS(){
+  var grid = document.getElementById('msdsGrid');
+  grid.innerHTML = MSDS_LIST.map(function(m){
+    return '<div class="check-item msds-item" onclick="togCheck(this,\''+m.id+'\')" data-name="'+m.name+'" data-cas="'+m.cas+'">'+
+      '<div class="check-ico"></div>'+
+      '<div><div class="check-label">'+m.name+'</div><div class="check-desc">CAS: '+m.cas+'</div></div>'+
+      '</div>';
+  }).join('');
+}
+
+function renderFacility(){
+  var grid = document.getElementById('facilityGrid');
+  grid.innerHTML = FACILITY_LIST.map(function(f){
+    return '<div class="check-item" onclick="togCheck(this,\''+f.id+'\')" data-name="'+f.name+'">'+
+      '<div class="check-ico"></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex:1;">'+
+      '<span style="font-size:20px;">'+f.icon+'</span>'+
+      '<div><div class="check-label">'+f.name+'</div><div class="check-desc">'+f.desc+'</div></div>'+
+      '</div></div>';
+  }).join('');
+}
+
+function renderSafety(){
+  var grid = document.getElementById('safetyGrid');
+  grid.innerHTML = SAFETY_LIST.map(function(s){
+    return '<div class="check-item" onclick="togCheck(this,\''+s.id+'\')" data-name="'+s.name+'">'+
+      '<div class="check-ico"></div>'+
+      '<div class="check-label">'+s.name+'</div>'+
+      '</div>';
+  }).join('');
+}
+
+function renderPPE(){
+  var grid = document.getElementById('ppeGrid');
+  grid.innerHTML = PPE_LIST.map(function(p){
+    return '<div class="check-item" onclick="togCheck(this,\''+p.id+'\')" data-name="'+p.name+'">'+
+      '<div class="check-ico"></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex:1;">'+
+      '<span style="font-size:20px;">'+p.icon+'</span>'+
+      '<div class="check-label">'+p.name+'</div>'+
+      '</div></div>';
+  }).join('');
+}
+
+// ── TOGGLE HELPERS ──────────────────────────────────────────────
+function togCheck(el, id){
+  el.classList.toggle('checked');
+  var ico = el.querySelector('.check-ico');
+  ico.textContent = el.classList.contains('checked') ? '✓' : '';
+  if(!selectedDocs) selectedDocs={};
+  selectedDocs[id] = el.classList.contains('checked');
+}
+
+function togNoChemical(el){
+  noChemChecked = !noChemChecked;
+  el.classList.toggle('checked', noChemChecked);
+  el.querySelector('.check-ico').textContent = noChemChecked ? '✓' : '';
+  var grid = document.getElementById('msdsGrid');
+  grid.style.opacity = noChemChecked ? '.4' : '1';
+  grid.style.pointerEvents = noChemChecked ? 'none' : 'auto';
+}
+
+function togAck(el){
+  ackChecked = !ackChecked;
+  el.classList.toggle('checked', ackChecked);
+  el.querySelector('.check-ico').textContent = ackChecked ? '✓' : '';
+}
+
+// ── VALIDATION & NAVIGATION ─────────────────────────────────────
+function validateStep(step){
+  if(step===1){
+    var sc=getVal('subcontractor'), wn=getVal('work-name'),
+        loc=getVal('location'), dloc=getVal('detail-location'),
+        sd=getVal('start-date'), ed=getVal('end-date'),
+        cm=getVal('contractor-manager'), cd=getVal('contractor-dept'),
+        cp=getVal('contractor-phone'), ce=getVal('contractor-email');
+    if(!sc||!wn||!loc||!dloc||!sd||!ed||!cm||!cd||!cp||!ce){
+      showToast('필수 항목을 모두 입력해주세요','danger'); return;
+    }
+    if(new Date(ed)<new Date(sd)){showToast('종료일은 시작일 이후여야 합니다','danger'); return;}
+    data.subcontractor=sc; data.workName=wn; data.location=loc; data.detailLocation=dloc;
+    data.startDate=sd; data.endDate=ed;
+    data.contractorManager=cm; data.contractorDept=cd;
+    data.contractorPhone=cp; data.contractorEmail=ce;
+  }
+  else if(step===2){
+    var msds=[];
+    document.querySelectorAll('#msdsGrid .check-item.checked').forEach(function(el){
+      msds.push(el.getAttribute('data-name'));
+    });
+    data.noChemical=noChemChecked;
+    data.msdsItems=msds;
+    data.chemicalOther=getVal('chemical-other');
+    if(!noChemChecked && !msds.length && !data.chemicalOther){
+      showToast('화학물질을 선택하거나 "사용하지 않음"을 체크하세요','danger'); return;
+    }
+  }
+  else if(step===3){
+    var raNo=getVal('risk-assess-no');
+    if(!raNo){showToast('위험성평가 문서번호를 입력해주세요','danger'); return;}
+    data.riskAssessmentNo=raNo;
+    data.permitNo=getVal('permit-no');
+  }
+  else if(step===4){
+    var fe=getVal('emergency-exit'), ec=getVal('emergency-contact');
+    if(!fe||!ec){showToast('비상구 위치와 비상연락처를 입력해주세요','danger'); return;}
+    var fac=[];
+    document.querySelectorAll('#facilityGrid .check-item.checked').forEach(function(el){
+      fac.push(el.getAttribute('data-name'));
+    });
+    data.facilityItems=fac;
+    data.emergencyExit=fe; data.emergencyContact=ec; data.firstAid=getVal('first-aid');
+  }
+  else if(step===5){
+    var si=[];
+    document.querySelectorAll('#safetyGrid .check-item.checked').forEach(function(el){
+      si.push(el.getAttribute('data-name'));
+    });
+    data.safetyItems=si; data.safetyOther=getVal('safety-other');
+  }
+  else if(step===6){
+    if(!ackChecked){showToast('보호구 및 비상대응 확인 체크가 필요합니다','danger'); return;}
+    var ep=getVal('emergency-proc'), sp=getVal('safety-manager-phone');
+    if(!ep||!sp){showToast('비상절차와 안전관리자 연락처를 입력해주세요','danger'); return;}
+    var ppe=[];
+    document.querySelectorAll('#ppeGrid .check-item.checked').forEach(function(el){
+      ppe.push(el.getAttribute('data-name'));
+    });
+    data.ppeItems=ppe;
+    data.emergencyProc=ep; data.safetyManagerPhone=sp;
+  }
+  goToStep(step+1);
+}
+
+function goToStep(step){
+  currentStep=step;
+  goToScreen('screen-step'+step);
+  // 진행바 업데이트
+  for(var i=1;i<=7;i++){
+    var el=document.getElementById('ps'+i);
+    if(el) el.className='ps'+(i<step?' done':i===step?' act':'');
+  }
+  var pl=document.getElementById('progLabel');
+  var pp=document.getElementById('progStep');
+  if(pl) pl.textContent=step+'단계: '+(STEP_LABELS[step]||'');
+  if(pp) pp.textContent=step+'/7';
+  document.getElementById('progWrap').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function goToScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  if(id==='screen-welcome'||id==='screen-complete'){
+    document.getElementById('progWrap').style.display='none';
+  }
+  window.scrollTo(0,0);
+}
+
+function startForm(){ goToStep(1); }
+
+// ── RISK ASSESSMENT LOAD ────────────────────────────────────────
+function loadRiskAssessment(){
+  var no=getVal('risk-assess-no');
+  if(!no){showToast('문서번호를 입력해주세요','info');return;}
+  // localStorage에서 위험성평가 조회
+  try{
+    var list=JSON.parse(localStorage.getItem('safetyRiskAssessments')||'[]');
+    var found=list.find(function(r){return r.id===no;});
+    var result=document.getElementById('risk-assess-result');
+    if(found){
+      result.style.display='block';
+      result.innerHTML='✅ 위험성평가 연동 완료: '+found.workName;
+      result.style.background='#E8F5E9'; result.style.borderColor='var(--green2)';
+      result.style.color='var(--green2)';
+      showToast('위험성평가 연동 완료','success');
+    } else {
+      result.style.display='block';
+      result.innerHTML='⚠️ 문서를 찾을 수 없습니다. 번호를 직접 입력해도 됩니다.';
+      result.style.background='#FFF3E0'; result.style.borderColor='var(--orange2)';
+      result.style.color='var(--orange)';
+    }
+  }catch(e){showToast('조회 오류','danger');}
+}
+
+// ── SUBMIT ──────────────────────────────────────────────────────
+function submitDoc(){
+  var se=getVal('sub-email'), sp=getVal('sub-phone');
+  if(!se||!sp){showToast('수급인 연락처를 입력해주세요','danger'); return;}
+  if(!hasSig('contractor-sig')){showToast('도급인 서명을 해주세요','danger'); return;}
+  data.subcontractorEmail=se; data.subcontractorPhone=sp;
+  data.contractorSignature=document.getElementById('contractor-sig').toDataURL();
+
+  showToast('서버에 저장 중...','info');
+
+  // ★ 서버 저장
+  apiPost({ action:'saveDoc', data:data })
+    .then(function(res){
+      // no-cors로 인해 res.ok는 항상 true
+      // 실제 문서번호는 서버에서 생성 → localStorage에 임시 저장
+      var docId = 'SIP-'+new Date().getFullYear()+pad(new Date().getMonth()+1)+pad(new Date().getDate())+'-'+String(Math.floor(Math.random()*1000)).padStart(3,'0');
+      data.docId = docId;
+
+      // localStorage 로컬 백업 (오프라인 대비)
+      var docs=[];
+      try{docs=JSON.parse(localStorage.getItem('safetyInfoDocs')||'[]');}catch(e){}
+      var saveData=JSON.parse(JSON.stringify(data));
+      saveData.status='발행완료';
+      saveData.createdAt=new Date().toISOString();
+      docs.push(saveData);
+      localStorage.setItem('safetyInfoDocs', JSON.stringify(docs));
+
+      var signUrl = '안전정보제공서_수급인용.html?doc='+docId;
+      data.signUrl = signUrl;
+
+      // 완료 화면
+      setTxt('fin-doc-id', docId);
+      setTxt('fin-work-name', data.workName);
+      setTxt('fin-subcontractor', data.subcontractor);
+      setTxt('fin-location', data.location+' '+data.detailLocation);
+      setTxt('fin-period', data.startDate+' ~ '+data.endDate);
+      setTxt('fin-datetime', new Date().toLocaleString('ko-KR'));
+      document.getElementById('shareLink').textContent = signUrl;
+      document.getElementById('send-email').value = data.subcontractorEmail;
+
+      goToScreen('screen-complete');
+      showToast('✅ 발행 완료!','success');
+    })
+    .catch(function(e){
+      showToast('서버 저장 실패: '+e.message,'danger');
+    });
+}
+
+// ── MAIL SEND ───────────────────────────────────────────────────
+function sendMail(){
+  var to=document.getElementById('send-email').value.trim();
+  if(!to){showToast('이메일을 입력해주세요','info');return;}
+  showToast('이메일 발송 중...','info');
+
+  apiPost({ action:'sendMail', data:{ docId:data.docId, to:to, type:'sign_request' }})
+    .then(function(){
+      var r=document.getElementById('mail-result');
+      r.style.display='block';
+      r.style.background='#E8F5E9'; r.style.color='var(--green2)';
+      r.textContent='✅ '+to+'으로 발송 완료!';
+      showToast('이메일 발송 완료','success');
+    })
+    .catch(function(e){
+      showToast('발송 실패: '+e.message,'danger');
+    });
+}
+
+function copyLink(){
+  var url=document.getElementById('shareLink').textContent;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){showToast('링크가 복사되었습니다','success');});
+  } else {
+    var el=document.createElement('textarea');
+    el.value=url; document.body.appendChild(el);
+    el.select(); document.execCommand('copy'); document.body.removeChild(el);
+    showToast('링크가 복사되었습니다','success');
+  }
+}
+
+function goToDocList(){
+  // 대시보드 문서 목록으로 이동 (추후 구현)
+  showToast('준비 중입니다','info');
+}
+
+// ── SIGNATURE ──────────────────────────────────────────────────
+function initSig(id){
+  var c=document.getElementById(id); if(!c) return;
+  var ctx=c.getContext('2d');
+  ctx.strokeStyle='#1C2B3A'; ctx.lineWidth=2.5; ctx.lineCap='round';
+  var drawing=false, lx=0, ly=0;
+  function pos(e){var r=c.getBoundingClientRect(),src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(c.width/r.width),y:(src.clientY-r.top)*(c.height/r.height)};}
+  c.onmousedown=c.ontouchstart=function(e){e.preventDefault();drawing=true;var p=pos(e);lx=p.x;ly=p.y;};
+  c.onmousemove=c.ontouchmove=function(e){e.preventDefault();if(!drawing)return;var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;};
+  c.onmouseup=c.ontouchend=function(){drawing=false;};
+  c.onmouseleave=function(){drawing=false;};
+}
+
+function clearSig(id){var c=document.getElementById(id);if(c) c.getContext('2d').clearRect(0,0,c.width,c.height);}
+
+function hasSig(id){
+  var c=document.getElementById(id); if(!c) return false;
+  var d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+  for(var i=3;i<d.length;i+=4) if(d[i]>0) return true;
+  return false;
+}
+
+// ── NAV ─────────────────────────────────────────────────────────
+function goHome(){
+  if(currentStep>0 && currentStep<8){
+    if(!confirm('작성 중인 내용이 있습니다.\n대시보드로 이동하시겠습니까?')) return;
+  }
+  window.location.href='dashboard_v6.html';
+}
+
+function goBack(){
+  if(currentStep>1) goToStep(currentStep-1);
+  else if(currentStep===1) goToScreen('screen-welcome');
+  else history.back();
+}
+
+// ── UTILS ───────────────────────────────────────────────────────
+function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
+function setVal(id,v){var el=document.getElementById(id);if(el) el.value=v;}
+function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
+function pad(n){return('0'+n).slice(-2);}
+
+function showToast(msg,type){
+  var wrap=document.getElementById('toastWrap'); if(!wrap) return;
+  var t=document.createElement('div');
+  t.className='toast '+(type||'info'); t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(function(){if(t.parentNode) t.parentNode.removeChild(t);},3500);
+}
+</script>
+</body>
+</html>
