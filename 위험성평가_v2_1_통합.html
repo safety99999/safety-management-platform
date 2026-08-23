@@ -4,29 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1565C0">
+<meta name="theme-color" content="#003C7E">
 <title>AI 위험성평가 v2</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 canvas{touch-action:none;}
-html,body{width:100%;min-height:100vh;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;}
+html,body{width:100%;min-height:100vh;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
-[data-theme="dark"]{
-  --bg:#08111F;--card:#112240;
-  --text:#E8EAF6;--body:#CFD8DC;--sub:#90A4AE;--mute:#607D8B;
-  --border:#1A3355;
-  --shadow:0 2px 10px rgba(0,0,0,0.4);
-}
 :root{
-  --navy:#0D47A1;--navy2:#1565C0;--blue:#1E88E5;--blue2:#42A5F5;
-  --red:#C62828;--red2:#E53935;
-  --green:#1B5E20;--green2:#2E7D32;--green3:#43A047;
-  --orange:#E65100;--orange2:#F57C00;
-  --amber:#F57F17;--amber2:#F9A825;
-  --bg:#EEF2F7;--card:#FFF;--text:#0D1B4B;--body:#1C2B3A;--sub:#546E7A;
-  --border:#DDE4EE;--shadow:0 2px 10px rgba(13,71,161,.09);
-  --shadow-md:0 4px 20px rgba(13,71,161,.13);
-  --r:14px;--rs:11px;
+  --navy:#003C7E;--navy2:#0067B1;--blue:#3FA9F5;--blue2:#3FA9F5;
+  --red:#D6273D;--red2:#D6273D;
+  --green:#0E8A6B;--green2:#0E8A6B;--green3:#0E8A6B;
+  --orange:#E8590C;--orange2:#E8590C;
+  --amber:#B45309;--amber2:#B45309;
+  --tint:#E7F0FA;--sunk:#F3F6FA;
+  --bg:#EEF2F7;--card:#FFF;--text:#0F1D2B;--body:#22374A;--sub:#5E7183;
+  --border:#DFE7EF;--shadow:0 2px 10px rgba(15,29,43,.06);
+  --shadow-md:0 4px 16px rgba(15,29,43,.09);
+  --r:16px;--rs:12px;
+}
+[data-theme="dark"]{
+  --navy:#0A1B2E;--navy2:#3FA9F5;--blue:#6BC0FF;--blue2:#6BC0FF;
+  --red:#FF5F70;--red2:#FF5F70;
+  --green:#3DD9AE;--green2:#3DD9AE;--green3:#3DD9AE;
+  --orange:#FF8A3D;--orange2:#FF8A3D;
+  --amber:#FBBF24;--amber2:#FBBF24;
+  --tint:#12283F;--sunk:#0C1825;
+  --bg:#080F17;--card:#111E2C;--text:#E8EAF6;--body:#CFD8DC;--sub:#90A4AE;
+  --border:#1E3145;--shadow:0 2px 10px rgba(0,0,0,.35);
+  --shadow-md:0 4px 16px rgba(0,0,0,.45);
 }
 html,body{overflow-x:hidden;}
 body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-area-inset-bottom));}
@@ -34,16 +41,19 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 
 /* ── TOP NAV ── */
 .topnav{position:sticky;top:0;z-index:200;
-  background:linear-gradient(135deg,#0A3880,var(--navy2));
+  background:linear-gradient(158deg,#003C7E 0%,var(--navy2) 100%);
   height:56px;padding:0 16px;
   display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 2px 16px rgba(10,56,128,.4);}
-.topnav-l{display:flex;align-items:center;gap:10px;}
+  box-shadow:0 2px 16px rgba(0,60,126,.35);overflow:hidden;}
+.topnav::after{content:'';position:absolute;right:-40px;top:-46px;width:150px;height:150px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;}
+.topnav-l{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
 .back-btn{background:rgba(255,255,255,.15);border:none;color:#fff;
   width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;}
 .topnav-title{color:#fff;font-size:16px;font-weight:800;}
-.topnav-r{display:flex;align-items:center;gap:8px;}
+.topnav-r{display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
 .risk-id-badge{background:rgba(255,255,255,.18);color:#fff;
   font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;display:none;}
 
@@ -78,10 +88,10 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .f-input:focus,.f-select:focus,.f-textarea:focus{outline:none;border-color:var(--blue);}
 .f-textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.f-input.auto-filled{background:#E8F5E9;border-color:rgba(46,125,50,.4);}
+.f-input.auto-filled{background:#EDFAF6;border-color:rgba(14,138,107,.35);}
 
 /* ── 시작 화면 ── */
-.welcome-hero{background:linear-gradient(145deg,#0A3880,var(--blue));
+.welcome-hero{background:linear-gradient(145deg,#003C7E,var(--blue));
   border-radius:var(--r);padding:24px 20px;margin-bottom:16px;
   color:#fff;position:relative;overflow:hidden;}
 .welcome-hero::before{content:'';position:absolute;top:-20px;right:-20px;
@@ -116,7 +126,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .work-card{background:var(--card);border-radius:var(--rs);border:1.5px solid var(--border);
   padding:14px 16px;margin-bottom:9px;cursor:pointer;transition:all .18s;box-shadow:var(--shadow);}
 .work-card:active{transform:scale(.98);}
-.work-card.danger{border-color:rgba(198,40,40,.3);background:rgba(198,40,40,.02);}
+.work-card.danger{border-color:rgba(214,39,61,.3);background:rgba(198,40,40,.02);}
 .work-card.has-risk{border-color:rgba(46,125,50,.35);}
 .wc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .wc-badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;}
@@ -124,7 +134,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .wc-badge.g{background:var(--green2);color:#fff;}
 .wc-status{font-size:11px;color:var(--sub);font-weight:600;
   background:var(--bg);padding:3px 8px;border-radius:6px;}
-.wc-status.done{color:var(--green2);background:#E8F5E9;}
+.wc-status.done{color:var(--green2);background:#EDFAF6;}
 .wc-name{font-size:15px;font-weight:800;color:var(--body);margin-bottom:6px;line-height:1.35;}
 .wc-meta{font-size:12px;color:var(--sub);font-weight:600;display:flex;gap:8px;flex-wrap:wrap;}
 .wc-action{margin-top:10px;padding-top:9px;border-top:1px solid var(--border);
@@ -185,18 +195,18 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
   font-size:12px;font-weight:800;color:#fff;transition:all .2s;}
 .rm-cell:active{transform:scale(1.08);}
 .rm-cell.sel{box-shadow:0 0 0 3px var(--navy2);transform:scale(1.12);}
-.rm-cell.low{background:#43A047;}
-.rm-cell.med{background:#F9A825;}
-.rm-cell.high{background:#F57C00;}
-.rm-cell.critical{background:#C62828;}
+.rm-cell.low{background:#0E8A6B;}
+.rm-cell.med{background:#B45309;}
+.rm-cell.high{background:#E8590C;}
+.rm-cell.critical{background:#D6273D;}
 
 /* 위험도 결과 배지 */
 .risk-score-badge{display:flex;align-items:center;gap:12px;
   padding:14px 16px;border-radius:11px;margin-top:12px;}
-.risk-score-badge.low{background:#E8F5E9;border:1.5px solid rgba(46,125,50,.3);}
-.risk-score-badge.med{background:#FFFDE7;border:1.5px solid rgba(249,168,37,.4);}
-.risk-score-badge.high{background:#FFF3E0;border:1.5px solid rgba(245,124,0,.3);}
-.risk-score-badge.critical{background:#FFEBEE;border:1.5px solid rgba(198,40,40,.3);}
+.risk-score-badge.low{background:#EDFAF6;border:1.5px solid rgba(14,138,107,.3);}
+.risk-score-badge.med{background:#FEF6E7;border:1.5px solid rgba(180,83,9,.3);}
+.risk-score-badge.high{background:#FEF6E7;border:1.5px solid rgba(232,89,12,.3);}
+.risk-score-badge.critical{background:#FFF3F5;border:1.5px solid rgba(214,39,61,.3);}
 .rsb-num{font-size:36px;font-weight:900;}
 .rsb-num.low{color:var(--green2);}
 .rsb-num.med{color:var(--amber);}
@@ -258,12 +268,12 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
   background:linear-gradient(135deg,var(--green),var(--green2));
   color:#fff;border:none;border-radius:11px;
   font-size:14px;font-weight:800;cursor:pointer;margin-top:8px;}
-.ai-error-box{background:#FFEBEE;border-left:4px solid var(--red2);
+.ai-error-box{background:#FFF3F5;border-left:4px solid var(--red2);
   padding:14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .ai-error-txt{font-size:13px;color:var(--red);font-weight:600;line-height:1.6;}
 
 /* 과거 사고 이력 */
-.accident-card{background:#FFF8E1;border-left:4px solid var(--amber2);
+.accident-card{background:#FEF6E7;border-left:4px solid var(--amber2);
   border-radius:0 10px 10px 0;padding:13px 14px;margin-bottom:8px;}
 .accident-date{font-size:12px;font-weight:800;color:var(--amber);margin-bottom:5px;}
 .accident-desc{font-size:13px;color:var(--body);line-height:1.6;font-weight:600;}
@@ -274,9 +284,9 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .overall-badge::before{content:'';position:absolute;top:-20px;right:-20px;
   width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);}
 .overall-badge.low{background:linear-gradient(145deg,var(--green),var(--green2));}
-.overall-badge.med{background:linear-gradient(145deg,#E65100,var(--orange2));}
+.overall-badge.med{background:linear-gradient(145deg,var(--orange),var(--orange2));}
 .overall-badge.high{background:linear-gradient(145deg,#BF360C,#FF5722);}
-.overall-badge.critical{background:linear-gradient(145deg,#8B0000,var(--red2));}
+.overall-badge.critical{background:linear-gradient(145deg,#B0202F,var(--red2));}
 .ob-score{font-size:64px;font-weight:900;line-height:1;margin:8px 0;}
 .ob-level{font-size:22px;font-weight:900;margin-bottom:6px;}
 .ob-desc{font-size:13px;opacity:.85;line-height:1.55;}
@@ -298,10 +308,10 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .hist-name{font-size:15px;font-weight:800;color:var(--body);margin-bottom:5px;line-height:1.35;}
 .hist-meta{font-size:12px;color:var(--sub);font-weight:600;display:flex;gap:8px;flex-wrap:wrap;}
 .hist-score{font-size:13px;font-weight:900;padding:4px 10px;border-radius:7px;}
-.hist-score.low{background:#E8F5E9;color:var(--green2);}
-.hist-score.med{background:#FFFDE7;color:var(--amber);}
-.hist-score.high{background:#FFF3E0;color:var(--orange2);}
-.hist-score.critical{background:#FFEBEE;color:var(--red2);}
+.hist-score.low{background:#EDFAF6;color:var(--green2);}
+.hist-score.med{background:#FEF6E7;color:var(--amber);}
+.hist-score.high{background:#FEF6E7;color:var(--orange2);}
+.hist-score.critical{background:#FFF3F5;color:var(--red2);}
 
 /* ── 버튼 ── */
 .btn-row{display:flex;gap:10px;margin-top:16px;}
@@ -309,7 +319,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
   background:linear-gradient(135deg,var(--navy),var(--blue));
   color:#fff;border:none;border-radius:13px;
   font-size:16px;font-weight:800;cursor:pointer;
-  box-shadow:0 4px 14px rgba(13,71,161,.28);transition:all .2s;}
+  box-shadow:0 4px 14px rgba(0,60,126,.26);transition:all .2s;}
 .btn-primary:active{transform:scale(.98);}
 .btn-primary:disabled{opacity:.38;cursor:not-allowed;transform:none;}
 .btn-secondary{flex:1;padding:16px;background:var(--card);
@@ -329,11 +339,11 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
   color:#fff;border:none;border-radius:13px;
   font-size:15px;font-weight:800;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 4px 14px rgba(74,20,140,.28);margin:12px 0;}
+  box-shadow:0 4px 14px rgba(0,103,177,.26);margin:12px 0;}
 .btn-ai:disabled{opacity:.38;cursor:not-allowed;}
 
 /* ── INFO / WARN BOX ── */
-.info-box{background:#EEF2FF;border-left:4px solid var(--navy2);
+.info-box{background:#E7F0FA;border-left:4px solid var(--navy2);
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .info-box-title{font-size:12px;font-weight:800;color:var(--navy2);margin-bottom:4px;}
 .info-box-text{font-size:13px;color:var(--body);line-height:1.7;font-weight:600;}
@@ -345,7 +355,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .toast{padding:13px 17px;border-radius:12px;font-size:14px;font-weight:700;color:#fff;
   display:flex;align-items:center;gap:8px;
   box-shadow:0 4px 20px rgba(0,0,0,.22);animation:tslide .3s ease;pointer-events:all;}
-.toast.danger{background:linear-gradient(135deg,#8B0000,var(--red2));}
+.toast.danger{background:linear-gradient(135deg,#B0202F,var(--red2));}
 .toast.success{background:linear-gradient(135deg,var(--green),var(--green2));}
 .toast.info{background:linear-gradient(135deg,var(--navy),var(--blue));}
 .toast.ai{background:linear-gradient(135deg,#4A148C,#7B1FA2);}
@@ -1031,10 +1041,10 @@ function renderJSASteps(){
     html += '<div class="risk-matrix-wrap">';
     html += '<div class="rm-title">위험도 = 빈도 × 강도 (셀 직접 선택)</div>';
     html += '<div class="rm-legend">';
-    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#43A047;"></div>저위험 (1~4)</div>';
-    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#F9A825;"></div>중위험 (5~9)</div>';
-    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#F57C00;"></div>고위험 (10~15)</div>';
-    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#C62828;"></div>매우고위험 (16~25)</div>';
+    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#0E8A6B;"></div>저위험 (1~4)</div>';
+    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#B45309;"></div>중위험 (5~9)</div>';
+    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#E8590C;"></div>고위험 (10~15)</div>';
+    html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#D6273D;"></div>매우고위험 (16~25)</div>';
     html += '</div>';
 
     // 매트릭스 헤더
