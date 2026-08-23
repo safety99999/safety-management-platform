@@ -245,67 +245,6 @@ body{background:var(--bg);color:var(--body);padding-bottom:80px;min-height:100vh
 .toast.success{background:linear-gradient(135deg,var(--green),var(--green2));}
 .toast.info{background:linear-gradient(135deg,var(--navy),var(--blue));}
 @keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
-</style>
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
- 
-<script>
-const firebaseConfig = {
-    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
-    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
-    projectId: "safety-management-platfo-5f413",
-    storageBucket: "safety-management-platfo-5f413.firebasestorage.app",
-    messagingSenderId: "96226952530",
-    appId: "1:96226952530:web:07e7cb286dc4e120cea68b",
-    measurementId: "G-KNK5ECRCX5"
-};
- 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-const db = firebase.firestore();
- 
-async function loadTBMFromFirestore() {
-    try {
-        console.log('📊 Firestore TBM 로드...');
-        const snapshot = await db.collection('TBM').getDocs();
-        const tbmList = [];
-        snapshot.forEach(doc => {
-            tbmList.push({ id: doc.id, ...doc.data() });
-        });
-        localStorage.setItem('safetyTBM', JSON.stringify(tbmList));
-        console.log(`✅ TBM 로드 완료: ${tbmList.length}개`);
-        return tbmList;
-    } catch (error) {
-        console.error('❌ TBM 로드 실패:', error);
-        return JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-    }
-}
- 
-async function saveTBMData(tbmData) {
-    try {
-        const currentTBM = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-        const existIndex = currentTBM.findIndex(t => t.id === tbmData.id);
-        if (existIndex >= 0) {
-            currentTBM[existIndex] = { ...currentTBM[existIndex], ...tbmData };
-        } else {
-            tbmData.id = tbmData.id || `TBM_${Date.now()}`;
-            currentTBM.push(tbmData);
-        }
-        localStorage.setItem('safetyTBM', JSON.stringify(currentTBM));
-        await db.collection('TBM').doc(tbmData.id || `TBM_${Date.now()}`).set(tbmData, { merge: true });
-        return true;
-    } catch (error) {
-        console.error('❌ TBM 저장 실패:', error);
-        return false;
-    }
-}
- 
-window.addEventListener('DOMContentLoaded', async function() {
-    await loadTBMFromFirestore();
-});
-</script>  
 </head>
 <body>
 <div class="app">
