@@ -463,6 +463,91 @@ body{
 .pc-btn.secondary:active{transform:scale(.96)}
 
 </style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+    projectId: "safety-management-platfo-5f413",
+    storageBucket: "safety-management-platfo-5f413.firebasestorage.app",
+    messagingSenderId: "96226952530",
+    appId: "1:96226952530:web:07e7cb286dc4e120cea68b",
+    measurementId: "G-KNK5ECRCX5"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+    console.log('✅ Firebase 초기화 완료 (대시보드)');
+}
+const db = firebase.firestore();
+
+async function syncAllDataFromFirestore() {
+    try {
+        console.log('🔄 Firestore 전체 데이터 동기화 시작...');
+        
+        let snapshot = await db.collection('TBM').getDocs();
+        let tbmList = [];
+        snapshot.forEach(doc => tbmList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyTBM', JSON.stringify(tbmList));
+        console.log(`  ✓ TBM: ${tbmList.length}개`);
+        
+        snapshot = await db.collection('위험성평가').getDocs();
+        let assessmentList = [];
+        snapshot.forEach(doc => assessmentList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyAssessment', JSON.stringify(assessmentList));
+        console.log(`  ✓ 위험성평가: ${assessmentList.length}개`);
+        
+        snapshot = await db.collection('안전퀴즈').getDocs();
+        let quizList = [];
+        snapshot.forEach(doc => quizList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyQuiz', JSON.stringify(quizList));
+        console.log(`  ✓ 안전퀴즈: ${quizList.length}개`);
+        
+        snapshot = await db.collection('안전정보제공').where('type', '==', '도급').getDocs();
+        let infoContractorList = [];
+        snapshot.forEach(doc => infoContractorList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyInfoContractor', JSON.stringify(infoContractorList));
+        console.log(`  ✓ 안전정보(도급): ${infoContractorList.length}개`);
+        
+        snapshot = await db.collection('안전정보제공').where('type', '==', '수급').getDocs();
+        let infoSubcontractorList = [];
+        snapshot.forEach(doc => infoSubcontractorList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyInfoSubcontractor', JSON.stringify(infoSubcontractorList));
+        console.log(`  ✓ 안전정보(수급): ${infoSubcontractorList.length}개`);
+        
+        snapshot = await db.collection('안전점검사항').getDocs();
+        let inspectionList = [];
+        snapshot.forEach(doc => inspectionList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyInspection', JSON.stringify(inspectionList));
+        console.log(`  ✓ 안전점검: ${inspectionList.length}개`);
+        
+        snapshot = await db.collection('긴급조치').getDocs();
+        let emergencyList = [];
+        snapshot.forEach(doc => emergencyList.push({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('safetyEmergency', JSON.stringify(emergencyList));
+        console.log(`  ✓ 긴급조치: ${emergencyList.length}개`);
+        
+        console.log('✅ Firestore 동기화 완료!');
+        return true;
+    } catch (error) {
+        console.error('❌ Firestore 동기화 실패:', error);
+        return false;
+    }
+}
+
+window.addEventListener('DOMContentLoaded', async function() {
+    console.log('🎯 대시보드 로드 (Firestore 동기화)');
+    await syncAllDataFromFirestore();
+    setTimeout(function() {
+        if (typeof loadDB === 'function') loadDB();
+        if (typeof loadPermits === 'function') loadPermits();
+    }, 500);
+});
+
+</script>
 </head>
 <body>
 <div class="app">
