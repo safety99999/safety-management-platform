@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포항양극재 출입자 안전퀴즈</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="tel"],
+        input[type="date"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+        }
+
+        .quiz-progress {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .question-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .question-category {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .option {
+            background: white;
+            border: 2px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .option.correct {
+            border-color: #4caf50;
+            background: #4caf50;
+            color: white;
+        }
+
+        .option.wrong {
+            border-color: #f44336;
+            background: #f44336;
+            color: white;
+        }
+
+        .result-card {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .result-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .result-score {
+            font-size: 48px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .result-message {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .wrong-answers {
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .wrong-item {
+            background: #fff3f3;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .wrong-item h4 {
+            color: #f44336;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .explanation {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .signature-pad {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .warning-box p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #e65100;
+        }
+
+        .date-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .site-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .site-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .site-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .site-card.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .site-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .quiz-id-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .quiz-id-label {
+            font-size: 11px;
+            opacity: 0.85;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .quiz-id-value {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 0;
+            }
+           
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 포항양극재 출입자 안전퀴즈</h1>
+            <p>안전한 작업환경을 위한 필수 교육</p>
+        </div>
+
+        <div class="content">
+            <!-- 화면 1: 시작 화면 -->
+            <div id="screen-welcome" class="screen active">
+                <div class="result-card">
+                    <div class="result-icon">🛡️</div>
+                    <h2 style="margin-bottom: 15px;">안전퀴즈에 오신 것을 환영합니다</h2>
+                    <p style="color: #666; line-height: 1.8;">
+                        포항양극재 사업장 출입을 위해<br>
+                        안전교육 퀴즈를 완료해주세요.<br><br>
+                        <strong>총 13문항</strong><br>
+                        11문항 이상 정답 시 합격 (80%)
+                    </p>
+                </div>
+                <button class="btn btn-primary" onclick="goToScreen('screen-info')">시작하기</button>
+            </div>
+
+            <!-- 화면 2: 개인정보 입력 -->
+            <div id="screen-info" class="screen">
+                <h2 style="margin-bottom: 20px;">📋 개인정보 입력</h2>
+                <div class="info-box">
+                    <p>⚠️ 모든 항목은 필수입니다</p>
+                </div>
+               
+                <div class="form-group">
+                    <label>이름 *</label>
+                    <input type="text" id="input-name" placeholder="홍길동">
+                </div>
+
+                <div class="form-group">
+                    <label>업체명 *</label>
+                    <input type="text" id="input-company" placeholder="ABC건설">
+                </div>
+
+                <div class="form-group">
+                    <label>전화번호 *</label>
+                    <input type="tel" id="input-phone" placeholder="010-1234-5678">
+                </div>
+
+                <div class="form-group">
+                    <label>출입 목적</label>
+                    <input type="text" id="input-purpose" placeholder="설비점검">
+                </div>
+
+                <button class="btn btn-primary" onclick="validateAndNext('screen-site')">다음</button>
+                <button class="btn btn-secondary" onclick="goToScreen('screen-welcome')">이전</button>
+            </div>
+
+            <!-- 화면 3: 세부위치 선택 -->
+            <div id="screen-site" class="screen">
+                <h2 style="margin-bottom: 20px;">🏢 방문 위치 선택</h2>
+                <div class="info-box">
+                    <p><strong>사업장:</strong> 포항양극재</p>
+                    <p>방문하실 세부 위치를 선택해주세요</p>
+                </div>
+
+                <div class="site-selector">
+                    <div class="site-card" onclick="selectSite('1공장', this)">
+                        <div class="site-icon">🏭</div>
+                        <div>1공장</div>
+                    </div>
+                    <div class="site-card" onclick="selectSite('2공장', this)">
+                        <div class="site-icon">🏭</div>
+                        <div>2공장</div>
+                    </div>
+                    <div class="site-card" onclick="selectSite('정비동', this)">
+                        <div class="site-icon">🔧</div>
+                        <div>정비동</div>
+                    </div>
+                    <div class="site-card" onclick="selectSite('품질분석실', this)">
+                        <div class="site-icon">🔬</div>
+                        <div>품질분석실</div>
+                    </div>
+                    <div class="site-card" onclick="selectSite('기타', this)">
+                        <div class="site-icon">📍</div>
+                        <div>기타</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="validateSiteAndNext()" style="margin-top: 20px;">다음</button>
+                <button class="btn btn-secondary" onclick="goToScreen('screen-info')">이전</button>
+            </div>
+
+            <!-- 화면 4: 방문 기간 선택 -->
+            <div id="screen-date" class="screen">
+                <h2 style="margin-bottom: 20px;">📅 방문 기간 선택</h2>
+                <div class="info-box">
+                    <p>방문 예정 기간을 선택해주세요</p>
+                    <p>💡 오늘 방문도 가능합니다</p>
+                </div>
+
+                <div class="form-group">
+                    <label>방문 시작일 *</label>
+                    <input type="date" id="input-date-start">
+                </div>
+
+                <div class="form-group">
+                    <label>방문 종료일 *</label>
+                    <input type="date" id="input-date-end">
+                </div>
+
+                <button class="btn btn-primary" onclick="validateDateAndNext()">퀴즈 시작</button>
+                <button class="btn btn-secondary" onclick="goToScreen('screen-site')">이전</button>
+            </div>
+
+            <!-- 화면 5: 퀴즈 -->
+            <div id="screen-quiz" class="screen">
+                <div class="quiz-progress">
+                    <div><strong>문제 <span id="current-q">1</span> / <span id="total-q">13</span></strong></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 7.7%"></div>
+                    </div>
+                </div>
+
+                <div class="question-card">
+                    <span class="question-category" id="q-category">안전퀴즈</span>
+                    <div class="question-text" id="q-text"></div>
+                    <div id="q-options"></div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-next-q" onclick="nextQuestion()" disabled>다음 문제</button>
+            </div>
+
+            <!-- 화면 6: 결과 -->
+            <div id="screen-result" class="screen">
+                <div class="result-card">
+                    <div class="result-icon" id="result-icon">🎉</div>
+                    <div class="result-score" id="result-score">13/13</div>
+                    <div class="result-message" id="result-message">완벽합니다!</div>
+                </div>
+
+                <div id="wrong-answers-section" class="wrong-answers" style="display: none;">
+                    <h3 style="margin-bottom: 15px;">❌ 오답 문항</h3>
+                    <div id="wrong-answers-list"></div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-to-pledge" onclick="goToScreen('screen-pledge')" style="display: none;">안전서약 진행</button>
+                <button class="btn btn-warning" id="btn-retry-wrong" onclick="retakeWrongQuestions()" style="display: none;">틀린 문제만 다시 풀기</button>
+                <button class="btn btn-secondary" onclick="retakeQuiz()">전체 다시 응시</button>
+            </div>
+
+            <!-- 화면 7: 안전서약 및 서명 -->
+            <div id="screen-pledge" class="screen">
+                <h2 style="margin-bottom: 20px;">✍️ 안전서약 및 서명</h2>
+               
+                <div class="info-box">
+                    <h4 style="margin-bottom: 10px;">안전서약</h4>
+                    <p style="line-height: 1.8;">
+                        본인은 포스코퓨처엠 포항양극재 사업장의 안전수칙을 준수하며,<br>
+                        • 통제구역 무단출입 금지<br>
+                        • 설비 임의조작 금지<br>
+                        • 안전보호구 착용 의무<br>
+                        • 위험작업 시 작업허가 취득<br>
+                        위 사항을 성실히 이행할 것을 서약합니다.
+                    </p>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="pledge-agree">
+                    <label for="pledge-agree">위 안전서약 내용을 확인하였으며 이를 준수하겠습니다.</label>
+                </div>
+
+                <div class="form-group">
+                    <label>서명 *</label>
+                    <canvas id="signature-pad" class="signature-pad" width="460" height="200"></canvas>
+                    <button class="btn btn-secondary" onclick="clearSignature()" style="margin-top: 10px;">서명 지우기</button>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitForm()">제출하기</button>
+                <button class="btn btn-secondary" onclick="goToScreen('screen-result')">이전</button>
+            </div>
+
+            <!-- 화면 8: 완료 -->
+            <div id="screen-complete" class="screen">
+                <div class="result-card">
+                    <div class="result-icon">✅</div>
+                    <h2 style="margin-bottom: 15px;">제출 완료!</h2>
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 30px;">
+                        안전교육을 완료하셨습니다.<br>
+                        안전한 작업 되시기 바랍니다.
+                    </p>
+
+                    <!-- 퀴즈 ID 강조 표시 -->
+                    <div class="quiz-id-box">
+                        <div class="quiz-id-label">퀴즈 ID</div>
+                        <div class="quiz-id-value" id="final-quiz-id">-</div>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 style="margin-bottom: 10px;">📋 제출 정보</h4>
+                        <p><strong>이름:</strong> <span id="final-name"></span></p>
+                        <p><strong>업체:</strong> <span id="final-company"></span></p>
+                        <p><strong>사업장:</strong> 포항양극재</p>
+                        <p><strong>세부위치:</strong> <span id="final-site"></span></p>
+                        <p><strong>방문기간:</strong> <span id="final-date"></span></p>
+                        <p><strong>점수:</strong> <span id="final-score"></span></p>
+                    </div>
+
+                    <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 10px;">
+                        <h4 style="margin-bottom: 10px;">📱 출입증 QR 코드</h4>
+                        <div id="qr-code" style="text-align: center; padding: 20px;">
+                            <div style="width: 200px; height: 200px; background: white; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px solid #e0e0e0; border-radius: 10px;">
+                                <p style="color: #999;">QR 코드 영역</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="downloadPDF()">📄 PDF 다운로드</button>
+                <button class="btn btn-secondary" onclick="location.reload()">처음으로</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let userData = {
+            name: '',
+            company: '',
+            phone: '',
+            purpose: '',
+            site: '',
+            dateStart: '',
+            dateEnd: '',
+            answers: [],
+            score: 0,
+            passed: false,
+            signature: null,
+            quizId: ''
+        };
+
+        let currentQuestionIndex = 0;
+        let selectedAnswer = null;
+        let quizMode = 'full'; // 'full' or 'wrong'
+        let wrongQuestionIndices = [];
+        let currentQuizQuestions = [];
+
+        // ═══════════════════════════════════════════════════════
+        // 합격 기준 (13문제 중 11문제 이상 = 80%)
+        // ═══════════════════════════════════════════════════════
+        const PASSING_RATIO = 0.8;
+
+        // 실제 퀴즈 데이터 (오탈자 수정 완료)
+        const questions = [
+            {
+                category: '보호구',
+                question: '1. 공장 출입 시 안전보호구 착용기준에 대한 설명으로 올바른 것은?',
+                options: [
+                    '① 보호구는 위험작업 시에만 착용하면 된다',
+                    '② 외부 방문자는 보호구 착용기준이 적용되지 않는다',
+                    '③ 작업장소와 작업특성에 따라 안전모·안전화·보안경 등 필수 보호구를 착용해야 한다',
+                    '④ 개인 판단에 따라 보호구 착용 여부를 결정할 수 있다'
+                ],
+                answer: 2,
+                explanation: '작업장소와 작업특성에 따라 안전모·안전화·보안경 등 필수 보호구를 착용해야 합니다.'
+            },
+            {
+                category: '출입기준',
+                question: '2. 공장 내 출입기준으로 올바른 것은?',
+                options: [
+                    '① 지정된 통로를 이용하여 출입 가능하다',
+                    '② 안전사고 위험이 없어 보이면 허가 없이 출입 가능하다',
+                    '③ 통신이 불편하면 개인 판단으로 출입할 수 있다',
+                    '④ 회사의 허가를 받았거나 필요한 경우에만 출입할 수 있다'
+                ],
+                answer: 3,
+                explanation: '회사의 허가를 받았거나 필요한 경우에만 출입할 수 있습니다.'
+            },
+            {
+                category: '가동설비',
+                question: '3. 가동설비에 대한 점검 및 수리는 어떻게 해야 하는가?',
+                options: [
+                    '① 가동 중에도 관찰하며 실시한다',
+                    '② 관리자가 허용하면 가능하다',
+                    '③ 안전조치 후 실시한다',
+                    '④ 가동 중 점검·수리는 원칙적으로 금지한다'
+                ],
+                answer: 3,
+                explanation: '가동설비의 점검 및 수리는 원칙적으로 금지되며, 반드시 정지 및 안전조치 후 실시해야 합니다.'
+            },
+            {
+                category: '안전조치',
+                question: '4. 안전조치가 미흡한 경우, 관리감독자 또는 작업자는 (    )를 요구할 수 있다.',
+                options: [
+                    '① 작업중지',
+                    '② 작업연장',
+                    '③ 작업간소화',
+                    '④ 작업승인'
+                ],
+                answer: 0,
+                explanation: '안전조치가 미흡한 경우 작업중지를 요구할 수 있습니다. (산업안전보건법 제52조 작업중지권)'
+            },
+            {
+                category: '고소작업',
+                question: '5. 높이 2m 이상 고소작업 시 반드시 지켜야 할 사항은?',
+                options: [
+                    '① 안전벨트(안전대)를 착용하고 안전난간대를 임의 해체하지 않는다',
+                    '② 안전벨트 없이 신속하게 작업한다',
+                    '③ 개인 보호구 없이 작업 가능하다',
+                    '④ 난간이 없으면 안전대는 필요 없다'
+                ],
+                answer: 0,
+                explanation: '안전벨트(안전대)를 착용하고 안전난간대를 임의 해체하지 않아야 합니다.'
+            },
+            {
+                category: '밀폐작업',
+                question: '6. 밀폐공간 작업 시 진입 전에 반드시 확인해야 할 것은?',
+                options: [
+                    '① 산소와 유해가스',
+                    '② 분진과 소음',
+                    '③ 온도와 습도',
+                    '④ 풍향과 풍속'
+                ],
+                answer: 0,
+                explanation: '밀폐공간 작업 시 진입 전에 산소와 유해가스를 반드시 확인해야 합니다.'
+            },
+            {
+                category: 'TBM',
+                question: '7. 작업 전 현장(  ), 작업 중 위험요인(  ) 확인, 위험 시 작업(  )을 실시하는 도구는 무엇인가?',
+                options: [
+                    '① 시작 - TBM - 중지권',
+                    '② TBM - 지적 - 중지권',
+                    '③ 계획 - 시작 - 신고권',
+                    '④ 미팅 - 안전 - 신고권'
+                ],
+                answer: 1,
+                explanation: 'TBM(Tool Box Meeting) - 지적확인 - 작업중지권이 정답입니다.'
+            },
+            {
+                category: '비상대피',
+                question: '8. 비상상황 발생 시 올바른 행동은?',
+                options: [
+                    '① 개인 판단으로 현장에 남아 상황을 지켜본다',
+                    '② 작업을 마무리한 뒤 이동한다',
+                    '③ 즉시 작업을 중단하고 안내에 따라 지정된 집결장소로 대피한다',
+                    '④ 가장 가까운 출구로 이동한다'
+                ],
+                answer: 2,
+                explanation: '즉시 작업을 중단하고 안내에 따라 지정된 집결장소로 대피해야 합니다.'
+            },
+            {
+                category: '전기설비',
+                question: '9. 전기설비 이상 발견 시 감전사고 예방을 위한 올바른 행동은 무엇인가?',
+                options: [
+                    '① 직접 분전반을 열어 내부를 확인한다',
+                    '② 전선을 손으로 만져 이상 여부를 확인한다',
+                    '③ 전기설비에 함부로 접근하지 말고 즉시 관리자에게 알린다',
+                    '④ 이상이 없어도 사용에 지장이 없으면 그냥 사용한다'
+                ],
+                answer: 2,
+                explanation: '전기설비에 함부로 접근하지 말고 즉시 관리자에게 알려야 합니다.'
+            },
+            {
+                category: '화재예방',
+                question: '10. 화재예방 및 화재 발생 시 올바른 행동으로 옳지 않은 것은 무엇인가?',
+                options: [
+                    '① LPG 및 NG 배관 주변 10m 이내에서는 허가 없이 화기작업을 하지 않는다.',
+                    '② 화기작업 전 작업구역 주변의 인화성·가연성 물질을 안전한 장소로 옮긴다.',
+                    '③ 화기작업 시 소화기를 비치하고 화재감시자를 배치해야 한다.',
+                    '④ 5분 이내에 끝나는 간단한 용접작업은 화기작업 허가 없이 진행할 수 있다.'
+                ],
+                answer: 3,
+                explanation: '어떤 화기작업이라도 화기작업 허가를 반드시 받아야 합니다. 5분 이내라도 예외 없습니다.'
+            },
+            {
+                category: '차량운행',
+                question: '11. 양극재공장 내 차량 운행 기준에 대한 설명으로 틀린 것은?',
+                options: [
+                    '① 일반차량의 제한속도는 20km/h이다.',
+                    '② 살수차량의 제한속도는 10km/h이다.',
+                    '③ 지게차의 제한속도는 6km/h이다.',
+                    '④ 일반차량의 제한속도는 30km/h이다.'
+                ],
+                answer: 3,
+                explanation: '일반차량의 제한속도는 20km/h입니다. 30km/h가 아니므로 ④번이 틀린 설명입니다.'
+            },
+            {
+                category: '공장출입',
+                question: '12. 공장 내 보행 시 올바른 행동은 무엇인가?',
+                options: [
+                    '① 보행 중 휴대전화 사용',
+                    '② 계단 이용 시 난간을 잡고 이동',
+                    '③ 주변을 보지 않고 빠르게 이동',
+                    '④ 계단은 두 칸씩 뛰어 이동'
+                ],
+                answer: 1,
+                explanation: '계단 이용 시 난간을 잡고 이동해야 합니다.'
+            },
+            {
+                category: '응급대응',
+                question: '13. 다음 중 응급환자 발생 시 행동요령으로 적절하지 않은 것은?',
+                options: [
+                    '① 심정지 환자 발생 시 즉시 119에 신고한다.',
+                    '② 119의 안내에 따라 가능한 범위에서 응급처치(심폐소생술 등)를 실시한다.',
+                    '③ 구조대 도착 전까지 응급환자에게 어떠한 조치도 취해서는 안 된다.',
+                    '④ 응급환자 발생 시 지체 없이 관리감독자(작업책임자)에게 보고한다.'
+                ],
+                answer: 2,
+                explanation: '구조대 도착 전까지 가능한 범위에서 응급처치(심폐소생술 등)를 실시해야 합니다.'
+            }
+        ];
+
+        // 화면 전환
+        function goToScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // 개인정보 검증 및 다음
+        function validateAndNext(nextScreen) {
+            const name = document.getElementById('input-name').value.trim();
+            const company = document.getElementById('input-company').value.trim();
+            const phone = document.getElementById('input-phone').value.trim();
+
+            if (!name || !company || !phone) {
+                alert('필수 항목을 모두 입력해주세요.');
+                return;
+            }
+
+            userData.name = name;
+            userData.company = company;
+            userData.phone = phone;
+            userData.purpose = document.getElementById('input-purpose').value.trim();
+
+            goToScreen(nextScreen);
+        }
+
+        // 세부위치 선택
+        function selectSite(siteName, element) {
+            document.querySelectorAll('.site-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            userData.site = siteName;
+        }
+
+        // 세부위치 검증 및 다음
+        function validateSiteAndNext() {
+            if (!userData.site) {
+                alert('방문 위치를 선택해주세요.');
+                return;
+            }
+           
+            goToScreen('screen-date');
+        }
+
+        // 날짜 검증 및 퀴즈 시작
+        function validateDateAndNext() {
+            const dateStart = document.getElementById('input-date-start').value;
+            const dateEnd = document.getElementById('input-date-end').value;
+           
+            if (!dateStart || !dateEnd) {
+                alert('방문 기간을 모두 선택해주세요.');
+                return;
+            }
+
+            const startDate = new Date(dateStart);
+            const endDate = new Date(dateEnd);
+
+            if (endDate < startDate) {
+                alert('종료일은 시작일 이후의 날짜를 선택해주세요.');
+                return;
+            }
+
+            userData.dateStart = dateStart;
+            userData.dateEnd = dateEnd;
+            startQuiz('full');
+        }
+
+        // 퀴즈 시작
+        function startQuiz(mode) {
+            quizMode = mode;
+            currentQuestionIndex = 0;
+            selectedAnswer = null;
+           
+            if (mode === 'full') {
+                currentQuizQuestions = questions;
+                userData.answers = new Array(questions.length).fill(null);
+            } else if (mode === 'wrong') {
+                currentQuizQuestions = wrongQuestionIndices.map(idx => questions[idx]);
+            }
+           
+            document.getElementById('total-q').textContent = currentQuizQuestions.length;
+            showQuestion();
+            goToScreen('screen-quiz');
+        }
+
+        // 문제 표시
+        function showQuestion() {
+            const question = currentQuizQuestions[currentQuestionIndex];
+           
+            document.getElementById('current-q').textContent = currentQuestionIndex + 1;
+            document.getElementById('q-category').textContent = question.category;
+            document.getElementById('q-text').textContent = question.question;
+           
+            const optionsHtml = question.options.map((opt, idx) =>
+                `<div class="option" onclick="selectOption(${idx}, this)">${opt}</div>`
+            ).join('');
+           
+            document.getElementById('q-options').innerHTML = optionsHtml;
+           
+            const progress = ((currentQuestionIndex + 1) / currentQuizQuestions.length) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+           
+            document.getElementById('btn-next-q').disabled = true;
+            selectedAnswer = null;
+        }
+
+        // 답변 선택
+        function selectOption(optionIndex, element) {
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedAnswer = optionIndex;
+            document.getElementById('btn-next-q').disabled = false;
+        }
+
+        // 다음 문제
+        function nextQuestion() {
+            if (selectedAnswer === null) return;
+           
+            if (quizMode === 'full') {
+                const originalIndex = questions.indexOf(currentQuizQuestions[currentQuestionIndex]);
+                userData.answers[originalIndex] = selectedAnswer;
+            } else if (quizMode === 'wrong') {
+                const originalIndex = wrongQuestionIndices[currentQuestionIndex];
+                userData.answers[originalIndex] = selectedAnswer;
+            }
+           
+            if (currentQuestionIndex < currentQuizQuestions.length - 1) {
+                currentQuestionIndex++;
+                showQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        // 결과 표시
+        function showResult() {
+            let correctCount = 0;
+            const wrongQuestions = [];
+            wrongQuestionIndices = [];
+           
+            questions.forEach((q, idx) => {
+                if (userData.answers[idx] === q.answer) {
+                    correctCount++;
+                } else {
+                    wrongQuestionIndices.push(idx);
+                    wrongQuestions.push({
+                        index: idx,
+                        question: q,
+                        userAnswer: userData.answers[idx]
+                    });
+                }
+            });
+           
+            userData.score = correctCount;
+           
+            // 80% 이상 합격 (13문제 중 11문제 이상)
+            const passingScore = Math.ceil(questions.length * PASSING_RATIO);
+            userData.passed = (correctCount >= passingScore);
+           
+            // 결과 화면 업데이트
+            document.getElementById('result-score').textContent = `${correctCount}/${questions.length}`;
+           
+            if (userData.passed) {
+                document.getElementById('result-icon').textContent = '🎉';
+                if (correctCount === questions.length) {
+                    document.getElementById('result-message').textContent = '완벽합니다! 합격하셨습니다.';
+                } else {
+                    document.getElementById('result-message').textContent =
+                        `합격하셨습니다! (${correctCount}/${questions.length})`;
+                }
+                document.getElementById('btn-to-pledge').style.display = 'block';
+                document.getElementById('btn-retry-wrong').style.display = wrongQuestions.length > 0 ? 'block' : 'none';
+               
+                // 합격이라도 오답이 있으면 표시 (학습 목적)
+                if (wrongQuestions.length > 0) {
+                    const wrongHtml = wrongQuestions.map(item => `
+                        <div class="wrong-item">
+                            <h4>❌ 문제 ${item.index + 1}. ${item.question.question}</h4>
+                            <p style="color: #f44336; margin: 10px 0;">
+                                <strong>내 답변:</strong> ${item.question.options[item.userAnswer] || '(미응답)'}
+                            </p>
+                            <p style="color: #4caf50; margin: 10px 0;">
+                                <strong>정답:</strong> ${item.question.options[item.question.answer]}
+                            </p>
+                            <div class="explanation">
+                                <strong>💡 해설:</strong> ${item.question.explanation}
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('wrong-answers-list').innerHTML = wrongHtml;
+                    document.getElementById('wrong-answers-section').style.display = 'block';
+                } else {
+                    document.getElementById('wrong-answers-section').style.display = 'none';
+                }
+            } else {
+                document.getElementById('result-icon').textContent = '😢';
+                document.getElementById('result-message').textContent =
+                    `${wrongQuestions.length}개 문항을 틀렸습니다. (합격기준: ${passingScore}/${questions.length}) 다시 도전해보세요!`;
+                document.getElementById('btn-to-pledge').style.display = 'none';
+                document.getElementById('btn-retry-wrong').style.display = 'block';
+               
+                // 오답 표시
+                const wrongHtml = wrongQuestions.map(item => `
+                    <div class="wrong-item">
+                        <h4>❌ 문제 ${item.index + 1}. ${item.question.question}</h4>
+                        <p style="color: #f44336; margin: 10px 0;">
+                            <strong>내 답변:</strong> ${item.question.options[item.userAnswer] || '(미응답)'}
+                        </p>
+                        <p style="color: #4caf50; margin: 10px 0;">
+                            <strong>정답:</strong> ${item.question.options[item.question.answer]}
+                        </p>
+                        <div class="explanation">
+                            <strong>💡 해설:</strong> ${item.question.explanation}
+                        </div>
+                    </div>
+                `).join('');
+               
+                document.getElementById('wrong-answers-list').innerHTML = wrongHtml;
+                document.getElementById('wrong-answers-section').style.display = 'block';
+            }
+           
+            goToScreen('screen-result');
+        }
+
+        // 틀린 문제만 재응시
+        function retakeWrongQuestions() {
+            if (wrongQuestionIndices.length === 0) {
+                alert('틀린 문제가 없습니다.');
+                return;
+            }
+           
+            if (confirm(`틀린 ${wrongQuestionIndices.length}개 문제만 다시 풀이하시겠습니까?`)) {
+                startQuiz('wrong');
+            }
+        }
+
+        // 전체 재응시
+        function retakeQuiz() {
+            if (confirm('퀴즈를 처음부터 다시 응시하시겠습니까?')) {
+                startQuiz('full');
+            }
+        }
+
+        // 서명 패드 초기화
+        let isDrawing = false;
+
+        function initSignaturePad() {
+            const canvas = document.getElementById('signature-pad');
+            const ctx = canvas.getContext('2d');
+           
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+           
+            let lastX = 0;
+            let lastY = 0;
+           
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                lastX = e.clientX - rect.left;
+                lastY = e.clientY - rect.top;
+            });
+           
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+               
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+               
+                lastX = x;
+                lastY = y;
+            });
+           
+            canvas.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+           
+            canvas.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+           
+            // 터치 이벤트
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                lastX = touch.clientX - rect.left;
+                lastY = touch.clientY - rect.top;
+            });
+           
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+               
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+               
+                lastX = x;
+                lastY = y;
+            });
+           
+            canvas.addEventListener('touchend', () => {
+                isDrawing = false;
+            });
+        }
+
+        // 서명 지우기
+        function clearSignature() {
+            const canvas = document.getElementById('signature-pad');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        // ═══════════════════════════════════════════════════════
+        // ⭐ 제출 (localStorage 저장 로직 추가)
+        // ═══════════════════════════════════════════════════════
+        function submitForm() {
+            const pledgeAgreed = document.getElementById('pledge-agree').checked;
+            const canvas = document.getElementById('signature-pad');
+           
+            if (!pledgeAgreed) {
+                alert('안전서약에 동의해주세요.');
+                return;
+            }
+           
+            // 서명 확인
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let hasSignature = false;
+           
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                if (imageData.data[i + 3] > 0) {
+                    hasSignature = true;
+                    break;
+                }
+            }
+           
+            if (!hasSignature) {
+                alert('서명을 해주세요.');
+                return;
+            }
+           
+            userData.signature = canvas.toDataURL();
+           
+            // ═══════════════════════════════════════════════════
+            // ⭐ localStorage 저장 (대시보드·허가서 연동)
+            // ═══════════════════════════════════════════════════
+            try {
+                // 1. 퀴즈 ID 생성 (규약: QZ-YYYYMMDD-XXX)
+                const now = new Date();
+                const dateStr = now.getFullYear() +
+                               String(now.getMonth() + 1).padStart(2, '0') +
+                               String(now.getDate()).padStart(2, '0');
+               
+                // 오늘 몇 번째 응시인지 확인
+                const existingQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+                const todayCount = existingQuizzes.filter(q =>
+                    q.quizId && q.quizId.startsWith('QZ-' + dateStr)
+                ).length;
+                const seq = String(todayCount + 1).padStart(3, '0');
+                const quizId = 'QZ-' + dateStr + '-' + seq;
+               
+                // 2. 저장할 데이터 구조 (대시보드·허가서 매칭 필드 포함)
+                const quizData = {
+                    // 핵심 식별자
+                    quizId: quizId,
+                   
+                    // 응시자 정보 (⭐ 대시보드·허가서가 조회하는 필드)
+                    respondent: userData.name,                    // 허가서 checkQuizStatus() 매칭
+                    respondentCompany: userData.company,          // 대시보드 매칭
+                   
+                    // 상세 정보
+                    name: userData.name,
+                    company: userData.company,
+                    phone: userData.phone,
+                    purpose: userData.purpose || '',
+                    site: userData.site,
+                   
+                    // 방문 기간
+                    dateStart: userData.dateStart,
+                    dateEnd: userData.dateEnd,
+                    date: userData.dateStart,                     // 대시보드 오늘 필터용
+                   
+                    // 퀴즈 결과 (⭐ 허가서가 status === '합격'으로 검증)
+                    score: userData.score,
+                    totalQuestions: questions.length,
+                    passed: userData.passed,
+                    status: userData.passed ? '합격' : '불합격',  // 허가서 매칭 필드
+                   
+                    // 답변 상세 (감사용)
+                    answers: userData.answers,
+                   
+                    // 서명
+                    signature: userData.signature,
+                   
+                    // 감사 필드
+                    completedAt: now.toISOString(),
+                    createdAt: now.toISOString()
+                };
+               
+                // 3. localStorage에 저장
+                existingQuizzes.push(quizData);
+                localStorage.setItem('safetyQuizzes', JSON.stringify(existingQuizzes));
+               
+                // 4. 대시보드에 실시간 알림 (같은 탭 감지)
+                try {
+                    window.dispatchEvent(new CustomEvent('app-data-changed', {
+                        detail: { key: 'safetyQuizzes', timestamp: Date.now() }
+                    }));
+                } catch(e) {
+                    // 구형 브라우저 대응
+                    console.warn('CustomEvent 미지원:', e);
+                }
+               
+                // 5. 콘솔 로그 (개발용)
+                console.log('✅ 안전퀴즈 저장 완료:', quizId);
+                console.log('저장된 데이터:', quizData);
+               
+                // userData에도 quizId 저장 (완료 화면 표시용)
+                userData.quizId = quizId;
+               
+            } catch (error) {
+                console.error('❌ 안전퀴즈 저장 실패:', error);
+                alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.\n\n' + error.message);
+                return;  // 저장 실패 시 완료 화면 이동 중단
+            }
+           
+            // ═══════════════════════════════════════════════════
+            // 완료 화면 데이터 표시
+            // ═══════════════════════════════════════════════════
+            document.getElementById('final-quiz-id').textContent = userData.quizId;
+            document.getElementById('final-name').textContent = userData.name;
+            document.getElementById('final-company').textContent = userData.company;
+            document.getElementById('final-site').textContent = userData.site;
+            document.getElementById('final-date').textContent = `${userData.dateStart} ~ ${userData.dateEnd}`;
+            document.getElementById('final-score').textContent =
+                `${userData.score}/${questions.length} (${userData.passed ? '합격' : '불합격'})`;
+           
+            alert('✅ 제출이 완료되었습니다!\n\n퀴즈 ID: ' + userData.quizId);
+            goToScreen('screen-complete');
+        }
+
+        // PDF 다운로드
+        function downloadPDF() {
+            alert('PDF 다운로드 기능은 실제 구현 시 jsPDF 라이브러리를 사용하여 구현됩니다.');
+            console.log('PDF 생성 데이터:', userData);
+        }
+
+        // 초기화
+        window.addEventListener('DOMContentLoaded', () => {
+            // 오늘 방문도 가능하도록 min 속성 제거 (이전 검토에서 지적된 사항)
+            // 필요 시 아래 주석 해제하여 오늘 이후만 선택 가능하게 변경
+            // const today = new Date().toISOString().split('T')[0];
+            // document.getElementById('input-date-start').setAttribute('min', today);
+            // document.getElementById('input-date-end').setAttribute('min', today);
+           
+            initSignaturePad();
+        });
+    </script>
+</body>
+</html>
