@@ -1,49 +1,88 @@
 {
-"hosting": {
-"public": ".",
-"ignore": [
-"firebase.json",
-"**/.*",
-"**/node_modules/**",
-"docs/**",
-"**/*.md"
-],
-"redirects": [
-{
-"source": "/안전관리플랫폼_대시보드_V6_1_.html",
-"destination": "/안전관리플랫폼_대시보드_V6_.html",
-"type": 301
-},
-{
-"source": "/안전관리플랫폼_대시보드_V7_통합.html",
-"destination": "/안전관리플랫폼_대시보드_V6_.html",
-"type": 301
-},
-{
-"source": "/dashboard_v6.html",
-"destination": "/안전관리플랫폼_대시보드_V6_.html",
-"type": 301
-},
-{
-"source": "/안전작업허가서_v2_1_.html",
-"destination": "/안전작업허가서_v2.html",
-"type": 301
-},
-{
-"source": "/TBM_및_작업중지권_v2_1_.html",
-"destination": "/TBM 일지 및 작업중지권_V2.html",
-"type": 301
-},
-{
-"source": "/안전정보제공서_작성.html",
-"destination": "/안전정보제공서_도급인용.html",
-"type": 301
-},
-{
-"source": "/위험성평가_V2.html",
-"destination": "/위험성평가_v2.html",
-"type": 301
-}
-]
-}
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "docs/**",
+      "**/*.md"
+    ],
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|gif|svg|webp|ico)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=86400"
+          }
+        ]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/안전관리플랫폼_대시보드_V6_1_.html",
+        "destination": "/안전관리플랫폼_대시보드_V6_.html",
+        "type": 301
+      },
+      {
+        "source": "/안전관리플랫폼_대시보드_V7_통합.html",
+        "destination": "/안전관리플랫폼_대시보드_V6_.html",
+        "type": 301
+      },
+      {
+        "source": "/dashboard_v6.html",
+        "destination": "/안전관리플랫폼_대시보드_V6_.html",
+        "type": 301
+      },
+      {
+        "source": "/안전작업허가서_v2_1_.html",
+        "destination": "/안전작업허가서_v2.html",
+        "type": 301
+      },
+      {
+        "source": "/TBM 일지 및 작업중지권_V2.html",
+        "destination": "/TBM_및_작업중지권_v2.html",
+        "type": 301
+      },
+      {
+        "source": "/TBM_및_작업중지권_v2_1_.html",
+        "destination": "/TBM_및_작업중지권_v2.html",
+        "type": 301
+      },
+      {
+        "source": "/안전정보제공서_작성.html",
+        "destination": "/안전정보제공서_도급인용.html",
+        "type": 301
+      },
+      {
+        "source": "/위험성평가_V2.html",
+        "destination": "/위험성평가_v2.html",
+        "type": 301
+      },
+      {
+        "source": "/위험성평가.html",
+        "destination": "/위험성평가_v2.html",
+        "type": 301
+      }
+    ]
+  }
 }
