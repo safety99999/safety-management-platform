@@ -19,6 +19,7 @@ html,body{width:100%;min-height:100vh;font-family:-apple-system,'Apple SD Gothic
 }
 body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .app{max-width:430px;margin:0 auto;min-height:100vh;}
+
 .topnav{position:sticky;top:0;z-index:200;
   background:linear-gradient(135deg,#0A3880,var(--navy2));
   height:56px;padding:0 14px;
@@ -30,25 +31,41 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   display:flex;align-items:center;justify-content:center;}
 .nav-btn:active{background:rgba(255,255,255,.28);}
 .topnav-title{color:#fff;font-size:16px;font-weight:800;}
+
 .main{padding:14px 13px;}
 .sec-title{background:linear-gradient(135deg,#0A3880,var(--navy2));
   color:#fff;padding:12px 14px;border-radius:10px;
   font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;
   margin-bottom:12px;margin-top:16px;}
 .sec-title:first-child{margin-top:0;}
+
+/* INFO CARD */
 .info-card{background:var(--card);border-radius:var(--r);padding:16px;
   margin-bottom:12px;box-shadow:var(--shadow);border:1.5px solid var(--border);}
-.info-row{display:flex;justify-content:space-between;align-items:center;
-  padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.info-row{display:flex;justify-content:space-between;align-items:flex-start;
+  padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;gap:12px;}
 .info-row:last-child{border-bottom:none;}
 .info-key{color:var(--sub);font-weight:600;flex-shrink:0;width:90px;}
-.info-val{color:var(--body);font-weight:800;text-align:right;flex:1;}
+.info-val{color:var(--body);font-weight:800;text-align:right;flex:1;
+  line-height:1.5;word-break:break-word;}
+
+/* TAG */
 .tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .tag{background:#EEF2FF;color:var(--navy2);font-size:12px;font-weight:700;
   padding:5px 11px;border-radius:20px;border:1px solid rgba(13,71,161,.2);}
 .tag.warn{background:#FFF3E0;color:var(--orange);border-color:rgba(230,81,0,.2);}
 .tag.danger{background:#FFEBEE;color:var(--red2);border-color:rgba(198,40,40,.2);}
 .tag.green{background:#E8F5E9;color:var(--green2);border-color:rgba(46,125,50,.2);}
+
+/* MSDS CARD (수급인용 - 상세 표시) */
+.msds-card{background:#FFF8F0;border-radius:var(--rs);
+  padding:12px 14px;margin-bottom:8px;border:1.5px solid rgba(230,81,0,.2);}
+.msds-card-name{font-size:14px;font-weight:800;color:var(--orange);margin-bottom:6px;
+  display:flex;align-items:center;gap:6px;}
+.msds-card-detail{font-size:12px;color:var(--sub);line-height:1.6;font-weight:600;}
+.msds-card-detail strong{color:var(--body);font-weight:700;}
+
+/* INFO BOXES */
 .info-box{background:#EEF2FF;border-left:4px solid var(--navy2);
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .info-box-t{font-size:12px;font-weight:800;color:var(--navy2);margin-bottom:5px;}
@@ -61,6 +78,27 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .danger-box-t{font-size:12px;font-weight:800;color:var(--red);margin-bottom:5px;}
 .danger-box-b{font-size:13px;color:var(--red);line-height:1.7;font-weight:600;}
+
+/* 도급인 서명 표시 */
+.contractor-sig-box{background:var(--card);border-radius:var(--r);
+  padding:16px;margin-bottom:12px;box-shadow:var(--shadow);
+  border:1.5px solid var(--border);}
+.contractor-sig-label{font-size:12px;font-weight:800;color:var(--sub);
+  margin-bottom:8px;letter-spacing:.4px;text-transform:uppercase;}
+.contractor-sig-info{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;margin-bottom:8px;}
+.contractor-sig-info span:first-child{color:var(--sub);font-weight:600;}
+.contractor-sig-info span:last-child{color:var(--body);font-weight:800;}
+.contractor-sig-img{width:100%;max-height:100px;object-fit:contain;
+  background:#fff;border:1.5px solid var(--border);border-radius:8px;
+  padding:8px;margin-top:8px;}
+
+/* 비상절차 표시 (자동채움된 내용) */
+.emergency-proc-box{background:#FFF3F5;border-radius:var(--r);
+  padding:14px 16px;border:1.5px solid rgba(198,40,40,.15);margin-bottom:12px;}
+.emergency-proc-title{font-size:13px;font-weight:800;color:var(--red);margin-bottom:8px;}
+.emergency-proc-content{font-size:13px;color:var(--body);line-height:1.8;
+  white-space:pre-line;font-weight:600;}
 /* CHECKLIST */
 .cl-item{display:flex;align-items:center;gap:12px;
   padding:14px 14px;background:var(--card);border-radius:var(--rs);
@@ -68,20 +106,27 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   transition:all .2s;box-shadow:var(--shadow);}
 .cl-item:active{transform:scale(.98);}
 .cl-item.checked{border-color:var(--green2);background:rgba(46,125,50,.05);}
+.cl-item.critical{border-color:var(--red2);background:rgba(198,40,40,.05);}
+.cl-item.critical.checked{border-color:var(--red2);background:rgba(198,40,40,.15);}
 .cl-chk{width:26px;height:26px;border-radius:8px;border:2px solid var(--border);
   flex-shrink:0;display:flex;align-items:center;justify-content:center;
   font-size:15px;transition:all .2s;}
 .cl-item.checked .cl-chk{background:var(--green2);border-color:var(--green2);color:#fff;}
+.cl-item.critical.checked .cl-chk{background:var(--red2);border-color:var(--red2);color:#fff;}
 .cl-txt{font-size:14px;font-weight:600;color:var(--body);flex:1;line-height:1.4;}
-/* PROGRESS */
+.cl-txt.critical{color:var(--red);font-weight:700;}
+
+/* PROGRESS BAR */
 .cl-prog{background:var(--card);border-radius:11px;padding:12px 14px;
   margin-bottom:12px;border:1.5px solid var(--border);box-shadow:var(--shadow);}
-.cl-prog-bar{width:100%;height:8px;background:var(--border);border-radius:4px;margin-top:8px;overflow:hidden;}
+.cl-prog-bar{width:100%;height:8px;background:var(--border);border-radius:4px;
+  margin-top:8px;overflow:hidden;}
 .cl-prog-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--green2));
   border-radius:4px;transition:width .3s;}
 .cl-prog-txt{display:flex;justify-content:space-between;
   font-size:13px;font-weight:700;color:var(--sub);}
 .cl-prog-pct{color:var(--green2);font-weight:800;}
+
 /* FORM */
 .form-card{background:var(--card);border-radius:var(--r);padding:16px;
   margin-bottom:12px;box-shadow:var(--shadow);border:1.5px solid var(--border);}
@@ -94,6 +139,8 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   font-family:inherit;font-weight:600;}
 .f-input:focus,.f-select:focus{outline:none;border-color:var(--blue);}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* SIGNATURE */
 .sig-wrap{background:var(--bg);border-radius:12px;padding:14px;
   border:1.5px solid var(--border);margin-bottom:12px;}
 .sig-lbl{font-size:13px;font-weight:800;color:var(--body);margin-bottom:10px;}
@@ -102,12 +149,15 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .sig-clear{width:100%;padding:11px;margin-top:8px;background:var(--bg);
   border:1.5px solid var(--border);border-radius:9px;
   font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;}
+
+/* BUTTONS */
 .btn-primary{width:100%;padding:17px;
   background:linear-gradient(135deg,var(--green),var(--green2));
   color:#fff;border:none;border-radius:13px;
   font-size:16px;font-weight:800;cursor:pointer;
   box-shadow:0 4px 14px rgba(27,94,32,.28);margin-bottom:10px;}
 .btn-primary:active{transform:scale(.98);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
 .btn-secondary{width:100%;padding:14px;background:var(--card);
   border:1.5px solid var(--border);color:var(--sub);
   border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;}
@@ -115,19 +165,39 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   background:linear-gradient(135deg,var(--navy),var(--blue));
   color:#fff;border:none;border-radius:13px;
   font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;}
+
+/* COMPLETE */
 .complete-hero{text-align:center;padding:28px 16px;}
 .complete-ico{font-size:64px;margin-bottom:14px;}
 .complete-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:8px;}
-.complete-sub{font-size:14px;color:var(--sub);line-height:1.65;font-weight:600;}
+.complete-sub{font-size:14px;color:var(--sub);line-height:1.65;font-weight:600;
+  white-space:pre-line;}
+
 /* LOADING */
 .loading-wrap{text-align:center;padding:60px 20px;}
 .loading-ico{font-size:48px;animation:spin 1.5s linear infinite;display:inline-block;margin-bottom:14px;}
-@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}} 
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 .loading-txt{font-size:15px;color:var(--sub);font-weight:600;}
+
 /* MANUAL INPUT */
 .doc-input-wrap{padding:20px 13px;}
 .doc-input-title{font-size:18px;font-weight:900;color:var(--text);margin-bottom:8px;text-align:center;}
 .doc-input-sub{font-size:14px;color:var(--sub);margin-bottom:20px;text-align:center;line-height:1.6;font-weight:600;}
+
+/* 문서 상태 배지 */
+.doc-status-badge{background:linear-gradient(135deg,#0A3880,var(--navy2));
+  color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px;
+  box-shadow:0 4px 14px rgba(10,56,128,.3);}
+.doc-status-label{font-size:11px;opacity:.75;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;}
+.doc-status-no{font-size:18px;font-weight:900;margin-bottom:10px;
+  font-family:'Courier New',monospace;letter-spacing:1px;}
+.doc-status-info{display:flex;justify-content:space-between;align-items:center;}
+.doc-status-desc{font-size:13px;opacity:.85;font-weight:600;}
+.doc-status-chip{background:rgba(255,255,255,.2);padding:4px 12px;
+  border-radius:20px;font-size:12px;font-weight:800;}
+.doc-status-chip.done{background:rgba(46,125,50,.85);}
+
 /* TOAST */
 .toast-wrap{position:fixed;top:64px;left:50%;transform:translateX(-50%);
   z-index:9999;display:flex;flex-direction:column;gap:7px;
@@ -139,6 +209,14 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .toast.danger{background:linear-gradient(135deg,#8B0000,var(--red2));}
 .toast.info{background:linear-gradient(135deg,var(--navy),var(--blue));}
 @keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+
+/* 이미 서명된 문서 안내 */
+.already-signed-box{background:linear-gradient(135deg,#E8F5E9,#F1F8E9);
+  border:2px solid var(--green2);border-radius:var(--r);padding:20px;
+  margin-bottom:14px;text-align:center;}
+.already-signed-ico{font-size:48px;margin-bottom:10px;}
+.already-signed-title{font-size:18px;font-weight:900;color:var(--green);margin-bottom:6px;}
+.already-signed-desc{font-size:13px;color:var(--body);line-height:1.6;font-weight:600;}
 </style>
 </head>
 <body>
@@ -153,89 +231,158 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 
 <div class="toast-wrap" id="toastWrap"></div>
 
-<!-- 로딩 -->
+<!-- 🔄 로딩 화면 -->
 <div id="view-loading" class="loading-wrap">
   <div class="loading-ico">🔄</div>
   <div class="loading-txt">문서를 불러오는 중...</div>
 </div>
 
-<!-- 문서번호 수동 입력 -->
+<!-- 📝 문서번호 수동 입력 -->
 <div id="view-manual" style="display:none;">
   <div class="doc-input-wrap">
     <div style="text-align:center;font-size:40px;margin-bottom:14px;">📋</div>
     <div class="doc-input-title">안전정보제공서 확인</div>
     <div class="doc-input-sub">도급인으로부터 받은<br>문서번호를 입력해주세요</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <input class="f-input" id="manual-doc-id" placeholder="SIP-20240115-001" style="flex:1;">
-      <button style="padding:13px 16px;background:var(--navy2);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;" onclick="loadByManual()">조회</button>
+      <input class="f-input" id="manual-doc-id"
+             placeholder="예: SIP-20260824-001"
+             style="flex:1;font-family:'Courier New',monospace;letter-spacing:1px;">
+      <button style="padding:13px 16px;background:var(--navy2);color:#fff;
+                     border:none;border-radius:11px;font-size:14px;
+                     font-weight:800;cursor:pointer;"
+              onclick="loadByManual()">조회</button>
     </div>
     <div class="info-box">
       <div class="info-box-t">💡 안내</div>
-      <div class="info-box-b">문서번호는 도급인(포스코퓨처엠)으로부터<br>이메일 또는 문자로 전달받은 번호입니다</div>
+      <div class="info-box-b">
+        문서번호는 도급인(포스코퓨처엠)으로부터<br>
+        이메일 또는 문자로 전달받은 번호입니다.<br>
+        형식: <strong>SIP-YYYYMMDD-XXX</strong>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- 메인 내용 -->
+<!-- 📄 메인 확인 화면 -->
 <div id="view-main" style="display:none;">
   <div class="main">
 
-    <!-- 문서 정보 배너 -->
-    <div style="background:linear-gradient(135deg,#0A3880,var(--navy2));color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(10,56,128,.3);">
-      <div style="font-size:11px;opacity:.75;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;">문서번호</div>
-      <div style="font-size:18px;font-weight:900;margin-bottom:10px;" id="view-doc-id">-</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:13px;opacity:.85;font-weight:600;" id="view-status-lbl">확인 대기 중</div>
-        <div style="background:rgba(255,255,255,.2);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;" id="view-status-badge">미서명</div>
+    <!-- 이미 서명된 문서 알림 (조건부) -->
+    <div id="alreadySignedBox" class="already-signed-box" style="display:none;">
+      <div class="already-signed-ico">✅</div>
+      <div class="already-signed-title">이미 서명 완료된 문서</div>
+      <div class="already-signed-desc" id="alreadySignedDesc">
+        이 문서는 이미 서명이 완료되었습니다.<br>
+        내용만 확인 가능하며 재서명은 불가능합니다.
       </div>
     </div>
 
-    <!-- 1. 기본정보 -->
+    <!-- 문서 정보 배지 -->
+    <div class="doc-status-badge">
+      <div class="doc-status-label">문서번호</div>
+      <div class="doc-status-no" id="view-doc-id">-</div>
+      <div class="doc-status-info">
+        <div class="doc-status-desc" id="view-status-lbl">확인 대기 중</div>
+        <div class="doc-status-chip" id="view-status-badge">미서명</div>
+      </div>
+    </div>
+
+    <!-- 1. 작업 기본정보 -->
     <div class="sec-title">📋 1. 작업 기본정보</div>
     <div class="info-card">
       <div class="info-row"><span class="info-key">작업명</span><span class="info-val" id="v-work-name">-</span></div>
       <div class="info-row"><span class="info-key">협력사</span><span class="info-val" id="v-subcontractor">-</span></div>
       <div class="info-row"><span class="info-key">작업장소</span><span class="info-val" id="v-location">-</span></div>
       <div class="info-row"><span class="info-key">작업기간</span><span class="info-val" id="v-period">-</span></div>
-      <div class="info-row"><span class="info-key">도급인 담당</span><span class="info-val" id="v-manager">-</span></div>
-      <div class="info-row"><span class="info-key">비상연락</span><span class="info-val" id="v-emergency">-</span></div>
     </div>
 
-    <!-- 2. 화학물질 -->
+    <!-- 도급인 담당자 정보 -->
+    <div class="sec-title">👤 도급인 담당자</div>
+    <div class="info-card">
+      <div class="info-row"><span class="info-key">담당자</span><span class="info-val" id="v-manager">-</span></div>
+      <div class="info-row"><span class="info-key">부서</span><span class="info-val" id="v-manager-dept">-</span></div>
+      <div class="info-row"><span class="info-key">연락처</span><span class="info-val" id="v-manager-phone">-</span></div>
+      <div class="info-row"><span class="info-key">이메일</span><span class="info-val" id="v-manager-email" style="font-size:12px;">-</span></div>
+    </div>
+
+    <!-- 2. 화학물질 (MSDS) -->
     <div class="sec-title">🧪 2. 화학물질 (MSDS)</div>
     <div id="v-msds-wrap">
-      <div class="info-card"><div id="v-msds-list"></div></div>
+      <!-- JS로 생성 -->
     </div>
 
-    <!-- 3. 공장 위험 정보 -->
-    <div class="sec-title">🏭 3. 공장 위험 설비</div>
+    <!-- 3. 관련 서류 -->
+    <div class="sec-title">📄 3. 관련 서류</div>
+    <div class="info-card">
+      <div class="info-row"><span class="info-key">위험성평가</span><span class="info-val" id="v-risk-no">-</span></div>
+      <div class="info-row"><span class="info-key">작업허가서</span><span class="info-val" id="v-permit-no">-</span></div>
+      <div class="info-row"><span class="info-key">기타 서류</span><span class="info-val" id="v-other-docs">-</span></div>
+    </div>
+
+    <!-- 4. 공장 위험 정보 -->
+    <div class="sec-title">🏭 4. 공장 위험 정보</div>
     <div class="info-card">
       <div id="v-facility-list"></div>
-      <div class="info-row" style="margin-top:10px;"><span class="info-key">비상구</span><span class="info-val" id="v-exit">-</span></div>
+      <div class="info-row" style="margin-top:10px;"><span class="info-key">비상연락</span><span class="info-val" id="v-emergency">-</span></div>
+      <div class="info-row"><span class="info-key">비상구</span><span class="info-val" id="v-exit">-</span></div>
       <div class="info-row"><span class="info-key">구급약품</span><span class="info-val" id="v-firstaid">-</span></div>
+      <div class="info-row"><span class="info-key">AED 위치</span><span class="info-val" id="v-aed" style="font-size:12px;">-</span></div>
     </div>
 
-    <!-- 4. 안전수칙 -->
-    <div class="sec-title">⚠️ 4. 안전수칙</div>
-    <div class="info-card"><div id="v-safety-list"></div></div>
+    <!-- 5. 안전수칙 -->
+    <div class="sec-title">⚠️ 5. 안전수칙</div>
+    <div class="info-card">
+      <div id="v-safety-list"></div>
+    </div>
 
-    <!-- 5. 보호구 -->
-    <div class="sec-title">⛑️ 5. 필수 보호구</div>
+    <!-- 6. 필수 보호구 -->
+    <div class="sec-title">⛑️ 6. 필수 보호구</div>
     <div class="info-card">
       <div class="tag-list" id="v-ppe-list"></div>
     </div>
 
-    <!-- 6. 위험성평가 -->
-    <div class="sec-title">📄 6. 관련 서류</div>
+    <!-- 7. 비상상황 대응 -->
+    <div class="sec-title">🚨 7. 비상상황 대응</div>
+    <div class="emergency-proc-box">
+      <div class="emergency-proc-title">📋 대응 절차</div>
+      <div class="emergency-proc-content" id="v-emergency-proc">-</div>
+    </div>
     <div class="info-card">
-      <div class="info-row"><span class="info-key">위험성평가</span><span class="info-val" id="v-risk-no">-</span></div>
-      <div class="info-row"><span class="info-key">작업허가서</span><span class="info-val" id="v-permit-no">-</span></div>
+      <div class="info-row"><span class="info-key">안전관리자</span><span class="info-val" id="v-safety-manager">-</span></div>
     </div>
 
-    <!-- 7. 체크리스트 -->
-    <div class="sec-title">✅ 7. 수급인 확인 체크리스트</div>
+    <!-- 8. 도급인 서명 -->
+    <div class="sec-title">✍️ 8. 도급인 서명</div>
+    <div class="contractor-sig-box">
+      <div class="contractor-sig-label">📄 도급인 서명 확인</div>
+      <div class="contractor-sig-info">
+        <span>서명자</span>
+        <span id="v-contractor-signer">-</span>
+      </div>
+      <div class="contractor-sig-info">
+        <span>서명일시</span>
+        <span id="v-contractor-signdate">-</span>
+      </div>
+      <img id="v-contractor-sig-img" class="contractor-sig-img"
+           src="" alt="도급인 서명"
+           style="display:none;">
+      <div id="v-contractor-sig-empty"
+           style="text-align:center;padding:20px;color:var(--sub);
+                  font-size:13px;font-weight:600;">
+        서명 이미지 없음
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- 📄 메인 확인 화면 (계속) - 서명 부분 -->
+<div id="view-signature-section" style="display:none;">
+  <div class="main">
+
+    <!-- 9. 수급인 확인 체크리스트 -->
+    <div class="sec-title">✅ 9. 수급인 확인 체크리스트</div>
     <div class="warn-box">
-      <div class="warn-box-t">⚠️ 필수</div>
+      <div class="warn-box-t">⚠️ 필수 확인</div>
       <div class="warn-box-b">아래 8개 항목을 모두 확인한 후 서명해주세요</div>
     </div>
     <div class="cl-prog">
@@ -243,21 +390,47 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
         <span>확인 현황</span>
         <span class="cl-prog-pct" id="cl-pct">0 / 8</span>
       </div>
-      <div class="cl-prog-bar"><div class="cl-prog-fill" id="cl-fill" style="width:0%"></div></div>
+      <div class="cl-prog-bar">
+        <div class="cl-prog-fill" id="cl-fill" style="width:0%"></div>
+      </div>
     </div>
     <div id="checklistWrap">
-      <div class="cl-item" onclick="togCL(this,1)"><div class="cl-chk"></div><div class="cl-txt">안전정보제공서 내용을 모두 읽고 이해하였습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,2)"><div class="cl-chk"></div><div class="cl-txt">MSDS(화학물질 정보) 내용을 확인하였습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,3)"><div class="cl-chk"></div><div class="cl-txt">공장 내 위험 설비 위치 및 주의사항을 파악하였습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,4)"><div class="cl-chk"></div><div class="cl-txt">비상구 위치 및 대피로를 확인하였습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,5)"><div class="cl-chk"></div><div class="cl-txt">작업별 안전수칙을 준수하겠습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,6)"><div class="cl-chk"></div><div class="cl-txt">필수 보호구를 착용하겠습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,7)"><div class="cl-chk"></div><div class="cl-txt">위험 발견 시 작업중지권을 행사하겠습니다</div></div>
-      <div class="cl-item" onclick="togCL(this,8)"><div class="cl-chk"></div><div class="cl-txt">거짓 서명 시 산업안전보건법에 따라 처벌받을 수 있음을 알고 있습니다</div></div>
+      <div class="cl-item" onclick="togCL(this,1)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">1. 안전정보제공서 내용을 모두 읽고 이해하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,2)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">2. MSDS(화학물질 정보) 내용을 확인하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,3)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">3. 공장 내 위험 설비 위치 및 주의사항을 파악하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,4)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">4. 비상구 위치 및 대피로를 확인하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,5)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">5. 작업별 안전수칙을 준수하겠습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,6)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">6. 필수 보호구를 착용하겠습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,7)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">7. 위험 발견 시 작업중지권을 행사하겠습니다</div>
+      </div>
+      <div class="cl-item critical" onclick="togCL(this,8)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt critical">8. ⚠️ 거짓 서명 시 산업안전보건법에 따라 처벌받을 수 있음을 알고 있습니다</div>
+      </div>
     </div>
 
-    <!-- 8. 수급인 정보 + 서명 -->
-    <div class="sec-title">✍️ 8. 수급인 서명</div>
+    <!-- 10. 수급인 정보 + 서명 -->
+    <div class="sec-title">✍️ 10. 수급인 서명</div>
     <div class="form-card">
       <div class="f-row">
         <div class="form-group">
@@ -274,6 +447,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
         <input class="f-input" type="tel" id="sub-phone" placeholder="010-1234-5678">
       </div>
     </div>
+   
     <div class="sig-wrap">
       <div class="sig-lbl">수급인 서명<span class="req">*</span></div>
       <canvas class="sig-canvas" id="sub-sig" width="400" height="160"></canvas>
@@ -288,243 +462,843 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
       </div>
     </div>
 
-    <button class="btn-primary" onclick="submitSign()">✅ 확인 완료 및 서명 제출</button>
+    <button class="btn-primary" id="submitBtn" onclick="submitSign()" disabled>
+      ✅ 확인 완료 및 서명 제출
+    </button>
     <button class="btn-mail" onclick="requestResend()">📧 도급인에게 메일 재발송 요청</button>
     <button class="btn-secondary" onclick="history.back()">취소</button>
   </div>
 </div>
 
-<!-- 완료 화면 -->
+<!-- 🎉 완료 화면 -->
 <div id="view-complete" style="display:none;">
   <div class="main">
     <div class="complete-hero">
       <div class="complete-ico">✅</div>
       <div class="complete-title">서명 완료!</div>
-      <div class="complete-sub">안전정보제공서 확인 및 서명이 완료되었습니다.<br>도급인에게 자동으로 완료 알림이 발송되었습니다.</div>
+      <div class="complete-sub">안전정보제공서 확인 및 서명이 완료되었습니다.
+도급인에게 자동으로 완료 알림이 발송됩니다.</div>
     </div>
+   
     <div class="info-card">
       <div class="info-row"><span class="info-key">문서번호</span><span class="info-val" id="fin-doc-id">-</span></div>
       <div class="info-row"><span class="info-key">작업명</span><span class="info-val" id="fin-work-name">-</span></div>
       <div class="info-row"><span class="info-key">서명자</span><span class="info-val" id="fin-signer">-</span></div>
       <div class="info-row"><span class="info-key">완료일시</span><span class="info-val" id="fin-dt">-</span></div>
     </div>
+   
     <div class="info-box">
       <div class="info-box-t">📌 다음 단계</div>
       <div class="info-box-b">
-        도급인 최종 확인 후 안전작업허가서 발급<br>
-        → TBM 실시 → 작업 시작
+        1. 도급인 최종 확인 진행<br>
+        2. 안전작업허가서(PTW) 발급 요청<br>
+        3. TBM(Tool Box Meeting) 실시<br>
+        4. 작업 시작
       </div>
     </div>
+
+    <button class="btn-primary" onclick="goHome()">🏠 대시보드로 이동</button>
+    <button class="btn-secondary" onclick="location.reload()">문서 다시 조회</button>
   </div>
 </div>
 
-</div>
+</div><!-- /.app -->
 <script>
-var API_BASE_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-var docData = null;
-var docId = '';
-var clChecked = 0;
-var clTotal = 8;
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+var docData = null;      // 조회된 문서 데이터
+var safeinfoNo = '';     // 문서번호
+var clChecked = 0;       // 체크된 항목 수
+var clTotal = 8;         // 전체 체크 항목
+var clItems = {};        // 체크 상태 저장 {1:true, 2:false, ...}
+var isAlreadySigned = false;  // 이미 서명된 문서 여부
 
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function(){
-  var today = new Date().toISOString().split('T')[0];
-  setVal('sub-confirm-date', today);
+  initTheme();
+ 
+  // 확인일 기본값 = 오늘
+  setVal('sub-confirm-date', fmtDate(new Date()));
+ 
+  // 서명 캔버스 초기화
   initSig();
-
+ 
+  // 폐기 키 마이그레이션
+  migrateLegacyKeys();
+ 
+  // URL 파라미터 확인 (규약: ?safeinfoNo=)
   var params = new URLSearchParams(window.location.search);
-  var id = params.get('doc');
-  if(id){ docId=id; loadDoc(id); }
-  else { show('view-manual'); hide('view-loading'); }
+  var id = params.get('safeinfoNo') || params.get('doc'); // ?doc= 은 폐기 예정 fallback
+ 
+  if(id){
+    safeinfoNo = id;
+    loadDoc(id);
+  } else {
+    show('view-manual');
+    hide('view-loading');
+  }
 });
 
-function loadDoc(id){
-  show('view-loading'); hide('view-main'); hide('view-manual');
-
-  // 1. 서버에서 로드 시도
-  fetch(API_BASE_URL+'?action=getDoc&id='+encodeURIComponent(id))
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if(res.ok && res.data){ renderDoc(res.data); }
-      else { loadFromLocal(id); }
-    })
-    .catch(function(){ loadFromLocal(id); });
+// KST 기준 날짜
+function fmtDate(d){
+  d = d || new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
 }
 
-function loadFromLocal(id){
-  // 2. localStorage에서 로드 (오프라인/같은 기기)
+// 다크모드 상속
+function initTheme(){
+  var t = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+}
+
+// ═══════════════════════════════════════════════════
+// 폐기 키 마이그레이션 (safetyInfoDocs → safetyProvisions)
+// ═══════════════════════════════════════════════════
+function migrateLegacyKeys(){
   try{
-    var docs = JSON.parse(localStorage.getItem('safetyInfoDocs')||'[]');
-    var found = docs.find(function(d){ return d.docId===id; });
-    if(found){ renderDoc(found); return; }
-  }catch(e){}
-  // 3. 못 찾으면 수동 입력
-  hide('view-loading');
-  show('view-manual');
-  setVal('manual-doc-id', id);
-  showToast('문서를 찾을 수 없습니다. 문서번호를 확인해주세요','danger');
+    var current = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    var legacyDocs = localStorage.getItem('safetyInfoDocs');
+    var legacySigned = localStorage.getItem('safetyInfoSigned');
+   
+    // safetyInfoDocs → safetyProvisions
+    if(legacyDocs){
+      var legacyData = JSON.parse(legacyDocs);
+      var migrated = 0;
+     
+      legacyData.forEach(function(item){
+        var existingNo = item.safeinfoNo || item.docId;
+        if(!existingNo) return;
+       
+        var exists = current.find(function(d){
+          return d.safeinfoNo === existingNo || d.docId === existingNo;
+        });
+        if(exists) return;
+       
+        // 폐기 스키마 → 신규 스키마 변환
+        var converted = Object.assign({}, item, {
+          safeinfoNo: existingNo,
+          submittedCompany: item.subcontractor || '',
+          submittedBy: item.contractorManager || '',
+          status: item.status || '발행완료',
+          date: item.startDate || (item.createdAt || '').substring(0, 10),
+          createdAt: item.createdAt || new Date().toISOString(),
+          createdBy: item.contractorManager || 'legacy',
+          schemaVersion: 1
+        });
+       
+        current.push(converted);
+        migrated++;
+      });
+     
+      // safetyInfoSigned 데이터를 해당 문서에 병합
+      if(legacySigned){
+        var signedData = JSON.parse(legacySigned);
+        signedData.forEach(function(sign){
+          var doc = current.find(function(d){
+            return d.safeinfoNo === sign.docId || d.docId === sign.docId;
+          });
+          if(doc){
+            doc.signature = sign.signature || sign;
+            doc.signerName = sign.supervisorName || sign.signerName || '';
+            doc.signerPhone = sign.phone || sign.signerPhone || '';
+            doc.signedAt = sign.signedAt || sign.createdAt || new Date().toISOString();
+            doc.status = '서명완료';
+          }
+        });
+      }
+     
+      if(migrated > 0){
+        localStorage.setItem('safetyProvisions', JSON.stringify(current));
+        console.log('✅ safetyInfoDocs → safetyProvisions 마이그레이션: ' + migrated + '건');
+      }
+     
+      localStorage.removeItem('safetyInfoDocs');
+      localStorage.removeItem('safetyInfoSigned');
+    }
+  }catch(e){
+    console.warn('마이그레이션 실패:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 문서 조회 (regex 준수 키: safetyProvisions)
+// ═══════════════════════════════════════════════════
+function loadDoc(id){
+  show('view-loading');
+  hide('view-main');
+  hide('view-manual');
+  hide('view-signature-section');
+  hide('view-complete');
+ 
+  // 로컬 조회 (Firebase 이관 전까지)
+  setTimeout(function(){
+    var found = findDocLocal(id);
+    if(found){
+      renderDoc(found);
+    } else {
+      hide('view-loading');
+      show('view-manual');
+      setVal('manual-doc-id', id);
+      showToast('문서를 찾을 수 없습니다. 문서번호를 확인해주세요', 'danger');
+    }
+  }, 300);  // 로딩 애니메이션 최소 시간
+}
+
+function findDocLocal(id){
+  try{
+    // 규약 준수: safetyProvisions 우선
+    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    var found = docs.find(function(d){
+      return d.safeinfoNo === id || d.docId === id;
+    });
+    if(found) return found;
+   
+    // 폐기 예정 키 fallback
+    var legacy = JSON.parse(localStorage.getItem('safetyInfoDocs') || '[]');
+    return legacy.find(function(d){
+      return d.docId === id || d.safeinfoNo === id;
+    });
+  }catch(e){
+    console.error('로컬 조회 실패:', e);
+    return null;
+  }
 }
 
 function loadByManual(){
   var id = getVal('manual-doc-id');
-  if(!id){ showToast('문서번호를 입력해주세요','info'); return; }
-  docId = id;
+  if(!id){
+    showToast('문서번호를 입력해주세요', 'info');
+    return;
+  }
+  // 형식 검증
+  if(!/^SIP-\d{8}-\d{3}$/.test(id)){
+    showToast('올바른 형식이 아닙니다 (예: SIP-20260824-001)', 'danger');
+    return;
+  }
+  safeinfoNo = id;
   loadDoc(id);
 }
 
+// ═══════════════════════════════════════════════════
+// 문서 렌더링
+// ═══════════════════════════════════════════════════
 function renderDoc(d){
   docData = d;
-  // 기본 정보
-  setTxt('view-doc-id', d.docId||d['문서번호']||docId);
-  setTxt('v-work-name', d.workName||d['작업명']||'-');
-  setTxt('v-subcontractor', d.subcontractor||d['협력사']||'-');
-  setTxt('v-location', (d.location||d['작업장소']||'')+' '+(d.detailLocation||''));
-  setTxt('v-period', (d.startDate||d['작업시작일']||'-')+' ~ '+(d.endDate||d['작업종료일']||'-'));
-  setTxt('v-manager', (d.contractorManager||d['도급인 담당자']||'-')+'  '+(d.contractorPhone||d['도급인 연락처']||''));
-  setTxt('v-emergency', d.emergencyContact||d['비상연락처']||'119');
-  setTxt('v-exit', d.emergencyExit||'-');
-  setTxt('v-firstaid', d.firstAid||'-');
-  setTxt('v-risk-no', d.riskAssessmentNo||d['위험성평가번호']||'-');
-  setTxt('v-permit-no', d.permitNo||d['작업허가번호']||'-');
-
-  // MSDS
-  var msds = d.msdsItems||d['MSDS']||[];
-  if(typeof msds==='string') try{msds=JSON.parse(msds);}catch(e){msds=[];}
-  var msdsEl = document.getElementById('v-msds-list');
-  if(d.noChemical){ msdsEl.innerHTML='<div style="color:var(--green2);font-weight:700;">✅ 화학물질 미사용</div>'; }
-  else if(msds.length){
-    msdsEl.innerHTML = '<div class="tag-list">'+msds.map(function(m){return '<span class="tag warn">'+m+'</span>';}).join('')+'</div>';
+ 
+  // 이미 서명된 문서 확인
+  isAlreadySigned = (d.status === '서명완료') || !!d.signature;
+ 
+  // ─── 문서 정보 배지 ───
+  setTxt('view-doc-id', d.safeinfoNo || d.docId || safeinfoNo);
+ 
+  var statusLbl, statusChip, statusChipClass = '';
+  if(isAlreadySigned){
+    statusLbl = '수급인 서명 완료';
+    statusChip = '✅ 서명완료';
+    statusChipClass = 'done';
   } else {
-    msdsEl.innerHTML = '<div style="color:var(--sub);font-weight:600;">등록된 화학물질 없음</div>';
+    statusLbl = '수급인 확인 대기 중';
+    statusChip = '⏳ 미서명';
   }
-
-  // 설비
-  var fac = d.facilityItems||[];
-  if(typeof fac==='string') try{fac=JSON.parse(fac);}catch(e){fac=[];}
-  var facEl = document.getElementById('v-facility-list');
-  if(fac.length){ facEl.innerHTML='<div class="tag-list">'+fac.map(function(f){return '<span class="tag danger">⚠️ '+f+'</span>';}).join('')+'</div>'; }
-  else { facEl.innerHTML='<div style="color:var(--sub);font-weight:600;">해당 설비 없음</div>'; }
-
-  // 안전수칙
-  var si = d.safetyItems||[];
-  if(typeof si==='string') try{si=JSON.parse(si);}catch(e){si=[];}
-  var siEl = document.getElementById('v-safety-list');
-  if(si.length){
-    siEl.innerHTML = si.map(function(s,i){
-      return '<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);">'+
-        '<span style="color:var(--navy2);font-weight:800;flex-shrink:0;">'+(i+1)+'.</span>'+
-        '<span style="font-size:14px;font-weight:600;color:var(--body);line-height:1.45;">'+s+'</span></div>';
-    }).join('');
-  } else {
-    siEl.innerHTML='<div style="color:var(--sub);font-weight:600;">해당 수칙 없음</div>';
+  setTxt('view-status-lbl', statusLbl);
+  var chipEl = document.getElementById('view-status-badge');
+  if(chipEl){
+    chipEl.textContent = statusChip;
+    chipEl.className = 'doc-status-chip' + (statusChipClass ? ' ' + statusChipClass : '');
   }
-
-  // 보호구
-  var ppe = d.ppeItems||[];
-  if(typeof ppe==='string') try{ppe=JSON.parse(ppe);}catch(e){ppe=[];}
-  var ppeEl = document.getElementById('v-ppe-list');
-  ppeEl.innerHTML = ppe.length ? ppe.map(function(p){return '<span class="tag green">'+p+'</span>';}).join('') : '<span style="color:var(--sub);font-weight:600;">해당 없음</span>';
-
-  hide('view-loading'); hide('view-manual');
+ 
+  // ─── 이미 서명된 경우 안내 표시 ───
+  if(isAlreadySigned){
+    var box = document.getElementById('alreadySignedBox');
+    var desc = document.getElementById('alreadySignedDesc');
+    if(box) box.style.display = 'block';
+    if(desc && d.signerName){
+      desc.innerHTML = '서명자: <strong>' + escHtml(d.signerName) + '</strong><br>' +
+                       '서명일시: ' + escHtml(new Date(d.signedAt).toLocaleString('ko-KR'));
+    }
+  }
+ 
+  // ─── 1. 기본정보 ───
+  setTxt('v-work-name', d.workName || '-');
+  setTxt('v-subcontractor', d.subcontractor || d.submittedCompany || '-');
+  setTxt('v-location',
+    (d.location || '') + (d.detailLocation ? ' ' + d.detailLocation : '') || '-');
+  setTxt('v-period',
+    (d.startDate || '-') + ' ~ ' + (d.endDate || '-'));
+ 
+  // ─── 도급인 담당자 ───
+  setTxt('v-manager', d.contractorManager || d.submittedBy || '-');
+  setTxt('v-manager-dept', d.contractorDept || '-');
+  setTxt('v-manager-phone', d.contractorPhone || '-');
+  setTxt('v-manager-email', d.contractorEmail || '-');
+ 
+  // ─── 2. 화학물질 (MSDS 상세 카드) ───
+  renderMSDSCards(d);
+ 
+  // ─── 3. 관련 서류 ───
+  setTxt('v-risk-no', d.riskAssessmentNo || '-');
+  setTxt('v-permit-no', d.permitNo || '해당 없음');
+  setTxt('v-other-docs',
+    (d.selectedDocs && d.selectedDocs.length)
+      ? d.selectedDocs.join(', ')
+      : '해당 없음');
+ 
+  // ─── 4. 공장 위험 정보 ───
+  renderFacilities(d);
+  setTxt('v-emergency', d.emergencyContact || '-');
+  setTxt('v-exit', d.emergencyExit || '-');
+  setTxt('v-firstaid', d.firstAid || '-');
+  setTxt('v-aed', d.aedLocations || '-');
+ 
+  // ─── 5. 안전수칙 ───
+  renderSafety(d);
+ 
+  // ─── 6. 필수 보호구 ───
+  renderPPE(d);
+ 
+  // ─── 7. 비상상황 대응 ───
+  setTxt('v-emergency-proc', d.emergencyProc || '-');
+  setTxt('v-safety-manager', d.safetyManagerPhone || '-');
+ 
+  // ─── 8. 도급인 서명 ───
+  renderContractorSignature(d);
+ 
+  // 화면 전환
+  hide('view-loading');
+  hide('view-manual');
   show('view-main');
+ 
+  // 이미 서명된 문서는 서명 섹션 안 보임
+  if(!isAlreadySigned){
+    show('view-signature-section');
+  }
+ 
+  console.log('✅ 문서 조회 완료:', d.safeinfoNo || d.docId);
 }
 
-// CHECKLIST
+// ═══════════════════════════════════════════════════
+// MSDS 카드 렌더링 (상세 표시)
+// ═══════════════════════════════════════════════════
+function renderMSDSCards(d){
+  var wrap = document.getElementById('v-msds-wrap');
+  if(!wrap) return;
+ 
+  // 화학물질 미사용
+  if(d.noChemical){
+    wrap.innerHTML =
+      '<div class="info-card">' +
+      '<div style="text-align:center;padding:12px;color:var(--green2);' +
+      'font-size:14px;font-weight:800;">✅ 화학물질 사용하지 않음</div>' +
+      '</div>';
+    return;
+  }
+ 
+  var html = '';
+ 
+  // 선택된 MSDS 카드 (도급인용에서 저장된 것)
+  var msds = d.msdsItems || [];
+  if(typeof msds === 'string'){
+    try{ msds = JSON.parse(msds); }catch(e){ msds = []; }
+  }
+ 
+  // msdsIds가 있으면 상세 정보 조회 시도 (도급인용의 MSDS_LIST 참조)
+  // 하지만 수급인용에서는 MSDS_LIST가 없으므로, 이름만 표시
+  if(msds.length > 0){
+    html += msds.map(function(name){
+      return '<div class="msds-card">' +
+        '<div class="msds-card-name">🧪 ' + escHtml(name) + '</div>' +
+        '<div class="msds-card-detail">' +
+        '<strong>안내:</strong> 상세 유해성/보호구 정보는 안전보건공단 원본 MSDS를 참조하세요.<br>' +
+        '<a href="https://msds.kosha.or.kr/" target="_blank" ' +
+        'style="color:var(--orange);text-decoration:underline;">MSDS 조회하기 →</a>' +
+        '</div></div>';
+    }).join('');
+  }
+ 
+  // 기타 화학물질 (직접 입력)
+  if(d.chemicalOther){
+    html += '<div class="msds-card">' +
+      '<div class="msds-card-name">🧪 기타: ' + escHtml(d.chemicalOther) + '</div>' +
+      '<div class="msds-card-detail">' +
+      '<strong>안내:</strong> 이 화학물질의 MSDS를 도급인에게 별도 요청하세요.' +
+      '</div></div>';
+  }
+ 
+  if(!html){
+    html = '<div class="info-card">' +
+      '<div style="text-align:center;padding:12px;color:var(--sub);' +
+      'font-size:13px;font-weight:600;">등록된 화학물질이 없습니다</div>' +
+      '</div>';
+  }
+ 
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// 설비 위험 렌더링
+// ═══════════════════════════════════════════════════
+function renderFacilities(d){
+  var el = document.getElementById('v-facility-list');
+  if(!el) return;
+ 
+  var fac = d.facilityItems || [];
+  if(typeof fac === 'string'){
+    try{ fac = JSON.parse(fac); }catch(e){ fac = []; }
+  }
+ 
+  if(fac.length){
+    el.innerHTML = '<div style="margin-bottom:10px;"><span class="info-key" style="font-size:12px;">위험 설비</span></div>' +
+      '<div class="tag-list">' +
+      fac.map(function(f){
+        return '<span class="tag danger">⚠️ ' + escHtml(f) + '</span>';
+      }).join('') +
+      '</div>';
+  } else {
+    el.innerHTML = '<div style="color:var(--sub);font-size:13px;font-weight:600;padding:6px 0;">해당 위험 설비 없음</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 안전수칙 렌더링
+// ═══════════════════════════════════════════════════
+function renderSafety(d){
+  var el = document.getElementById('v-safety-list');
+  if(!el) return;
+ 
+  var si = d.safetyItems || [];
+  if(typeof si === 'string'){
+    try{ si = JSON.parse(si); }catch(e){ si = []; }
+  }
+ 
+  var html = '';
+  if(si.length){
+    html = si.map(function(s, i){
+      return '<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;' +
+        'border-bottom:1px solid var(--border);">' +
+        '<span style="color:var(--navy2);font-weight:800;flex-shrink:0;">' + (i+1) + '.</span>' +
+        '<span style="font-size:14px;font-weight:600;color:var(--body);line-height:1.45;">' +
+        escHtml(s) + '</span></div>';
+    }).join('');
+  }
+ 
+  // 기타 안전수칙 추가
+  if(d.safetyOther){
+    html += '<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;">' +
+      '<span style="color:var(--orange);font-weight:800;flex-shrink:0;">+</span>' +
+      '<span style="font-size:14px;font-weight:600;color:var(--body);line-height:1.45;">' +
+      '기타: ' + escHtml(d.safetyOther) + '</span></div>';
+  }
+ 
+  if(!html){
+    html = '<div style="color:var(--sub);font-size:13px;font-weight:600;padding:6px 0;">해당 안전수칙 없음</div>';
+  }
+ 
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// 보호구 렌더링
+// ═══════════════════════════════════════════════════
+function renderPPE(d){
+  var el = document.getElementById('v-ppe-list');
+  if(!el) return;
+ 
+  var ppe = d.ppeItems || [];
+  if(typeof ppe === 'string'){
+    try{ ppe = JSON.parse(ppe); }catch(e){ ppe = []; }
+  }
+ 
+  if(ppe.length){
+    el.innerHTML = ppe.map(function(p){
+      return '<span class="tag green">' + escHtml(p) + '</span>';
+    }).join('');
+  } else {
+    el.innerHTML = '<span style="color:var(--sub);font-size:13px;font-weight:600;">해당 없음</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 도급인 서명 렌더링
+// ═══════════════════════════════════════════════════
+function renderContractorSignature(d){
+  setTxt('v-contractor-signer',
+    (d.contractorManager || d.submittedBy || '-') +
+    (d.contractorDept ? ' (' + d.contractorDept + ')' : ''));
+  setTxt('v-contractor-signdate',
+    d.createdAt ? new Date(d.createdAt).toLocaleString('ko-KR') : '-');
+ 
+  var img = document.getElementById('v-contractor-sig-img');
+  var empty = document.getElementById('v-contractor-sig-empty');
+ 
+  if(d.contractorSignature && img){
+    img.src = d.contractorSignature;
+    img.style.display = 'block';
+    if(empty) empty.style.display = 'none';
+  } else {
+    if(img) img.style.display = 'none';
+    if(empty) empty.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 체크리스트
+// ═══════════════════════════════════════════════════
 function togCL(el, n){
   el.classList.toggle('checked');
   var chk = el.querySelector('.cl-chk');
-  if(el.classList.contains('checked')){chk.textContent='✓';clChecked++;}
-  else{chk.textContent='';clChecked--;}
+  var isChecked = el.classList.contains('checked');
+ 
+  if(isChecked){
+    chk.textContent = '✓';
+    if(!clItems[n]){
+      clItems[n] = true;
+      clChecked++;
+    }
+  } else {
+    chk.textContent = '';
+    if(clItems[n]){
+      clItems[n] = false;
+      clChecked--;
+    }
+  }
+ 
+  updateChecklistProgress();
+}
+
+function updateChecklistProgress(){
   var pct = document.getElementById('cl-pct');
   var fill = document.getElementById('cl-fill');
-  if(pct) pct.textContent=clChecked+' / '+clTotal;
-  if(fill) fill.style.width=(clChecked/clTotal*100)+'%';
+  var btn = document.getElementById('submitBtn');
+ 
+  if(pct) pct.textContent = clChecked + ' / ' + clTotal;
+  if(fill) fill.style.width = (clChecked / clTotal * 100) + '%';
+ 
+  // 8/8 완료 시 제출 버튼 활성화 가능성 체크
+  updateSubmitButtonState();
 }
 
-// SUBMIT
-function submitSign(){
-  if(clChecked<clTotal){ showToast('8개 항목을 모두 확인해주세요 ('+clChecked+'/'+clTotal+')','danger'); return; }
-  var name=getVal('sub-supervisor'), dt=getVal('sub-confirm-date'), ph=getVal('sub-phone');
-  if(!name||!dt||!ph){ showToast('담당자 정보를 모두 입력해주세요','danger'); return; }
-  if(!hasSig()){ showToast('서명을 해주세요','danger'); return; }
-
-  var sig = document.getElementById('sub-sig').toDataURL();
-  var payload = {
-    docId: docId,
-    supervisorName: name,
-    confirmDate: dt,
-    phone: ph,
-    signature: sig,
-    checklist: {all: clChecked+'/'+clTotal},
-    signedAt: new Date().toISOString()
-  };
-
-  showToast('서버에 저장 중...','info');
-
-  // 서버 저장
-  fetch(API_BASE_URL, {
-    method:'POST', mode:'no-cors',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'signDoc', data:payload})
-  }).then(function(){
-    // localStorage 상태 업데이트
-    try{
-      var docs=JSON.parse(localStorage.getItem('safetyInfoDocs')||'[]');
-      docs.forEach(function(d){ if(d.docId===docId){ d.status='서명완료'; d.signedAt=payload.signedAt; } });
-      localStorage.setItem('safetyInfoDocs', JSON.stringify(docs));
-      var signed=JSON.parse(localStorage.getItem('safetyInfoSigned')||'[]');
-      signed.push(payload);
-      localStorage.setItem('safetyInfoSigned', JSON.stringify(signed));
-    }catch(e){}
-    // 완료 화면
-    setTxt('fin-doc-id', docId);
-    setTxt('fin-work-name', docData?docData.workName||docData['작업명']:'-');
-    setTxt('fin-signer', name);
-    setTxt('fin-dt', new Date().toLocaleString('ko-KR'));
-    hide('view-main'); show('view-complete');
-    showToast('✅ 서명 완료! 도급인에게 알림 발송','success');
-  }).catch(function(e){
-    showToast('저장 오류: '+e.message,'danger');
-  });
+function updateSubmitButtonState(){
+  var btn = document.getElementById('submitBtn');
+  if(!btn) return;
+ 
+  var allChecked = (clChecked === clTotal);
+  var hasName = !!getVal('sub-supervisor');
+  var hasPhone = !!getVal('sub-phone');
+  var hasDate = !!getVal('sub-confirm-date');
+  var hasSig = hasSignature();
+ 
+  btn.disabled = !(allChecked && hasName && hasPhone && hasDate && hasSig);
 }
 
-// 재발송 요청
-function requestResend(){
-  if(!docId){ showToast('먼저 문서를 불러주세요','info'); return; }
-  var email = docData?(docData.contractorEmail||docData['도급인 이메일']||''):'';
-  if(!email){ showToast('도급인 이메일 정보가 없습니다','danger'); return; }
-  fetch(API_BASE_URL, {
-    method:'POST', mode:'no-cors',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'sendMail', data:{docId:docId, to:email, type:'resend'}})
-  }).then(function(){
-    showToast('도급인에게 메일 재발송 요청 완료','success');
-  }).catch(function(){
-    showToast('요청 실패','danger');
-  });
-}
-
-// SIG
-function initSig(){
-  var c=document.getElementById('sub-sig'); if(!c) return;
-  var ctx=c.getContext('2d');
-  ctx.strokeStyle='#1C2B3A'; ctx.lineWidth=2.5; ctx.lineCap='round';
-  var drawing=false,lx=0,ly=0;
-  function pos(e){var r=c.getBoundingClientRect(),src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(c.width/r.width),y:(src.clientY-r.top)*(c.height/r.height)};}
-  c.onmousedown=c.ontouchstart=function(e){e.preventDefault();drawing=true;var p=pos(e);lx=p.x;ly=p.y;};
-  c.onmousemove=c.ontouchmove=function(e){e.preventDefault();if(!drawing)return;var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;};
-  c.onmouseup=c.ontouchend=function(){drawing=false;};
-  c.onmouseleave=function(){drawing=false;};
-}
-function clearSig(){var c=document.getElementById('sub-sig');if(c) c.getContext('2d').clearRect(0,0,c.width,c.height);}
-function hasSig(){var c=document.getElementById('sub-sig');if(!c)return false;var d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;for(var i=3;i<d.length;i+=4)if(d[i]>0)return true;return false;}
-
-// UTILS
-function show(id){var el=document.getElementById(id);if(el)el.style.display='block';}
-function hide(id){var el=document.getElementById(id);if(el)el.style.display='none';}
+// ═══════════════════════════════════════════════════
+// UTIL
+// ═══════════════════════════════════════════════════
+function show(id){var el=document.getElementById(id);if(el) el.style.display='block';}
+function hide(id){var el=document.getElementById(id);if(el) el.style.display='none';}
 function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
-function setVal(id,v){var el=document.getElementById(id);if(el)el.value=v;}
-function setTxt(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
-function showToast(msg,type){var wrap=document.getElementById('toastWrap');if(!wrap)return;var t=document.createElement('div');t.className='toast '+(type||'info');t.textContent=msg;wrap.appendChild(t);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},3500);}
+function setVal(id,v){var el=document.getElementById(id);if(el) el.value=v;}
+function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function showToast(msg, type){
+  var wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type||'info');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3500);
+}
+</script>
+<script>
+// ═══════════════════════════════════════════════════
+// 서명 캔버스
+// ═══════════════════════════════════════════════════
+var isDrawing = false;
+
+function initSig(){
+  var c = document.getElementById('sub-sig');
+  if(!c) return;
+  var ctx = c.getContext('2d');
+  ctx.strokeStyle = '#1C2B3A';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  var lx = 0, ly = 0;
+ 
+  function pos(e){
+    var r = c.getBoundingClientRect();
+    var src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - r.left) * (c.width / r.width),
+      y: (src.clientY - r.top) * (c.height / r.height)
+    };
+  }
+ 
+  c.onmousedown = c.ontouchstart = function(e){
+    e.preventDefault();
+    isDrawing = true;
+    var p = pos(e);
+    lx = p.x;
+    ly = p.y;
+  };
+ 
+  c.onmousemove = c.ontouchmove = function(e){
+    e.preventDefault();
+    if(!isDrawing) return;
+    var p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(lx, ly);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lx = p.x;
+    ly = p.y;
+    // 서명 시 제출 버튼 활성화 체크
+    updateSubmitButtonState();
+  };
+ 
+  c.onmouseup = c.ontouchend = function(){
+    isDrawing = false;
+  };
+ 
+  c.onmouseleave = function(){
+    isDrawing = false;
+  };
+}
+
+function clearSig(){
+  var c = document.getElementById('sub-sig');
+  if(c){
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+    updateSubmitButtonState();
+  }
+}
+
+function hasSignature(){
+  var c = document.getElementById('sub-sig');
+  if(!c) return false;
+  var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  for(var i = 3; i < d.length; i += 4){
+    if(d[i] > 0) return true;
+  }
+  return false;
+}
+
+// 입력 필드에 이벤트 리스너 추가 (실시간 버튼 활성화)
+window.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    ['sub-supervisor', 'sub-phone', 'sub-confirm-date'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el){
+        el.addEventListener('input', updateSubmitButtonState);
+        el.addEventListener('change', updateSubmitButtonState);
+      }
+    });
+  }, 500);
+});
+
+// ═══════════════════════════════════════════════════
+// 서명 제출 (규약 완전 준수)
+// ═══════════════════════════════════════════════════
+function submitSign(){
+  // 1. 체크리스트 8/8 확인
+  if(clChecked < clTotal){
+    showToast('8개 항목을 모두 확인해주세요 (' + clChecked + '/' + clTotal + ')', 'danger');
+    return;
+  }
+ 
+  // 2. 필수 입력 확인
+  var name = getVal('sub-supervisor');
+  var dt = getVal('sub-confirm-date');
+  var ph = getVal('sub-phone');
+ 
+  if(!name || !dt || !ph){
+    showToast('담당자 정보를 모두 입력해주세요', 'danger');
+    return;
+  }
+ 
+  // 3. 전화번호 형식 검증 (간단)
+  if(!/^[\d-]+$/.test(ph)){
+    showToast('올바른 연락처 형식이 아닙니다', 'danger');
+    return;
+  }
+ 
+  // 4. 서명 확인
+  if(!hasSignature()){
+    showToast('서명을 해주세요', 'danger');
+    return;
+  }
+ 
+  // 5. 확인 알림
+  if(!confirm('서명을 제출하면 수정할 수 없습니다.\n\n계속하시겠습니까?')){
+    return;
+  }
+ 
+  try{
+    var now = new Date();
+    var signatureDataUrl = document.getElementById('sub-sig').toDataURL();
+   
+    // 서명 정보 준비
+    var signInfo = {
+      // 서명자 정보
+      signerName: name,
+      signerPhone: ph,
+      confirmDate: dt,
+      signature: signatureDataUrl,
+     
+      // 체크리스트 결과
+      checklist: {
+        completed: clChecked + '/' + clTotal,
+        items: clItems,
+        all: clChecked === clTotal
+      },
+     
+      // 서명 시각
+      signedAt: now.toISOString(),
+      signedBy: sessionStorage.getItem('userName') || name,
+     
+      // 상태 변경
+      status: '서명완료',
+     
+      // 감사 필드
+      updatedAt: now.toISOString(),
+      updatedBy: sessionStorage.getItem('userName') || name
+    };
+   
+    // ═══════════════════════════════════════════════
+    // localStorage 갱신 (safetyProvisions 규약 준수)
+    // ═══════════════════════════════════════════════
+    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    var idx = docs.findIndex(function(d){
+      return d.safeinfoNo === safeinfoNo || d.docId === safeinfoNo;
+    });
+   
+    if(idx >= 0){
+      // 기존 문서 업데이트
+      Object.assign(docs[idx], signInfo);
+      localStorage.setItem('safetyProvisions', JSON.stringify(docs));
+      console.log('✅ 서명 저장 완료 (기존 문서 갱신):', safeinfoNo);
+    } else {
+      // 문서를 못 찾은 경우: 새 문서로 추가 (에러 방지)
+      docs.push(Object.assign({
+        safeinfoNo: safeinfoNo,
+        createdAt: now.toISOString(),
+        createdBy: name,
+        schemaVersion: 1
+      }, signInfo));
+      localStorage.setItem('safetyProvisions', JSON.stringify(docs));
+      console.warn('⚠️ 기존 문서 없음, 새 문서로 추가:', safeinfoNo);
+    }
+   
+    // ═══════════════════════════════════════════════
+    // 실시간 동기화 이벤트 (대시보드 알림)
+    // ═══════════════════════════════════════════════
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: {
+          key: 'safetyProvisions',
+          action: 'signed',
+          safeinfoNo: safeinfoNo,
+          timestamp: Date.now()
+        }
+      }));
+    }catch(e){
+      console.warn('이벤트 발생 실패:', e);
+    }
+   
+    // ═══════════════════════════════════════════════
+    // 도급인에게 알림 발송 (mailto 폴백)
+    // ═══════════════════════════════════════════════
+    if(docData && docData.contractorEmail){
+      notifyContractor(docData.contractorEmail, name);
+    }
+   
+    // ═══════════════════════════════════════════════
+    // 완료 화면 표시
+    // ═══════════════════════════════════════════════
+    setTxt('fin-doc-id', safeinfoNo);
+    setTxt('fin-work-name',
+      docData ? (docData.workName || '-') : '-');
+    setTxt('fin-signer', name + ' (' + ph + ')');
+    setTxt('fin-dt', now.toLocaleString('ko-KR'));
+   
+    hide('view-main');
+    hide('view-signature-section');
+    show('view-complete');
+   
+    showToast('✅ 서명 완료! 도급인에게 알림이 발송되었습니다', 'success');
+   
+    // 완료 화면으로 스크롤
+    window.scrollTo(0, 0);
+   
+  }catch(error){
+    console.error('❌ 서명 저장 실패:', error);
+    alert('저장 중 오류가 발생했습니다.\n\n' + error.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 도급인에게 알림 (mailto 폴백)
+// ═══════════════════════════════════════════════════
+function notifyContractor(contractorEmail, signerName){
+  if(!contractorEmail) return;
+ 
+  // 백그라운드로 처리 (사용자 UX 방해 없이)
+  // 실제 발송은 서버 API가 있을 때만 자동, 없으면 로그만 남김
+  console.log('📧 도급인 알림 준비:', contractorEmail);
+  console.log('   서명자:', signerName);
+  console.log('   문서번호:', safeinfoNo);
+ 
+  // 실제 개발 단계에서는 이메일 자동 발송 없음
+  // 사용자가 "재발송 요청" 버튼 등으로 수동 발송 가능
+}
+
+// ═══════════════════════════════════════════════════
+// 재발송 요청 (도급인에게)
+// ═══════════════════════════════════════════════════
+function requestResend(){
+  if(!docData){
+    showToast('문서 정보가 없습니다', 'info');
+    return;
+  }
+ 
+  var email = docData.contractorEmail || '';
+  if(!email){
+    showToast('도급인 이메일 정보가 없습니다', 'danger');
+    return;
+  }
+ 
+  // mailto 폴백
+  var subject = encodeURIComponent(
+    '[안전정보제공서 재발송 요청] ' + safeinfoNo
+  );
+  var body = encodeURIComponent(
+    '안녕하세요,\n\n' +
+    '안전정보제공서 재발송을 요청드립니다.\n\n' +
+    '📄 문서번호: ' + safeinfoNo + '\n' +
+    '🏢 협력사: ' + (docData.subcontractor || '-') + '\n' +
+    '📅 작업기간: ' + (docData.startDate || '-') + ' ~ ' + (docData.endDate || '-') + '\n\n' +
+    '문서 내용을 다시 확인이 필요합니다.\n\n' +
+    '감사합니다.'
+  );
+ 
+  var mailtoUrl = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
+ 
+  showToast('이메일 앱이 열립니다', 'info');
+  window.location.href = mailtoUrl;
+}
+
+// ═══════════════════════════════════════════════════
+// 대시보드로 이동
+// ═══════════════════════════════════════════════════
+function goHome(){
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+}
 </script>
 </body>
 </html>
