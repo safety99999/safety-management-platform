@@ -578,7 +578,7 @@ body{
     <div class="quick-grid">
       <a href="포항양극재공장_안전퀴즈.html" class="qbtn">
         <div class="qbtn-ico">🎯</div><div class="qbtn-lbl">출입자<br>안전퀴즈</div></a>
-      <a href="안전정보제공서_작성.html" class="qbtn">
+      <a href="안전정보제공서_도급인용.html" class="qbtn">
         <div class="qbtn-ico">📋</div><div class="qbtn-lbl">안전정보<br>제공서</div></a>
       <a href="안전작업허가서_v2.html" class="qbtn">
         <div class="qbtn-ico">🔐</div><div class="qbtn-lbl">작업<br>허가서</div></a>
@@ -1510,9 +1510,9 @@ function renderTodayPermits() {
     } else if (p.status === '허가진행중') {
       html += '    <a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(p.workId) + '" class="pc-btn secondary">허가서 계속 →</a>';
     } else if (p.status === '허가완료') {
-      html += '    <a href="TBM_및_작업중지권_v2_1_.html?permitNo=' + encodeURIComponent(p.permitNo) + '" class="pc-btn primary">TBM 작성 →</a>';
+      html += '    <a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(p.permitNo) + '" class="pc-btn primary">TBM 작성 →</a>';
     } else if (p.status === '작업중') {
-      html += '    <a href="TBM_및_작업중지권_v2_1_.html?permitNo=' + encodeURIComponent(p.permitNo) + '" class="pc-btn secondary">TBM 보기 →</a>';
+      html += '    <a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(p.permitNo) + '" class="pc-btn secondary">TBM 보기 →</a>';
     }
     
     html += '  </div>';
