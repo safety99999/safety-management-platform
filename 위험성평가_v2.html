@@ -89,7 +89,6 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
 .f-textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .f-input.auto-filled{background:#EDFAF6;border-color:rgba(14,138,107,.35);}
-
 /* ── 시작 화면 ── */
 .welcome-hero{background:linear-gradient(145deg,#003C7E,var(--blue));
   border-radius:var(--r);padding:24px 20px;margin-bottom:16px;
@@ -401,11 +400,10 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
     <div class="pstep" id="ps1"></div>
     <div class="pstep" id="ps2"></div>
     <div class="pstep" id="ps3"></div>
-    <div class="pstep" id="ps4"></div>
   </div>
   <div class="progress-info">
     <div class="progress-label" id="progressLabel">1단계: 기본정보</div>
-    <div class="progress-pct" id="progressPct">1/4</div>
+    <div class="progress-pct" id="progressPct">1/3</div>
   </div>
 </div>
 
@@ -414,7 +412,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
   <div class="welcome-hero">
     <div class="welcome-ico">🤖</div>
     <div class="welcome-title">AI 위험성평가 v2</div>
-    <div class="welcome-sub">JSA 단계별 위험성 평가 · Claude AI 분석<br>riskDatabase 저장 · 허가서·TBM 자동 연동</div>
+    <div class="welcome-sub">JSA 단계별 위험성 평가 · JSA_DB 조회<br>Firestore 저장 · 허가서·TBM 자동 연동</div>
   </div>
 
   <!-- 모드 선택 -->
@@ -537,7 +535,6 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
     <button class="btn-primary" onclick="validateStep1()">다음 →</button>
   </div>
 </div>
-
 <!-- ══ SCREEN 2: JSA 단계별 위험성 평가 ══ -->
 <div class="screen" id="screen-step2">
   <div class="form-section">
@@ -552,9 +549,9 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
     <button class="jsa-add-btn" onclick="addJSAStep()">+ 작업 단계 추가</button>
   </div>
 
-  <!-- AI 분석 버튼 -->
+  <!-- AI 분석 버튼 (JSA_DB 조회) -->
   <button class="btn-ai" id="aiAnalyzeBtn" onclick="runAIAnalysis()">
-    <span>🤖</span><span>AI 위험 분석 실행</span>
+    <span>🤖</span><span>JSA_DB 유사 작업 검색</span>
   </button>
 
   <div id="aiResultArea"></div>
@@ -603,7 +600,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:max(30px,env(safe-are
   <div class="complete-hero">
     <div class="complete-ico">✅</div>
     <div class="complete-title">위험성평가 완료!</div>
-    <div class="complete-sub" id="completeSub">평가 결과가 riskDatabase에 저장되었습니다.</div>
+    <div class="complete-sub" id="completeSub">평가 결과가 저장되었습니다.</div>
   </div>
 
   <div class="summary-card" id="completeCard"></div>
@@ -675,7 +672,8 @@ function calcRisk(f, s) {
 // INIT
 // ═══════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function(){
-  var today = new Date().toISOString().split('T')[0];
+  initTheme();
+  var today = fmtDate(new Date());
   document.getElementById('f-date').value = today;
 
   loadTodayWorks();
@@ -688,13 +686,28 @@ window.addEventListener('DOMContentLoaded', function(){
   if(pno && !wid) setTimeout(function(){ startFromPermit(pno); }, 200);
 });
 
+// KST 기준 날짜 포맷 (규약 준수)
+function fmtDate(d){
+  d = d || new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
 function pad(n){ return ('0'+n).slice(-2); }
+
+// 다크모드 상속 (대시보드에서 설정한 값 사용)
+function initTheme(){
+  var t = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+}
 
 // ═══════════════════════════════════════════════════
 // DB 로드
 // ═══════════════════════════════════════════════════
 function loadTodayWorks(){
-  var today = new Date().toISOString().split('T')[0];
+  var today = fmtDate(new Date());
   try{
     var raw = localStorage.getItem('safetyDatabase');
     if(!raw){ allTodayWorks=[]; }
@@ -736,11 +749,20 @@ function getWorkFactory(w){
   return '기타';
 }
 
+// ⭐ 위험성평가 DB 조회 (규약: riskAssessments)
 function getRiskDB(){
-  try{ return JSON.parse(localStorage.getItem('riskDatabase')||'[]'); }
+  try{
+    // 정식 키 우선
+    var primary = JSON.parse(localStorage.getItem('riskAssessments')||'[]');
+    if(primary.length > 0) return primary;
+   
+    // 폐기 예정 키 fallback (마이그레이션 완료 시 제거)
+    var legacy1 = JSON.parse(localStorage.getItem('riskDatabase')||'[]');
+    var legacy2 = JSON.parse(localStorage.getItem('safetyRiskAssessments')||'[]');
+    return legacy1.concat(legacy2);
+  }
   catch(e){ return []; }
 }
-
 function renderWorkList(){
   var selCo = (document.getElementById('companyFilter')||{value:''}).value;
   var riskDB = getRiskDB();
@@ -767,7 +789,10 @@ function renderWorkList(){
 
   var html = '';
   works.forEach(function(w){
-    var wid = w.date+'_'+(w.originalNo||'');
+    // ⭐ workId 규약 준수: originalNo 없으면 skip
+    if(!w.originalNo) return;
+    var wid = w.date+'_'+w.originalNo;
+   
     var isDgr = w.risk==='고위험';
     var existRisk = riskMap[wid];
     var wName = (w.workName||'').substring(0,26);
@@ -777,17 +802,15 @@ function renderWorkList(){
     html += '<div class="wc-top">';
     html += '<span class="wc-badge '+(isDgr?'r':'g')+'">'+(isDgr?'고위험':'일반')+'</span>';
     if(existRisk){
-      var rl = existRisk.overallRisk||'';
-      var cls = rl==='매우고위험'?'critical':rl==='고위험'?'high':rl==='중위험'?'med':'low';
       html += '<span class="wc-status done">✅ 평가완료 ('+existRisk.overallScore+'점)</span>';
     } else {
       html += '<span class="wc-status">미평가</span>';
     }
     html += '</div>';
-    html += '<div class="wc-name">'+wName+'</div>';
+    html += '<div class="wc-name">'+escHtml(wName)+'</div>';
     html += '<div class="wc-meta">';
-    if(loc) html += '<span>📍 '+loc+'</span>';
-    html += '<span>🏢 '+(w.company||'-')+'</span>';
+    if(loc) html += '<span>📍 '+escHtml(loc)+'</span>';
+    html += '<span>🏢 '+escHtml(w.company||'-')+'</span>';
     html += '</div>';
     html += '<div class="wc-action">';
     if(existRisk){
@@ -811,7 +834,6 @@ function selectMode(mode){
     resetRiskData();
     goToStep(1);
   }
-  // 'db'는 카드에서 직접 시작
 }
 
 function startFromDB(wid, permitNo, isRedo){
@@ -819,15 +841,26 @@ function startFromDB(wid, permitNo, isRedo){
   resetRiskData();
   try{
     var raw = localStorage.getItem('safetyDatabase');
-    if(!raw) return;
+    if(!raw){
+      showToast('작업 데이터를 찾을 수 없습니다','danger');
+      goToStep(1);
+      return;
+    }
     var db = JSON.parse(raw);
-    var work = (db.workHistory||[]).find(function(w){ return (w.date+'_'+(w.originalNo||''))===wid; });
-    if(!work) return;
+    // ⭐ workId 규약 준수: originalNo 필수
+    var work = (db.workHistory||[]).find(function(w){
+      return w.originalNo && (w.date+'_'+w.originalNo)===wid;
+    });
+    if(!work){
+      showToast('작업을 찾을 수 없습니다','danger');
+      goToStep(1);
+      return;
+    }
 
     riskData.workId = wid;
     riskData.workName = work.workName||(work.workNameFull||'').substring(0,30);
     riskData.company = work.company||'';
-    riskData.date = work.date||new Date().toISOString().split('T')[0];
+    riskData.date = work.date||fmtDate(new Date());
     riskData.workType = detectWorkType(work);
     if(work.location){
       var loc = work.location;
@@ -863,7 +896,10 @@ function startFromDB(wid, permitNo, isRedo){
 
     goToStep(1);
     showToast('작업 정보가 자동 입력되었습니다','success');
-  }catch(e){ goToStep(1); }
+  }catch(e){
+    console.error('startFromDB 오류:', e);
+    goToStep(1);
+  }
 }
 
 function startFromPermit(permitNo){
@@ -984,10 +1020,9 @@ function validateStep1(){
 // ═══════════════════════════════════════════════════
 // JSA 단계 빌드
 // ═══════════════════════════════════════════════════
-var jsaSteps = [];  // [{name, hazard, frequency, severity, measures:[]}]
+var jsaSteps = [];
 
 function buildJSASteps(){
-  // 이미 있으면 유지
   if(jsaSteps.length===0){
     var defaults = DEFAULT_STEPS[riskData.workType]||DEFAULT_STEPS['일반작업'];
     jsaSteps = defaults.map(function(name){
@@ -1015,8 +1050,8 @@ function renderJSASteps(){
     html += '<div class="jsa-step-header" onclick="toggleJSA('+idx+')">';
     html += '<div class="'+numCls+'">'+(idx+1)+'</div>';
     html += '<div class="jsa-step-info">';
-    html += '<div class="jsa-step-name">'+step.name+'</div>';
-    if(step.hazard) html += '<div class="jsa-step-preview">⚠️ '+step.hazard.substring(0,20)+'...</div>';
+    html += '<div class="jsa-step-name">'+escHtml(step.name)+'</div>';
+    if(step.hazard) html += '<div class="jsa-step-preview">⚠️ '+escHtml(step.hazard.substring(0,20))+'...</div>';
     else html += '<div class="jsa-step-preview" style="color:var(--border);">위험요인 미입력</div>';
     html += '</div>';
     if(risk){
@@ -1026,12 +1061,10 @@ function renderJSASteps(){
     html += '</div>';
 
     html += '<div class="jsa-step-body" id="jsaBody'+idx+'">';
-    // 단계명 편집
     html += '<div class="form-group" style="margin-bottom:10px;">';
     html += '<label class="f-label" style="font-size:12px;">단계명</label>';
     html += '<input class="f-input" style="font-size:14px;" value="'+escHtml(step.name)+'" onchange="updateStep('+idx+',\'name\',this.value)">';
     html += '</div>';
-    // 위험요인
     html += '<div class="form-group" style="margin-bottom:10px;">';
     html += '<label class="f-label" style="font-size:12px;">위험요인<span class="req">*</span></label>';
     html += '<input class="f-input" style="font-size:14px;" placeholder="예: 용접 불티 비산으로 화재 발생" value="'+escHtml(step.hazard)+'" onchange="updateStep('+idx+',\'hazard\',this.value)">';
@@ -1047,11 +1080,9 @@ function renderJSASteps(){
     html += '<div class="rm-legend-item"><div class="rm-dot" style="background:#D6273D;"></div>매우고위험 (16~25)</div>';
     html += '</div>';
 
-    // 매트릭스 헤더
     html += '<div class="rm-grid">';
     html += '<div class="rm-head" style="font-size:9px;">강도↑<br>빈도→</div>';
     for(var f=1;f<=5;f++) html += '<div class="rm-head">'+f+'</div>';
-    // 매트릭스 셀 (강도 5→1, 빈도 1→5)
     for(var sev=5;sev>=1;sev--){
       html += '<div class="rm-head">'+sev+'</div>';
       for(var fre=1;fre<=5;fre++){
@@ -1063,7 +1094,6 @@ function renderJSASteps(){
     }
     html += '</div>';
 
-    // 선택 결과
     if(risk){
       html += '<div class="risk-score-badge '+risk.level+'">';
       html += '<div class="rsb-num '+risk.level+'">'+risk.score+'</div>';
@@ -1073,7 +1103,6 @@ function renderJSASteps(){
     }
     html += '</div>';
 
-    // 저감 대책
     html += '<div style="margin-top:10px;">';
     html += '<label class="f-label" style="font-size:12px;">저감 대책</label>';
     html += '<div class="measure-list" id="measures'+idx+'">';
@@ -1088,7 +1117,6 @@ function renderJSASteps(){
     html += '</div>';
     html += '</div>';
 
-    // 단계 삭제
     if(jsaSteps.length>1){
       html += '<button class="jsa-del-btn" onclick="delJSAStep('+idx+')">🗑 이 단계 삭제</button>';
     }
@@ -1099,7 +1127,6 @@ function renderJSASteps(){
   container.innerHTML = html;
   updateJSAProgress(filled);
 
-  // 처음 진입 시 첫 번째 단계 자동 열기
   if(container.innerHTML && !document.querySelector('.jsa-step-body.open')){
     openJSA(0);
   }
@@ -1110,7 +1137,6 @@ function toggleJSA(idx){
   var arrow = document.getElementById('jsaArrow'+idx);
   if(!body) return;
   var isOpen = body.classList.contains('open');
-  // 모두 닫기
   document.querySelectorAll('.jsa-step-body').forEach(function(b){ b.classList.remove('open'); });
   document.querySelectorAll('.jsa-step-arrow').forEach(function(a){ a.classList.remove('open'); });
   if(!isOpen){ body.classList.add('open'); arrow.classList.add('open'); }
@@ -1127,13 +1153,11 @@ function selectRisk(idx, freq, sev){
   jsaSteps[idx].frequency = freq;
   jsaSteps[idx].severity = sev;
   renderJSASteps();
-  // 방금 선택한 단계 다시 열기
   setTimeout(function(){ openJSA(idx); },10);
 }
 
 function updateStep(idx, key, val){
   jsaSteps[idx][key] = val;
-  // 카드 헤더 미리보기만 갱신 (전체 리렌더 불필요)
   var nameEl = document.querySelector('#jsaCard'+idx+' .jsa-step-name');
   if(nameEl && key==='name') nameEl.textContent = val;
 }
@@ -1169,9 +1193,8 @@ function delJSAStep(idx){
 function updateJSAProgress(filled){
   setTxt('jsaProgress', filled+'/'+jsaSteps.length+' 입력');
 }
-
 // ═══════════════════════════════════════════════════
-// AI 분석 (Claude API)
+// ⭐ JSA_DB 조회 (Claude API 대신 로컬 검색)
 // ═══════════════════════════════════════════════════
 async function runAIAnalysis(){
   var btn = document.getElementById('aiAnalyzeBtn');
@@ -1179,131 +1202,176 @@ async function runAIAnalysis(){
 
   var area = document.getElementById('aiResultArea');
   area.innerHTML = '<div class="ai-loading">'+
-    '<div class="ai-loading-ico">🤖</div>'+
-    '<div class="ai-loading-txt">Claude AI가 위험 요인을 분석하고 있습니다...<br>과거 사고 이력 및 작업 유형 기반 분석 중</div>'+
+    '<div class="ai-loading-ico">🔍</div>'+
+    '<div class="ai-loading-txt">JSA_DB에서 유사 작업을 검색하고 있습니다...<br>과거 위험성평가 데이터 기반 분석 중</div>'+
     '</div>';
 
-  showToast('AI 분석 시작...','ai');
-
-  var prompt = buildAIPrompt();
+  showToast('JSA_DB 검색 시작...','ai');
 
   try{
-    var response = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    var data = await response.json();
-    var text = (data.content||[]).map(function(c){ return c.text||''; }).join('');
-    var parsed = parseAIResult(text);
-    renderAIResult(parsed);
-    aiAnalyzed = true;
-    showToast('AI 분석 완료!','success');
+    // JSA_DB 캐시 로드 (Firestore 이관 전까지는 localStorage)
+    var jsaCache = await initJSACache();
+   
+    if(!jsaCache || jsaCache.length === 0){
+      renderNoJSAData();
+      btn.disabled = false;
+      return;
+    }
+   
+    // 유사 작업 검색
+    var similar = findSimilarJSA(riskData.workName, jsaCache);
+   
+    if(similar.length === 0){
+      renderNoSimilar();
+    } else {
+      renderJSASuggestions(similar);
+      aiAnalyzed = true;
+      showToast('유사 작업 '+similar.length+'건 발견!','success');
+    }
   }catch(e){
-    renderAIError(e.message);
-    showToast('AI 분석 오류: '+e.message,'danger');
+    console.error('JSA 검색 오류:', e);
+    renderJSAError(e.message);
   }
   btn.disabled = false;
 }
 
-function buildAIPrompt(){
-  var stepsDesc = jsaSteps.map(function(s,i){
-    return (i+1)+'. '+s.name+(s.hazard?': '+s.hazard:'(위험요인 미입력)');
-  }).join('\n');
-
-  return '당신은 산업안전보건 전문가입니다. 아래 작업에 대해 JSON으로만 응답하세요. 설명, 마크다운, 코드블록 없이 순수 JSON만 출력하세요.\n\n'+
-  '작업명: '+riskData.workName+'\n'+
-  '작업유형: '+riskData.workType+'\n'+
-  '작업장소: '+riskData.location+' '+riskData.detailLocation+'\n'+
-  '협력사: '+riskData.company+'\n'+
-  '작업 단계:\n'+stepsDesc+'\n\n'+
-  '출력 형식:\n'+
-  '{"accidents":[{"date":"날짜","desc":"사고 내용 한줄"}],"hazards":[{"type":"위험유형","icon":"이모지","desc":"설명"}],"measures":["대책1","대책2","대책3","대책4","대책5"],"riskLevel":"고위험","summary":"종합 평가 한줄 의견"}\n\n'+
-  'accidents는 유사 작업 사고 이력 2~3건, hazards는 주요 위험요인 3~4개, measures는 핵심 안전대책 5가지, riskLevel은 저위험/중위험/고위험/매우고위험 중 하나, summary는 50자 이내로 작성하세요.';
+// JSA_DB 캐시 (localStorage 24시간)
+async function initJSACache(){
+  var CACHE_KEY = 'jsa_cache';
+  var CACHE_TIME_KEY = 'jsa_cache_at';
+  var CACHE_DURATION = 24 * 60 * 60 * 1000;
+ 
+  var cachedAt = parseInt(localStorage.getItem(CACHE_TIME_KEY) || '0');
+  var cached = localStorage.getItem(CACHE_KEY);
+ 
+  if(cached && Date.now() - cachedAt < CACHE_DURATION){
+    return JSON.parse(cached);
+  }
+ 
+  // Firestore 이관 전: 로컬에서만 조회 (없으면 빈 배열)
+  // Firestore 이관 후: db.collection('JSA_DB').get() 사용
+  return JSON.parse(localStorage.getItem('jsa_local_db') || '[]');
 }
 
-function parseAIResult(text){
-  try{
-    var clean = text.replace(/```json|```/g,'').trim();
-    var first = clean.indexOf('{');
-    var last = clean.lastIndexOf('}');
-    if(first>=0&&last>first) clean=clean.substring(first,last+1);
-    return JSON.parse(clean);
-  }catch(e){
-    return {
-      accidents:[{date:'',desc:'AI 파싱 오류 — 원문: '+text.substring(0,100)}],
-      hazards:[{type:'분석 실패',icon:'⚠️',desc:'JSON 파싱 오류가 발생했습니다. AI 결과를 수동으로 확인하세요.'}],
-      measures:['작업 전 위험성 평가 재실시','안전관리자 현장 확인','보호구 착용 의무화','TBM 실시 후 작업 시작'],
-      riskLevel:'고위험',
-      summary:'AI 분석 오류 — 수동 입력 필요'
-    };
-  }
+// 키워드 유사도 계산
+function tokenize(text){
+  return (text||'').replace(/[^\uAC00-\uD7A3a-zA-Z0-9]/g,' ')
+    .split(/\s+/).filter(function(t){ return t.length > 0; });
 }
 
-function renderAIResult(r){
-  var html = '';
+function calculateSimilarity(a, b){
+  var tokensA = tokenize(a);
+  var tokensB = tokenize(b);
+  if(tokensA.length === 0 || tokensB.length === 0) return 0;
+  var common = tokensA.filter(function(t){ return tokensB.indexOf(t) >= 0; });
+  return common.length / Math.max(tokensA.length, tokensB.length);
+}
 
-  // 과거 사고 이력
-  if(r.accidents&&r.accidents.length){
-    html += '<div class="ai-result-card">';
-    html += '<div class="ai-result-title">⚠️ 유사 작업 사고 이력 <span class="ai-result-badge">AI 분석</span></div>';
-    r.accidents.forEach(function(a){
-      html += '<div class="accident-card">';
-      if(a.date) html += '<div class="accident-date">📅 '+a.date+'</div>';
-      html += '<div class="accident-desc">'+escHtml(a.desc)+'</div>';
-      html += '</div>';
-    });
+function findSimilarJSA(workName, allJSA){
+  return allJSA
+    .map(function(jsa){
+      var jsaWorkName = jsa.workInfo ? jsa.workInfo.workName : jsa.workName || '';
+      return {
+        jsa: jsa,
+        score: calculateSimilarity(workName, jsaWorkName)
+      };
+    })
+    .filter(function(item){ return item.score > 0.2; })
+    .sort(function(a, b){ return b.score - a.score; })
+    .slice(0, 3);
+}
+
+function renderJSASuggestions(candidates){
+  var html = '<div class="ai-result-card">';
+  html += '<div class="ai-result-title">🔍 JSA_DB 유사 작업 발견 <span class="ai-result-badge">'+candidates.length+'건</span></div>';
+ 
+  candidates.forEach(function(c, i){
+    var jsa = c.jsa;
+    var info = jsa.workInfo || jsa;
+    var stages = jsa.riskAssessment || jsa.steps || [];
+   
+    html += '<div style="padding:12px;margin-bottom:8px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+    html += '<div style="font-size:14px;font-weight:800;color:var(--text);">'+escHtml(info.workName||'-').substring(0,30)+'</div>';
+    html += '<div style="font-size:12px;font-weight:800;color:var(--navy2);">유사도 '+Math.round(c.score*100)+'%</div>';
     html += '</div>';
-  }
-
-  // 잠재 위험요인
-  if(r.hazards&&r.hazards.length){
-    html += '<div class="ai-result-card">';
-    html += '<div class="ai-result-title">🔍 AI 잠재 위험 예측 <span class="ai-result-badge">AI 분석</span></div>';
-    r.hazards.forEach(function(h){
-      html += '<div class="ai-hazard-item">';
-      html += '<div class="ai-hazard-type">'+(h.icon||'⚠️')+' '+escHtml(h.type)+'</div>';
-      html += '<div class="ai-hazard-desc">'+escHtml(h.desc)+'</div>';
-      html += '</div>';
-    });
+    html += '<div style="font-size:12px;color:var(--sub);margin-bottom:8px;">📋 '+stages.length+'개 단계</div>';
+    html += '<button class="ai-apply-btn" style="margin-top:0;padding:10px;" onclick="applyJSAData('+i+')">이 JSA 적용하기 →</button>';
     html += '</div>';
-  }
-
-  // AI 추천 대책
-  if(r.measures&&r.measures.length){
-    html += '<div class="ai-result-card">';
-    html += '<div class="ai-result-title">💡 AI 추천 저감 대책 <span class="ai-result-badge">AI 분석</span></div>';
-    r.measures.forEach(function(m){
-      html += '<div class="ai-measure-item"><div class="ai-measure-dot"></div><div class="ai-measure-txt">'+escHtml(m)+'</div></div>';
-    });
-    // 마지막 단계에 일괄 적용 버튼
-    html += '<button class="ai-apply-btn" onclick="applyAIMeasures('+JSON.stringify(r.measures).replace(/'/g,"\\'")+')">✅ 마지막 단계에 대책 적용</button>';
-    html += '</div>';
-  }
-
-  // 종합 의견 자동 입력
-  if(r.summary) riskData.opinion = r.summary;
-
+  });
+ 
+  html += '<div style="margin-top:12px;padding:10px;background:var(--tint);border-radius:8px;font-size:12px;color:var(--sub);line-height:1.5;">';
+  html += '💡 JSA를 적용하면 단계·위험요인·대책이 자동 채워집니다. 검토 후 수정하세요.';
+  html += '</div>';
+  html += '</div>';
+ 
+  // 캐시에 저장 (applyJSAData용)
+  window._jsaCandidates = candidates;
+ 
   document.getElementById('aiResultArea').innerHTML = html;
 }
 
-function renderAIError(msg){
+function applyJSAData(idx){
+  var candidate = window._jsaCandidates ? window._jsaCandidates[idx] : null;
+  if(!candidate){ showToast('데이터를 찾을 수 없습니다','danger'); return; }
+ 
+  var jsa = candidate.jsa;
+  var stages = jsa.riskAssessment || jsa.steps || [];
+ 
+  if(!stages.length){ showToast('단계 정보가 없습니다','danger'); return; }
+ 
+  if(!confirm('현재 입력한 단계가 모두 대체됩니다. 계속하시겠습니까?')) return;
+ 
+  // JSA 데이터를 jsaSteps에 적용
+  jsaSteps = stages.map(function(stage){
+    var hazards = stage.hazards || [];
+    var firstHazard = hazards[0] || {};
+    var measures = (stage.currentMeasures || []).concat(stage.standardMeasures || []);
+   
+    return {
+      name: stage.stageName || stage.name || '단계',
+      hazard: firstHazard.originalHazard || firstHazard.desc || stage.hazard || '',
+      frequency: firstHazard.probability || stage.frequency || 0,
+      severity: firstHazard.severity || stage.severity || 0,
+      measures: measures.slice(0, 5)
+    };
+  });
+ 
+  renderJSASteps();
+ 
+  // JSA 참조 정보 저장 (감사용)
+  riskData.originalJsaId = jsa.metadata ? jsa.metadata.jsaId : jsa.jsaId || null;
+  riskData.aiSource = 'JSA_DB';
+ 
+  showToast('JSA 데이터가 적용되었습니다. 검토 후 수정하세요','success');
+ 
+  // AI 결과 영역에 재적용 안내
   document.getElementById('aiResultArea').innerHTML =
-    '<div class="ai-error-box"><div class="ai-error-txt">⚠️ AI 분석 오류: '+escHtml(msg)+'<br><br>네트워크 연결을 확인하거나 잠시 후 다시 시도하세요.<br>AI 없이도 수동으로 위험도 입력 후 제출 가능합니다.</div></div>';
+    '<div class="info-box" style="margin-top:12px;">'+
+    '<div class="info-box-title">✅ JSA 적용 완료</div>'+
+    '<div class="info-box-text">참조 JSA: '+(riskData.originalJsaId || '-')+'<br>단계·위험요인·대책이 자동 입력되었습니다. 위 단계별 카드를 확인하세요.</div>'+
+    '</div>';
 }
 
-function applyAIMeasures(measures){
-  var lastIdx = jsaSteps.length-1;
-  measures.forEach(function(m){
-    if(jsaSteps[lastIdx].measures.indexOf(m)<0) jsaSteps[lastIdx].measures.push(m);
-  });
-  renderJSASteps();
-  setTimeout(function(){ openJSA(lastIdx); },10);
-  showToast('AI 대책이 마지막 단계에 적용되었습니다','success');
+function renderNoJSAData(){
+  document.getElementById('aiResultArea').innerHTML =
+    '<div class="info-box">'+
+    '<div class="info-box-title">📋 JSA_DB 데이터 없음</div>'+
+    '<div class="info-box-text">아직 JSA_DB가 준비되지 않았습니다.<br>수동으로 위험요인을 입력해주세요.<br><br>💡 JSA_DB는 Firestore 이관 후 자동으로 활용됩니다.</div>'+
+    '</div>';
+}
+
+function renderNoSimilar(){
+  document.getElementById('aiResultArea').innerHTML =
+    '<div class="info-box">'+
+    '<div class="info-box-title">🔍 유사 작업 없음</div>'+
+    '<div class="info-box-text">JSA_DB에서 유사한 작업을 찾을 수 없습니다.<br>수동으로 위험요인을 입력해주세요.</div>'+
+    '</div>';
+}
+
+function renderJSAError(msg){
+  document.getElementById('aiResultArea').innerHTML =
+    '<div class="ai-error-box"><div class="ai-error-txt">⚠️ 검색 오류: '+escHtml(msg)+'<br><br>수동으로 위험요인을 입력해주세요.</div></div>';
 }
 
 // ═══════════════════════════════════════════════════
@@ -1313,7 +1381,6 @@ function validateStep2(){
   var filled = jsaSteps.filter(function(s){ return s.frequency>0&&s.severity>0&&s.hazard; }).length;
   if(filled===0){ showToast('최소 1개 단계의 위험요인과 위험도를 입력해주세요','danger'); return; }
 
-  // 종합 위험도 계산 (최고값)
   var maxScore = 0;
   jsaSteps.forEach(function(s){
     if(s.frequency>0&&s.severity>0){
@@ -1321,13 +1388,12 @@ function validateStep2(){
       if(sc>maxScore) maxScore=sc;
     }
   });
-  var overallRisk = calcRisk(1,maxScore);
-  // 실제 최고점으로 override
-  overallRisk.score = maxScore;
-  if(maxScore<=4) overallRisk.level='low', overallRisk.label='저위험';
-  else if(maxScore<=9) overallRisk.level='med', overallRisk.label='중위험';
-  else if(maxScore<=15) overallRisk.level='high', overallRisk.label='고위험';
-  else overallRisk.level='critical', overallRisk.label='매우고위험';
+ 
+  var overallRisk = {score: maxScore};
+  if(maxScore<=4){ overallRisk.level='low'; overallRisk.label='저위험'; }
+  else if(maxScore<=9){ overallRisk.level='med'; overallRisk.label='중위험'; }
+  else if(maxScore<=15){ overallRisk.level='high'; overallRisk.label='고위험'; }
+  else { overallRisk.level='critical'; overallRisk.label='매우고위험'; }
 
   riskData.steps = jsaSteps.slice();
   riskData.overallScore = maxScore;
@@ -1346,7 +1412,7 @@ function buildSummary(){
   var badgeHtml = '<div class="overall-badge '+cls+'">';
   badgeHtml += '<div class="ob-level">'+risk+'</div>';
   badgeHtml += '<div class="ob-score">'+riskData.overallScore+'</div>';
-  badgeHtml += '<div class="ob-desc">'+riskData.workName+' · '+riskData.workType+'<br>';
+  badgeHtml += '<div class="ob-desc">'+escHtml(riskData.workName)+' · '+escHtml(riskData.workType)+'<br>';
   badgeHtml += '최고 위험도 점수 기준 (빈도×강도)</div>';
   badgeHtml += '</div>';
   document.getElementById('overallBadgeArea').innerHTML = badgeHtml;
@@ -1367,16 +1433,14 @@ function buildSummary(){
   if(riskData.permitNo) tableHtml += buildSummaryRow('연결 허가서', riskData.permitNo, true);
   document.getElementById('summaryTable').innerHTML = tableHtml;
 
-  // 종합 의견 자동 입력
   if(riskData.opinion) setVal('f-opinion', riskData.opinion);
 
-  // 허가서 목록 로드
   buildPermitLinkDropdown();
 }
 
 function buildSummaryRow(key, val, hl){
-  return '<div class="summary-row"><span class="summary-key">'+key+'</span>'+
-    '<span class="summary-val'+(hl?' hl':'')+'">'+(val||'-')+'</span></div>';
+  return '<div class="summary-row"><span class="summary-key">'+escHtml(key)+'</span>'+
+    '<span class="summary-val'+(hl?' hl':'')+'">'+escHtml(val||'-')+'</span></div>';
 }
 
 function buildPermitLinkDropdown(){
@@ -1385,32 +1449,36 @@ function buildPermitLinkDropdown(){
   sel.innerHTML = '<option value="">없음 (독립 평가)</option>';
   try{
     var permits = JSON.parse(localStorage.getItem('safetyPermits')||'[]');
-    var today = riskData.date||new Date().toISOString().split('T')[0];
-    var todayPermits = permits.filter(function(p){ return p.startDate===today||p.createdAt&&p.createdAt.indexOf(today)===0; });
+    var today = riskData.date || fmtDate(new Date());
+    var todayPermits = permits.filter(function(p){
+      // startDate 기반 (createdAt UTC 이슈 회피)
+      return p.startDate === today;
+    });
     todayPermits.forEach(function(p){
-      var sel_opt = document.createElement('option');
-      sel_opt.value = p.permitNo;
-      sel_opt.textContent = p.permitNo+' — '+p.workName;
-      if(p.permitNo===riskData.permitNo) sel_opt.selected=true;
-      sel.appendChild(sel_opt);
+      var opt = document.createElement('option');
+      opt.value = p.permitNo;
+      opt.textContent = p.permitNo+' — '+(p.workName||'');
+      if(p.permitNo===riskData.permitNo) opt.selected=true;
+      sel.appendChild(opt);
     });
   }catch(e){}
 }
 
 // ═══════════════════════════════════════════════════
-// 제출 + 저장
+// ⭐⭐⭐ 제출 + 저장 (규약 완전 준수)
 // ═══════════════════════════════════════════════════
 function submitAssessment(){
   riskData.opinion = getVal('f-opinion');
   riskData.linkedPermitNo = getVal('f-permitLink');
   riskData.status = '평가완료';
   riskData.createdAt = new Date().toISOString();
-  riskData.riskId = 'RISK-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+
-    String(Math.floor(Math.random()*1000)).padStart(3,'0');
+ 
+  // ⭐ riskId 규약 준수: RA-YYYYMMDD-SEQ3
+  riskData.riskId = getNextRiskIdLocal();
 
   saveRiskDB();
 
-  // 허가서 연동: 위험도 정보 반영
+  // 허가서 연동
   if(riskData.linkedPermitNo){
     linkToPermit(riskData.linkedPermitNo);
   } else if(riskData.permitNo){
@@ -1418,7 +1486,6 @@ function submitAssessment(){
   }
 
   // 완료 화면
-  var cls = riskData.overallRisk==='매우고위험'?'critical':riskData.overallRisk==='고위험'?'high':riskData.overallRisk==='중위험'?'med':'low';
   var badge = document.getElementById('riskIdBadge');
   if(badge){ badge.textContent=riskData.riskId; badge.style.display='block'; }
 
@@ -1428,13 +1495,12 @@ function submitAssessment(){
     buildSummaryRow('종합 위험도', riskData.overallRisk+' ('+riskData.overallScore+'점)')+
     buildSummaryRow('작업명', riskData.workName)+
     buildSummaryRow('평가 단계', riskData.steps.length+'개')+
-    buildSummaryRow('저장 위치', 'riskDatabase (localStorage)')+
+    buildSummaryRow('저장 위치', 'localStorage (riskAssessments)')+
     (riskData.linkedPermitNo?buildSummaryRow('연결 허가서', riskData.linkedPermitNo):'');
 
   setTxt('completeSub',
-    '위험성평가 결과가 riskDatabase에 저장되었습니다.\n대시보드에 즉시 반영됩니다.');
+    '위험성평가 결과가 저장되었습니다.\n대시보드에 즉시 반영됩니다.');
 
-  // 허가서 이동 버튼
   var btnPermit = document.getElementById('btnGoPermit');
   if(btnPermit && !riskData.linkedPermitNo && !riskData.permitNo){
     btnPermit.style.display='flex';
@@ -1448,54 +1514,189 @@ function submitAssessment(){
   showToast('✅ 위험성평가 제출 완료!','success');
 }
 
-function saveRiskDB(){
-  var riskDB = getRiskDB();
-  // 동일 workId 있으면 업데이트, 없으면 추가
-  var idx = riskDB.findIndex(function(r){ return r.workId===riskData.workId&&riskData.workId; });
-  var saveObj = JSON.parse(JSON.stringify(riskData));
-  if(idx>=0) riskDB[idx]=saveObj;
-  else riskDB.unshift(saveObj);
-  localStorage.setItem('riskDatabase', JSON.stringify(riskDB));
-  
-  // 🔥 대시보드 실시간 동기화
+// ⭐ 로컬 시퀀스 발급 (Firestore Transaction 이관 전 임시)
+function getNextRiskIdLocal(){
+  var today = fmtDate(new Date()).replace(/-/g, '');  // 20251124
+  var seqKey = 'ra_seq_' + today;
+ 
+  // 오늘 이미 저장된 riskId 개수 확인
   try {
-    var event = new Event('storage');
-    event.key = 'safetyRiskAssessment';
-    window.dispatchEvent(event);
-  } catch(e) {}
+    var riskDB = JSON.parse(localStorage.getItem('riskAssessments') || '[]');
+    var todayCount = riskDB.filter(function(r){
+      return r.riskId && r.riskId.startsWith('RA-' + today);
+    }).length;
+    var seq = todayCount + 1;
+    return 'RA-' + today + '-' + String(seq).padStart(3, '0');
+  } catch(e) {
+    return 'RA-' + today + '-001';
+  }
+}
+
+// ⭐⭐⭐ 규약 준수 저장 로직
+function saveRiskDB(){
+  var STORAGE_KEY = 'riskAssessments';  // ⭐ 규약 준수 (riskDatabase 폐기)
+ 
+  try {
+    // 기존 데이터 로드
+    var riskDB = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+   
+    // ⭐ 폐기 예정 키 마이그레이션 (한 번만 실행)
+    var legacy1 = localStorage.getItem('riskDatabase');
+    var legacy2 = localStorage.getItem('safetyRiskAssessments');
+   
+    if(legacy1) {
+      try {
+        var legacyData1 = JSON.parse(legacy1);
+        legacyData1.forEach(function(item){
+          // 중복 없이 추가 (riskId 기준)
+          if(!riskDB.find(function(r){ return r.riskId === item.riskId; })){
+            riskDB.push(item);
+          }
+        });
+        localStorage.removeItem('riskDatabase');  // 마이그레이션 완료 후 제거
+        console.log('✅ riskDatabase 마이그레이션 완료');
+      } catch(e) { console.warn('riskDatabase 마이그레이션 실패:', e); }
+    }
+   
+    if(legacy2) {
+      try {
+        var legacyData2 = JSON.parse(legacy2);
+        legacyData2.forEach(function(item){
+          if(!riskDB.find(function(r){ return r.riskId === item.riskId; })){
+            riskDB.push(item);
+          }
+        });
+        localStorage.removeItem('safetyRiskAssessments');
+        console.log('✅ safetyRiskAssessments 마이그레이션 완료');
+      } catch(e) { console.warn('safetyRiskAssessments 마이그레이션 실패:', e); }
+    }
+   
+    // ⭐ 저장 데이터 구조 (대시보드 매칭 필드 포함)
+    var saveObj = {
+      // 핵심 식별자
+      riskId: riskData.riskId,
+      workId: riskData.workId,                    // 대시보드 매칭 (작업별 필터링)
+      permitNo: riskData.permitNo || '',
+      linkedPermitNo: riskData.linkedPermitNo || '',
+     
+      // 작업 정보
+      workName: riskData.workName,
+      workType: riskData.workType,
+      location: riskData.location,
+      detailLocation: riskData.detailLocation,
+      company: riskData.company,                  // 대시보드 매칭 (협력사별 필터링)
+      workers: riskData.workers,
+      workDesc: riskData.workDesc,
+     
+      // 평가자
+      assessor: riskData.assessor,                // 대시보드 매칭 (누가 평가했는지)
+     
+      // 날짜 (KST 기준)
+      date: riskData.date,                        // 대시보드 매칭 (오늘 필터)
+     
+      // ⭐ 평가 결과 (대시보드가 조회하는 핵심 필드)
+      overallScore: riskData.overallScore,        // 위험도 점수
+      overallRisk: riskData.overallRisk,          // 저위험/중위험/고위험/매우고위험
+      status: '평가완료',                          // 상태 규약
+     
+      // 상세
+      steps: riskData.steps,
+      opinion: riskData.opinion,
+     
+      // JSA_DB 참조 (감사용)
+      originalJsaId: riskData.originalJsaId || null,
+      aiSource: riskData.aiSource || null,
+     
+      // ⭐ 감사 필드 (규약 준수)
+      createdAt: riskData.createdAt,
+      createdBy: sessionStorage.getItem('userName') || riskData.assessor || 'anonymous',
+      updatedAt: riskData.createdAt,
+      updatedBy: sessionStorage.getItem('userName') || riskData.assessor || 'anonymous',
+      schemaVersion: 1
+    };
+   
+    // 동일 workId 있으면 업데이트, 없으면 추가
+    var idx = riskData.workId ?
+      riskDB.findIndex(function(r){ return r.workId === riskData.workId; }) : -1;
+   
+    if(idx >= 0){
+      // 업데이트: createdAt/createdBy 보존
+      saveObj.createdAt = riskDB[idx].createdAt || saveObj.createdAt;
+      saveObj.createdBy = riskDB[idx].createdBy || saveObj.createdBy;
+      riskDB[idx] = saveObj;
+    } else {
+      riskDB.unshift(saveObj);
+    }
+   
+    // localStorage 저장
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(riskDB));
+   
+    // ⭐ 표준 이벤트 발생 (같은 탭·다른 탭 모두 감지 가능)
+    try {
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: { key: STORAGE_KEY, timestamp: Date.now() }
+      }));
+    } catch(e) {
+      console.warn('CustomEvent 미지원:', e);
+    }
+   
+    console.log('✅ 위험성평가 저장 완료:', riskData.riskId);
+    console.log('저장된 데이터:', saveObj);
+   
+  } catch(error) {
+    console.error('❌ 위험성평가 저장 실패:', error);
+    alert('저장 중 오류가 발생했습니다.\n\n' + error.message);
+    throw error;
+  }
 }
 
 function linkToPermit(permitNo){
   try{
     var permits = JSON.parse(localStorage.getItem('safetyPermits')||'[]');
+    var updated = false;
     permits.forEach(function(p){
       if(p.permitNo===permitNo){
         p.riskScore = riskData.overallScore;
         p.riskLevel = riskData.overallRisk;
         p.riskId = riskData.riskId;
-        // 주요 대책 추출
         var allMeasures = [];
         riskData.steps.forEach(function(s){ allMeasures=allMeasures.concat(s.measures||[]); });
         p.riskMeasures = allMeasures.slice(0,8);
+        p.updatedAt = new Date().toISOString();
+        updated = true;
       }
     });
-    localStorage.setItem('safetyPermits', JSON.stringify(permits));
-    showToast('허가서 '+permitNo+'에 위험도 반영 완료','success');
-  }catch(e){}
+    if(updated){
+      localStorage.setItem('safetyPermits', JSON.stringify(permits));
+     
+      // 허가서 갱신 이벤트도 발생
+      try {
+        window.dispatchEvent(new CustomEvent('app-data-changed', {
+          detail: { key: 'safetyPermits', timestamp: Date.now() }
+        }));
+      } catch(e) {}
+     
+      showToast('허가서 '+permitNo+'에 위험도 반영 완료','success');
+    }
+  }catch(e){
+    console.error('허가서 연동 실패:', e);
+  }
 }
 
 // ═══════════════════════════════════════════════════
 // 완료 화면 액션
 // ═══════════════════════════════════════════════════
 function goToPermit(){
-  var url = '안전작업허가서_v2_1_.html';
-  if(riskData.workId) url += '?workId='+encodeURIComponent(riskData.workId);
-  if(riskData.riskId) url += (url.indexOf('?')>=0?'&':'?')+'riskId='+encodeURIComponent(riskData.riskId);
+  var url = '안전작업허가서_v2.html';
+  var params = [];
+  if(riskData.workId) params.push('workId='+encodeURIComponent(riskData.workId));
+  if(riskData.riskId) params.push('riskId='+encodeURIComponent(riskData.riskId));
+  if(params.length) url += '?' + params.join('&');
   window.location.href = url;
 }
 
 function goToDash(){
-  window.location.href = '안전관리플랫폼_대시보드_V6_1_.html';
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
 
 function startNew(){
@@ -1536,22 +1737,17 @@ function renderHistoryFull(){
 
 function histCardHTML(r){
   var cls = r.overallRisk==='매우고위험'?'critical':r.overallRisk==='고위험'?'high':r.overallRisk==='중위험'?'med':'low';
-  return '<div class="hist-card" onclick="loadHistory(\''+r.riskId+'\')">';
-  // 아래처럼 template literal 대신 문자열 이어붙이기
-}
-function histCardHTML(r){
-  var cls = r.overallRisk==='매우고위험'?'critical':r.overallRisk==='고위험'?'high':r.overallRisk==='중위험'?'med':'low';
   var html = '<div class="hist-card">';
   html += '<div class="hist-top">';
-  html += '<span class="hist-score '+cls+'">'+(r.overallRisk||'-')+' '+r.overallScore+'점</span>';
-  html += '<span style="font-size:11px;color:var(--sub);font-weight:600;">'+(r.date||'')+'</span>';
+  html += '<span class="hist-score '+cls+'">'+escHtml(r.overallRisk||'-')+' '+r.overallScore+'점</span>';
+  html += '<span style="font-size:11px;color:var(--sub);font-weight:600;">'+escHtml(r.date||'')+'</span>';
   html += '</div>';
-  html += '<div class="hist-name">'+(r.workName||'-')+'</div>';
+  html += '<div class="hist-name">'+escHtml(r.workName||'-')+'</div>';
   html += '<div class="hist-meta">';
-  html += '<span>🏭 '+(r.location||'-')+'</span>';
-  html += '<span>🏢 '+(r.company||'-')+'</span>';
+  html += '<span>🏭 '+escHtml(r.location||'-')+'</span>';
+  html += '<span>🏢 '+escHtml(r.company||'-')+'</span>';
   html += '<span>📊 '+(r.steps?r.steps.length:0)+'단계</span>';
-  if(r.riskId) html += '<span style="font-size:11px;">'+r.riskId+'</span>';
+  if(r.riskId) html += '<span style="font-size:11px;">'+escHtml(r.riskId)+'</span>';
   html += '</div></div>';
   return html;
 }
@@ -1560,26 +1756,30 @@ function histCardHTML(r){
 // RESET
 // ═══════════════════════════════════════════════════
 function resetRiskData(){
-  var today = new Date().toISOString().split('T')[0];
+  var today = fmtDate(new Date());
   riskData = {
     riskId:'', workId:'', permitNo:'', date:today, assessor:'',
     workName:'', location:'', detailLocation:'', company:'', workers:'',
     workType:'', workDesc:'', steps:[], overallScore:0, overallRisk:'',
-    opinion:'', linkedPermitNo:'', status:'평가완료', createdAt:''
+    opinion:'', linkedPermitNo:'', status:'평가완료', createdAt:'',
+    originalJsaId:null, aiSource:null
   };
   jsaSteps=[];
   aiAnalyzed=false;
-  // 폼 리셋
   ['f-workName','f-detailLoc','f-assessor','f-company','f-workers','f-workDesc','f-opinion'].forEach(function(id){
     setVal(id,'');
   });
   setVal('f-date', today);
-  // 배너 숨김
+  // select도 초기화
+  var locSel = document.getElementById('f-location');
+  if(locSel) locSel.selectedIndex = 0;
+  var typeSel = document.getElementById('f-workType');
+  if(typeSel) typeSel.selectedIndex = 0;
+ 
   var ban=document.getElementById('permitBanner');
   if(ban) ban.style.display='none';
   var badge=document.getElementById('riskIdBadge');
   if(badge) badge.style.display='none';
-  // AI 결과 초기화
   var aiArea=document.getElementById('aiResultArea');
   if(aiArea) aiArea.innerHTML='';
 }
