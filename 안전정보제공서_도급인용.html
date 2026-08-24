@@ -69,6 +69,16 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .f-textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
+/* 자동 채움 필드 (읽기 전용 스타일) */
+.f-input.auto-filled,.f-textarea.auto-filled{
+  background:#F5F9FF;border-color:rgba(13,71,161,.25);
+  color:var(--navy);font-weight:700;}
+.f-input.auto-filled:focus,.f-textarea.auto-filled:focus{
+  border-color:var(--navy2);}
+.auto-fill-badge{display:inline-block;font-size:10px;font-weight:800;
+  color:var(--navy2);background:#EEF2FF;padding:2px 6px;border-radius:4px;
+  margin-left:6px;letter-spacing:.5px;}
+
 /* INFO BOXES */
 .info-box{background:#EEF2FF;border-left:4px solid var(--navy2);
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
@@ -114,7 +124,6 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .sig-clear{width:100%;padding:10px;margin-top:8px;background:var(--bg);
   border:1.5px solid var(--border);border-radius:9px;
   font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;}
-
 /* BUTTONS */
 .btn-row{display:flex;gap:10px;margin-top:16px;}
 .btn-primary{flex:2;padding:16px;
@@ -132,6 +141,35 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   font-size:16px;font-weight:800;cursor:pointer;
   box-shadow:0 4px 14px rgba(27,94,32,.28);margin-bottom:10px;}
 .btn-success-full:active{transform:scale(.98);}
+
+/* MSDS 카테고리 필터 - 신규 */
+.msds-filter-wrap{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
+  margin-bottom:10px;padding-bottom:4px;}
+.msds-filter-wrap::-webkit-scrollbar{display:none;}
+.msds-filter-btn{flex-shrink:0;padding:8px 14px;border-radius:20px;
+  border:1.5px solid var(--border);background:var(--card);
+  color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;
+  transition:all .15s;font-family:inherit;
+  display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.msds-filter-btn:active{transform:scale(.95);}
+.msds-filter-btn.active{background:var(--orange2);border-color:var(--orange2);
+  color:#fff;box-shadow:0 2px 8px rgba(230,81,0,.25);}
+.msds-filter-btn .cnt{font-size:11px;opacity:.85;font-weight:600;}
+.msds-search-wrap{position:relative;margin-bottom:12px;}
+.msds-search{width:100%;padding:11px 40px 11px 14px;border:1.5px solid var(--border);
+  border-radius:11px;font-size:14px;background:var(--bg);color:var(--body);
+  font-family:inherit;font-weight:600;}
+.msds-search:focus{outline:none;border-color:var(--orange2);}
+.msds-search-ico{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  color:var(--sub);font-size:16px;pointer-events:none;}
+.msds-count-info{font-size:12px;color:var(--sub);font-weight:600;
+  margin-bottom:10px;padding:0 4px;}
+.msds-count-info strong{color:var(--orange2);font-weight:800;}
+.msds-selected-count{background:#FFF3E0;color:var(--orange);
+  font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;margin-left:6px;}
+.msds-empty{text-align:center;padding:30px 16px;color:var(--sub);
+  background:var(--card);border-radius:var(--rs);border:1.5px dashed var(--border);}
+.msds-empty-ico{font-size:36px;margin-bottom:8px;opacity:.4;}
 
 /* COMPLETE */
 .complete-hero{text-align:center;padding:28px 16px;}
@@ -273,13 +311,10 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     </div>
     <div class="form-group">
       <label class="f-label">작업장소<span class="req">*</span></label>
-      <select class="f-select" id="location">
-        <option value="">선택</option>
+      <select class="f-select" id="location" onchange="onLocationChange(this.value)">
+        <option value="">선택하세요</option>
         <option value="포항양극재 1공장">포항양극재 1공장</option>
         <option value="포항양극재 2공장">포항양극재 2공장</option>
-        <option value="광양양극재">광양양극재</option>
-        <option value="포항음극재">포항음극재</option>
-        <option value="기타">기타</option>
       </select>
     </div>
     <div class="form-group">
@@ -332,28 +367,52 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <div class="warn-box-t">⚠️ MSDS 제공 의무</div>
     <div class="warn-box-b">작업 현장에서 사용/노출될 화학물질의 MSDS를 수급인에게 제공해야 합니다</div>
   </div>
+ 
   <div class="form-card">
     <div class="check-item" id="no-chem-item" onclick="togNoChemical(this)">
       <div class="check-ico"></div>
       <div><div class="check-label">화학물질을 사용하지 않음</div></div>
     </div>
   </div>
-  <div class="sec-title">🧪 화학물질 선택</div>
+ 
+  <div class="sec-title">🧪 화학물질 선택 (총 34종)</div>
+ 
+  <!-- MSDS 검색 -->
+  <div class="msds-search-wrap">
+    <input type="text" class="msds-search" id="msdsSearch"
+           placeholder="이름/CAS번호/MSDS번호로 검색..."
+           oninput="filterMSDS()">
+    <span class="msds-search-ico">🔍</span>
+  </div>
+ 
+  <!-- 카테고리 필터 -->
+  <div class="msds-filter-wrap" id="msdsFilterWrap">
+    <!-- JS로 생성 -->
+  </div>
+ 
+  <!-- 선택 개수 정보 -->
+  <div class="msds-count-info" id="msdsCountInfo">
+    총 <strong id="msdsShowCount">34</strong>종 표시 중
+    <span class="msds-selected-count" id="msdsSelectedCount" style="display:none;">선택 0</span>
+  </div>
+ 
+  <!-- MSDS 리스트 -->
   <div class="check-grid" id="msdsGrid">
     <!-- JS로 생성 -->
   </div>
+ 
   <div class="form-card">
     <div class="form-group">
       <label class="f-label">기타 화학물질 (직접 입력)</label>
       <input class="f-input" id="chemical-other" placeholder="예: 페인트 희석제, 윤활유 등">
     </div>
   </div>
+ 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goToStep(1)">← 이전</button>
     <button class="btn-primary" onclick="validateStep(2)">다음 →</button>
   </div>
 </div>
-
 <!-- ══ STEP 3: 관련 서류 ══ -->
 <div class="screen" id="screen-step3">
   <div class="info-box">
@@ -365,7 +424,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <div class="form-group">
       <label class="f-label">위험성평가 문서번호<span class="req">*</span></label>
       <div style="display:flex;gap:8px;">
-        <input class="f-input" id="risk-assess-no" placeholder="예: RA-20240115-001" style="flex:1;">
+        <input class="f-input" id="risk-assess-no" placeholder="예: RA-20251124-001" style="flex:1;">
         <button style="padding:13px 14px;background:var(--navy2);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;" onclick="loadRiskAssessment()">조회</button>
       </div>
       <div id="risk-assess-result" style="display:none;margin-top:8px;padding:10px 12px;background:#E8F5E9;border-radius:9px;border:1px solid var(--green2);font-size:13px;font-weight:700;color:var(--green2);">
@@ -374,24 +433,24 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     </div>
     <div class="form-group">
       <label class="f-label">작업허가서 번호 (있는 경우)</label>
-      <input class="f-input" id="permit-no" placeholder="예: PTW-20240115-001">
+      <input class="f-input" id="permit-no" placeholder="예: PTW-20251124-001">
     </div>
   </div>
   <div class="sec-title">📋 선택 서류</div>
   <div class="check-grid">
-    <div class="check-item" onclick="togCheck(this,'doc1')">
+    <div class="check-item" onclick="togDoc(this,'doc1')" data-name="작업계획서">
       <div class="check-ico"></div>
       <div><div class="check-label">작업계획서</div></div>
     </div>
-    <div class="check-item" onclick="togCheck(this,'doc2')">
+    <div class="check-item" onclick="togDoc(this,'doc2')" data-name="안전교육 이수증">
       <div class="check-ico"></div>
       <div><div class="check-label">안전교육 이수증</div></div>
     </div>
-    <div class="check-item" onclick="togCheck(this,'doc3')">
+    <div class="check-item" onclick="togDoc(this,'doc3')" data-name="가스측정 결과서">
       <div class="check-ico"></div>
       <div><div class="check-label">가스측정 결과서</div></div>
     </div>
-    <div class="check-item" onclick="togCheck(this,'doc4')">
+    <div class="check-item" onclick="togDoc(this,'doc4')" data-name="장비 검사 성적서">
       <div class="check-ico"></div>
       <div><div class="check-label">장비 검사 성적서</div></div>
     </div>
@@ -404,31 +463,44 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 
 <!-- ══ STEP 4: 공장 안전정보 ══ -->
 <div class="screen" id="screen-step4">
+  <div class="success-box">
+    <div class="info-box-t" style="color:var(--green2);">✅ 자동 채움 완료</div>
+    <div class="info-box-b">1단계에서 선택하신 <strong id="factoryDisplayName">-</strong>의 비상정보가 자동으로 입력되었습니다.<br>정보는 <strong>포항양극재 비상상황 체계도</strong>를 기반으로 합니다.</div>
+  </div>
+ 
   <div class="sec-title">🏭 공장 위험 설비 정보</div>
+  <div class="info-box">
+    <div class="info-box-b">해당 작업장에서 주의해야 할 위험 설비를 선택하세요</div>
+  </div>
   <div class="check-grid" id="facilityGrid">
     <!-- JS로 생성 -->
   </div>
-  <div class="sec-title">🚨 비상구 및 대피로</div>
+ 
+  <div class="sec-title">🚨 비상구 및 대피로 <span class="auto-fill-badge">자동</span></div>
   <div class="form-card">
     <div class="form-group">
-      <label class="f-label">비상구 위치<span class="req">*</span></label>
-      <input class="f-input" id="emergency-exit" placeholder="예: 1층 북측 출입구, 2층 계단 옆">
+      <label class="f-label">비상연락처</label>
+      <input class="f-input auto-filled" id="emergency-contact" readonly>
     </div>
     <div class="form-group">
-      <label class="f-label">비상연락처<span class="req">*</span></label>
-      <input class="f-input" id="emergency-contact" value="119 / 내선 119" placeholder="119 / 내선 119">
+      <label class="f-label">비상구 위치</label>
+      <input class="f-input auto-filled" id="emergency-exit" readonly>
     </div>
     <div class="form-group">
       <label class="f-label">구급약품 위치</label>
-      <input class="f-input" id="first-aid" placeholder="예: 1층 안전관리실">
+      <input class="f-input auto-filled" id="first-aid" readonly>
+    </div>
+    <div class="form-group">
+      <label class="f-label">AED 위치</label>
+      <input class="f-input auto-filled" id="aed-locations" readonly>
     </div>
   </div>
+ 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goToStep(3)">← 이전</button>
     <button class="btn-primary" onclick="validateStep(4)">다음 →</button>
   </div>
 </div>
-
 <!-- ══ STEP 5: 안전수칙 ══ -->
 <div class="screen" id="screen-step5">
   <div class="info-box">
@@ -454,21 +526,31 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 <!-- ══ STEP 6: 보호구 및 비상대응 ══ -->
 <div class="screen" id="screen-step6">
   <div class="sec-title">⛑️ 필수 보호구</div>
+  <div class="info-box">
+    <div class="info-box-b">해당 작업에 필요한 보호구를 선택하세요</div>
+  </div>
   <div class="check-grid" id="ppeGrid">
     <!-- JS로 생성 -->
   </div>
-  <div class="sec-title">🚑 비상상황 대응</div>
+ 
+  <div class="sec-title">🚑 비상상황 대응 <span class="auto-fill-badge">자동</span></div>
+ 
+  <div class="success-box">
+    <div class="info-box-t" style="color:var(--green2);">✅ 자동 채움 완료</div>
+    <div class="info-box-b">1단계에서 선택하신 공장의 비상상황 대응 절차가 자동 입력되었습니다.</div>
+  </div>
+ 
   <div class="form-card">
     <div class="form-group">
-      <label class="f-label">비상상황 대응 절차<span class="req">*</span></label>
-      <textarea class="f-textarea" id="emergency-proc"
-        placeholder="예: 1. 작업 즉시 중단 2. 119 신고 3. 안전관리자 연락 (내선 119) 4. 부상자 응급조치 5. 현장 보존"></textarea>
+      <label class="f-label">비상상황 대응 절차</label>
+      <textarea class="f-textarea auto-filled" id="emergency-proc" readonly style="min-height:130px;"></textarea>
     </div>
     <div class="form-group">
-      <label class="f-label">안전관리자 연락처<span class="req">*</span></label>
-      <input class="f-input" id="safety-manager-phone" placeholder="010-1234-5678 (홍길동 안전관리자)">
+      <label class="f-label">안전관리자 연락처</label>
+      <input class="f-input auto-filled" id="safety-manager-phone" readonly>
     </div>
   </div>
+ 
   <div class="check-item" id="ack-item" onclick="togAck(this)" style="margin-bottom:12px;">
     <div class="check-ico"></div>
     <div><div class="check-label">위 보호구 착용 및 비상상황 대응 체계를 확인하였습니다</div></div>
@@ -516,7 +598,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   <div class="complete-hero">
     <div class="complete-ico">✅</div>
     <div class="complete-title">발행 완료!</div>
-    <div class="complete-sub">안전정보제공서가 서버에 저장되었습니다.<br>수급인에게 링크를 전달하여 서명을 받으세요.</div>
+    <div class="complete-sub">안전정보제공서가 저장되었습니다.<br>수급인에게 링크를 전달하여 서명을 받으세요.</div>
   </div>
 
   <!-- 문서번호 -->
@@ -531,6 +613,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <div class="summary-row"><span class="summary-key">협력사</span><span class="summary-val" id="fin-subcontractor">-</span></div>
     <div class="summary-row"><span class="summary-key">작업장소</span><span class="summary-val" id="fin-location">-</span></div>
     <div class="summary-row"><span class="summary-key">작업기간</span><span class="summary-val" id="fin-period">-</span></div>
+    <div class="summary-row"><span class="summary-key">화학물질</span><span class="summary-val" id="fin-chemicals">-</span></div>
     <div class="summary-row"><span class="summary-key">발행일시</span><span class="summary-val" id="fin-datetime">-</span></div>
   </div>
 
@@ -550,68 +633,159 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   <div id="mail-result" style="display:none;padding:10px 12px;border-radius:9px;margin-bottom:12px;font-size:13px;font-weight:700;"></div>
 
   <button class="btn-success-full" onclick="goHome()">🏠 대시보드로 돌아가기</button>
-  <button class="btn-secondary" style="width:100%;padding:14px;border-radius:13px;font-size:15px;font-weight:700;" onclick="goToScreen('screen-welcome')">새 문서 작성</button>
+  <button class="btn-secondary" style="width:100%;padding:14px;border-radius:13px;font-size:15px;font-weight:700;" onclick="location.reload()">새 문서 작성</button>
 </div>
 
 </div><!-- /.app -->
-
 <script>
-// ── API 설정 (서버 전환 시 여기만 수정) ────────────────────────
+// ═══════════════════════════════════════════════
+// API 설정 (개발 단계: mailto 폴백 사용)
+// ═══════════════════════════════════════════════
 var API_BASE_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+var API_ENABLED = false;  // Apps Script URL 설정 시 true로 변경
 
 function apiPost(body){
+  if(!API_ENABLED){
+    return Promise.resolve({ok:false, error:'API_DISABLED', localOnly:true});
+  }
   return fetch(API_BASE_URL, {
     method:'POST', mode:'no-cors',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   }).then(function(r){
-    // no-cors는 응답 파싱 불가 → opaque response
-    return {ok:true};
+    return {ok:true, opaque:true};
   }).catch(function(e){return{ok:false,error:e.message};});
 }
-function apiGet(params){
-  var qs=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
-  return fetch(API_BASE_URL+'?'+qs)
-    .then(function(r){return r.json();})
-    .catch(function(e){return{ok:false,error:e.message};});
-}
 
-// ── DATA ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// DATA (대시보드 매칭 필드 포함)
+// ═══════════════════════════════════════════════
 var data = {
+  safeinfoNo:'',
   subcontractor:'', workName:'', location:'', detailLocation:'',
   startDate:'', endDate:'',
   contractorManager:'', contractorDept:'', contractorPhone:'', contractorEmail:'',
   subcontractorEmail:'', subcontractorPhone:'',
-  noChemical:false, msdsItems:[], chemicalOther:'',
-  riskAssessmentNo:'', permitNo:'',
-  facilityItems:[], emergencyExit:'', emergencyContact:'', firstAid:'',
-  safetyItems:'', safetyOther:'', ppeItems:[],
+  noChemical:false, msdsItems:[], msdsIds:[], chemicalOther:'',
+  riskAssessmentNo:'', permitNo:'', selectedDocs:[],
+  facilityItems:[], emergencyExit:'', emergencyContact:'', firstAid:'', aedLocations:'',
+  safetyItems:[], safetyOther:'', ppeItems:[],
   emergencyProc:'', safetyManagerPhone:'',
-  contractorSignature:null,
-  docId:'', signUrl:''
+  contractorSignature:null, signUrl:'',
+  // 대시보드 매칭 필드
+  submittedCompany:'', submittedBy:'',
+  status:'발행완료', date:'',
+  createdAt:'', createdBy:'', updatedAt:'', updatedBy:'',
+  schemaVersion:1
 };
+
 var currentStep = 0;
 var ackChecked = false;
 var noChemChecked = false;
-var selectedDocs = {};
 
-// ── MSDS 목록 ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// MSDS 데이터베이스 (포스코퓨처엠 실사용 34종)
+// - 카테고리: product(완제품)/precursor(전구체)/material(원료)/utility(유틸리티)
+// - 상세 유해성/보호구는 안전보건공단 원본 MSDS 참조 (msdsNo)
+// - 향후 Firestore MSDS 컬렉션으로 이관 예정
+// ═══════════════════════════════════════════════════════════
 var MSDS_LIST = [
-  {id:'m1', name:'황산 (H₂SO₄)', cas:'7664-93-9'},
-  {id:'m2', name:'수산화나트륨 (NaOH)', cas:'1310-73-2'},
-  {id:'m3', name:'질산 (HNO₃)', cas:'7697-37-2'},
-  {id:'m4', name:'암모니아 (NH₃)', cas:'7664-41-7'},
-  {id:'m5', name:'아세톤', cas:'67-64-1'},
-  {id:'m6', name:'톨루엔', cas:'108-88-3'},
-  {id:'m7', name:'이황화탄소', cas:'75-15-0'},
-  {id:'m8', name:'n-헥산', cas:'110-54-3'},
-  {id:'m9', name:'MEK (메틸에틸케톤)', cas:'78-93-3'},
-  {id:'m10', name:'LPG', cas:'68476-85-7'},
-  {id:'m11', name:'산소 (압축)', cas:'7782-44-7'},
-  {id:'m12', name:'아르곤 (압축)', cas:'7440-37-1'}
+  // ─── 완제품 (4) ───
+  {id:'MSDS-001', name:'NCMA (양극활물질)', substance:'Lithium Nickel Manganese Cobalt Oxide', cas:'182442-95-1', msdsNo:'AA00786-0000000363', category:'product'},
+  {id:'MSDS-002', name:'NCA (양극활물질)', substance:'Aluminum Cobalt Lithium Nickel Oxide', cas:'177997-13-6', msdsNo:'AA00786-0000000311', category:'product'},
+  {id:'MSDS-003', name:'LFP 완제품', substance:'Lithium Iron Phosphate + Graphite', cas:'15365-14-7 / 7782-42-5', msdsNo:'AA00786-0000000640', category:'product'},
+  {id:'MSDS-004', name:'LFP 반제품', substance:'Ferric Phosphate + Lithium Carbonate + Glucopyranose', cas:'10045-86-0 / 554-13-2 / 50-99-7', msdsNo:'AA00786-0000000683', category:'product'},
+ 
+  // ─── 전구체 (4) ───
+  {id:'MSDS-005', name:'전구체 (수산화물)', substance:'Nickel Cobalt Manganese Hydroxide', cas:'189139-63-7', msdsNo:'AA00716-0000000111', category:'precursor'},
+  {id:'MSDS-006', name:'전구체 (이산화물)', substance:'Nickel Cobalt Dioxide', cas:'58591-45-0', msdsNo:'AA01243-0000000065', category:'precursor'},
+  {id:'MSDS-007', name:'전구체 (Ni/Co/Mn 3종)', substance:'Nickel/Cobalt/Manganese Hydroxide', cas:'12054-48-7 / 21041-93-0 / 12626-88-9', msdsNo:'AA00786-0000000544', category:'precursor'},
+  {id:'MSDS-008', name:'전구체 (Ni/Co 산화물)', substance:'Nickel Oxide + Cobalt Oxide', cas:'1313-99-1 / 1307-96-6', msdsNo:'AA01778-0000000017', category:'precursor'},
+ 
+  // ─── 원료 (16) ───
+  {id:'MSDS-009', name:'수산화리튬 (LiOH·H₂O)', substance:'Lithium Hydroxide Monohydrate', cas:'1310-66-3', msdsNo:'AA07799-0000000003', category:'material'},
+  {id:'MSDS-010', name:'무수수산화리튬 (LiOH)', substance:'Lithium Hydroxide', cas:'1310-65-2', msdsNo:'AA18014-0000000001', category:'material'},
+  {id:'MSDS-011', name:'수산화코발트 (Co(OH)₂)', substance:'Cobalt Hydroxide', cas:'21041-93-0', msdsNo:'AA07799-0000000004', category:'material'},
+  {id:'MSDS-012', name:'수산화알루미늄 (Al(OH)₃)', substance:'Aluminum Hydroxide', cas:'21645-51-2', msdsNo:'AA03490-0000000003', category:'material'},
+  {id:'MSDS-013', name:'산화이트륨 (Y₂O₃)', substance:'Yttrium Oxide', cas:'1314-36-9', msdsNo:'AA07799-0000000005', category:'material'},
+  {id:'MSDS-014', name:'산화지르코늄 (ZrO₂)', substance:'Zirconium Oxide', cas:'1314-23-4', msdsNo:'AA02120-0000000002', category:'material'},
+  {id:'MSDS-015', name:'황산코발트 (CoSO₄)', substance:'Cobalt Sulfate', cas:'10124-43-3', msdsNo:'AA02066-0000000003', category:'material'},
+  {id:'MSDS-016', name:'탄산마그네슘 (MgCO₃)', substance:'Magnesium Carbonate', cas:'546-93-0', msdsNo:'AA00207-0000000105', category:'material'},
+  {id:'MSDS-017', name:'수산화나트륨 25% (NaOH)', substance:'Sodium Hydroxide Solution', cas:'1310-73-2', msdsNo:'AA00633-0000000002', category:'material'},
+  {id:'MSDS-018', name:'붕산 (H₃BO₃)', substance:'Boric Acid', cas:'10043-35-3', msdsNo:'AA16978-0000000001', category:'material'},
+  {id:'MSDS-019', name:'질소 (N₂)', substance:'Nitrogen', cas:'7727-39-9', msdsNo:'AA07497-1090000004', category:'material'},
+  {id:'MSDS-020', name:'산소 (O₂)', substance:'Oxygen', cas:'7782-44-7', msdsNo:'AA07497-1090000002', category:'material'},
+  {id:'MSDS-021', name:'천연가스', substance:'Natural Gas with Odorant', cas:'8006-14-2 / 110-01-0 / 75-66-1', msdsNo:'AA06600-0000000001', category:'material'},
+  {id:'MSDS-022', name:'세라믹 용기 (Sagger 형A)', substance:'Aluminum Oxide + Silicon Dioxide + Magnesium Oxide', cas:'1344-28-1 / 7631-86-9 / 1309-48-4', msdsNo:'AA05697-4200000091', category:'material'},
+  {id:'MSDS-023', name:'세라믹 용기 (Sagger 형B)', substance:'Mullite + Spinel + Alumina + Cordierite', cas:'1302-93-8 / 1302-67-6 / 68389-42-4 / 1302-88-1', msdsNo:'AA15671-0000000001', category:'material'},
+  {id:'MSDS-024', name:'에탄올 94.5%', substance:'Ethyl Alcohol', cas:'64-17-5', msdsNo:'AA00130-0000000110', category:'material'},
+ 
+  // ─── 유틸리티 (10) ───
+  {id:'MSDS-025', name:'가스켓 리무버', substance:'Paint/Gasket Remover PR-70', cas:'-', msdsNo:'AA00141-0000000185', category:'utility'},
+  {id:'MSDS-026', name:'접착제 (본드)', substance:'KIWO BOND 1100', cas:'67-64-1 / 141-78-6 / 4420-74-0', msdsNo:'AA18156-0000000004', category:'utility'},
+  {id:'MSDS-027', name:'경화제', substance:'KIWODUR 1100', cas:'141-78-6 / 9016-87-9 외', msdsNo:'AA18156-0000000005', category:'utility'},
+  {id:'MSDS-028', name:'중화제 (소디움 비설파이트)', substance:'Sodium Bisulfite', cas:'7631-90-5', msdsNo:'AA02124-0000000010', category:'utility'},
+  {id:'MSDS-029', name:'차염소산나트륨 12%', substance:'Sodium Hypochlorite', cas:'7681-52-9', msdsNo:'AA04886-0000000047', category:'utility'},
+  {id:'MSDS-030', name:'스케일방지제', substance:'Polyacrylic Acid', cas:'9003-01-04', msdsNo:'AA02124-0000000003', category:'utility'},
+  {id:'MSDS-031', name:'윤활제 (뿌리는 그리스)', substance:'Butane + Distillates', cas:'106-97-8 / 64742-47-8 / 64742-54-7 / 74-98-6', msdsNo:'AA01093-0000000087', category:'utility'},
+  {id:'MSDS-032', name:'부식방지제 (WD-40)', substance:'Petroleum Distillates', cas:'64742-47-8 / 64742-54-7 / 74-98-6 / 106-97-8', msdsNo:'AA00459-0000000004', category:'utility'},
+  {id:'MSDS-033', name:'세척제 (멀티클리너 DC-5000)', substance:'1,1-Dichloro-1-Fluoroethane + Tetrafluoroethane', cas:'1717-00-6 / 811-97-2', msdsNo:'AA00141-0000000125', category:'utility'},
+  {id:'MSDS-034', name:'미생물제거제 (ACTICHLOR)', substance:'Sodium Hypochlorite', cas:'7681-52-9 / 7647-15-6', msdsNo:'AA00009-0000000223', category:'utility'}
 ];
 
-// ── 설비 위험 목록 ──────────────────────────────────────────────
+// 카테고리 정의
+var MSDS_CATEGORIES = [
+  {id:'all',       label:'전체',      icon:'📋'},
+  {id:'product',   label:'완제품',    icon:'🎯'},
+  {id:'precursor', label:'전구체',    icon:'🧪'},
+  {id:'material',  label:'원료',      icon:'⚗️'},
+  {id:'utility',   label:'유틸리티',  icon:'🛠️'}
+];
+
+var currentMsdsCategory = 'all';
+var currentMsdsSearch = '';
+
+// ═══════════════════════════════════════════════════════════
+// 공장별 비상정보 (포항양극재 사업장 - 2개)
+// - 통합운전실 054-240-5191 / 119
+// - 향후 Firestore 공장안전정보 컬렉션으로 이관 예정
+// ═══════════════════════════════════════════════════════════
+var FACTORY_SAFETY_INFO = {
+  '포항양극재 1공장': {
+    emergencyContact: '통합운전실 054-240-5191 / 119',
+    emergencyExit: '각 건물별 지정 비상구 (안내판 확인)',
+    firstAid: '1층 안전관리실, 각 층 승강기 앞 안전보호함 (총 34개소)',
+    aedLocations: '1,2 사무동 1층, 품질분석실 입구, A동 1·2층 승강기 앞 (총 11대)',
+    emergencyProcedure:
+      '1. 최초 목격자는 주변 소화전 발신기 동작, 통합운전실(054-240-5191)에 연락\n' +
+      '2. 운전실 근무자는 비상방송(대피, 화재발생, 소화펌프 전개) 실시\n' +
+      '3. 관리감독자는 119에 신고 및 계통 보고\n' +
+      '4. 자위소방대 투입하여 초기진화 및 유도자 배치\n' +
+      '5. 지정된 집결장소로 신속히 대피',
+    safetyManagerPhone: '054-240-5131 (안전관리자) / HP 010-3060-0909'
+  },
+  '포항양극재 2공장': {
+    emergencyContact: '통합운전실 054-240-5191 / 119',
+    emergencyExit: '각 건물별 지정 비상구 (안내판 확인)',
+    firstAid: '1층 안전관리실, 각 층 승강기 앞 안전보호함 (총 34개소)',
+    aedLocations: '1,2 사무동 1층, 품질분석실 입구, C동 1·3층 승강기 앞 (총 11대)',
+    emergencyProcedure:
+      '1. 최초 목격자는 주변 소화전 발신기 동작, 통합운전실(054-240-5191)에 연락\n' +
+      '2. 운전실 근무자는 비상방송(대피, 화재발생, 소화펌프 전개) 실시\n' +
+      '3. 관리감독자는 119에 신고 및 계통 보고\n' +
+      '4. 자위소방대 투입하여 초기진화 및 유도자 배치\n' +
+      '5. 지정된 집결장소로 신속히 대피',
+    safetyManagerPhone: '054-240-5131 (안전관리자) / HP 010-3060-0909'
+  }
+};
+
+function getFactoryInfo(location){
+  return FACTORY_SAFETY_INFO[location] || FACTORY_SAFETY_INFO['포항양극재 1공장'];
+}
+
+// ═══════════════════════════════════════════════════════════
+// 설비 위험 목록
+// ═══════════════════════════════════════════════════════════
 var FACILITY_LIST = [
   {id:'f1', name:'고압 전기 설비', desc:'154kV 변전소 인근', icon:'⚡'},
   {id:'f2', name:'고온·고압 배관', desc:'스팀/열수 배관', icon:'🌡️'},
@@ -623,7 +797,9 @@ var FACILITY_LIST = [
   {id:'f8', name:'추락 위험 구역', desc:'2m 이상 고소 지역', icon:'⬆️'}
 ];
 
-// ── 안전수칙 목록 ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// 안전수칙 목록
+// ═══════════════════════════════════════════════════════════
 var SAFETY_LIST = [
   {id:'s1', name:'안전작업허가서(PTW) 발급 후 작업 시작'},
   {id:'s2', name:'TBM(Tool Box Meeting) 작업 전 필수 실시'},
@@ -637,7 +813,9 @@ var SAFETY_LIST = [
   {id:'s10', name:'음주·약물 상태에서 작업 절대 금지'}
 ];
 
-// ── 보호구 목록 ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// 보호구 목록
+// ═══════════════════════════════════════════════════════════
 var PPE_LIST = [
   {id:'p1', name:'안전모', icon:'⛑️'},
   {id:'p2', name:'안전화', icon:'👟'},
@@ -651,89 +829,229 @@ var PPE_LIST = [
   {id:'p10', name:'안전조끼 (야간)', icon:'🦺'}
 ];
 
-// ── STEP LABELS ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// STEP LABELS
+// ═══════════════════════════════════════════════════════════
 var STEP_LABELS = ['','기본정보','화학물질','관련서류','공장안전정보','안전수칙','보호구/비상','서명 및 전달'];
-
-// ── INIT ────────────────────────────────────────────────────────
+</script>
+<script>
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function(){
-  var today = new Date().toISOString().split('T')[0];
+  initTheme();
+ 
+  var today = fmtDate(new Date());
   setVal('start-date', today);
   setVal('end-date', today);
+ 
   initSig('contractor-sig');
+  renderMsdsCategoryFilter();
   renderMSDS();
   renderFacility();
   renderSafety();
   renderPPE();
-  checkApiStatus();
+ 
+  // 폐기 키 마이그레이션 (한 번만)
+  migrateLegacyKeys();
+ 
+  // API 상태 확인
+  if(API_ENABLED){
+    checkApiStatus();
+  } else {
+    setApiStatus('local', '로컬 저장 모드 (개발 단계)');
+  }
 });
 
-function checkApiStatus() {
+// KST 기준 날짜 (규약 준수)
+function fmtDate(d){
+  d = d || new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+// 다크모드 상속
+function initTheme(){
+  var t = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+}
+
+function setApiStatus(state, text){
   var dot = document.getElementById('apiDot');
   var txt = document.getElementById('apiStatusTxt');
+  if(!dot || !txt) return;
+  dot.classList.remove('ok', 'err', 'loading');
+  if(state === 'ok') dot.classList.add('ok');
+  else if(state === 'err') dot.classList.add('err');
+  else if(state === 'loading') dot.classList.add('loading');
+  txt.textContent = text;
+}
+
+function checkApiStatus(){
+  setApiStatus('loading', '서버 연결 확인 중...');
   fetch(API_BASE_URL + '?action=ping')
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if(d.ok){ dot.className='api-dot ok'; txt.textContent='서버 연결됨 (Google Sheets)'; }
-      else{ dot.className='api-dot err'; txt.textContent='서버 응답 오류'; }
+      if(d.ok){ setApiStatus('ok', '서버 연결됨 (Google Sheets)'); }
+      else{ setApiStatus('err', '서버 응답 오류'); }
     })
     .catch(function(){
-      dot.className='api-dot err';
-      txt.textContent='서버 미연결 — URL 설정 필요';
+      setApiStatus('err', '서버 미연결 — 로컬 저장만 가능');
     });
 }
 
-// ── RENDER LISTS ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// MSDS 카테고리 필터
+// ═══════════════════════════════════════════════
+function renderMsdsCategoryFilter(){
+  var wrap = document.getElementById('msdsFilterWrap');
+  if(!wrap) return;
+ 
+  wrap.innerHTML = MSDS_CATEGORIES.map(function(cat){
+    var count = cat.id === 'all' ? MSDS_LIST.length :
+                MSDS_LIST.filter(function(m){ return m.category === cat.id; }).length;
+    var isActive = cat.id === currentMsdsCategory;
+    return '<button class="msds-filter-btn'+(isActive?' active':'')+'" onclick="setMsdsCategory(\''+cat.id+'\')">'+
+      '<span>'+cat.icon+'</span>'+
+      '<span>'+cat.label+'</span>'+
+      '<span class="cnt">('+count+')</span>'+
+      '</button>';
+  }).join('');
+}
+
+function setMsdsCategory(catId){
+  currentMsdsCategory = catId;
+  renderMsdsCategoryFilter();
+  renderMSDS();
+}
+
+function filterMSDS(){
+  currentMsdsSearch = getVal('msdsSearch').toLowerCase();
+  renderMSDS();
+}
+
 function renderMSDS(){
   var grid = document.getElementById('msdsGrid');
-  grid.innerHTML = MSDS_LIST.map(function(m){
-    return '<div class="check-item msds-item" onclick="togCheck(this,\''+m.id+'\')" data-name="'+m.name+'" data-cas="'+m.cas+'">'+
-      '<div class="check-ico"></div>'+
-      '<div><div class="check-label">'+m.name+'</div><div class="check-desc">CAS: '+m.cas+'</div></div>'+
+  if(!grid) return;
+ 
+  var filtered = MSDS_LIST.filter(function(m){
+    // 카테고리 필터
+    if(currentMsdsCategory !== 'all' && m.category !== currentMsdsCategory) return false;
+    // 검색 필터
+    if(currentMsdsSearch){
+      var q = currentMsdsSearch;
+      return (m.name && m.name.toLowerCase().indexOf(q) >= 0) ||
+             (m.substance && m.substance.toLowerCase().indexOf(q) >= 0) ||
+             (m.cas && m.cas.toLowerCase().indexOf(q) >= 0) ||
+             (m.msdsNo && m.msdsNo.toLowerCase().indexOf(q) >= 0);
+    }
+    return true;
+  });
+ 
+  // 카운트 정보
+  setTxt('msdsShowCount', filtered.length);
+ 
+  // 결과 없음
+  if(filtered.length === 0){
+    grid.innerHTML = '<div class="msds-empty">'+
+      '<div class="msds-empty-ico">🔍</div>'+
+      '<div>검색 결과가 없습니다</div>'+
+      '</div>';
+    return;
+  }
+ 
+  // 렌더링
+  grid.innerHTML = filtered.map(function(m){
+    var isChecked = data.msdsIds.indexOf(m.id) >= 0;
+    return '<div class="check-item msds-item'+(isChecked?' checked':'')+
+      '" onclick="togMSDS(this,\''+m.id+'\')" '+
+      'data-id="'+m.id+'" data-name="'+escAttr(m.name)+'">'+
+      '<div class="check-ico">'+(isChecked?'✓':'')+'</div>'+
+      '<div style="flex:1;">'+
+        '<div class="check-label">'+escHtml(m.name)+'</div>'+
+        '<div class="check-desc">CAS: '+escHtml(m.cas)+' | MSDS: '+escHtml(m.msdsNo)+'</div>'+
+      '</div>'+
       '</div>';
   }).join('');
 }
 
+function togMSDS(el, id){
+  el.classList.toggle('checked');
+  var ico = el.querySelector('.check-ico');
+  var isChecked = el.classList.contains('checked');
+  ico.textContent = isChecked ? '✓' : '';
+ 
+  // data.msdsIds 업데이트
+  var idx = data.msdsIds.indexOf(id);
+  if(isChecked && idx < 0) data.msdsIds.push(id);
+  else if(!isChecked && idx >= 0) data.msdsIds.splice(idx, 1);
+ 
+  // 선택 개수 표시
+  updateMsdsSelectedCount();
+}
+
+function updateMsdsSelectedCount(){
+  var el = document.getElementById('msdsSelectedCount');
+  if(!el) return;
+  if(data.msdsIds.length > 0){
+    el.style.display = 'inline-block';
+    el.textContent = '선택 ' + data.msdsIds.length;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// 다른 렌더 함수들
+// ═══════════════════════════════════════════════
 function renderFacility(){
   var grid = document.getElementById('facilityGrid');
+  if(!grid) return;
   grid.innerHTML = FACILITY_LIST.map(function(f){
-    return '<div class="check-item" onclick="togCheck(this,\''+f.id+'\')" data-name="'+f.name+'">'+
+    return '<div class="check-item" onclick="togCheck(this,\'facility\')" data-name="'+escAttr(f.name)+'">'+
       '<div class="check-ico"></div>'+
       '<div style="display:flex;align-items:center;gap:8px;flex:1;">'+
       '<span style="font-size:20px;">'+f.icon+'</span>'+
-      '<div><div class="check-label">'+f.name+'</div><div class="check-desc">'+f.desc+'</div></div>'+
+      '<div><div class="check-label">'+escHtml(f.name)+'</div><div class="check-desc">'+escHtml(f.desc)+'</div></div>'+
       '</div></div>';
   }).join('');
 }
 
 function renderSafety(){
   var grid = document.getElementById('safetyGrid');
+  if(!grid) return;
   grid.innerHTML = SAFETY_LIST.map(function(s){
-    return '<div class="check-item" onclick="togCheck(this,\''+s.id+'\')" data-name="'+s.name+'">'+
+    return '<div class="check-item" onclick="togCheck(this,\'safety\')" data-name="'+escAttr(s.name)+'">'+
       '<div class="check-ico"></div>'+
-      '<div class="check-label">'+s.name+'</div>'+
+      '<div class="check-label">'+escHtml(s.name)+'</div>'+
       '</div>';
   }).join('');
 }
 
 function renderPPE(){
   var grid = document.getElementById('ppeGrid');
+  if(!grid) return;
   grid.innerHTML = PPE_LIST.map(function(p){
-    return '<div class="check-item" onclick="togCheck(this,\''+p.id+'\')" data-name="'+p.name+'">'+
+    return '<div class="check-item" onclick="togCheck(this,\'ppe\')" data-name="'+escAttr(p.name)+'">'+
       '<div class="check-ico"></div>'+
       '<div style="display:flex;align-items:center;gap:8px;flex:1;">'+
       '<span style="font-size:20px;">'+p.icon+'</span>'+
-      '<div class="check-label">'+p.name+'</div>'+
+      '<div class="check-label">'+escHtml(p.name)+'</div>'+
       '</div></div>';
   }).join('');
 }
 
-// ── TOGGLE HELPERS ──────────────────────────────────────────────
-function togCheck(el, id){
+// 일반 체크박스 토글
+function togCheck(el, type){
   el.classList.toggle('checked');
-  var ico = el.querySelector('.check-ico');
-  ico.textContent = el.classList.contains('checked') ? '✓' : '';
-  if(!selectedDocs) selectedDocs={};
-  selectedDocs[id] = el.classList.contains('checked');
+  el.querySelector('.check-ico').textContent = el.classList.contains('checked') ? '✓' : '';
+}
+
+function togDoc(el, id){
+  el.classList.toggle('checked');
+  el.querySelector('.check-ico').textContent = el.classList.contains('checked') ? '✓' : '';
 }
 
 function togNoChemical(el){
@@ -741,8 +1059,15 @@ function togNoChemical(el){
   el.classList.toggle('checked', noChemChecked);
   el.querySelector('.check-ico').textContent = noChemChecked ? '✓' : '';
   var grid = document.getElementById('msdsGrid');
-  grid.style.opacity = noChemChecked ? '.4' : '1';
-  grid.style.pointerEvents = noChemChecked ? 'none' : 'auto';
+  var filter = document.getElementById('msdsFilterWrap');
+  var search = document.querySelector('.msds-search-wrap');
+  var info = document.getElementById('msdsCountInfo');
+  [grid, filter, search, info].forEach(function(el){
+    if(el){
+      el.style.opacity = noChemChecked ? '.3' : '1';
+      el.style.pointerEvents = noChemChecked ? 'none' : 'auto';
+    }
+  });
 }
 
 function togAck(el){
@@ -751,7 +1076,31 @@ function togAck(el){
   el.querySelector('.check-ico').textContent = ackChecked ? '✓' : '';
 }
 
-// ── VALIDATION & NAVIGATION ─────────────────────────────────────
+// ═══════════════════════════════════════════════
+// 작업장소 선택 시 비상정보 자동 채움
+// ═══════════════════════════════════════════════
+function onLocationChange(location){
+  if(!location) return;
+ 
+  var info = getFactoryInfo(location);
+ 
+  // STEP 4 자동 채움
+  setVal('emergency-contact', info.emergencyContact);
+  setVal('emergency-exit', info.emergencyExit);
+  setVal('first-aid', info.firstAid);
+  setVal('aed-locations', info.aedLocations);
+ 
+  // STEP 6 자동 채움
+  setVal('emergency-proc', info.emergencyProcedure);
+  setVal('safety-manager-phone', info.safetyManagerPhone);
+ 
+  // STEP 4 화면에 공장 이름 표시
+  setTxt('factoryDisplayName', location);
+}
+
+// ═══════════════════════════════════════════════
+// VALIDATION & NAVIGATION
+// ═══════════════════════════════════════════════
 function validateStep(step){
   if(step===1){
     var sc=getVal('subcontractor'), wn=getVal('work-name'),
@@ -759,213 +1108,214 @@ function validateStep(step){
         sd=getVal('start-date'), ed=getVal('end-date'),
         cm=getVal('contractor-manager'), cd=getVal('contractor-dept'),
         cp=getVal('contractor-phone'), ce=getVal('contractor-email');
+   
     if(!sc||!wn||!loc||!dloc||!sd||!ed||!cm||!cd||!cp||!ce){
       showToast('필수 항목을 모두 입력해주세요','danger'); return;
     }
-    if(new Date(ed)<new Date(sd)){showToast('종료일은 시작일 이후여야 합니다','danger'); return;}
+    if(new Date(ed)<new Date(sd)){
+      showToast('종료일은 시작일 이후여야 합니다','danger'); return;
+    }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ce)){
+      showToast('올바른 이메일 형식이 아닙니다','danger'); return;
+    }
+   
     data.subcontractor=sc; data.workName=wn; data.location=loc; data.detailLocation=dloc;
     data.startDate=sd; data.endDate=ed;
     data.contractorManager=cm; data.contractorDept=cd;
     data.contractorPhone=cp; data.contractorEmail=ce;
+   
+    // 비상정보 자동 채움 (한번 더 확실히)
+    onLocationChange(loc);
   }
   else if(step===2){
-    var msds=[];
+    var msdsNames = [];
+    var msdsIds = [];
     document.querySelectorAll('#msdsGrid .check-item.checked').forEach(function(el){
-      msds.push(el.getAttribute('data-name'));
+      var name = el.getAttribute('data-name');
+      var id = el.getAttribute('data-id');
+      if(name) msdsNames.push(name);
+      if(id) msdsIds.push(id);
     });
-    data.noChemical=noChemChecked;
-    data.msdsItems=msds;
-    data.chemicalOther=getVal('chemical-other');
-    if(!noChemChecked && !msds.length && !data.chemicalOther){
+    data.noChemical = noChemChecked;
+    data.msdsItems = msdsNames;
+    data.msdsIds = msdsIds;
+    data.chemicalOther = getVal('chemical-other');
+    if(!noChemChecked && !msdsNames.length && !data.chemicalOther){
       showToast('화학물질을 선택하거나 "사용하지 않음"을 체크하세요','danger'); return;
     }
   }
   else if(step===3){
     var raNo=getVal('risk-assess-no');
     if(!raNo){showToast('위험성평가 문서번호를 입력해주세요','danger'); return;}
-    data.riskAssessmentNo=raNo;
-    data.permitNo=getVal('permit-no');
+    data.riskAssessmentNo = raNo;
+    data.permitNo = getVal('permit-no');
+    // 선택 서류 수집
+    var docs = [];
+    document.querySelectorAll('#screen-step3 .check-item.checked').forEach(function(el){
+      var name = el.getAttribute('data-name');
+      if(name) docs.push(name);
+    });
+    data.selectedDocs = docs;
   }
   else if(step===4){
-    var fe=getVal('emergency-exit'), ec=getVal('emergency-contact');
-    if(!fe||!ec){showToast('비상구 위치와 비상연락처를 입력해주세요','danger'); return;}
-    var fac=[];
+    var fac = [];
     document.querySelectorAll('#facilityGrid .check-item.checked').forEach(function(el){
       fac.push(el.getAttribute('data-name'));
     });
-    data.facilityItems=fac;
-    data.emergencyExit=fe; data.emergencyContact=ec; data.firstAid=getVal('first-aid');
+    data.facilityItems = fac;
+    // 비상정보는 자동 채움된 상태 유지
+    data.emergencyContact = getVal('emergency-contact');
+    data.emergencyExit = getVal('emergency-exit');
+    data.firstAid = getVal('first-aid');
+    data.aedLocations = getVal('aed-locations');
   }
   else if(step===5){
-    var si=[];
+    var si = [];
     document.querySelectorAll('#safetyGrid .check-item.checked').forEach(function(el){
       si.push(el.getAttribute('data-name'));
     });
-    data.safetyItems=si; data.safetyOther=getVal('safety-other');
+    data.safetyItems = si;
+    data.safetyOther = getVal('safety-other');
   }
   else if(step===6){
     if(!ackChecked){showToast('보호구 및 비상대응 확인 체크가 필요합니다','danger'); return;}
-    var ep=getVal('emergency-proc'), sp=getVal('safety-manager-phone');
-    if(!ep||!sp){showToast('비상절차와 안전관리자 연락처를 입력해주세요','danger'); return;}
-    var ppe=[];
+    var ppe = [];
     document.querySelectorAll('#ppeGrid .check-item.checked').forEach(function(el){
       ppe.push(el.getAttribute('data-name'));
     });
-    data.ppeItems=ppe;
-    data.emergencyProc=ep; data.safetyManagerPhone=sp;
+    data.ppeItems = ppe;
+    // 비상정보는 자동 채움된 상태 유지
+    data.emergencyProc = getVal('emergency-proc');
+    data.safetyManagerPhone = getVal('safety-manager-phone');
   }
-  goToStep(step+1);
+  goToStep(step + 1);
 }
 
 function goToStep(step){
-  currentStep=step;
-  goToScreen('screen-step'+step);
-  // 진행바 업데이트
+  currentStep = step;
+  goToScreen('screen-step' + step);
   for(var i=1;i<=7;i++){
-    var el=document.getElementById('ps'+i);
-    if(el) el.className='ps'+(i<step?' done':i===step?' act':'');
+    var el = document.getElementById('ps' + i);
+    if(el) el.className = 'ps' + (i<step?' done':i===step?' act':'');
   }
-  var pl=document.getElementById('progLabel');
-  var pp=document.getElementById('progStep');
-  if(pl) pl.textContent=step+'단계: '+(STEP_LABELS[step]||'');
-  if(pp) pp.textContent=step+'/7';
-  document.getElementById('progWrap').style.display='block';
-  window.scrollTo(0,0);
+  var pl = document.getElementById('progLabel');
+  var pp = document.getElementById('progStep');
+  if(pl) pl.textContent = step + '단계: ' + (STEP_LABELS[step] || '');
+  if(pp) pp.textContent = step + '/7';
+  document.getElementById('progWrap').style.display = 'block';
+  window.scrollTo(0, 0);
 }
 
 function goToScreen(id){
-  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
-  if(id==='screen-welcome'||id==='screen-complete'){
-    document.getElementById('progWrap').style.display='none';
+  if(id === 'screen-welcome' || id === 'screen-complete'){
+    document.getElementById('progWrap').style.display = 'none';
   }
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
 function startForm(){ goToStep(1); }
 
-// ── RISK ASSESSMENT LOAD ────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// RISK ASSESSMENT LOAD (규약 준수 키)
+// ═══════════════════════════════════════════════
 function loadRiskAssessment(){
-  var no=getVal('risk-assess-no');
-  if(!no){showToast('문서번호를 입력해주세요','info');return;}
-  // localStorage에서 위험성평가 조회
+  var no = getVal('risk-assess-no');
+  if(!no){ showToast('문서번호를 입력해주세요','info'); return; }
+ 
   try{
-    var list=JSON.parse(localStorage.getItem('safetyRiskAssessments')||'[]');
-    var found=list.find(function(r){return r.id===no;});
-    var result=document.getElementById('risk-assess-result');
+    // 규약 준수: 'riskAssessments' 우선
+    var list = JSON.parse(localStorage.getItem('riskAssessments') || '[]');
+    if(list.length === 0){
+      var legacy1 = JSON.parse(localStorage.getItem('riskDatabase') || '[]');
+      var legacy2 = JSON.parse(localStorage.getItem('safetyRiskAssessments') || '[]');
+      list = legacy1.concat(legacy2);
+    }
+   
+    var found = list.find(function(r){ return r.riskId === no || r.id === no; });
+    var result = document.getElementById('risk-assess-result');
+   
     if(found){
-      result.style.display='block';
-      result.innerHTML='✅ 위험성평가 연동 완료: '+found.workName;
-      result.style.background='#E8F5E9'; result.style.borderColor='var(--green2)';
-      result.style.color='var(--green2)';
+      result.style.display = 'block';
+      result.innerHTML = '✅ 위험성평가 연동 완료: ' + escHtml(found.workName || '');
+      result.style.background = '#E8F5E9';
+      result.style.borderColor = 'var(--green2)';
+      result.style.color = 'var(--green2)';
       showToast('위험성평가 연동 완료','success');
     } else {
-      result.style.display='block';
-      result.innerHTML='⚠️ 문서를 찾을 수 없습니다. 번호를 직접 입력해도 됩니다.';
-      result.style.background='#FFF3E0'; result.style.borderColor='var(--orange2)';
-      result.style.color='var(--orange)';
+      result.style.display = 'block';
+      result.innerHTML = '⚠️ 문서를 찾을 수 없습니다. 번호를 직접 입력해도 됩니다.';
+      result.style.background = '#FFF3E0';
+      result.style.borderColor = 'var(--orange2)';
+      result.style.color = 'var(--orange)';
     }
-  }catch(e){showToast('조회 오류','danger');}
-}
-
-// ── SUBMIT ──────────────────────────────────────────────────────
-function submitDoc(){
-  var se=getVal('sub-email'), sp=getVal('sub-phone');
-  if(!se||!sp){showToast('수급인 연락처를 입력해주세요','danger'); return;}
-  if(!hasSig('contractor-sig')){showToast('도급인 서명을 해주세요','danger'); return;}
-  data.subcontractorEmail=se; data.subcontractorPhone=sp;
-  data.contractorSignature=document.getElementById('contractor-sig').toDataURL();
-
-  showToast('서버에 저장 중...','info');
-
-  // ★ 서버 저장
-  apiPost({ action:'saveDoc', data:data })
-    .then(function(res){
-      // no-cors로 인해 res.ok는 항상 true
-      // 실제 문서번호는 서버에서 생성 → localStorage에 임시 저장
-      var docId = 'SIP-'+new Date().getFullYear()+pad(new Date().getMonth()+1)+pad(new Date().getDate())+'-'+String(Math.floor(Math.random()*1000)).padStart(3,'0');
-      data.docId = docId;
-
-      // localStorage 로컬 백업 (오프라인 대비)
-      var docs=[];
-      try{docs=JSON.parse(localStorage.getItem('safetyInfoDocs')||'[]');}catch(e){}
-      var saveData=JSON.parse(JSON.stringify(data));
-      saveData.status='발행완료';
-      saveData.createdAt=new Date().toISOString();
-      docs.push(saveData);
-      localStorage.setItem('safetyInfoDocs', JSON.stringify(docs));
-
-      var signUrl = '안전정보제공서_수급인용.html?doc='+docId;
-      data.signUrl = signUrl;
-
-      // 완료 화면
-      setTxt('fin-doc-id', docId);
-      setTxt('fin-work-name', data.workName);
-      setTxt('fin-subcontractor', data.subcontractor);
-      setTxt('fin-location', data.location+' '+data.detailLocation);
-      setTxt('fin-period', data.startDate+' ~ '+data.endDate);
-      setTxt('fin-datetime', new Date().toLocaleString('ko-KR'));
-      document.getElementById('shareLink').textContent = signUrl;
-      document.getElementById('send-email').value = data.subcontractorEmail;
-
-      goToScreen('screen-complete');
-      showToast('✅ 발행 완료!','success');
-    })
-    .catch(function(e){
-      showToast('서버 저장 실패: '+e.message,'danger');
-    });
-}
-
-// ── MAIL SEND ───────────────────────────────────────────────────
-function sendMail(){
-  var to=document.getElementById('send-email').value.trim();
-  if(!to){showToast('이메일을 입력해주세요','info');return;}
-  showToast('이메일 발송 중...','info');
-
-  apiPost({ action:'sendMail', data:{ docId:data.docId, to:to, type:'sign_request' }})
-    .then(function(){
-      var r=document.getElementById('mail-result');
-      r.style.display='block';
-      r.style.background='#E8F5E9'; r.style.color='var(--green2)';
-      r.textContent='✅ '+to+'으로 발송 완료!';
-      showToast('이메일 발송 완료','success');
-    })
-    .catch(function(e){
-      showToast('발송 실패: '+e.message,'danger');
-    });
-}
-
-function copyLink(){
-  var url=document.getElementById('shareLink').textContent;
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(url).then(function(){showToast('링크가 복사되었습니다','success');});
-  } else {
-    var el=document.createElement('textarea');
-    el.value=url; document.body.appendChild(el);
-    el.select(); document.execCommand('copy'); document.body.removeChild(el);
-    showToast('링크가 복사되었습니다','success');
+  }catch(e){
+    showToast('조회 오류: ' + e.message, 'danger');
   }
 }
 
-function goToDocList(){
-  // 대시보드 문서 목록으로 이동 (추후 구현)
-  showToast('준비 중입니다','info');
+// ═══════════════════════════════════════════════
+// 문서번호 시퀀스 (규약: SIP-YYYYMMDD-SEQ3)
+// ═══════════════════════════════════════════════
+function getNextSafeinfoNo(){
+  var today = fmtDate(new Date()).replace(/-/g, '');
+  try{
+    var list = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    var todayCount = list.filter(function(d){
+      return d.safeinfoNo && d.safeinfoNo.startsWith('SIP-' + today);
+    }).length;
+    var seq = todayCount + 1;
+    return 'SIP-' + today + '-' + String(seq).padStart(3, '0');
+  }catch(e){
+    return 'SIP-' + today + '-001';
+  }
 }
 
-// ── SIGNATURE ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// 유틸리티
+// ═══════════════════════════════════════════════
+function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
+function setVal(id,v){var el=document.getElementById(id);if(el) el.value=v;}
+function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function escAttr(s){return (s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function showToast(msg, type){
+  var wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type||'info');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3500);
+}
+
+// ═══════════════════════════════════════════════
+// 서명 캔버스
+// ═══════════════════════════════════════════════
 function initSig(id){
-  var c=document.getElementById(id); if(!c) return;
-  var ctx=c.getContext('2d');
+  var c = document.getElementById(id); if(!c) return;
+  var ctx = c.getContext('2d');
   ctx.strokeStyle='#1C2B3A'; ctx.lineWidth=2.5; ctx.lineCap='round';
   var drawing=false, lx=0, ly=0;
-  function pos(e){var r=c.getBoundingClientRect(),src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(c.width/r.width),y:(src.clientY-r.top)*(c.height/r.height)};}
+  function pos(e){
+    var r=c.getBoundingClientRect(), src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-r.left)*(c.width/r.width), y:(src.clientY-r.top)*(c.height/r.height)};
+  }
   c.onmousedown=c.ontouchstart=function(e){e.preventDefault();drawing=true;var p=pos(e);lx=p.x;ly=p.y;};
-  c.onmousemove=c.ontouchmove=function(e){e.preventDefault();if(!drawing)return;var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;};
+  c.onmousemove=c.ontouchmove=function(e){
+    e.preventDefault();if(!drawing)return;
+    var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;
+  };
   c.onmouseup=c.ontouchend=function(){drawing=false;};
   c.onmouseleave=function(){drawing=false;};
 }
 
-function clearSig(id){var c=document.getElementById(id);if(c) c.getContext('2d').clearRect(0,0,c.width,c.height);}
+function clearSig(id){
+  var c=document.getElementById(id);
+  if(c) c.getContext('2d').clearRect(0,0,c.width,c.height);
+}
 
 function hasSig(id){
   var c=document.getElementById(id); if(!c) return false;
@@ -974,12 +1324,14 @@ function hasSig(id){
   return false;
 }
 
-// ── NAV ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════
 function goHome(){
   if(currentStep>0 && currentStep<8){
     if(!confirm('작성 중인 내용이 있습니다.\n대시보드로 이동하시겠습니까?')) return;
   }
-  window.location.href='dashboard_v6.html';
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
 
 function goBack(){
@@ -988,18 +1340,417 @@ function goBack(){
   else history.back();
 }
 
-// ── UTILS ───────────────────────────────────────────────────────
-function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
-function setVal(id,v){var el=document.getElementById(id);if(el) el.value=v;}
-function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
-function pad(n){return('0'+n).slice(-2);}
+function goToDocList(){
+  showToast('준비 중입니다','info');
+}
 
-function showToast(msg,type){
-  var wrap=document.getElementById('toastWrap'); if(!wrap) return;
-  var t=document.createElement('div');
-  t.className='toast '+(type||'info'); t.textContent=msg;
-  wrap.appendChild(t);
-  setTimeout(function(){if(t.parentNode) t.parentNode.removeChild(t);},3500);
+function copyLink(){
+  var url = document.getElementById('shareLink').textContent;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){ showToast('링크가 복사되었습니다','success'); });
+  } else {
+    var el = document.createElement('textarea');
+    el.value = url; document.body.appendChild(el);
+    el.select(); document.execCommand('copy'); document.body.removeChild(el);
+    showToast('링크가 복사되었습니다','success');
+  }
+}
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// 폐기 키 마이그레이션 (safetyInfoDocs → safetyProvisions)
+// ═══════════════════════════════════════════════════════════
+function migrateLegacyKeys(){
+  try{
+    var current = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    var legacyDocs = localStorage.getItem('safetyInfoDocs');
+   
+    if(legacyDocs){
+      var legacyData = JSON.parse(legacyDocs);
+      var migrated = 0;
+     
+      legacyData.forEach(function(item){
+        var existingNo = item.safeinfoNo || item.docId;
+        if(!existingNo) return;
+       
+        var exists = current.find(function(d){
+          return d.safeinfoNo === existingNo || d.docId === existingNo;
+        });
+        if(exists) return;
+       
+        // 폐기 스키마 → 신규 스키마 변환
+        var converted = {
+          safeinfoNo: existingNo,
+          docId: item.docId,  // 호환성 유지
+         
+          // 기본정보
+          subcontractor: item.subcontractor || '',
+          workName: item.workName || '',
+          location: item.location || '',
+          detailLocation: item.detailLocation || '',
+          startDate: item.startDate || '',
+          endDate: item.endDate || '',
+         
+          // 도급인
+          contractorManager: item.contractorManager || '',
+          contractorDept: item.contractorDept || '',
+          contractorPhone: item.contractorPhone || '',
+          contractorEmail: item.contractorEmail || '',
+         
+          // 수급인
+          subcontractorEmail: item.subcontractorEmail || '',
+          subcontractorPhone: item.subcontractorPhone || '',
+         
+          // 화학물질
+          noChemical: item.noChemical || false,
+          msdsItems: item.msdsItems || [],
+          msdsIds: item.msdsIds || [],
+          chemicalOther: item.chemicalOther || '',
+         
+          // 서류
+          riskAssessmentNo: item.riskAssessmentNo || '',
+          permitNo: item.permitNo || '',
+          selectedDocs: item.selectedDocs || [],
+         
+          // 공장 안전
+          facilityItems: item.facilityItems || [],
+          emergencyExit: item.emergencyExit || '',
+          emergencyContact: item.emergencyContact || '',
+          firstAid: item.firstAid || '',
+          aedLocations: item.aedLocations || '',
+         
+          // 안전수칙 & 보호구
+          safetyItems: item.safetyItems || [],
+          safetyOther: item.safetyOther || '',
+          ppeItems: item.ppeItems || [],
+         
+          // 비상대응
+          emergencyProc: item.emergencyProc || '',
+          safetyManagerPhone: item.safetyManagerPhone || '',
+         
+          // 서명
+          contractorSignature: item.contractorSignature || null,
+         
+          // 링크
+          signUrl: item.signUrl || '',
+         
+          // 대시보드 매칭 필드
+          submittedCompany: item.subcontractor || '',
+          submittedBy: item.contractorManager || '',
+          status: item.status || '발행완료',
+          date: item.startDate || (item.createdAt || '').substring(0, 10),
+         
+          // 감사 필드
+          createdAt: item.createdAt || new Date().toISOString(),
+          createdBy: item.contractorManager || 'legacy',
+          updatedAt: item.createdAt || new Date().toISOString(),
+          updatedBy: item.contractorManager || 'legacy',
+          schemaVersion: 1
+        };
+       
+        current.push(converted);
+        migrated++;
+      });
+     
+      if(migrated > 0){
+        localStorage.setItem('safetyProvisions', JSON.stringify(current));
+        console.log('✅ safetyInfoDocs → safetyProvisions 마이그레이션: ' + migrated + '건');
+      }
+     
+      localStorage.removeItem('safetyInfoDocs');
+    }
+  }catch(e){
+    console.warn('마이그레이션 실패:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SUBMIT (규약 완전 준수)
+// ═══════════════════════════════════════════════════════════
+function submitDoc(){
+  var se = getVal('sub-email');
+  var sp = getVal('sub-phone');
+ 
+  if(!se || !sp){
+    showToast('수급인 연락처를 입력해주세요', 'danger');
+    return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(se)){
+    showToast('올바른 이메일 형식이 아닙니다', 'danger');
+    return;
+  }
+  if(!hasSig('contractor-sig')){
+    showToast('도급인 서명을 해주세요', 'danger');
+    return;
+  }
+ 
+  data.subcontractorEmail = se;
+  data.subcontractorPhone = sp;
+  data.contractorSignature = document.getElementById('contractor-sig').toDataURL();
+ 
+  showToast('저장 중...', 'info');
+ 
+  try{
+    // 문서번호 생성
+    data.safeinfoNo = getNextSafeinfoNo();
+   
+    // 감사 필드 & 대시보드 매칭
+    var now = new Date();
+    var userName = sessionStorage.getItem('userName') || data.contractorManager || 'anonymous';
+   
+    data.date = data.startDate;
+    data.submittedCompany = data.subcontractor;
+    data.submittedBy = data.contractorManager;
+    data.status = '발행완료';
+    data.createdAt = now.toISOString();
+    data.createdBy = userName;
+    data.updatedAt = now.toISOString();
+    data.updatedBy = userName;
+   
+    // 수급인 링크 (규약: ?safeinfoNo=)
+    var baseUrl = window.location.origin + window.location.pathname.replace('안전정보제공서_도급인용.html', '');
+    data.signUrl = baseUrl + '안전정보제공서_수급인용.html?safeinfoNo=' + encodeURIComponent(data.safeinfoNo);
+   
+    // 저장 데이터 구조 (Firestore 호환)
+    var saveData = {
+      safeinfoNo: data.safeinfoNo,
+     
+      // 기본정보
+      subcontractor: data.subcontractor,
+      workName: data.workName,
+      location: data.location,
+      detailLocation: data.detailLocation,
+      startDate: data.startDate,
+      endDate: data.endDate,
+     
+      // 도급인
+      contractorManager: data.contractorManager,
+      contractorDept: data.contractorDept,
+      contractorPhone: data.contractorPhone,
+      contractorEmail: data.contractorEmail,
+     
+      // 수급인
+      subcontractorEmail: data.subcontractorEmail,
+      subcontractorPhone: data.subcontractorPhone,
+     
+      // 화학물질
+      noChemical: data.noChemical,
+      msdsItems: data.msdsItems,
+      msdsIds: data.msdsIds,
+      chemicalOther: data.chemicalOther,
+     
+      // 관련 서류
+      riskAssessmentNo: data.riskAssessmentNo,
+      permitNo: data.permitNo,
+      selectedDocs: data.selectedDocs,
+     
+      // 공장 안전정보 (자동 채움)
+      facilityItems: data.facilityItems,
+      emergencyExit: data.emergencyExit,
+      emergencyContact: data.emergencyContact,
+      firstAid: data.firstAid,
+      aedLocations: data.aedLocations,
+     
+      // 안전수칙 & 보호구
+      safetyItems: data.safetyItems,
+      safetyOther: data.safetyOther,
+      ppeItems: data.ppeItems,
+     
+      // 비상대응
+      emergencyProc: data.emergencyProc,
+      safetyManagerPhone: data.safetyManagerPhone,
+     
+      // 서명
+      contractorSignature: data.contractorSignature,
+     
+      // 링크
+      signUrl: data.signUrl,
+     
+      // 대시보드 매칭 필드
+      submittedCompany: data.submittedCompany,
+      submittedBy: data.submittedBy,
+      status: data.status,
+      date: data.date,
+     
+      // 감사 필드
+      createdAt: data.createdAt,
+      createdBy: data.createdBy,
+      updatedAt: data.updatedAt,
+      updatedBy: data.updatedBy,
+      schemaVersion: 1
+    };
+   
+    // localStorage 저장 (규약 준수 키: safetyProvisions)
+    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    docs.push(saveData);
+    localStorage.setItem('safetyProvisions', JSON.stringify(docs));
+   
+    // 실시간 동기화 이벤트
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: { key: 'safetyProvisions', timestamp: Date.now() }
+      }));
+    }catch(e){ console.warn('이벤트 발생 실패:', e); }
+   
+    console.log('✅ 안전정보제공서 저장 완료:', data.safeinfoNo);
+    console.log('저장된 데이터:', saveData);
+   
+    // API 저장 (활성화 시)
+    if(API_ENABLED){
+      apiPost({ action:'saveDoc', data: saveData })
+        .then(function(res){
+          if(res.ok) console.log('✅ 서버 저장 완료');
+          else console.warn('서버 저장 실패, localStorage만 저장됨');
+        });
+    }
+   
+    // 완료 화면
+    setTxt('fin-doc-id', data.safeinfoNo);
+    setTxt('fin-work-name', data.workName);
+    setTxt('fin-subcontractor', data.subcontractor);
+    setTxt('fin-location', data.location + ' ' + data.detailLocation);
+    setTxt('fin-period', data.startDate + ' ~ ' + data.endDate);
+    setTxt('fin-datetime', now.toLocaleString('ko-KR'));
+   
+    // 화학물질 요약
+    var chemSummary = '';
+    if(data.noChemical){
+      chemSummary = '사용 안 함';
+    } else if(data.msdsItems.length > 0){
+      if(data.msdsItems.length <= 2){
+        chemSummary = data.msdsItems.join(', ');
+      } else {
+        chemSummary = data.msdsItems.slice(0, 2).join(', ') + ' 외 ' + (data.msdsItems.length - 2) + '종';
+      }
+    } else if(data.chemicalOther){
+      chemSummary = data.chemicalOther;
+    } else {
+      chemSummary = '-';
+    }
+    setTxt('fin-chemicals', chemSummary);
+   
+    document.getElementById('shareLink').textContent = data.signUrl;
+    document.getElementById('send-email').value = data.subcontractorEmail;
+   
+    goToScreen('screen-complete');
+    showToast('✅ 발행 완료! 문서번호: ' + data.safeinfoNo, 'success');
+   
+  }catch(error){
+    console.error('❌ 저장 실패:', error);
+    alert('저장 중 오류가 발생했습니다.\n\n' + error.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIL SEND (mailto 폴백)
+// ═══════════════════════════════════════════════════════════
+function sendMail(){
+  var to = document.getElementById('send-email').value.trim();
+  if(!to){
+    showToast('이메일을 입력해주세요', 'info');
+    return;
+  }
+ 
+  if(typeof emailjs !== 'undefined' && window.EMAILJS_CONFIG){
+    sendViaEmailJS(to);
+  } else if(API_ENABLED){
+    sendViaApi(to);
+  } else {
+    sendViaMailto(to);
+  }
+}
+
+function sendViaEmailJS(to){
+  showToast('EmailJS로 발송 중...', 'info');
+  var params = {
+    to_email: to,
+    safeinfo_no: data.safeinfoNo,
+    contractor_name: data.subcontractor,
+    employer_name: data.contractorManager,
+    work_location: data.location + ' ' + data.detailLocation,
+    work_period: data.startDate + ' ~ ' + data.endDate,
+    sign_url: data.signUrl
+  };
+  emailjs.send(
+    window.EMAILJS_CONFIG.serviceId,
+    window.EMAILJS_CONFIG.templateId,
+    params
+  ).then(
+    function(response){
+      showMailResult(true, to);
+      showToast('이메일 발송 완료', 'success');
+    },
+    function(error){
+      showMailResult(false, error.text || '오류');
+      showToast('발송 실패: ' + (error.text || '오류'), 'danger');
+    }
+  );
+}
+
+function sendViaApi(to){
+  showToast('이메일 발송 중...', 'info');
+  apiPost({
+    action:'sendMail',
+    data:{ safeinfoNo: data.safeinfoNo, to: to, type: 'sign_request', signUrl: data.signUrl }
+  }).then(function(res){
+    if(res.ok || res.opaque){
+      showMailResult(true, to);
+      showToast('이메일 발송 요청 완료', 'success');
+    } else {
+      showMailResult(false, res.error || '오류');
+      showToast('발송 실패', 'danger');
+    }
+  }).catch(function(e){
+    showMailResult(false, e.message);
+    showToast('발송 실패: ' + e.message, 'danger');
+  });
+}
+
+function sendViaMailto(to){
+  var msdsSummary = data.msdsItems.length > 0
+    ? '\n📄 사용 화학물질: ' + data.msdsItems.join(', ')
+    : '';
+ 
+  var subject = encodeURIComponent('[안전정보제공서] ' + data.safeinfoNo + ' 서명 요청');
+  var body = encodeURIComponent(
+    '안녕하세요,\n\n' +
+    '포스코퓨처엠 도급인이 발행한 안전정보제공서 서명 요청드립니다.\n\n' +
+    '📄 문서번호: ' + data.safeinfoNo + '\n' +
+    '🏢 협력사: ' + data.subcontractor + '\n' +
+    '📍 작업장소: ' + data.location + ' ' + data.detailLocation + '\n' +
+    '📅 작업기간: ' + data.startDate + ' ~ ' + data.endDate +
+    msdsSummary + '\n\n' +
+    '아래 링크를 클릭하여 확인·서명해주세요:\n' +
+    data.signUrl + '\n\n' +
+    '⚠️ 산업안전보건법 제65조에 의한 필수 절차입니다.\n\n' +
+    '포스코퓨처엠 안전관리팀'
+  );
+ 
+  var mailtoUrl = 'mailto:' + to + '?subject=' + subject + '&body=' + body;
+ 
+  showMailResult(true, to, 'mailto');
+  showToast('이메일 앱이 열립니다. "보내기"를 눌러주세요', 'info');
+ 
+  window.location.href = mailtoUrl;
+}
+
+function showMailResult(success, msg, mode){
+  var r = document.getElementById('mail-result');
+  if(!r) return;
+  r.style.display = 'block';
+  if(success){
+    r.style.background = '#E8F5E9';
+    r.style.color = 'var(--green2)';
+    if(mode === 'mailto'){
+      r.textContent = '📧 이메일 앱을 통해 발송 준비됨: ' + msg;
+    } else {
+      r.textContent = '✅ ' + msg + '으로 발송 완료!';
+    }
+  } else {
+    r.style.background = '#FFEBEE';
+    r.style.color = 'var(--red2)';
+    r.textContent = '❌ 발송 실패: ' + msg;
+  }
 }
 </script>
 </body>
