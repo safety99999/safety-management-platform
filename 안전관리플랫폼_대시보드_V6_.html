@@ -187,7 +187,6 @@ body{
   display:grid;place-items:center;font-size:27px
 }
 .qbtn-lbl{font-size:14.5px;font-weight:800;color:var(--body);line-height:1.35;letter-spacing:-.03em}
-
 /* ═══ 점검현황 페이지 ═══ */
 .insp-sum{
   display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
@@ -468,7 +467,6 @@ body{
 <div class="app">
 
 <div class="toast-wrap" id="toastWrap"></div>
-
 <!-- ══════════ HOME ══════════ -->
 <div class="page active" id="pageHome">
 
@@ -544,7 +542,7 @@ body{
       </div>
       <div class="tiles">
         <div class="tile t-done">
-          <div class="tile-k"><i></i>하기완료</div>
+          <div class="tile-k"><i></i>허가완료</div>
           <div class="tile-n"><span id="statusReady">0</span><small>건</small></div>
         </div>
         <div class="tile t-run">
@@ -918,10 +916,14 @@ function parseAndSave(){
   try{
     var nd=parseExcel(txt);if(!nd.length){showToast('파싱된 데이터가 없습니다','danger');return;}
     var ex=[];try{var raw=localStorage.getItem('safetyDatabase');if(raw) ex=(JSON.parse(raw).workHistory)||[];}catch(e){}
-    var map={};ex.forEach(function(w,i){map[w.date+'_'+(w.originalNo||i)]=w;});
-    nd.forEach(function(w,i){map[w.date+'_'+(w.originalNo||i)]=w;});
+    // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip (인덱스 fallback 금지)
+    var map={};
+    ex.forEach(function(w){if(w.originalNo) map[w.date+'_'+w.originalNo]=w;});
+    nd.forEach(function(w){if(w.originalNo) map[w.date+'_'+w.originalNo]=w;});
     var merged=Object.values(map).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
     localStorage.setItem('safetyDatabase',JSON.stringify({metadata:{version:'5.0',lastUpdate:new Date().toISOString()},workHistory:merged}));
+    // ⭐ CONVENTIONS §11.1: CustomEvent 발신
+    try{window.dispatchEvent(new CustomEvent('app-data-changed',{detail:{key:'safetyDatabase',timestamp:Date.now()}}));}catch(e){}
     document.getElementById('dbPaste').value='';loadDB();
     showToast('✅ '+nd.length+'건 추가 / 총 '+merged.length+'건 저장','success');
   }catch(e){showToast('오류: '+e.message,'danger');}
@@ -1088,7 +1090,6 @@ function renderPermitList(){
 function goToPermit(){
   window.location.href='안전작업허가서_v2.html';
 }
-
 // PENDING
 function renderPending(){
   var tv=getTodayV();
@@ -1213,7 +1214,11 @@ function resetIF(){ifWork=null;ifSev=null;ifItems=[];custItems=[];photoData=null
 
 // VIOLATIONS
 function loadViolations(){try{violations=JSON.parse(localStorage.getItem('safetyViolations')||'[]');}catch(e){violations=[];}renderPending();renderInspPage();}
-function saveViolations(){localStorage.setItem('safetyViolations',JSON.stringify(violations));}
+function saveViolations(){
+  localStorage.setItem('safetyViolations',JSON.stringify(violations));
+  // ⭐ CONVENTIONS §11.1: CustomEvent 발신
+  try{window.dispatchEvent(new CustomEvent('app-data-changed',{detail:{key:'safetyViolations',timestamp:Date.now()}}));}catch(e){}
+}
 function getTodayV(){var t=fmtDate(new Date());return violations.filter(function(v){return v.createdAt&&v.createdAt.indexOf(t)===0;});}
 function renderInspPage(){
   var tv=getTodayV();
@@ -1257,22 +1262,28 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')['wo','wd','
 document.getElementById('custInp').addEventListener('keypress',function(e){if(e.key==='Enter'){e.preventDefault();addCust();}});
 
 // ──────────────────────────────────────────────────────────
-// ⭐ 권한 검증 및 초기화
+// ⭐ 권한 검증 및 초기화 (CONVENTIONS §2: 소문자 role)
 // ──────────────────────────────────────────────────────────
 
 // 사용자 역할 확인
 function getUserRole() {
   try {
     var userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-    return userInfo.role || 'USER'; // 기본값: USER
+    return userInfo.role || 'worker'; // 기본값: worker (규약 §2)
   } catch (e) {
-    return 'USER';
+    return 'worker';
   }
 }
 
 // Admin 권한 확인
 function isAdmin() {
-  return getUserRole() === 'ADMIN';
+  return getUserRole() === 'admin';
+}
+
+// Manager 권한 확인
+function isManager() {
+  var role = getUserRole();
+  return role === 'admin' || role === 'manager';
 }
 
 // 페이지 초기화 (권한 분기)
@@ -1280,7 +1291,7 @@ function initializeWithRole() {
   var role = getUserRole();
   console.log('사용자 역할:', role);
   
-  if (role === 'ADMIN') {
+  if (role === 'admin') {
     // Admin 화면 초기화
     showAdminTabs();
     console.log('Admin 모드 활성화');
@@ -1303,22 +1314,24 @@ function showUserTabs() {
   console.log('User 탭 활성화 - 미구현');
 }
 
-// 상태 표시 업데이트
+// 상태 표시 업데이트 (CONVENTIONS §5.1: 정식 저장소 키)
 function updateStatusIndicators() {
   try {
-    // 안전정보제공 상태 확인
+    // 규약 준수 저장소 키 사용
     var provisions = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
     var quizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
-    var permits = JSON.parse(localStorage.getItem('firebasePermits') || '[]');
+    var permitList = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
     var assessments = JSON.parse(localStorage.getItem('riskAssessments') || '[]');
-    var tbms = JSON.parse(localStorage.getItem('tbmLogs') || '[]');
+    var tbms = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
+    var emergencies = JSON.parse(localStorage.getItem('emergencies') || '[]');
     
     console.log('상태 현황:', {
       '안전정보': provisions.length,
       '안전퀴즈': quizzes.length,
-      '허가서': permits.length,
+      '허가서': permitList.length,
       '위험평가': assessments.length,
-      'TBM': tbms.length
+      'TBM': tbms.length,
+      '긴급조치': emergencies.length
     });
     
   } catch (e) {
@@ -1330,7 +1343,7 @@ init();
 initializeWithRole();
 
 // ──────────────────────────────────────────────────────────
-// ⭐ 작업별 실시간 상태 업데이트
+// ⭐ 작업별 실시간 상태 업데이트 (CONVENTIONS §9: KST, §3.4: workId)
 // ──────────────────────────────────────────────────────────
 
 function updateWorkStatus() {
@@ -1343,28 +1356,31 @@ function updateWorkStatus() {
     
     var db = JSON.parse(raw);
     var works = db.workHistory || [];
-    var today = new Date().toISOString().split('T')[0];
+    // ⭐ CONVENTIONS §9: KST 기준 fmtDate 사용 (UTC 금지)
+    var today = fmtDate(new Date());
     var todayWorks = works.filter(function(w) { return w.date === today; });
     
-    // 허가서 상태 확인
-    var permits = [];
+    // 허가서 상태 확인 (CONVENTIONS §5.1: safetyPermits)
+    var permitList = [];
     try {
-      permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
+      permitList = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
     } catch(e) {}
     
     var permitMap = {};
-    permits.forEach(function(p) {
+    permitList.forEach(function(p) {
       if (p.sourceWorkId) permitMap[p.sourceWorkId] = p;
     });
     
     // 상태별 카운트
-    var statusReady = 0;   // 하기완료
+    var statusReady = 0;   // 허가완료
     var statusWorking = 0; // 작업중
     var statusStopped = 0; // 작업중지
     var statusCompleted = 0; // 작업완료
     
     todayWorks.forEach(function(w) {
-      var permit = permitMap[w.date + '_' + (w.originalNo || '')];
+      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip
+      if(!w.originalNo) return;
+      var permit = permitMap[w.date + '_' + w.originalNo];
       var status = permit ? permit.status : '대기중';
       
       if (status === '허가완료') {
@@ -1385,7 +1401,7 @@ function updateWorkStatus() {
     setTxt('statusCompleted', statusCompleted);
     
     console.log('작업별 상태:', {
-      '하기완료': statusReady,
+      '허가완료': statusReady,
       '작업중': statusWorking,
       '작업중지': statusStopped,
       '작업완료': statusCompleted
@@ -1408,15 +1424,16 @@ function resetWorkStatus() {
 updateStatusIndicators();
 
 // ═══════════════════════════════
-// 🔥 당일 작업허가 리스트 관리 (NEW)
+// 🔥 당일 작업허가 리스트 관리 (CONVENTIONS §5.1, §3.4)
 // ═══════════════════════════════
 var todayPermits = [];
 var lastPermitUpdate = 0;
 var lastTBMUpdate = 0;
 
 function loadTodayPermits() {
+  // ⭐ CONVENTIONS §9: KST 기준
   var today = fmtDate(new Date());
-  var permits = [];
+  var permitArr = [];
   
   try {
     // safetyDatabase에서 작업 로드
@@ -1430,14 +1447,14 @@ function loadTodayPermits() {
       return;
     }
     
-    // safetyPermits에서 허가 현황 로드
+    // safetyPermits에서 허가 현황 로드 (CONVENTIONS §5.1)
     var permitData = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
     var permitMap = {};
     permitData.forEach(function(p) {
       if (p.sourceWorkId) permitMap[p.sourceWorkId] = p;
     });
     
-    // safetyTBM에서 TBM 현황 로드
+    // safetyTBM에서 TBM 현황 로드 (CONVENTIONS §5.1: tbmLogs 폐기)
     var tbmData = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
     var tbmMap = {};
     tbmData.forEach(function(t) {
@@ -1446,7 +1463,9 @@ function loadTodayPermits() {
     
     // 각 작업에 대한 권한서 생성
     works.forEach(function(w) {
-      var workId = w.date + '_' + (w.originalNo || '');
+      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip
+      if(!w.originalNo) return;
+      var workId = w.date + '_' + w.originalNo;
       var permit = permitMap[workId];
       var permitNo = permit ? permit.permitNo : null;
       var tbm = permitNo ? tbmMap[permitNo] : null;
@@ -1458,7 +1477,7 @@ function loadTodayPermits() {
         else status = permit.status || '허가진행중';
       }
       
-      permits.push({
+      permitArr.push({
         workId: workId,
         permitNo: permitNo,
         workName: w.workName || w.workNameFull || '미지정',
@@ -1471,9 +1490,9 @@ function loadTodayPermits() {
       });
     });
     
-    todayPermits = permits;
+    todayPermits = permitArr;
     renderTodayPermits();
-    document.getElementById('todayPermitSection').style.display = 'block';
+    document.getElementById('todayPermitSection').style.display = permitArr.length ? 'block' : 'none';
   } catch(e) {
     console.error('당일 작업 로드 실패:', e);
     document.getElementById('todayPermitSection').style.display = 'none';
@@ -1507,7 +1526,7 @@ function renderTodayPermits() {
     html += '  </div>';
     html += '  <div class="pc-actions">';
     
-    // 상태별 버튼
+    // 상태별 버튼 (CONVENTIONS §6.1: 규약 파일명)
     if (p.status === '대기중') {
       html += '    <a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(p.workId) + '" class="pc-btn primary">허가서 신청 →</a>';
     } else if (p.status === '허가진행중') {
@@ -1530,18 +1549,18 @@ function refreshTodayPermits() {
   showToast('당일 작업 목록을 새로고침했습니다', 'success');
 }
 
-// 실시간 동기화 (localStorage 감시)
+// ⭐ CONVENTIONS §11.2: 실시간 동기화 - 다른 탭 감지 (표준 storage 이벤트)
 window.addEventListener('storage', function(e) {
   var now = Date.now();
   
   if (e.key === 'safetyDatabase' && now - lastPermitUpdate > 500) {
     lastPermitUpdate = now;
-    setTimeout(function() { loadTodayPermits(); }, 100);
+    setTimeout(function() { loadDB(); loadTodayPermits(); }, 100);
   }
   
   if (e.key === 'safetyPermits' && now - lastPermitUpdate > 500) {
     lastPermitUpdate = now;
-    setTimeout(function() { loadTodayPermits(); }, 100);
+    setTimeout(function() { loadPermits(); loadTodayPermits(); }, 100);
   }
   
   if (e.key === 'safetyTBM' && now - lastTBMUpdate > 500) {
@@ -1550,6 +1569,46 @@ window.addEventListener('storage', function(e) {
       loadTodayPermits();
       refreshAll();
     }, 100);
+  }
+  
+  if (e.key === 'safetyViolations') {
+    setTimeout(function() { loadViolations(); }, 100);
+  }
+  
+  if (e.key === 'safetyQuizzes' || e.key === 'riskAssessments' || 
+      e.key === 'safetyProvisions' || e.key === 'emergencies') {
+    setTimeout(function() { updateStatusIndicators(); }, 100);
+  }
+});
+
+// ⭐ CONVENTIONS §11.2: 같은 탭 감지 (CustomEvent)
+window.addEventListener('app-data-changed', function(e) {
+  var key = e.detail && e.detail.key;
+  if(!key) return;
+  var now = Date.now();
+  
+  if (key === 'safetyDatabase' && now - lastPermitUpdate > 500) {
+    lastPermitUpdate = now;
+    setTimeout(function() { loadDB(); loadTodayPermits(); updateWorkStatus(); }, 100);
+  }
+  
+  if (key === 'safetyPermits' && now - lastPermitUpdate > 500) {
+    lastPermitUpdate = now;
+    setTimeout(function() { loadPermits(); loadTodayPermits(); updateWorkStatus(); }, 100);
+  }
+  
+  if (key === 'safetyTBM' && now - lastTBMUpdate > 500) {
+    lastTBMUpdate = now;
+    setTimeout(function() { loadTodayPermits(); updateWorkStatus(); }, 100);
+  }
+  
+  if (key === 'safetyViolations') {
+    setTimeout(function() { loadViolations(); }, 100);
+  }
+  
+  if (key === 'safetyQuizzes' || key === 'riskAssessments' || 
+      key === 'safetyProvisions' || key === 'emergencies') {
+    setTimeout(function() { updateStatusIndicators(); }, 100);
   }
 });
 
