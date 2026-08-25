@@ -47,7 +47,7 @@ body{
 .page{display:none}
 .page.active{display:block;animation:fade .22s ease}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.main{padding:0 0 80px}
+.main{padding:0 0 20px}
 
 /* ═══ 히어로 (최소화, 브랜드 전용) ═══ */
 .hero{
@@ -65,23 +65,23 @@ body{
   position:relative;z-index:1
 }
 .hero-brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-.hero-logo{font-size:22px;line-height:1;flex-shrink:0}
-.hero-brand-text{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.hero-logo{font-size:30px;line-height:1;flex-shrink:0}
+.hero-brand-text{display:flex;flex-direction:column;line-height:1.25;min-width:0}
 .hero-brand-en{
-  font-size:10.5px;font-weight:700;opacity:.8;
-  letter-spacing:.05em;color:#fff
+  font-size:12px;font-weight:700;opacity:.85;
+  letter-spacing:.05em;color:#fff;margin-bottom:2px
 }
 .hero-brand-ko{
-  font-size:15px;font-weight:800;letter-spacing:-.02em;
+  font-size:18px;font-weight:800;letter-spacing:-.02em;
   white-space:nowrap;color:#fff
 }
 .hero-tools{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .hero-clock{text-align:right;line-height:1.2}
-.hero-date{font-size:11px;font-weight:700;opacity:.85}
-.hero-time{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.hero-date{font-size:13px;font-weight:700;opacity:.85}
+.hero-time{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
 .icon-btn{
-  width:34px;height:34px;border:0;border-radius:10px;
-  background:rgba(255,255,255,.16);color:#fff;font-size:16px;
+  width:40px;height:40px;border:0;border-radius:11px;
+  background:rgba(255,255,255,.16);color:#fff;font-size:19px;
   cursor:pointer;display:grid;place-items:center;transition:.15s
 }
 .icon-btn:active{transform:scale(.9);background:rgba(255,255,255,.3)}
@@ -186,23 +186,19 @@ body{
   border-radius:50%;pointer-events:none
 }
 .status-hl-label{
-  font-size:12px;font-weight:800;opacity:.85;
-  letter-spacing:.03em;margin-bottom:6px;
-  display:flex;align-items:center;gap:5px;
+  font-size:14px;font-weight:800;opacity:.9;
+  letter-spacing:.03em;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
   position:relative;z-index:1
 }
-.status-hl-label i{
-  width:7px;height:7px;border-radius:50%;
-  background:currentColor;display:inline-block
-}
 .status-hl-value{
-  font-size:36px;font-weight:800;letter-spacing:-.05em;
+  font-size:44px;font-weight:800;letter-spacing:-.05em;
   line-height:1;font-variant-numeric:tabular-nums;
   position:relative;z-index:1
 }
 .status-hl-value small{
-  font-size:15px;font-weight:700;opacity:.8;
-  margin-left:2px;letter-spacing:0
+  font-size:18px;font-weight:700;opacity:.8;
+  margin-left:3px;letter-spacing:0
 }
 .status-hl-card.danger .status-hl-label i{
   animation:blink 1.5s infinite
@@ -219,7 +215,7 @@ body{
 }
 .status-dt-card{
   background:var(--card);border-radius:var(--r-s);
-  padding:12px 4px 10px;text-align:center;
+  padding:14px 4px 12px;text-align:center;
   cursor:pointer;transition:.15s;
   box-shadow:var(--sh);border:1px solid var(--line);
   border-top:3px solid var(--sub)
@@ -233,9 +229,9 @@ body{
 .status-dt-card.done{border-top-color:var(--done)}
 
 .status-dt-value{
-  font-size:22px;font-weight:800;letter-spacing:-.04em;
+  font-size:28px;font-weight:800;letter-spacing:-.04em;
   line-height:1;font-variant-numeric:tabular-nums;
-  margin-bottom:4px
+  margin-bottom:5px
 }
 .status-dt-card.wait .status-dt-value{color:var(--warn)}
 .status-dt-card.run .status-dt-value{color:var(--run)}
@@ -244,7 +240,7 @@ body{
 .status-dt-value.zero{opacity:.4}
 
 .status-dt-label{
-  font-size:11px;font-weight:700;color:var(--sub);
+  font-size:12.5px;font-weight:700;color:var(--sub);
   letter-spacing:-.01em
 }
 
@@ -266,16 +262,30 @@ body{
 .qbtn:active{
   transform:scale(.96);background:var(--sunk)
 }
+.quick-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;padding:0 16px;margin-top:10px
+}
+.qbtn{
+  background:var(--card);border-radius:var(--r);
+  padding:18px 6px 14px;text-align:center;
+  text-decoration:none;box-shadow:var(--sh);
+  transition:.15s;display:flex;flex-direction:column;
+  align-items:center;gap:10px;
+  border:1px solid var(--line)
+}
+.qbtn:active{
+  transform:scale(.96);background:var(--sunk)
+}
 .qbtn-ico{
-  width:42px;height:42px;border-radius:11px;
+  width:56px;height:56px;border-radius:14px;
   background:var(--tint);
-  display:grid;place-items:center;font-size:20px
+  display:grid;place-items:center;font-size:26px
 }
 .qbtn-lbl{
-  font-size:12px;font-weight:800;color:var(--body);
+  font-size:14px;font-weight:800;color:var(--body);
   line-height:1.3;letter-spacing:-.02em
 }
-
 /* ═══════════════════════════════════════
    점검현황 페이지
    ═══════════════════════════════════════ */
