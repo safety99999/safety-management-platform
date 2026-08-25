@@ -857,14 +857,17 @@ var SP=[{p:['안전모','헬멧'],s:'안전모 착용'},{p:['안전화'],s:'안�
 function loadDB(){
   try{
     var raw=localStorage.getItem('safetyDatabase');
-    allWorks=raw?(JSON.parse(raw).workHistory||[]).map(function(w,i){
+    allWorks=raw?(JSON.parse(raw).workHistory||[]).map(function(w){
+      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip (인덱스 fallback 금지)
+      if(!w.originalNo) return null;
       var rl=w.risk||'일반';if(rl==='중위험') rl='일반';
-      return{id:w.date+'_'+(w.originalNo||i),date:w.date||'',workName:w.workName||'',workNameFull:w.workNameFull||'',
+      return{id:w.date+'_'+w.originalNo,date:w.date||'',workName:w.workName||'',workNameFull:w.workNameFull||'',
         locationObj:w.location||{},location:locStr(w.location),riskLevel:rl,
         company:w.company||'미지정',manager:w.manager||'미지정',ilsRequired:w.ilsRequired||'N',
         hrCategoryNames:(w.highRiskCategories||[]).map(function(c){return c.category;}),
         hazards:w.hazards||[],aiAnalysis:{riskScore:rscore(rl,w.highRiskCategories),safetyMeasures:w.safetyMeasures||[]}};
-    }):[];
+    }).filter(function(w){return w!==null;}):[];
+
   }catch(e){allWorks=[];}
   updateDBUI();applyFilter();
 }
