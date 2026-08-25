@@ -655,6 +655,185 @@ body{
   font-size:12.5px;color:var(--sub);
   line-height:1.5;font-weight:500;
 }
+/* ═══════════════════════════════════════
+   오늘 작업 현황 (통합 카드) - 신규
+   ═══════════════════════════════════════ */
+.status-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-bottom:10px;
+}
+.status-card{
+  background:var(--card);
+  border-radius:var(--r);
+  padding:14px 6px 12px;
+  text-align:center;
+  cursor:pointer;
+  transition:.15s;
+  box-shadow:var(--sh);
+  border:1px solid var(--line);
+  border-top:3px solid var(--sub);
+  position:relative;
+}
+.status-card:active{
+  transform:scale(.96);
+  background:var(--sunk);
+}
+.status-card.wait{border-top-color:var(--warn)}
+.status-card.run{border-top-color:var(--run)}
+.status-card.done{border-top-color:var(--done)}
+.status-card.danger{border-top-color:var(--stop)}
+
+.status-card-ico{
+  font-size:18px;
+  margin-bottom:4px;
+  line-height:1;
+}
+.status-card-value{
+  font-size:26px;
+  font-weight:800;
+  letter-spacing:-.04em;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+  margin-bottom:4px;
+}
+.status-card.wait .status-card-value{color:var(--warn)}
+.status-card.run .status-card-value{color:var(--run)}
+.status-card.done .status-card-value{color:var(--done)}
+.status-card.danger .status-card-value{color:var(--stop)}
+.status-card-value.zero{opacity:.35}
+
+.status-card-label{
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--sub);
+  letter-spacing:-.01em;
+}
+
+/* ═══════════════════════════════════════
+   고위험 배너 (강조)
+   ═══════════════════════════════════════ */
+.danger-banner{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--stop-bg);
+  border:1px solid rgba(214,39,61,.2);
+  border-left:3px solid var(--stop);
+  border-radius:var(--r-s);
+  padding:12px 14px;
+  cursor:pointer;
+  transition:.15s;
+  margin-top:10px;
+}
+.danger-banner:active{
+  transform:scale(.99);
+  background:rgba(214,39,61,.08);
+}
+.danger-banner-ico{
+  font-size:18px;
+  flex-shrink:0;
+  line-height:1;
+  animation:blink 1.5s infinite;
+}
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:.5}
+}
+.danger-banner-text{
+  flex:1;
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--stop);
+  letter-spacing:-.01em;
+  line-height:1.4;
+}
+.danger-banner-text strong{
+  font-weight:900;
+  font-size:15px;
+}
+.danger-banner-arrow{
+  font-size:16px;
+  color:var(--stop);
+  flex-shrink:0;
+  font-weight:700;
+}
+
+/* ═══════════════════════════════════════
+   작업 상태별 목록 시트 (신규)
+   ═══════════════════════════════════════ */
+.ws-empty{
+  text-align:center;
+  padding:40px 20px;
+  color:var(--sub);
+}
+.ws-empty-ico{
+  font-size:44px;
+  margin-bottom:10px;
+  opacity:.3;
+}
+.ws-empty-txt{
+  font-size:14px;
+  font-weight:700;
+  line-height:1.5;
+}
+.ws-count-badge{
+  display:inline-block;
+  background:var(--tint);
+  color:var(--posco);
+  font-size:11.5px;
+  font-weight:800;
+  padding:2px 8px;
+  border-radius:5px;
+  margin-left:6px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* 시트 안에서 사용할 permit-card 크기 최적화 */
+.sheet-body .permit-card{
+  margin-bottom:8px;
+}
+.sheet-body .permit-card:last-child{
+  margin-bottom:16px;
+}
+
+/* 시트 필터 탭 (선택) */
+.ws-filter{
+  display:flex;
+  gap:6px;
+  margin-bottom:12px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.ws-filter::-webkit-scrollbar{display:none}
+.ws-filter-btn{
+  flex-shrink:0;
+  padding:6px 14px;
+  border-radius:999px;
+  border:1.5px solid var(--line);
+  background:var(--card);
+  color:var(--sub);
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:700;
+  cursor:pointer;
+  transition:.15s;
+  letter-spacing:-.01em;
+}
+.ws-filter-btn.active{
+  background:var(--deep);
+  border-color:var(--deep);
+  color:#fff;
+}
+.ws-filter-btn:active{transform:scale(.95)}
+
+/* ═══════════════════════════════════════
+   기존 status-bar 스타일 유지 (호환용)
+   ═══════════════════════════════════════ */
+.status-bar{display:none} /* 이전 status-bar 숨김 */
 
 /* ═══════════════════════════════════════
    토스트
@@ -699,33 +878,10 @@ body{
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand" onclick="goTab('home')" style="cursor:pointer;">
-        <div class="brand-logo">
-          <!-- SVG 미니멀 공장 심볼 -->
-          <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- 왼쪽 건물 -->
-            <rect x="3" y="14" width="9" height="18" rx="1" 
-              stroke="currentColor" stroke-width="1.8" fill="none" 
-              style="color:var(--posco)"/>
-            <!-- 굴뚝 -->
-            <rect x="5.5" y="8" width="1.5" height="6" 
-              fill="currentColor" style="color:var(--posco)"/>
-            <!-- 가운데 건물 (지붕 있음) -->
-            <path d="M12 20 L18 14 L24 20 L24 32 L12 32 Z" 
-              stroke="currentColor" stroke-width="1.8" fill="none" 
-              stroke-linejoin="round" style="color:var(--deep)"/>
-            <!-- 오른쪽 건물 -->
-            <rect x="24" y="16" width="9" height="16" rx="1" 
-              stroke="currentColor" stroke-width="1.8" fill="none" 
-              style="color:var(--posco)"/>
-            <!-- 창문들 (점) -->
-            <circle cx="7.5" cy="22" r="0.8" fill="currentColor" style="color:var(--posco)"/>
-            <circle cx="7.5" cy="26" r="0.8" fill="currentColor" style="color:var(--posco)"/>
-            <circle cx="18" cy="24" r="0.8" fill="currentColor" style="color:var(--deep)"/>
-            <circle cx="18" cy="28" r="0.8" fill="currentColor" style="color:var(--deep)"/>
-            <circle cx="28.5" cy="22" r="0.8" fill="currentColor" style="color:var(--posco)"/>
-            <circle cx="28.5" cy="26" r="0.8" fill="currentColor" style="color:var(--posco)"/>
-          </svg>
-        </div>
+       <div class="brand-text">
+  <span class="brand-en">POSCO FUTURE M</span>
+  <span class="brand-ko">포항양극재공장 안전관리 앱</span>
+</div>
         <div class="brand-text">
           <span class="brand-en">POSCO FUTURE M</span>
           <span class="brand-ko">포항양극재공장</span>
@@ -804,44 +960,50 @@ body{
         </a>
       </div>
     </section>
+<!-- 오늘 작업 현황 (통합 카드) -->
+<section class="sec" id="workStatusSection">
+  <div class="sec-hdr">
+    <div class="sec-title">
+      📈 오늘 작업 현황
+      <span class="sec-count" id="totalWorkCount">0</span>
+    </div>
+    <div class="sec-more" onclick="openStatusSheet('all')">전체보기 ›</div>
+  </div>
+  
+  <!-- 4개 상태 카드 (클릭 가능) -->
+  <div class="status-grid">
+    <div class="status-card wait" onclick="openStatusSheet('wait')">
+      <div class="status-card-ico">🟡</div>
+      <div class="status-card-value" id="cntWait">0</div>
+      <div class="status-card-label">대기중</div>
+    </div>
+    <div class="status-card run" onclick="openStatusSheet('run')">
+      <div class="status-card-ico">🟠</div>
+      <div class="status-card-value" id="cntRun">0</div>
+      <div class="status-card-label">진행중</div>
+    </div>
+    <div class="status-card done" onclick="openStatusSheet('done')">
+      <div class="status-card-ico">🟢</div>
+      <div class="status-card-value" id="cntDone">0</div>
+      <div class="status-card-label">완료</div>
+    </div>
+    <div class="status-card danger" onclick="openStatusSheet('danger')">
+      <div class="status-card-ico">🔴</div>
+      <div class="status-card-value" id="cntDanger">0</div>
+      <div class="status-card-label">고위험</div>
+    </div>
+  </div>
+  
+  <!-- 고위험 배너 (있을 때만) -->
+  <div class="danger-banner" id="dangerBanner" onclick="openStatusSheet('danger')" style="display:none;">
+    <div class="danger-banner-ico">🚨</div>
+    <div class="danger-banner-text">
+      고위험 작업 <strong id="dangerBannerCount">0</strong>건 · 즉시 확인 필요
+    </div>
+    <div class="danger-banner-arrow">›</div>
+  </div>
+</section>
 
-    <!-- 당일 작업허가 리스트 (있을 때만) -->
-    <section class="sec" id="todayPermitSection" style="display:none;">
-      <div class="sec-hdr">
-        <div class="sec-title">
-          📋 당일 작업허가
-          <span class="sec-count" id="todayPermitCount">0</span>
-        </div>
-        <div class="sec-more" onclick="refreshTodayPermits()">새로고침</div>
-      </div>
-      <div id="todayPermitList"></div>
-    </section>
-
-    <!-- 실시간 상태 (1줄 압축) -->
-    <section class="sec" id="statusSection">
-      <div class="sec-hdr">
-        <div class="sec-title">📈 실시간 상태</div>
-        <div class="sec-more" onclick="refreshAll()">↻</div>
-      </div>
-      <div class="status-bar">
-        <div class="status-item">
-          <div class="status-label">허가완료</div>
-          <div class="status-value done" id="statusReady">0</div>
-        </div>
-        <div class="status-item">
-          <div class="status-label">작업중</div>
-          <div class="status-value run" id="statusWorking">0</div>
-        </div>
-        <div class="status-item">
-          <div class="status-label">중지</div>
-          <div class="status-value stop" id="statusStopped">0</div>
-        </div>
-        <div class="status-item">
-          <div class="status-label">완료</div>
-          <div class="status-value wait" id="statusCompleted">0</div>
-        </div>
-      </div>
-    </section>
 
   </div>
 </div>
@@ -853,21 +1015,6 @@ body{
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-logo">
-          <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="14" width="9" height="18" rx="1" 
-              stroke="currentColor" stroke-width="1.8" fill="none" 
-              style="color:var(--stop)"/>
-            <rect x="5.5" y="8" width="1.5" height="6" 
-              fill="currentColor" style="color:var(--stop)"/>
-            <path d="M12 20 L18 14 L24 20 L24 32 L12 32 Z" 
-              stroke="currentColor" stroke-width="1.8" fill="none" 
-              stroke-linejoin="round" style="color:var(--deep)"/>
-            <rect x="24" y="16" width="9" height="16" rx="1" 
-              stroke="currentColor" stroke-width="1.8" fill="none" 
-              style="color:var(--stop)"/>
-          </svg>
-        </div>
         <div class="brand-text">
           <span class="brand-en">SAFETY INSPECTION</span>
           <span class="brand-ko">점검 현황</span>
@@ -924,15 +1071,6 @@ body{
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-logo">
-          <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="18" cy="18" r="6" stroke="currentColor" stroke-width="1.8" 
-              fill="none" style="color:var(--sub)"/>
-            <path d="M18 3 V8 M18 28 V33 M33 18 H28 M8 18 H3 M28.5 7.5 L25 11 M11 25 L7.5 28.5 M28.5 28.5 L25 25 M11 11 L7.5 7.5" 
-              stroke="currentColor" stroke-width="1.8" stroke-linecap="round" 
-              style="color:var(--sub)"/>
-          </svg>
-        </div>
         <div class="brand-text">
           <span class="brand-en">SETTINGS</span>
           <span class="brand-ko">설정</span>
@@ -1062,7 +1200,20 @@ body{
     <!-- 알림 리스트 동적 생성 -->
   </div>
 </div>
-
+<!-- ══════════════════════════════════════
+     작업 상태별 목록 시트 (통합)
+     ══════════════════════════════════════ -->
+<div class="overlay" id="wsOv" onclick="closeSheet('ws')"></div>
+<div class="sheet" id="wsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title" id="wsSheetTitle">작업 목록</div>
+    <button class="sheet-x" onclick="closeSheet('ws')" aria-label="닫기">×</button>
+  </div>
+  <div class="sheet-body" id="wsBody">
+    <!-- 동적 생성 -->
+  </div>
+</div>
 <!-- ══════════════════════════════════════
      작업 상세 시트
      ══════════════════════════════════════ -->
@@ -1761,72 +1912,419 @@ function applyFilter(){
 }
 
 // ═══════════════════════════════════════
-// 작업별 상태 (허가완료/작업중/중지/완료)
+// 오늘 작업 현황 (통합 카운트) - 신규
 // ═══════════════════════════════════════
 function updateWorkStatus(){
   try{
-    var raw=localStorage.getItem('safetyDatabase');
-    if(!raw){resetWorkStatus();return;}
+    var today = fmtDate(new Date());
+    var raw = localStorage.getItem('safetyDatabase');
+    if(!raw){
+      resetWorkStatus();
+      return;
+    }
+   
+// ═══════════════════════════════════════
+// 작업 상태별 시트 (신규)
+// ═══════════════════════════════════════
+function openStatusSheet(filter){
+  var today = fmtDate(new Date());
+  var raw = localStorage.getItem('safetyDatabase');
+  if(!raw){
+    showToast('작업 데이터가 없습니다', 'info');
+    return;
+  }
+  
+  var db = JSON.parse(raw);
+  var works = (db.workHistory || []).filter(function(w){
+    return w.date === today && w.originalNo;
+  });
+  
+  // 허가서/TBM 데이터
+  var permitList = [];
+  try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
+  var permitMap = {};
+  permitList.forEach(function(p){
+    if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
+  });
+  
+  var tbmList = [];
+  try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
+  var tbmMap = {};
+  tbmList.forEach(function(t){
+    if(t.permitNo) tbmMap[t.permitNo] = t;
+  });
+  
+  // 각 작업에 상태 정보 추가
+  var enriched = works.map(function(w){
+    var permit = permitMap[w.date + '_' + w.originalNo];
+    var status = permit ? permit.status : '대기중';
+    if(permit && permit.permitNo && tbmMap[permit.permitNo]){
+      status = '작업중';
+    }
+    return {
+      workId: w.date + '_' + w.originalNo,
+      workName: w.workName || w.workNameFull || '미지정',
+      company: w.company || '-',
+      location: w.location ? 
+        (w.location.factory || '') + (w.location.line ? ' ' + w.location.line + '라인' : '') 
+        : '미지정',
+      riskLevel: w.risk || '일반',
+      status: status,
+      permit: permit,
+      permitNo: permit ? permit.permitNo : null,
+      tbm: permit && permit.permitNo ? tbmMap[permit.permitNo] : null
+    };
+  });
+  
+  // 필터링
+  var filtered = [];
+  var title = '작업 목록';
+  
+  if(filter === 'wait'){
+    filtered = enriched.filter(function(w){
+      return w.status === '대기중' || w.status === '허가진행중';
+    });
+    title = '🟡 대기중 작업';
+  } else if(filter === 'run'){
+    filtered = enriched.filter(function(w){
+      return w.status === '허가완료' || w.status === '작업중' || w.status === '작업중지';
+    });
+    title = '🟠 진행중 작업';
+  } else if(filter === 'done'){
+    filtered = enriched.filter(function(w){
+      return w.status === '작업완료' || w.status === '완료';
+    });
+    title = '🟢 완료 작업';
+  } else if(filter === 'danger'){
+    filtered = enriched.filter(function(w){
+      return w.riskLevel === '고위험';
+    });
+    title = '🔴 고위험 작업';
+  } else {
+    filtered = enriched;
+    title = '📋 전체 작업';
+  }
+  
+  // 시트 제목 업데이트
+  var titleEl = document.getElementById('wsSheetTitle');
+  if(titleEl){
+    titleEl.innerHTML = title + ' <span class="ws-count-badge">' + filtered.length + '</span>';
+  }
+  
+  // 시트 내용 렌더링
+  renderStatusSheet(filtered, filter);
+  
+  // 시트 열기
+  openSheet('ws');
+}
+
+function renderStatusSheet(works, filter){
+  var body = document.getElementById('wsBody');
+  if(!body) return;
+  
+  if(!works.length){
+    var messages = {
+      'wait': '대기중인 작업이 없습니다',
+      'run': '진행중인 작업이 없습니다',
+      'done': '완료된 작업이 없습니다',
+      'danger': '고위험 작업이 없습니다',
+      'all': '오늘 작업이 없습니다'
+    };
+    body.innerHTML = '<div class="ws-empty">' +
+      '<div class="ws-empty-ico">📭</div>' +
+      '<div class="ws-empty-txt">' + (messages[filter] || '작업이 없습니다') + '</div>' +
+    '</div>';
+    return;
+  }
+  
+  // 필터 탭 (전체 보기일 때만)
+  var filterHtml = '';
+  if(filter === 'all'){
+    filterHtml = '<div class="ws-filter">' +
+      '<button class="ws-filter-btn active" onclick="reFilterSheet(\'all\',this)">전체</button>' +
+      '<button class="ws-filter-btn" onclick="reFilterSheet(\'wait\',this)">대기중</button>' +
+      '<button class="ws-filter-btn" onclick="reFilterSheet(\'run\',this)">진행중</button>' +
+      '<button class="ws-filter-btn" onclick="reFilterSheet(\'done\',this)">완료</button>' +
+      '<button class="ws-filter-btn" onclick="reFilterSheet(\'danger\',this)">고위험</button>' +
+    '</div>';
+  }
+  
+  // 작업 카드 목록
+  var html = filterHtml;
+  works.forEach(function(w){
+    var isDanger = w.riskLevel === '고위험';
+    var statusClass = w.status === '작업중' ? 'working' : 
+                      w.status === '허가완료' ? 'done' : 
+                      w.status === '작업완료' ? 'done' : 'pending';
+    var statusEmoji = w.status === '작업중' ? '🔄' : 
+                      w.status === '허가완료' ? '✅' : 
+                      w.status === '작업완료' ? '✔️' : '⏳';
     
-    var db=JSON.parse(raw);
-    var works=db.workHistory||[];
-    // ⭐ CONVENTIONS §9: KST 기준
-    var today=fmtDate(new Date());
-    var todayWorks=works.filter(function(w){return w.date===today;});
+    html += '<div class="permit-card ' + (isDanger ? 'danger' : '') + '">';
+    html += '<div class="pc-top">';
+    html += '<span class="pc-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
+    html += '<span class="pc-status ' + statusClass + '">' + statusEmoji + ' ' + w.status + '</span>';
+    html += '</div>';
+    html += '<div class="pc-name">' + escHtml(w.workName) + '</div>';
+    html += '<div class="pc-meta">';
+    html += '<span>📍 ' + escHtml(w.location) + '</span>';
+    html += '<span>🏢 ' + escHtml(w.company) + '</span>';
+    html += '</div>';
+    html += '<div class="pc-actions">';
     
-    // ⭐ CONVENTIONS §5.1: safetyPermits
-    var permitList=[];
-    try{permitList=JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
+    if(w.status === '대기중'){
+      html += '<a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(w.workId) + '" class="pc-btn primary">허가서 신청 →</a>';
+    } else if(w.status === '허가진행중'){
+      html += '<a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(w.workId) + '" class="pc-btn secondary">허가서 계속 →</a>';
+    } else if(w.status === '허가완료'){
+      html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(w.permitNo) + '" class="pc-btn primary">TBM 작성 →</a>';
+    } else if(w.status === '작업중'){
+      html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(w.permitNo) + '" class="pc-btn secondary">TBM 보기 →</a>';
+    } else if(w.status === '작업완료'){
+      html += '<div class="pc-btn secondary" style="cursor:default;">완료됨</div>';
+    }
     
-    var permitMap={};
-    permitList.forEach(function(p){
-      if(p.sourceWorkId) permitMap[p.sourceWorkId]=p;
+    html += '</div></div>';
+  });
+  
+  body.innerHTML = html;
+}
+
+// 시트 안에서 필터 변경
+function reFilterSheet(filter, btn){
+  document.querySelectorAll('.ws-filter-btn').forEach(function(b){
+    b.classList.remove('active');
+  });
+  if(btn) btn.classList.add('active');
+  
+  var today = fmtDate(new Date());
+  var raw = localStorage.getItem('safetyDatabase');
+  if(!raw) return;
+  
+  var db = JSON.parse(raw);
+  var works = (db.workHistory || []).filter(function(w){
+    return w.date === today && w.originalNo;
+  });
+  
+  var permitList = [];
+  try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
+  var permitMap = {};
+  permitList.forEach(function(p){
+    if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
+  });
+  
+  var tbmList = [];
+  try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
+  var tbmMap = {};
+  tbmList.forEach(function(t){
+    if(t.permitNo) tbmMap[t.permitNo] = t;
+  });
+  
+  var enriched = works.map(function(w){
+    var permit = permitMap[w.date + '_' + w.originalNo];
+    var status = permit ? permit.status : '대기중';
+    if(permit && permit.permitNo && tbmMap[permit.permitNo]){
+      status = '작업중';
+    }
+    return {
+      workId: w.date + '_' + w.originalNo,
+      workName: w.workName || w.workNameFull || '미지정',
+      company: w.company || '-',
+      location: w.location ? 
+        (w.location.factory || '') + (w.location.line ? ' ' + w.location.line + '라인' : '') 
+        : '미지정',
+      riskLevel: w.risk || '일반',
+      status: status,
+      permit: permit,
+      permitNo: permit ? permit.permitNo : null,
+      tbm: permit && permit.permitNo ? tbmMap[permit.permitNo] : null
+    };
+  });
+  
+  var filtered = [];
+  if(filter === 'wait'){
+    filtered = enriched.filter(function(w){
+      return w.status === '대기중' || w.status === '허가진행중';
+    });
+  } else if(filter === 'run'){
+    filtered = enriched.filter(function(w){
+      return w.status === '허가완료' || w.status === '작업중' || w.status === '작업중지';
+    });
+  } else if(filter === 'done'){
+    filtered = enriched.filter(function(w){
+      return w.status === '작업완료' || w.status === '완료';
+    });
+  } else if(filter === 'danger'){
+    filtered = enriched.filter(function(w){
+      return w.riskLevel === '고위험';
+    });
+  } else {
+    filtered = enriched;
+  }
+  
+  var titles = {
+    'wait': '🟡 대기중 작업',
+    'run': '🟠 진행중 작업',
+    'done': '🟢 완료 작업',
+    'danger': '🔴 고위험 작업',
+    'all': '📋 전체 작업'
+  };
+  var titleEl = document.getElementById('wsSheetTitle');
+  if(titleEl){
+    titleEl.innerHTML = titles[filter] + ' <span class="ws-count-badge">' + filtered.length + '</span>';
+  }
+  
+  var body = document.getElementById('wsBody');
+  if(!body) return;
+  
+  var filterTabHtml = '<div class="ws-filter">' +
+    '<button class="ws-filter-btn ' + (filter==='all'?'active':'') + '" onclick="reFilterSheet(\'all\',this)">전체</button>' +
+    '<button class="ws-filter-btn ' + (filter==='wait'?'active':'') + '" onclick="reFilterSheet(\'wait\',this)">대기중</button>' +
+    '<button class="ws-filter-btn ' + (filter==='run'?'active':'') + '" onclick="reFilterSheet(\'run\',this)">진행중</button>' +
+    '<button class="ws-filter-btn ' + (filter==='done'?'active':'') + '" onclick="reFilterSheet(\'done\',this)">완료</button>' +
+    '<button class="ws-filter-btn ' + (filter==='danger'?'active':'') + '" onclick="reFilterSheet(\'danger\',this)">고위험</button>' +
+  '</div>';
+  
+  if(!filtered.length){
+    var messages = {
+      'wait': '대기중인 작업이 없습니다',
+      'run': '진행중인 작업이 없습니다',
+      'done': '완료된 작업이 없습니다',
+      'danger': '고위험 작업이 없습니다',
+      'all': '오늘 작업이 없습니다'
+    };
+    body.innerHTML = filterTabHtml + '<div class="ws-empty">' +
+      '<div class="ws-empty-ico">📭</div>' +
+      '<div class="ws-empty-txt">' + (messages[filter] || '작업이 없습니다') + '</div>' +
+    '</div>';
+    return;
+  }
+  
+  var html = filterTabHtml;
+  filtered.forEach(function(w){
+    var isDanger = w.riskLevel === '고위험';
+    var statusClass = w.status === '작업중' ? 'working' : 
+                      w.status === '허가완료' ? 'done' : 
+                      w.status === '작업완료' ? 'done' : 'pending';
+    var statusEmoji = w.status === '작업중' ? '🔄' : 
+                      w.status === '허가완료' ? '✅' : 
+                      w.status === '작업완료' ? '✔️' : '⏳';
+    
+    html += '<div class="permit-card ' + (isDanger ? 'danger' : '') + '">';
+    html += '<div class="pc-top">';
+    html += '<span class="pc-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
+    html += '<span class="pc-status ' + statusClass + '">' + statusEmoji + ' ' + w.status + '</span>';
+    html += '</div>';
+    html += '<div class="pc-name">' + escHtml(w.workName) + '</div>';
+    html += '<div class="pc-meta">';
+    html += '<span>📍 ' + escHtml(w.location) + '</span>';
+    html += '<span>🏢 ' + escHtml(w.company) + '</span 
+    var db = JSON.parse(raw);
+    var works = db.workHistory || [];
+    var todayWorks = works.filter(function(w){
+      return w.date === today && w.originalNo;
     });
     
-    var statusReady=0,statusWorking=0,statusStopped=0,statusCompleted=0;
+    // 허가서 데이터
+    var permitList = [];
+    try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
+    var permitMap = {};
+    permitList.forEach(function(p){
+      if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
+    });
+    
+    // TBM 데이터
+    var tbmList = [];
+    try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
+    var tbmMap = {};
+    tbmList.forEach(function(t){
+      if(t.permitNo) tbmMap[t.permitNo] = t;
+    });
+    
+    // 4단계 그룹 분류
+    var cntWait = 0;    // 대기중 (대기중 + 허가진행중)
+    var cntRun = 0;     // 진행중 (허가완료 + 작업중)
+    var cntDone = 0;    // 완료 (작업완료)
+    var cntDanger = 0;  // 고위험 (전체에서)
     
     todayWorks.forEach(function(w){
-      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip
       if(!w.originalNo) return;
-      var permit=permitMap[w.date+'_'+w.originalNo];
-      var status=permit?permit.status:'대기중';
       
-      if(status==='허가완료') statusReady++;
-      else if(status==='작업중') statusWorking++;
-      else if(status==='작업중지') statusStopped++;
-      else if(status==='작업완료') statusCompleted++;
+      // 고위험 카운트 (상태 무관)
+      if(w.risk === '고위험') cntDanger++;
+      
+      // 상태 분류
+      var permit = permitMap[w.date + '_' + w.originalNo];
+      var status = permit ? permit.status : '대기중';
+      
+      // TBM 있으면 작업중으로 간주
+      if(permit && permit.permitNo && tbmMap[permit.permitNo]){
+        status = '작업중';
+      }
+      
+      // 4단계 그룹핑
+      if(status === '작업완료' || status === '완료'){
+        cntDone++;
+      } else if(status === '허가완료' || status === '작업중' || status === '작업중지'){
+        cntRun++;
+      } else {
+        cntWait++;  // 대기중, 허가진행중, 기타
+      }
     });
     
-    setTxt('statusReady',statusReady);
-    setTxt('statusWorking',statusWorking);
-    setTxt('statusStopped',statusStopped);
-    setTxt('statusCompleted',statusCompleted);
+    // UI 업데이트
+    setTxt('cntWait', cntWait);
+    setTxt('cntRun', cntRun);
+    setTxt('cntDone', cntDone);
+    setTxt('cntDanger', cntDanger);
+    setTxt('totalWorkCount', todayWorks.length);
     
     // 0건 표시 흐리게
-    updateStatusOpacity();
+    ['cntWait','cntRun','cntDone','cntDanger'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      var val = parseInt(el.textContent,10) || 0;
+      if(val === 0) el.classList.add('zero');
+      else el.classList.remove('zero');
+    });
+    
+    // 고위험 배너 표시
+    var dangerBanner = document.getElementById('dangerBanner');
+    if(dangerBanner){
+      if(cntDanger > 0){
+        dangerBanner.style.display = 'flex';
+        setTxt('dangerBannerCount', cntDanger);
+      } else {
+        dangerBanner.style.display = 'none';
+      }
+    }
+    
+    // 기존 status-bar 값도 유지 (호환)
+    setTxt('statusReady', cntRun);
+    setTxt('statusWorking', 0);
+    setTxt('statusStopped', 0);
+    setTxt('statusCompleted', cntDone);
     
   }catch(e){
-    console.error('작업 상태 조회 실패:',e);
+    console.error('작업 상태 조회 실패:', e);
     resetWorkStatus();
   }
 }
 
 function resetWorkStatus(){
+  setTxt('cntWait','0');
+  setTxt('cntRun','0');
+  setTxt('cntDone','0');
+  setTxt('cntDanger','0');
+  setTxt('totalWorkCount','0');
+  var db = document.getElementById('dangerBanner');
+  if(db) db.style.display = 'none';
+  
+  // 호환
   setTxt('statusReady','0');
   setTxt('statusWorking','0');
   setTxt('statusStopped','0');
   setTxt('statusCompleted','0');
-  updateStatusOpacity();
-}
-
-function updateStatusOpacity(){
-  ['statusReady','statusWorking','statusStopped','statusCompleted'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(!el) return;
-    var val=parseInt(el.textContent,10)||0;
-    if(val===0) el.classList.add('zero');
-    else el.classList.remove('zero');
-  });
 }
 
 // ═══════════════════════════════════════
