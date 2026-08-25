@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#003C7E">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title> P-FM 안전관리 대시보드</title>
+<title>POSCO FUTURE M · 포항양극재공장 안전관리</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 /* ═══════════════════════════════════════
-   P-FM 안전관리 · 시그널 타일 디자인
+   POSCO FUTURE M 안전관리 대시보드
+   최종 버전 - 실무 최적화
    ═══════════════════════════════════════ */
 :root{
   --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
@@ -20,7 +21,7 @@
   --stop:#D6273D; --stop-bg:#FFF3F5;
   --done:#0E8A6B; --done-bg:#EDFAF6;
   --warn:#B45309; --warn-bg:#FEF6E7;
-  --r:16px; --r-s:12px;
+  --r:14px; --r-s:12px; --r-xs:10px;
   --sh:0 2px 10px rgba(15,29,43,.06);
   --sh-m:0 4px 16px rgba(15,29,43,.09);
 }
@@ -38,470 +39,585 @@
 html{-webkit-text-size-adjust:100%}
 body{
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:var(--bg);color:var(--ink);line-height:1.5;font-size:17px;
-  transition:background .25s,color .25s
+  background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px;
+  transition:background .25s,color .25s;
+  -webkit-font-smoothing:antialiased;
 }
 .app{max-width:480px;margin:0 auto;min-height:100vh;position:relative}
 .page{display:none}
 .page.active{display:block;animation:fade .22s ease}
-@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.main{padding:0 0 100px}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.main{padding:0 0 80px}
 
-/* ═══ HERO ═══ */
+/* ═══ 히어로 (최소화, 브랜드 전용) ═══ */
 .hero{
-  background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
-  color:#fff;padding:20px 20px 30px;position:relative;overflow:hidden;
-  border-radius:0 0 26px 26px
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;padding:12px 16px 14px;position:relative;overflow:hidden;
+  border-radius:0 0 20px 20px
 }
 .hero::after{
-  content:'';position:absolute;right:-40px;top:-46px;width:200px;height:200px;
-  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.085) 0 9px,transparent 9px 18px);
+  content:'';position:absolute;right:-30px;top:-30px;width:120px;height:120px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 8px,transparent 8px 16px);
   border-radius:50%;pointer-events:none
 }
-.hero-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px;position:relative;z-index:1}
-.hero-brand{display:flex;align-items:center;gap:8px;min-width:0}
-.hero-logo{font-size:24px;line-height:1}
-.hero-org{font-size:18px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
-.hero-tools{display:flex;align-items:center;gap:7px;flex-shrink:0}
-.hero-clock{text-align:right;line-height:1.25}
-.hero-date{font-size:13px;font-weight:700;opacity:.82}
-.hero-time{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
-.icon-btn{
-  width:40px;height:40px;border:0;border-radius:12px;background:rgba(255,255,255,.16);
-  color:#fff;font-size:19px;cursor:pointer;display:grid;place-items:center;transition:.15s
-}
-.icon-btn:active{transform:scale(.9);background:rgba(255,255,255,.3)}
-.db-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.35);flex-shrink:0;transition:.3s}
-.db-dot.on{background:#7BE8A8;box-shadow:0 0 0 3px rgba(123,232,168,.22)}
-
-.hero-label{font-size:15px;font-weight:700;opacity:.78;letter-spacing:.04em;margin-bottom:5px;position:relative;z-index:1}
-.hero-main{
-  display:flex;align-items:flex-end;justify-content:space-between;gap:14px;
+.hero-top{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
   position:relative;z-index:1
 }
-.hero-count{display:flex;align-items:baseline;gap:7px;min-width:0}
-.hero-num{font-size:76px;font-weight:800;letter-spacing:-.06em;line-height:.86;font-variant-numeric:tabular-nums}
-.hero-unit{font-size:21px;font-weight:700;opacity:.8}
-
-/* 우측 고위험 블록 — 남는 여백을 채운다 */
-.hero-risk{
-  flex-shrink:0;text-align:right;padding:11px 16px;border-radius:14px;
-  background:rgba(255,255,255,.16);transition:.25s;min-width:104px
+.hero-brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.hero-logo{font-size:22px;line-height:1;flex-shrink:0}
+.hero-brand-text{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.hero-brand-en{
+  font-size:10.5px;font-weight:700;opacity:.8;
+  letter-spacing:.05em;color:#fff
 }
-.hero-risk .hr-l{
-  font-size:14px;font-weight:800;opacity:.85;display:flex;align-items:center;
-  justify-content:flex-end;gap:6px;margin-bottom:3px;letter-spacing:-.02em
+.hero-brand-ko{
+  font-size:15px;font-weight:800;letter-spacing:-.02em;
+  white-space:nowrap;color:#fff
 }
-.hero-risk .hr-l i{width:9px;height:9px;border-radius:50%;background:currentColor;flex-shrink:0}
-.hero-risk .hr-n{
-  font-size:34px;font-weight:800;letter-spacing:-.05em;line-height:1;
-  font-variant-numeric:tabular-nums
+.hero-tools{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.hero-clock{text-align:right;line-height:1.2}
+.hero-date{font-size:11px;font-weight:700;opacity:.85}
+.hero-time{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.icon-btn{
+  width:34px;height:34px;border:0;border-radius:10px;
+  background:rgba(255,255,255,.16);color:#fff;font-size:16px;
+  cursor:pointer;display:grid;place-items:center;transition:.15s
 }
-.hero-risk .hr-n small{font-size:15px;font-weight:700;opacity:.8;margin-left:2px;letter-spacing:0}
-.hero-risk.red{background:#fff;color:var(--stop)}
-.hero-risk.red .hr-l i{animation:bp 1.7s infinite}
-.hero-risk.green{background:rgba(255,255,255,.16);color:#fff}
-@keyframes bp{0%,100%{opacity:1}50%{opacity:.28}}
+.icon-btn:active{transform:scale(.9);background:rgba(255,255,255,.3)}
 
 /* ═══ 필터 칩 ═══ */
-.chips{display:flex;gap:7px;padding:18px 16px 0;overflow-x:auto;scrollbar-width:none}
+.chips{
+  display:flex;gap:6px;padding:12px 16px 0;
+  overflow-x:auto;scrollbar-width:none
+}
 .chips::-webkit-scrollbar{display:none}
 .chip{
-  flex-shrink:0;padding:11px 19px;border-radius:999px;border:2px solid var(--line);
-  background:var(--card);color:var(--sub);font-family:inherit;font-size:16px;
-  font-weight:700;cursor:pointer;transition:.15s;letter-spacing:-.01em
+  flex-shrink:0;padding:8px 16px;border-radius:999px;
+  border:1.5px solid var(--line);background:var(--card);
+  color:var(--sub);font-family:inherit;font-size:13.5px;
+  font-weight:700;cursor:pointer;transition:.15s;
+  letter-spacing:-.01em
 }
-.chip.active{background:var(--posco);border-color:var(--posco);color:#fff;box-shadow:0 2px 8px rgba(0,103,177,.25)}
+.chip.active{
+  background:var(--deep);border-color:var(--deep);
+  color:#fff;box-shadow:0 2px 6px rgba(0,60,126,.2)
+}
 .chip:active{transform:scale(.95)}
 
 /* ═══ 공지 배너 ═══ */
 .notice-banner{
-  margin:14px 16px 0;padding:14px 16px;background:var(--warn-bg);
-  border-radius:var(--r);border-left:4px solid var(--warn);cursor:pointer;
-  box-shadow:var(--sh)
+  margin:10px 16px 0;padding:10px 12px;background:var(--warn-bg);
+  border-radius:var(--r-s);border-left:3px solid var(--warn);
+  cursor:pointer;box-shadow:var(--sh)
 }
-.notice-banner-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.notice-banner-label{font-size:16px;font-weight:800;color:var(--warn);display:flex;align-items:center;gap:6px}
+.notice-banner-top{
+  display:flex;align-items:center;justify-content:space-between;gap:8px
+}
+.notice-banner-label{
+  font-size:13px;font-weight:800;color:var(--warn);
+  display:flex;align-items:center;gap:4px
+}
 .notice-banner-new{
-  background:var(--stop);color:#fff;font-size:12px;font-weight:800;
-  padding:3px 8px;border-radius:5px;letter-spacing:.04em
+  background:var(--stop);color:#fff;font-size:10px;font-weight:800;
+  padding:2px 6px;border-radius:4px;letter-spacing:.03em
 }
-.notice-banner-toggle{font-size:14px;font-weight:700;color:var(--warn);opacity:.75;flex-shrink:0}
+.notice-banner-toggle{
+  font-size:12px;font-weight:700;color:var(--warn);
+  opacity:.75;flex-shrink:0
+}
 .notice-banner-text{
-  font-size:17px;color:var(--body);margin-top:8px;line-height:1.6;
-  white-space:pre-wrap;font-weight:500
+  font-size:13px;color:var(--body);margin-top:5px;
+  line-height:1.5;white-space:pre-wrap;font-weight:500
 }
 .notice-banner.collapsed .notice-banner-text{display:none}
 
-/* ═══ 상태 타일 ═══ */
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.tile{
-  background:var(--card);border-radius:var(--r);padding:18px 18px 17px;
-  box-shadow:var(--sh);border:1.5px solid transparent;cursor:pointer;transition:.15s
+/* ═══ 섹션 공통 ═══ */
+.sec{padding:0 16px;margin-top:14px}
+.sec-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:8px;padding:0 2px
 }
-.tile:active{transform:scale(.97)}
-.tile-k{font-size:16px;font-weight:800;color:var(--sub);margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.tile-k i{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-.tile-n{font-size:46px;font-weight:800;letter-spacing:-.055em;line-height:1;font-variant-numeric:tabular-nums}
-.tile-n small{font-size:17px;font-weight:700;color:var(--sub);margin-left:3px;letter-spacing:0}
-.t-stop{border-color:rgba(214,39,61,.28);background:var(--stop-bg)}
-.t-stop .tile-k i{background:var(--stop)} .t-stop .tile-n{color:var(--stop)}
-.t-run .tile-k i{background:var(--run)} .t-run .tile-n{color:var(--run)}
-.t-wait .tile-k i{background:var(--posco)} .t-wait .tile-n{color:var(--posco)}
-.t-done .tile-k i{background:var(--done)} .t-done .tile-n{color:var(--done)}
-
-/* ═══ 섹션 헤더 ═══ */
-.sec{padding:0 16px;margin-top:26px}
-.sec-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:0 2px}
-.sec-title{font-size:20.5px;font-weight:800;letter-spacing:-.035em;display:flex;align-items:center;gap:7px}
+.sec-title{
+  font-size:15px;font-weight:800;
+  letter-spacing:-.03em;color:var(--ink);
+  display:flex;align-items:center;gap:6px
+}
 .sec-cnt{
-  font-size:14px;font-weight:800;color:var(--posco);background:var(--tint);
-  padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums
+  font-size:12px;font-weight:800;color:var(--posco);
+  background:var(--tint);padding:2px 8px;border-radius:5px;
+  font-variant-numeric:tabular-nums
 }
-.sec-more{font-size:15px;color:var(--posco);font-weight:700;cursor:pointer;text-decoration:none;flex-shrink:0}
-.sec-lbl{
-  font-size:15px;font-weight:800;color:var(--sub);letter-spacing:.05em;
-  padding:0 2px;margin:26px 0 10px
+.sec-more{
+  font-size:13px;color:var(--posco);font-weight:700;
+  cursor:pointer;text-decoration:none;flex-shrink:0;
+  letter-spacing:-.01em
 }
-
-/* ═══ 오늘 점검 요약 (3분할) ═══ */
-.stat3{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
-  border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)
-}
-.stat3 > div{background:var(--card);padding:18px 6px;text-align:center}
-.stat3 .v{font-size:38px;font-weight:800;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums}
-.stat3 .l{font-size:14px;font-weight:800;color:var(--sub);margin-top:7px}
-.c-blue{color:var(--posco)} .c-orange{color:var(--run)} .c-green{color:var(--done)}
-
-/* ═══ 빠른 실행 그리드 ═══ */
-.quick-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 16px;margin-top:12px}
-.qbtn{
-  background:var(--card);border-radius:var(--r);padding:16px 8px 13px;text-align:center;
-  text-decoration:none;box-shadow:var(--sh);transition:.15s;
-  display:flex;flex-direction:column;align-items:center;gap:8px
-}
-.qbtn:active{transform:scale(.95);box-shadow:var(--sh-m)}
-.qbtn-ico{
-  width:54px;height:54px;border-radius:16px;background:var(--tint);
-  display:grid;place-items:center;font-size:27px
-}
-.qbtn-lbl{font-size:14.5px;font-weight:800;color:var(--body);line-height:1.35;letter-spacing:-.03em}
-/* ═══ 점검현황 페이지 ═══ */
-.insp-sum{
-  display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
-  margin:16px;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)
-}
-.isp{background:var(--card);padding:20px 6px;text-align:center}
-.isp-v{font-size:38px;font-weight:800;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums}
-.isp-v.r{color:var(--stop)} .isp-v.o{color:var(--warn)} .isp-v.g{color:var(--done)}
-.isp-l{font-size:14px;font-weight:800;color:var(--sub);margin-top:7px}
-
-.ic-card{
-  background:var(--card);border-radius:var(--r);padding:18px 18px;margin:0 16px 11px;
-  box-shadow:var(--sh);border-left:4px solid var(--sub);cursor:pointer;transition:.15s
-}
-.ic-card:active{transform:scale(.985)}
-.ic-card.critical{border-left-color:var(--stop)}
-.ic-card.minor{border-left-color:var(--warn)}
-.ic-card.advisory{border-left-color:var(--done)}
-.ic-top{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap}
-.ic-sev{font-size:14px;font-weight:800;padding:6px 12px;border-radius:999px;background:var(--sunk);color:var(--sub)}
-.ic-card.critical .ic-sev{background:var(--stop-bg);color:var(--stop)}
-.ic-card.minor .ic-sev{background:var(--warn-bg);color:var(--warn)}
-.ic-card.advisory .ic-sev{background:var(--done-bg);color:var(--done)}
-.ic-status{font-size:14px;font-weight:800;padding:6px 12px;border-radius:999px;margin-left:auto;background:var(--tint);color:var(--posco)}
-.ic-name{font-size:20px;font-weight:800;letter-spacing:-.035em;line-height:1.3;margin-bottom:6px}
-.ic-meta{font-size:15px;color:var(--sub);font-weight:600;line-height:1.5}
-.ic-time{font-size:13.5px;color:var(--faint);font-weight:700;margin-top:7px}
-
-/* ═══ 설정 페이지 ═══ */
-.notice-edit{
-  background:var(--card);border-radius:var(--r);padding:16px;margin:0 16px;box-shadow:var(--sh)
-}
-.notice-edit-title{font-size:17px;font-weight:800;margin-bottom:11px;letter-spacing:-.03em}
-.notice-ta,.db-ta{
-  width:100%;min-height:88px;padding:13px;border:1.5px solid var(--line);border-radius:var(--r-s);
-  background:var(--sunk);color:var(--ink);font-family:inherit;font-size:17px;
-  resize:vertical;line-height:1.6;transition:.15s
-}
-.notice-ta:focus,.db-ta:focus{outline:0;border-color:var(--posco);background:var(--card)}
-.notice-save-btn,.db-btn{
-  width:100%;margin-top:11px;padding:14px;border:0;border-radius:var(--r-s);
-  background:var(--deep);color:#fff;font-family:inherit;font-size:18px;font-weight:800;
-  cursor:pointer;letter-spacing:-.02em;transition:.15s
-}
-.notice-save-btn:active,.db-btn:active{transform:scale(.98)}
-.db-info{
-  background:var(--tint);border-radius:var(--r);padding:15px 16px;margin:0 16px 11px;
-  border-left:4px solid var(--posco)
-}
-.db-info-txt{font-size:16px;color:var(--body);line-height:1.85;font-weight:500}
-.db-info-txt strong{font-weight:800;color:var(--posco)}
-.db-area{background:var(--card);border-radius:var(--r);padding:16px;margin:0 16px;box-shadow:var(--sh)}
-.db-area-title{font-size:17px;font-weight:800;margin-bottom:11px;letter-spacing:-.03em}
-.db-ta{min-height:130px;font-size:14px;font-family:ui-monospace,'SF Mono',Menlo,monospace}
-
-.sets-grp{background:var(--card);border-radius:var(--r);margin:0 16px;overflow:hidden;box-shadow:var(--sh)}
-.sets-item{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:18px 17px;border-bottom:1px solid var(--line);cursor:pointer;transition:.12s
-}
-.sets-item:last-child{border-bottom:0}
-.sets-item:active{background:var(--sunk)}
-.sets-l{display:flex;align-items:center;gap:11px;min-width:0}
-.sets-ico{font-size:22px;line-height:1;flex-shrink:0}
-.sets-name{font-size:17.5px;font-weight:700;letter-spacing:-.02em}
-.sets-r{font-size:16px;font-weight:700;color:var(--sub);flex-shrink:0}
-
-/* ═══ 하단 네비 ═══ */
-.botnav{
-  position:fixed;bottom:0;left:0;right:0;z-index:60;max-width:480px;margin:0 auto;
-  background:var(--card);box-shadow:0 -3px 18px rgba(15,29,43,.1);display:flex;
-  padding:9px 0 max(9px,env(safe-area-inset-bottom));border-radius:20px 20px 0 0;
-  border-top:1px solid var(--line)
-}
-.nav-tab{
-  flex:1;background:none;border:0;font-family:inherit;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  color:var(--faint);position:relative;padding:3px 0;transition:.15s
-}
-.nav-ti{font-size:25px;line-height:1;transition:.18s}
-.nav-tl{font-size:13px;font-weight:800;letter-spacing:-.02em}
-.nav-tab.active{color:var(--posco)}
-.nav-tab.active .nav-ti{transform:translateY(-1px) scale(1.06)}
-.nav-tab:active .nav-ti{transform:scale(.9)}
-.nav-tab.insp-tab{color:var(--stop)}
-.nav-badge{
-  position:absolute;top:-4px;right:calc(50% - 24px);background:var(--stop);color:#fff;
-  font-size:12px;font-weight:800;min-width:21px;height:21px;border-radius:11px;
-  display:flex;align-items:center;justify-content:center;padding:0 5px;
-  border:2px solid var(--card)
-}
-
-/* ═══ 바텀시트 ═══ */
-.overlay{
-  position:fixed;inset:0;background:rgba(6,17,28,.55);backdrop-filter:blur(3px);
-  z-index:80;opacity:0;pointer-events:none;transition:.25s
-}
-.overlay.active{opacity:1;pointer-events:auto}
-.sheet{
-  position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);
-  width:100%;max-width:480px;max-height:90vh;background:var(--bg);
-  border-radius:24px 24px 0 0;z-index:90;transition:transform .3s cubic-bezier(.32,.72,0,1);
-  display:flex;flex-direction:column
-}
-.sheet.open{transform:translateX(-50%) translateY(0)}
-.sheet-handle{width:38px;height:4px;background:var(--line);border-radius:3px;margin:10px auto 4px;flex-shrink:0}
-.sheet-hdr{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:8px 18px 14px;border-bottom:1px solid var(--line);flex-shrink:0;background:var(--card);
-  border-radius:24px 24px 0 0;margin-top:-18px;padding-top:24px
-}
-.sheet-title{font-size:21px;font-weight:800;letter-spacing:-.035em}
-.sheet-x{
-  width:38px;height:38px;border:0;border-radius:50%;background:var(--sunk);color:var(--sub);
-  font-size:24px;line-height:1;cursor:pointer;flex-shrink:0;font-family:inherit
-}
-.sheet-x:active{transform:scale(.9)}
-.sheet-body{flex:1;overflow-y:auto;padding:16px 16px 34px;-webkit-overflow-scrolling:touch}
-
-.det-hero{
-  background:linear-gradient(150deg,var(--deep),var(--posco));color:#fff;
-  border-radius:var(--r);padding:18px;margin-bottom:14px
-}
-.det-badge{
-  display:inline-block;font-size:14px;font-weight:800;padding:4px 10px;
-  border-radius:999px;background:rgba(255,255,255,.2);margin-bottom:9px
-}
-.det-name{font-size:25px;font-weight:800;letter-spacing:-.04em;line-height:1.3}
-.det-meta-txt{font-size:15.5px;opacity:.85;margin-top:7px;font-weight:600}
-.det-sec{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:11px;box-shadow:var(--sh)}
-.det-sec-t{font-size:16.5px;font-weight:800;margin-bottom:11px;letter-spacing:-.03em;color:var(--posco)}
-.det-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
-.det-row:last-child{border-bottom:0}
-.det-rl{font-size:16px;color:var(--sub);font-weight:700;flex-shrink:0}
-.det-rv{font-size:16px;font-weight:700;text-align:right;letter-spacing:-.02em}
-.det-ins-btn{
-  width:100%;padding:15px;border:0;border-radius:var(--r-s);background:var(--run);color:#fff;
-  font-family:inherit;font-size:19px;font-weight:800;cursor:pointer;margin-top:6px
-}
-.safety-li{display:flex;gap:9px;padding:7px 0;align-items:flex-start}
-.safety-dot{width:6px;height:6px;border-radius:50%;background:var(--posco);margin-top:7px;flex-shrink:0}
-.safety-txt{font-size:16px;color:var(--body);font-weight:600;line-height:1.5}
-
-/* ═══ 점검 등록 폼 ═══ */
-.work-banner{background:var(--tint);border-radius:var(--r-s);padding:12px 14px;margin-bottom:16px;border-left:4px solid var(--posco)}
-.work-banner-lbl{font-size:13px;font-weight:800;color:var(--posco);letter-spacing:.05em;margin-bottom:4px}
-.work-banner-name{font-size:18px;font-weight:800;letter-spacing:-.03em}
-.f-sec{margin-bottom:20px}
-.f-lbl{font-size:16px;font-weight:800;color:var(--sub);letter-spacing:.03em;margin-bottom:9px}
-.sev-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.sev-btn{
-  background:var(--card);border:2.5px solid var(--line);border-radius:var(--r-s);
-  padding:18px 6px;text-align:center;cursor:pointer;transition:.15s
-}
-.sev-btn.on{border-color:var(--posco);background:var(--tint)}
-.sev-btn:active{transform:scale(.96)}
-.sev-ico{font-size:27px;line-height:1;margin-bottom:6px}
-.sev-lbl{font-size:16px;font-weight:800}
-.cl-scroll{max-height:280px;overflow-y:auto;background:var(--card);border-radius:var(--r-s);padding:6px;box-shadow:var(--sh)}
-.cl-box{margin-bottom:6px}
-.cl-cat{font-size:14px;font-weight:800;color:var(--posco);padding:8px 10px 5px;letter-spacing:.03em}
-.cl-item{display:flex;align-items:center;gap:12px;padding:14px 11px;border-radius:9px;cursor:pointer;transition:.12s}
-.cl-item:active{background:var(--sunk)}
-.cl-item.on{background:var(--tint)}
-.cl-item input{width:23px;height:23px;accent-color:var(--posco);flex-shrink:0}
-.cl-txt{font-size:17px;font-weight:600;line-height:1.4}
-.cust-row{display:flex;gap:8px;margin-top:10px}
-.cust-inp{
-  flex:1;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;
-  background:var(--card);color:var(--ink);font-family:inherit;font-size:17px
-}
-.cust-inp:focus{outline:0;border-color:var(--posco)}
-.cust-add{
-  padding:0 18px;border:0;border-radius:10px;background:var(--posco);color:#fff;
-  font-family:inherit;font-size:16px;font-weight:800;cursor:pointer
-}
-.cust-list{margin-top:9px;display:flex;flex-direction:column;gap:6px}
-.cust-item{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  background:var(--tint);padding:10px 12px;border-radius:9px
-}
-.cust-txt{font-size:16px;font-weight:700}
-.cust-del{background:none;border:0;color:var(--stop);font-size:23px;cursor:pointer;font-family:inherit;line-height:1}
-.photo-zone{
-  background:var(--card);border:2px dashed var(--line);border-radius:var(--r-s);
-  padding:26px;text-align:center;cursor:pointer;transition:.15s
-}
-.photo-zone:active{border-color:var(--posco);background:var(--tint)}
-.photo-ico{font-size:34px;margin-bottom:7px}
-.photo-txt{font-size:16px;color:var(--sub);font-weight:700}
-.photo-prev{position:relative;border-radius:var(--r-s);overflow:hidden;margin-top:10px}
-.photo-prev img{width:100%;display:block}
-.photo-del{
-  position:absolute;top:9px;right:9px;width:30px;height:30px;border:0;border-radius:50%;
-  background:rgba(0,0,0,.65);color:#fff;font-size:19px;cursor:pointer;font-family:inherit;line-height:1
-}
-.f-inp,.f-sel{
-  width:100%;padding:13px 15px;border:1.5px solid var(--line);border-radius:var(--r-s);
-  background:var(--card);color:var(--ink);font-family:inherit;font-size:17px;font-weight:600
-}
-.f-inp:focus,.f-sel:focus{outline:0;border-color:var(--posco)}
-.sub-btn{
-  width:100%;padding:21px;border:0;border-radius:var(--r-s);background:var(--run);color:#fff;
-  font-family:inherit;font-size:20px;font-weight:800;cursor:pointer;letter-spacing:-.02em;
-  box-shadow:0 5px 16px rgba(232,89,12,.3);transition:.15s
-}
-.sub-btn:disabled{background:var(--line);color:var(--faint);box-shadow:none;cursor:not-allowed}
-.sub-btn:active:not(:disabled){transform:scale(.98)}
-.grp-lbl{font-size:14px;font-weight:800;color:var(--sub);margin:14px 0 8px;letter-spacing:.04em}
-
-/* ═══ 빈 상태 ═══ */
-.empty{text-align:center;padding:44px 20px}
-.empty-ico{font-size:46px;margin-bottom:11px;opacity:.35}
-.empty-txt{font-size:17.5px;color:var(--sub);font-weight:700;line-height:1.7}
-
-/* ═══ 토스트 ═══ */
-.toast-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:200;
-  display:flex;flex-direction:column;gap:8px;width:calc(100% - 32px);max-width:400px;pointer-events:none}
-.toast{
-  padding:16px 20px;border-radius:var(--r-s);color:#fff;font-size:17px;font-weight:800;
-  box-shadow:0 6px 22px rgba(0,0,0,.22);animation:tslide .3s cubic-bezier(.32,.72,0,1);
-  letter-spacing:-.02em;text-align:center
-}
-.toast.success{background:var(--done)}
-.toast.error{background:var(--stop)}
-.toast.info{background:var(--deep)}
-@keyframes tslide{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
-
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-
-/* ── 점검 카드 실제 클래스 매핑 ── */
-.ic-card.cr{border-left-color:var(--stop)}
-.ic-card.mn{border-left-color:var(--warn)}
-.ic-card.ad{border-left-color:var(--done)}
-.ic-sev.cr{background:var(--stop-bg);color:var(--stop)}
-.ic-sev.mn{background:var(--warn-bg);color:var(--warn)}
-.ic-sev.ad{background:var(--done-bg);color:var(--done)}
-.ic-card .ic-meta{display:flex;flex-wrap:wrap;gap:7px}
-.ic-card .ic-meta span{background:var(--sunk);padding:8px 12px;border-radius:8px;font-size:15px;font-weight:700}
-.ic-card .ic-status{display:flex;align-items:center;gap:9px;margin-top:13px;
-  padding-top:13px;border-top:1px solid var(--line);background:none;color:inherit;
-  font-size:inherit;font-weight:inherit;padding-left:0;padding-right:0;border-radius:0}
-.spill{font-size:14px;font-weight:800;padding:6px 13px;border-radius:999px}
-.spill.d{background:var(--done-bg);color:var(--done)}
-.spill.p{background:var(--stop-bg);color:var(--stop)}
-.spill-elapsed{font-size:14px;font-weight:700;color:var(--faint)}
-.ic-card .ic-time{margin-top:0;margin-left:auto}
-
-/* 0건 타일은 시선을 뺏지 않게 */
-.tile.zero{opacity:.55}
-.tile.zero.t-stop{background:var(--card);border-color:transparent}
-
-/* ──── 당일 작업 카드 ──── */
-.permit-card{background:var(--card);border-radius:var(--r-s);padding:14px;margin-bottom:11px;border-left:4px solid var(--line);box-shadow:var(--sh);transition:.2s}
-.permit-card:active{transform:translateY(-2px);box-shadow:var(--sh-m)}
-.permit-card.danger{border-left-color:var(--stop);background:var(--stop-bg)}
-.pc-top{display:flex;gap:9px;margin-bottom:9px;align-items:center}
-.pc-badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:6px;letter-spacing:.03em}
-.pc-badge.r{background:var(--stop);color:#fff}
-.pc-badge.g{background:var(--done);color:#fff}
-.pc-status{font-size:13px;font-weight:700;margin-left:auto;padding:3px 11px;border-radius:8px}
-.pc-status.pending{background:var(--warn-bg);color:var(--warn)}
-.pc-status.done{background:var(--done-bg);color:var(--done)}
-.pc-status.working{background:var(--run-bg);color:var(--run);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
-.pc-name{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:7px;letter-spacing:-.02em}
-.pc-meta{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--sub);margin-bottom:11px}
-.pc-actions{display:flex;gap:9px}
-.pc-btn{flex:1;padding:12px 11px;border:0;border-radius:var(--r-s);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center;letter-spacing:-.01em}
-.pc-btn.primary{background:var(--run);color:#fff}
-.pc-btn.primary:active{transform:scale(.96);box-shadow:0 2px 8px rgba(232,89,12,.3)}
-.pc-btn.secondary{background:var(--tint);color:var(--posco);border:1.5px solid var(--line)}
-.pc-btn.secondary:active{transform:scale(.96)}
-   
+.sec-more:active{opacity:.6}
 </style>
 </head>
 <body>
 <div class="app">
 
 <div class="toast-wrap" id="toastWrap"></div>
-<!-- ══════════ HOME ══════════ -->
-<div class="page active" id="pageHome">
+<style>
+/* ═══════════════════════════════════════
+   작업 현황 - 강조 카드 (전체 + 고위험)
+   ═══════════════════════════════════════ */
+.status-highlight{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;margin-bottom:8px
+}
+.status-hl-card{
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;border-radius:var(--r);
+  padding:14px 16px;cursor:pointer;
+  transition:.15s;position:relative;overflow:hidden;
+  box-shadow:var(--sh-m)
+}
+.status-hl-card:active{transform:scale(.97)}
+.status-hl-card.danger{
+  background:linear-gradient(135deg,#B0202F 0%,var(--stop) 100%);
+}
+.status-hl-card::after{
+  content:'';position:absolute;right:-20px;bottom:-20px;
+  width:80px;height:80px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 6px,transparent 6px 12px);
+  border-radius:50%;pointer-events:none
+}
+.status-hl-label{
+  font-size:12px;font-weight:800;opacity:.85;
+  letter-spacing:.03em;margin-bottom:6px;
+  display:flex;align-items:center;gap:5px;
+  position:relative;z-index:1
+}
+.status-hl-label i{
+  width:7px;height:7px;border-radius:50%;
+  background:currentColor;display:inline-block
+}
+.status-hl-value{
+  font-size:36px;font-weight:800;letter-spacing:-.05em;
+  line-height:1;font-variant-numeric:tabular-nums;
+  position:relative;z-index:1
+}
+.status-hl-value small{
+  font-size:15px;font-weight:700;opacity:.8;
+  margin-left:2px;letter-spacing:0
+}
+.status-hl-card.danger .status-hl-label i{
+  animation:blink 1.5s infinite
+}
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:.4}
+}
 
-  <!-- 히어로 -->
+/* ═══ 작업 현황 - 세부 4개 카드 ═══ */
+.status-detail{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:6px
+}
+.status-dt-card{
+  background:var(--card);border-radius:var(--r-s);
+  padding:12px 4px 10px;text-align:center;
+  cursor:pointer;transition:.15s;
+  box-shadow:var(--sh);border:1px solid var(--line);
+  border-top:3px solid var(--sub)
+}
+.status-dt-card:active{
+  transform:scale(.95);background:var(--sunk)
+}
+.status-dt-card.wait{border-top-color:var(--warn)}
+.status-dt-card.run{border-top-color:var(--run)}
+.status-dt-card.stop{border-top-color:var(--stop)}
+.status-dt-card.done{border-top-color:var(--done)}
+
+.status-dt-value{
+  font-size:22px;font-weight:800;letter-spacing:-.04em;
+  line-height:1;font-variant-numeric:tabular-nums;
+  margin-bottom:4px
+}
+.status-dt-card.wait .status-dt-value{color:var(--warn)}
+.status-dt-card.run .status-dt-value{color:var(--run)}
+.status-dt-card.stop .status-dt-value{color:var(--stop)}
+.status-dt-card.done .status-dt-value{color:var(--done)}
+.status-dt-value.zero{opacity:.4}
+
+.status-dt-label{
+  font-size:11px;font-weight:700;color:var(--sub);
+  letter-spacing:-.01em
+}
+
+/* ═══════════════════════════════════════
+   빠른 실행 그리드 (3x2)
+   ═══════════════════════════════════════ */
+.quick-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:8px;padding:0 16px;margin-top:8px
+}
+.qbtn{
+  background:var(--card);border-radius:var(--r);
+  padding:12px 4px 10px;text-align:center;
+  text-decoration:none;box-shadow:var(--sh);
+  transition:.15s;display:flex;flex-direction:column;
+  align-items:center;gap:6px;
+  border:1px solid var(--line)
+}
+.qbtn:active{
+  transform:scale(.96);background:var(--sunk)
+}
+.qbtn-ico{
+  width:42px;height:42px;border-radius:11px;
+  background:var(--tint);
+  display:grid;place-items:center;font-size:20px
+}
+.qbtn-lbl{
+  font-size:12px;font-weight:800;color:var(--body);
+  line-height:1.3;letter-spacing:-.02em
+}
+
+/* ═══════════════════════════════════════
+   점검현황 페이지
+   ═══════════════════════════════════════ */
+.page-header{
+  background:var(--card);padding:16px;
+  border-bottom:1px solid var(--line)
+}
+.page-title{
+  font-size:20px;font-weight:800;
+  letter-spacing:-.03em;color:var(--ink);
+  margin-bottom:4px
+}
+.page-sub{
+  font-size:13px;color:var(--sub);font-weight:600
+}
+.insp-sum{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--line);
+  margin:12px 16px;border-radius:var(--r);
+  overflow:hidden;box-shadow:var(--sh)
+}
+.isp{background:var(--card);padding:14px 4px;text-align:center}
+.isp-v{
+  font-size:22px;font-weight:800;letter-spacing:-.04em;
+  line-height:1;font-variant-numeric:tabular-nums
+}
+.isp-v.r{color:var(--stop)}
+.isp-v.o{color:var(--warn)}
+.isp-v.g{color:var(--done)}
+.isp-l{
+  font-size:11px;font-weight:700;color:var(--sub);
+  margin-top:5px
+}
+.ic-card{
+  background:var(--card);border-radius:var(--r);
+  padding:14px;margin:0 16px 8px;
+  box-shadow:var(--sh);border:1px solid var(--line);
+  border-left:3px solid var(--sub);
+  cursor:pointer;transition:.15s
+}
+.ic-card:active{transform:scale(.99)}
+.ic-card.cr{border-left-color:var(--stop)}
+.ic-card.mn{border-left-color:var(--warn)}
+.ic-card.ad{border-left-color:var(--done)}
+.ic-top{
+  display:flex;align-items:center;gap:8px;margin-bottom:6px
+}
+.ic-sev{
+  font-size:11px;font-weight:800;padding:3px 8px;border-radius:5px;
+  background:var(--sunk);color:var(--sub)
+}
+.ic-sev.cr{background:var(--stop-bg);color:var(--stop)}
+.ic-sev.mn{background:var(--warn-bg);color:var(--warn)}
+.ic-sev.ad{background:var(--done-bg);color:var(--done)}
+.ic-time{
+  font-size:11px;color:var(--faint);
+  font-weight:700;margin-left:auto
+}
+.ic-name{
+  font-size:14px;font-weight:800;letter-spacing:-.02em;
+  line-height:1.3;margin-bottom:6px;color:var(--ink)
+}
+.ic-meta{
+  display:flex;gap:8px;font-size:12px;
+  color:var(--sub);font-weight:600;flex-wrap:wrap
+}
+.ic-status-row{
+  display:flex;align-items:center;gap:8px;
+  margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--line)
+}
+.spill{
+  font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px
+}
+.spill.d{background:var(--done-bg);color:var(--done)}
+.spill.p{background:var(--stop-bg);color:var(--stop)}
+.spill-elapsed{
+  font-size:11px;font-weight:700;color:var(--faint);margin-left:auto
+}
+
+/* ═══════════════════════════════════════
+   설정 페이지
+   ═══════════════════════════════════════ */
+.sec-lbl{
+  font-size:11px;font-weight:800;color:var(--sub);
+  letter-spacing:.05em;padding:0 18px;
+  margin:16px 0 6px;text-transform:uppercase
+}
+.notice-edit,.db-area{
+  background:var(--card);border-radius:var(--r);
+  padding:14px;margin:0 16px;
+  box-shadow:var(--sh);border:1px solid var(--line)
+}
+.notice-edit-title,.db-area-title{
+  font-size:14px;font-weight:800;margin-bottom:10px;
+  letter-spacing:-.02em
+}
+.notice-ta,.db-ta{
+  width:100%;min-height:70px;padding:10px;
+  border:1.5px solid var(--line);border-radius:var(--r-s);
+  background:var(--sunk);color:var(--ink);
+  font-family:inherit;font-size:14px;
+  resize:vertical;line-height:1.5;transition:.15s
+}
+.notice-ta:focus,.db-ta:focus{
+  outline:0;border-color:var(--posco);background:var(--card)
+}
+.notice-save-btn,.db-btn{
+  width:100%;margin-top:8px;padding:11px;
+  border:0;border-radius:var(--r-s);
+  background:var(--deep);color:#fff;
+  font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s
+}
+.notice-save-btn:active,.db-btn:active{transform:scale(.98)}
+.db-info{
+  background:var(--tint);border-radius:var(--r);
+  padding:10px 12px;margin:0 16px 8px;
+  border-left:3px solid var(--posco)
+}
+.db-info-txt{
+  font-size:12.5px;color:var(--body);
+  line-height:1.6;font-weight:500
+}
+.db-info-txt strong{font-weight:800;color:var(--posco)}
+.db-ta{
+  min-height:100px;font-size:12px;
+  font-family:ui-monospace,'SF Mono',Menlo,monospace
+}
+.sets-grp{
+  background:var(--card);border-radius:var(--r);
+  margin:0 16px;overflow:hidden;box-shadow:var(--sh);
+  border:1px solid var(--line)
+}
+.sets-item{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:13px 15px;
+  border-bottom:1px solid var(--line);
+  cursor:pointer;transition:.12s
+}
+.sets-item:last-child{border-bottom:0}
+.sets-item:active{background:var(--sunk)}
+.sets-l{display:flex;align-items:center;gap:10px;min-width:0}
+.sets-ico{font-size:18px;line-height:1;flex-shrink:0}
+.sets-name{
+  font-size:14px;font-weight:700;
+  letter-spacing:-.02em;color:var(--ink)
+}
+.sets-r{
+  font-size:13px;font-weight:700;
+  color:var(--sub);flex-shrink:0
+}
+
+/* ═══════════════════════════════════════
+   하단 네비
+   ═══════════════════════════════════════ */
+.botnav{
+  position:fixed;bottom:0;left:0;right:0;z-index:60;
+  max-width:480px;margin:0 auto;background:var(--card);
+  box-shadow:0 -2px 12px rgba(15,29,43,.08);
+  display:flex;padding:5px 0 max(5px,env(safe-area-inset-bottom));
+  border-top:1px solid var(--line)
+}
+.nav-tab{
+  flex:1;background:none;border:0;font-family:inherit;
+  cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:2px;color:var(--faint);
+  position:relative;padding:5px 0;transition:.15s
+}
+.nav-ti{font-size:20px;line-height:1;transition:.18s}
+.nav-tl{font-size:11px;font-weight:800;letter-spacing:-.02em}
+.nav-tab.active{color:var(--posco)}
+.nav-tab.active .nav-ti{transform:translateY(-1px) scale(1.05)}
+.nav-tab:active .nav-ti{transform:scale(.9)}
+.nav-tab.insp-tab{color:var(--stop)}
+.nav-badge{
+  position:absolute;top:0;right:calc(50% - 22px);
+  background:var(--stop);color:#fff;
+  font-size:10px;font-weight:800;
+  min-width:16px;height:16px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 4px;border:2px solid var(--card);
+  font-variant-numeric:tabular-nums
+}
+
+/* ═══════════════════════════════════════
+   바텀시트
+   ═══════════════════════════════════════ */
+.overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.55);backdrop-filter:blur(3px);
+  z-index:80;opacity:0;pointer-events:none;transition:.25s
+}
+.overlay.active{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;bottom:0;left:50%;
+  transform:translateX(-50%) translateY(100%);
+  width:100%;max-width:480px;max-height:85vh;
+  background:var(--bg);border-radius:20px 20px 0 0;
+  z-index:90;transition:transform .3s cubic-bezier(.32,.72,0,1);
+  display:flex;flex-direction:column
+}
+.sheet.open{transform:translateX(-50%) translateY(0)}
+.sheet-handle{
+  width:36px;height:4px;background:var(--line);
+  border-radius:3px;margin:8px auto 4px;flex-shrink:0
+}
+.sheet-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:6px 16px 12px;
+  border-bottom:1px solid var(--line);flex-shrink:0;
+  background:var(--card);border-radius:20px 20px 0 0;
+  margin-top:-16px;padding-top:20px
+}
+.sheet-title{
+  font-size:17px;font-weight:800;letter-spacing:-.03em
+}
+.sheet-x{
+  width:32px;height:32px;border:0;border-radius:50%;
+  background:var(--sunk);color:var(--sub);
+  font-size:20px;line-height:1;cursor:pointer;
+  flex-shrink:0;font-family:inherit
+}
+.sheet-x:active{transform:scale(.9)}
+.sheet-body{
+  flex:1;overflow-y:auto;padding:12px 16px 24px;
+  -webkit-overflow-scrolling:touch
+}
+
+/* ═══ 시트 내 작업 카드 ═══ */
+.work-item{
+  background:var(--card);border-radius:var(--r-s);
+  padding:12px 14px;margin-bottom:8px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--sub);
+  box-shadow:var(--sh);transition:.15s
+}
+.work-item.danger{border-left-color:var(--stop);background:var(--stop-bg)}
+.work-item.wait{border-left-color:var(--warn)}
+.work-item.run{border-left-color:var(--run)}
+.work-item.done{border-left-color:var(--done)}
+.wi-top{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.wi-badge{
+  font-size:10.5px;font-weight:800;
+  padding:2px 7px;border-radius:4px;letter-spacing:.02em
+}
+.wi-badge.r{background:var(--stop);color:#fff}
+.wi-badge.g{background:var(--done);color:#fff}
+.wi-status{
+  font-size:11px;font-weight:700;margin-left:auto;
+  padding:2px 8px;border-radius:5px
+}
+.wi-status.wait{background:var(--warn-bg);color:var(--warn)}
+.wi-status.run{background:var(--run-bg);color:var(--run)}
+.wi-status.stop{background:var(--stop-bg);color:var(--stop)}
+.wi-status.done{background:var(--done-bg);color:var(--done)}
+.wi-name{
+  font-size:14px;font-weight:800;color:var(--ink);
+  margin-bottom:5px;letter-spacing:-.02em;line-height:1.3
+}
+.wi-meta{
+  display:flex;gap:8px;font-size:12px;color:var(--sub);
+  margin-bottom:8px;font-weight:600;flex-wrap:wrap
+}
+.wi-btn{
+  display:block;padding:9px;text-align:center;
+  background:var(--deep);color:#fff;
+  border-radius:var(--r-s);text-decoration:none;
+  font-size:12.5px;font-weight:800;letter-spacing:-.01em;
+  transition:.15s
+}
+.wi-btn:active{transform:scale(.97);background:var(--posco)}
+.wi-btn.secondary{
+  background:var(--tint);color:var(--posco);
+  border:1px solid var(--line)
+}
+
+/* ═══════════════════════════════════════
+   빈 상태
+   ═══════════════════════════════════════ */
+.empty{text-align:center;padding:32px 20px}
+.empty-ico{font-size:40px;margin-bottom:8px;opacity:.35}
+.empty-txt{
+  font-size:14px;color:var(--sub);
+  font-weight:700;line-height:1.5
+}
+
+/* ═══════════════════════════════════════
+   토스트
+   ═══════════════════════════════════════ */
+.toast-wrap{
+  position:fixed;top:12px;left:50%;transform:translateX(-50%);
+  z-index:200;display:flex;flex-direction:column;gap:6px;
+  width:calc(100% - 32px);max-width:400px;pointer-events:none
+}
+.toast{
+  padding:11px 16px;border-radius:var(--r-s);
+  color:#fff;font-size:14px;font-weight:700;
+  box-shadow:0 4px 16px rgba(0,0,0,.15);
+  animation:tslide .3s cubic-bezier(.32,.72,0,1);
+  letter-spacing:-.02em;text-align:center
+}
+.toast.success{background:var(--done)}
+.toast.error{background:var(--stop)}
+.toast.info{background:var(--deep)}
+@keyframes tslide{
+  from{opacity:0;transform:translateY(-10px)}
+  to{opacity:1;transform:none}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+<!-- ══════════════════════════════════════
+     HOME 페이지
+     ══════════════════════════════════════ -->
+<div class="page active" id="pageHome">
+  
+  <!-- 히어로 (최소화, 브랜드 전용) -->
   <header class="hero">
     <div class="hero-top">
       <div class="hero-brand">
         <span class="hero-logo">🏭</span>
-        <span class="hero-org">포항 양극재공장</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">POSCO FUTURE M</div>
+          <div class="hero-brand-ko">포항양극재공장 안전관리</div>
+        </div>
       </div>
       <div class="hero-tools">
         <div class="hero-clock">
           <div class="hero-date" id="navDate">-</div>
           <div class="hero-time" id="navTime">-</div>
         </div>
-        <div class="db-dot" id="dbDot"></div>
-        <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-      </div>
-    </div>
-
-    <div class="hero-label">오늘 관리 중인 작업</div>
-    <div class="hero-main">
-      <div class="hero-count">
-        <span class="hero-num" id="cntAll">0</span><span class="hero-unit">건</span>
-      </div>
-      <div class="hero-risk green" id="heroHR">
-        <div class="hr-l"><i></i>고위험</div>
-        <div class="hr-n"><span id="cntHR">0</span><small>건</small></div>
+        <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" aria-label="테마">🌙</button>
       </div>
     </div>
   </header>
 
   <div class="main">
 
-    <!-- 공지 -->
+    <!-- 공지 배너 (있을 때만) -->
     <div id="noticeBanner" class="notice-banner" onclick="toggleNotice()" style="display:none;">
       <div class="notice-banner-top">
         <div class="notice-banner-label">
@@ -513,7 +629,7 @@ body{
       <div class="notice-banner-text" id="noticeText"></div>
     </div>
 
-    <!-- 기간 필터 -->
+    <!-- 필터 칩 -->
     <div class="chips">
       <button class="chip active" onclick="setFilter('recent',this)">최근</button>
       <button class="chip" onclick="setFilter('today',this)">오늘</button>
@@ -521,81 +637,102 @@ body{
       <button class="chip" onclick="setFilter('all',this)">전체</button>
     </div>
 
-    <!-- 오늘 안전 현황 -->
+    <!-- 작업 현황 (상단 배치) -->
     <section class="sec">
       <div class="sec-hdr">
-        <div class="sec-title">📊 오늘 안전 현황</div>
-        <div class="sec-more" onclick="goTab('inspect')">상세 ›</div>
+        <div class="sec-title">📈 작업 현황</div>
+        <div class="sec-more" onclick="refreshAll()">↻ 새로고침</div>
       </div>
-      <div class="stat3">
-        <div><div class="v c-blue" id="sTot">0</div><div class="l">총 점검</div></div>
-        <div><div class="v c-orange" id="sPend">0</div><div class="l">⚠️ 미시정</div></div>
-        <div><div class="v c-green" id="sDone">0</div><div class="l">✅ 완료</div></div>
+      
+      <!-- 강조 카드: 전체 + 고위험 -->
+      <div class="status-highlight">
+        <div class="status-hl-card" onclick="openStatusSheet('all')">
+          <div class="status-hl-label">
+            <i></i>전체
+          </div>
+          <div class="status-hl-value">
+            <span id="cntTotal">0</span><small>건</small>
+          </div>
+        </div>
+        <div class="status-hl-card danger" onclick="openStatusSheet('danger')">
+          <div class="status-hl-label">
+            <i></i>고위험
+          </div>
+          <div class="status-hl-value">
+            <span id="cntDanger">0</span><small>건</small>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 세부 4개 카드 -->
+      <div class="status-detail">
+        <div class="status-dt-card wait" onclick="openStatusSheet('wait')">
+          <div class="status-dt-value" id="cntWait">0</div>
+          <div class="status-dt-label">허가전</div>
+        </div>
+        <div class="status-dt-card run" onclick="openStatusSheet('run')">
+          <div class="status-dt-value" id="cntRun">0</div>
+          <div class="status-dt-label">작업중</div>
+        </div>
+        <div class="status-dt-card stop" onclick="openStatusSheet('stop')">
+          <div class="status-dt-value" id="cntStop">0</div>
+          <div class="status-dt-label">작업중지</div>
+        </div>
+        <div class="status-dt-card done" onclick="openStatusSheet('done')">
+          <div class="status-dt-value" id="cntDone">0</div>
+          <div class="status-dt-label">작업완료</div>
+        </div>
       </div>
     </section>
 
-    <!-- 작업별 실시간 상태 -->
+    <!-- 빠른 실행 (3x2 그리드) -->
     <section class="sec">
       <div class="sec-hdr">
-        <div class="sec-title">📈 작업별 실시간 상태</div>
-        <div class="sec-more" onclick="refreshAll()">새로고침</div>
+        <div class="sec-title">⚡ 빠른 실행</div>
       </div>
-      <div class="tiles">
-        <div class="tile t-done">
-          <div class="tile-k"><i></i>허가완료</div>
-          <div class="tile-n"><span id="statusReady">0</span><small>건</small></div>
-        </div>
-        <div class="tile t-run">
-          <div class="tile-k"><i></i>작업중</div>
-          <div class="tile-n"><span id="statusWorking">0</span><small>건</small></div>
-        </div>
-        <div class="tile t-stop">
-          <div class="tile-k"><i></i>작업중지</div>
-          <div class="tile-n"><span id="statusStopped">0</span><small>건</small></div>
-        </div>
-        <div class="tile t-wait">
-          <div class="tile-k"><i></i>작업완료</div>
-          <div class="tile-n"><span id="statusCompleted">0</span><small>건</small></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 당일 작업허가 리스트 -->
-    <section class="sec" id="todayPermitSection" style="display:none;">
-      <div class="sec-hdr">
-        <div class="sec-title">📋 당일 작업허가 리스트</div>
-        <div class="sec-more" onclick="refreshTodayPermits()">새로고침</div>
-      </div>
-      <div id="todayPermitList"></div>
-    </section>
-
-    <!-- 빠른 실행 -->
-    <section class="sec">
-      <div class="sec-hdr"><div class="sec-title">빠른 실행</div></div>
     </section>
     <div class="quick-grid">
       <a href="포항양극재공장_안전퀴즈.html" class="qbtn">
-        <div class="qbtn-ico">🎯</div><div class="qbtn-lbl">출입자<br>안전퀴즈</div></a>
+        <div class="qbtn-ico">🎯</div>
+        <div class="qbtn-lbl">출입자<br>안전퀴즈</div>
+      </a>
       <a href="안전정보제공서_도급인용.html" class="qbtn">
-        <div class="qbtn-ico">📋</div><div class="qbtn-lbl">안전정보<br>제공서</div></a>
+        <div class="qbtn-ico">📋</div>
+        <div class="qbtn-lbl">안전정보<br>제공서</div>
+      </a>
       <a href="안전작업허가서_v2.html" class="qbtn">
-        <div class="qbtn-ico">🔐</div><div class="qbtn-lbl">작업<br>허가서</div></a>
+        <div class="qbtn-ico">🔐</div>
+        <div class="qbtn-lbl">작업<br>허가서</div>
+      </a>
       <a href="TBM_및_작업중지권_v2.html" class="qbtn">
-        <div class="qbtn-ico">📝</div><div class="qbtn-lbl">TBM<br>일지</div></a>
+        <div class="qbtn-ico">📝</div>
+        <div class="qbtn-lbl">TBM<br>일지</div>
+      </a>
       <a href="위험성평가_v2.html" class="qbtn">
-        <div class="qbtn-ico">🤖</div><div class="qbtn-lbl">AI<br>위험성평가</div></a>
+        <div class="qbtn-ico">🤖</div>
+        <div class="qbtn-lbl">AI<br>위험성평가</div>
+      </a>
       <a href="TBM_및_작업중지권_v2.html" class="qbtn">
-        <div class="qbtn-ico">🛑</div><div class="qbtn-lbl">작업<br>중지권</div></a>
+        <div class="qbtn-ico">🛑</div>
+        <div class="qbtn-lbl">작업<br>중지권</div>
+      </a>
     </div>
 
   </div>
 </div>
-
-<!-- ══════════ 점검현황 ══════════ -->
+<!-- ══════════════════════════════════════
+     점검현황 페이지
+     ══════════════════════════════════════ -->
 <div class="page" id="pageInspect">
-  <header class="hero" style="padding-bottom:22px">
-    <div class="hero-top" style="margin-bottom:14px">
-      <div class="hero-brand"><span class="hero-logo">📊</span><span class="hero-org">점검 현황</span></div>
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">
+        <span class="hero-logo">📊</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">SAFETY INSPECTION</div>
+          <div class="hero-brand-ko">점검 현황</div>
+        </div>
+      </div>
       <div class="hero-tools">
         <div class="hero-clock">
           <div class="hero-date">오늘</div>
@@ -603,55 +740,81 @@ body{
         </div>
       </div>
     </div>
-    <div class="hero-label">등록된 점검사항</div>
-    <div class="hero-main">
-      <div class="hero-num" id="heroInspNum">0</div>
-      <div class="hero-unit">건</div>
-    </div>
   </header>
+
   <div class="main">
-    <div class="insp-sum">
-      <div class="isp"><div class="isp-v" id="iT">0</div><div class="isp-l">총 점검</div></div>
-      <div class="isp"><div class="isp-v r" id="iC">0</div><div class="isp-l">중대</div></div>
-      <div class="isp"><div class="isp-v o" id="iM">0</div><div class="isp-l">경미</div></div>
-      <div class="isp"><div class="isp-v g" id="iD">0</div><div class="isp-l">완료</div></div>
+    <div class="page-header" style="background:transparent;border:none;padding-top:16px;">
+      <div class="page-title">등록된 점검사항 <span id="heroInspNum">0</span>건</div>
+      <div class="page-sub">오늘 등록된 점검사항입니다</div>
     </div>
-    <div class="sec"><div class="sec-hdr"><div class="sec-title">오늘 점검 목록</div></div></div>
+
+    <div class="insp-sum">
+      <div class="isp">
+        <div class="isp-v" id="iT">0</div>
+        <div class="isp-l">총 점검</div>
+      </div>
+      <div class="isp">
+        <div class="isp-v r" id="iC">0</div>
+        <div class="isp-l">중대</div>
+      </div>
+      <div class="isp">
+        <div class="isp-v o" id="iM">0</div>
+        <div class="isp-l">경미</div>
+      </div>
+      <div class="isp">
+        <div class="isp-v g" id="iD">0</div>
+        <div class="isp-l">완료</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-hdr">
+        <div class="sec-title">📋 점검 목록</div>
+      </div>
+    </div>
     <div id="inspList"></div>
   </div>
 </div>
 
-<!-- ══════════ 설정 ══════════ -->
+<!-- ══════════════════════════════════════
+     설정 페이지
+     ══════════════════════════════════════ -->
 <div class="page" id="pageSettings">
-  <header class="hero" style="padding-bottom:22px">
-    <div class="hero-top" style="margin-bottom:14px">
-      <div class="hero-brand"><span class="hero-logo">⚙️</span><span class="hero-org">설정</span></div>
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">
+        <span class="hero-logo">⚙️</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">SETTINGS</div>
+          <div class="hero-brand-ko">설정</div>
+        </div>
+      </div>
       <div class="hero-tools">
-        <div class="db-dot" id="dbDot2"></div>
+        <div class="hero-clock">
+          <div class="hero-date">v7.0</div>
+          <div class="hero-time">최신</div>
+        </div>
       </div>
     </div>
-    <div class="hero-label">에너지소재생산본부<br>포항안전환경그룹</div>
-    <div class="hero-main">
-      <div class="hero-num" style="font-size:46px">v6.1</div>
-    </div>
   </header>
+
   <div class="main">
 
-    <div class="sec-lbl" style="padding-left:18px">안전 공지사항</div>
+    <div class="sec-lbl">안전 공지사항</div>
     <div class="notice-edit">
-      <div class="notice-edit-title">📢 홈 화면 공지사항 관리</div>
+      <div class="notice-edit-title">📢 홈 화면 공지 관리</div>
       <textarea class="notice-ta" id="noticeInput" placeholder="공지사항을 입력하면 홈 화면 상단에 표시됩니다..."></textarea>
       <button class="notice-save-btn" onclick="saveNotice()">저장 및 공지</button>
     </div>
 
-    <div class="sec-lbl" style="padding-left:18px">DB 관리</div>
+    <div class="sec-lbl">DB 관리</div>
     <div class="db-info">
       <div class="db-info-txt">
         <strong>📌 엑셀 업로드 방법</strong><br>
         ① 긴급조치 관리대장 엑셀 열기<br>
         ② 전체 선택 후 <strong>Ctrl+C</strong><br>
-        ③ 아래 창에 <strong>Ctrl+V</strong> 붙여넣기<br>
-        ④ 변환 및 저장 → <strong>누적 저장</strong>
+        ③ 아래 창에 <strong>Ctrl+V</strong><br>
+        ④ 변환 및 저장 → 누적
       </div>
     </div>
     <div class="db-area">
@@ -660,161 +823,250 @@ body{
       <button class="db-btn" onclick="parseAndSave()">🔄 변환 및 저장</button>
     </div>
 
-    <div class="sec-lbl" style="padding-left:18px">앱 설정</div>
+    <div class="sec-lbl">앱 설정</div>
     <div class="sets-grp">
       <div class="sets-item" onclick="toggleTheme()">
-        <div class="sets-l"><span class="sets-ico">🌙</span><span class="sets-name">다크 모드</span></div>
+        <div class="sets-l">
+          <span class="sets-ico">🌙</span>
+          <span class="sets-name">다크 모드</span>
+        </div>
         <span class="sets-r" id="themeStatus">끄기</span>
       </div>
       <div class="sets-item" onclick="refreshAll()">
-        <div class="sets-l"><span class="sets-ico">🔄</span><span class="sets-name">데이터 새로고침</span></div>
+        <div class="sets-l">
+          <span class="sets-ico">🔄</span>
+          <span class="sets-name">데이터 새로고침</span>
+        </div>
         <span class="sets-r" id="dbStatusTxt">확인 중</span>
       </div>
       <div class="sets-item">
-        <div class="sets-l"><span class="sets-ico">📦</span><span class="sets-name">저장된 작업 수</span></div>
+        <div class="sets-l">
+          <span class="sets-ico">📦</span>
+          <span class="sets-name">저장된 작업 수</span>
+        </div>
         <span class="sets-r" id="dbCount">-</span>
       </div>
       <div class="sets-item" onclick="clearDB()">
-        <div class="sets-l"><span class="sets-ico">🗑️</span><span class="sets-name">DB 초기화</span></div>
+        <div class="sets-l">
+          <span class="sets-ico">🗑️</span>
+          <span class="sets-name">DB 초기화</span>
+        </div>
         <span class="sets-r" style="color:var(--stop)">삭제 ›</span>
       </div>
     </div>
 
-    <div class="sec-lbl" style="padding-left:18px">정보</div>
+    <div class="sec-lbl">정보</div>
     <div class="sets-grp">
       <div class="sets-item">
-        <div class="sets-l"><span class="sets-ico">🏭</span><span class="sets-name">에너지소재생산본부</span></div>
+        <div class="sets-l">
+          <span class="sets-ico">🏭</span>
+          <span class="sets-name">에너지소재생산본부</span>
+        </div>
         <span class="sets-r">포항안전환경그룹</span>
       </div>
       <div class="sets-item">
-        <div class="sets-l"><span class="sets-ico">📱</span><span class="sets-name">버전</span></div>
-        <span class="sets-r">v6.1</span>
+        <div class="sets-l">
+          <span class="sets-ico">📱</span>
+          <span class="sets-name">버전</span>
+        </div>
+        <span class="sets-r">v7.0</span>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════ 하단 네비 ══════════ -->
+<!-- ══════════════════════════════════════
+     하단 네비 (4개 탭)
+     ══════════════════════════════════════ -->
 <nav class="botnav">
   <button class="nav-tab active" id="tabHome" onclick="goTab('home')">
-    <span class="nav-ti">🏠</span><span class="nav-tl">홈</span>
+    <span class="nav-ti">🏠</span>
+    <span class="nav-tl">홈</span>
   </button>
   <button class="nav-tab insp-tab" id="tabInspReg" onclick="openInspSheet(null)">
-    <span class="nav-ti">🚨</span><span class="nav-tl">점검등록</span>
+    <span class="nav-ti">🚨</span>
+    <span class="nav-tl">점검등록</span>
   </button>
   <button class="nav-tab" id="tabInspect" onclick="goTab('inspect')">
-    <span class="nav-ti">📊</span><span class="nav-tl">점검현황</span>
+    <span class="nav-ti">📊</span>
+    <span class="nav-tl">점검현황</span>
     <span class="nav-badge" id="inspBadge" style="display:none">0</span>
   </button>
   <button class="nav-tab" id="tabSettings" onclick="goTab('settings')">
-    <span class="nav-ti">⚙️</span><span class="nav-tl">설정</span>
+    <span class="nav-ti">⚙️</span>
+    <span class="nav-tl">설정</span>
   </button>
 </nav>
-</div>
+</div><!-- /.app -->
 
-<!-- 작업 상세 시트 -->
-<div class="overlay" id="wdOv" onclick="closeSheet('wd')"></div>
-<div class="sheet" id="wdSheet">
+<!-- ══════════════════════════════════════
+     작업 상태별 목록 시트 (핵심!)
+     ══════════════════════════════════════ -->
+<div class="overlay" id="wsOv" onclick="closeSheet('ws')"></div>
+<div class="sheet" id="wsSheet">
   <div class="sheet-handle"></div>
   <div class="sheet-hdr">
-    <div class="sheet-title">작업 상세</div>
-    <button class="sheet-x" onclick="closeSheet('wd')">×</button>
+    <div class="sheet-title" id="wsSheetTitle">작업 목록</div>
+    <button class="sheet-x" onclick="closeSheet('ws')" aria-label="닫기">×</button>
   </div>
-  <div class="sheet-body" id="wdBody"></div>
+  <div class="sheet-body" id="wsBody"></div>
 </div>
 
-<!-- 점검 등록 시트 -->
+<!-- ══════════════════════════════════════
+     점검 등록 시트
+     ══════════════════════════════════════ -->
 <div class="overlay" id="ifOv" onclick="closeSheet('if')"></div>
 <div class="sheet" id="ifSheet">
   <div class="sheet-handle"></div>
   <div class="sheet-hdr">
     <div class="sheet-title">🚨 점검 등록</div>
-    <button class="sheet-x" onclick="closeSheet('if')">×</button>
+    <button class="sheet-x" onclick="closeSheet('if')" aria-label="닫기">×</button>
   </div>
   <div class="sheet-body">
-    <div id="ifBanner" style="display:none" class="work-banner">
-      <div class="work-banner-lbl">연결된 작업</div>
-      <div class="work-banner-name" id="ifWName"></div>
+    <div id="ifBanner" style="display:none;background:var(--tint);border-radius:var(--r-s);padding:10px 12px;margin-bottom:14px;border-left:3px solid var(--posco);">
+      <div style="font-size:11px;font-weight:800;color:var(--posco);letter-spacing:.04em;margin-bottom:3px;">연결된 작업</div>
+      <div style="font-size:15px;font-weight:800;letter-spacing:-.02em;" id="ifWName"></div>
     </div>
-    <div class="f-sec">
-      <div class="f-lbl">심각도</div>
-      <div class="sev-row">
-        <div class="sev-btn" onclick="selSev('중대',this)"><div class="sev-ico">🔴</div><div class="sev-lbl">중대</div></div>
-        <div class="sev-btn" onclick="selSev('경미',this)"><div class="sev-ico">🟡</div><div class="sev-lbl">경미</div></div>
-        <div class="sev-btn" onclick="selSev('권고',this)"><div class="sev-ico">🟢</div><div class="sev-lbl">권고</div></div>
+    
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">심각도</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div onclick="selSev('중대',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;" class="sev-btn">
+          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🔴</div>
+          <div style="font-size:13px;font-weight:800;">중대</div>
+        </div>
+        <div onclick="selSev('경미',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;" class="sev-btn">
+          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🟡</div>
+          <div style="font-size:13px;font-weight:800;">경미</div>
+        </div>
+        <div onclick="selSev('권고',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;" class="sev-btn">
+          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🟢</div>
+          <div style="font-size:13px;font-weight:800;">권고</div>
+        </div>
       </div>
     </div>
-    <div class="f-sec">
-      <div class="f-lbl">점검 항목</div>
-      <div class="cl-scroll" id="clBody"></div>
-      <div class="cust-row">
-        <input class="cust-inp" id="custInp" placeholder="직접 입력...">
-        <button class="cust-add" onclick="addCust()">추가</button>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">점검 항목</div>
+      <div id="clBody" style="max-height:260px;overflow-y:auto;background:var(--card);border-radius:var(--r-s);padding:6px;box-shadow:var(--sh);border:1px solid var(--line);"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input id="custInp" placeholder="직접 입력..." style="flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14px;">
+        <button onclick="addCust()" style="padding:0 16px;border:0;border-radius:var(--r-s);background:var(--posco);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;">추가</button>
       </div>
-      <div class="cust-list" id="custList"></div>
+      <div id="custList" style="margin-top:8px;display:flex;flex-direction:column;gap:5px;"></div>
     </div>
-    <div class="f-sec">
-      <div class="f-lbl">사진 (선택)</div>
-      <div class="photo-zone" onclick="document.getElementById('photoFile').click()">
-        <div class="photo-ico">📷</div>
-        <div class="photo-txt">터치하여 사진 촬영</div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">사진 (선택)</div>
+      <div onclick="document.getElementById('photoFile').click()" style="background:var(--card);border:2px dashed var(--line);border-radius:var(--r-s);padding:22px;text-align:center;cursor:pointer;transition:.15s;">
+        <div style="font-size:28px;margin-bottom:5px;">📷</div>
+        <div style="font-size:13px;color:var(--sub);font-weight:700;">터치하여 사진 촬영</div>
       </div>
       <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)">
-      <div class="photo-prev" id="photoPrev" style="display:none">
-        <img id="photoImg" src="" alt="">
-        <button class="photo-del" onclick="delPhoto()">×</button>
+      <div id="photoPrev" style="display:none;position:relative;border-radius:var(--r-s);overflow:hidden;margin-top:8px;">
+        <img id="photoImg" src="" alt="" style="width:100%;display:block;">
+        <button onclick="delPhoto()" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:17px;cursor:pointer;font-family:inherit;line-height:1;">×</button>
       </div>
     </div>
-    <div class="f-sec">
-      <div class="f-lbl">등록자</div>
-      <select class="f-sel" id="repRole" onchange="valForm()" style="margin-bottom:9px;">
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">등록자</div>
+      <select id="repRole" onchange="valForm()" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;margin-bottom:8px;">
         <option value="">역할 선택</option>
         <option value="안전관리자">안전관리자</option>
         <option value="관리감독자">관리감독자</option>
         <option value="안전패트롤팀">안전패트롤팀</option>
       </select>
-      <input class="f-inp" id="repName" placeholder="이름" oninput="valForm()">
+      <input id="repName" placeholder="이름" oninput="valForm()" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;">
     </div>
-    <button class="sub-btn" id="subBtn" onclick="submitInsp()" disabled>⚡ 즉시 등록</button>
-    <p style="text-align:center;font-size:15px;color:var(--sub);margin-top:14px;padding-bottom:20px;font-weight:700;">등록 즉시 전체 공유됩니다</p>
+
+    <button id="subBtn" onclick="submitInsp()" disabled style="width:100%;padding:18px;border:0;border-radius:var(--r-s);background:var(--run);color:#fff;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:-.02em;box-shadow:0 4px 12px rgba(232,89,12,.25);transition:.15s;">
+      ⚡ 즉시 등록
+    </button>
+    <p style="text-align:center;font-size:12.5px;color:var(--sub);margin-top:12px;padding-bottom:16px;font-weight:600;">등록 즉시 전체 공유됩니다</p>
   </div>
 </div>
 
+<style>
+.sev-btn.on{border-color:var(--posco);background:var(--tint)}
+#subBtn:disabled{background:var(--line);color:var(--faint);box-shadow:none;cursor:not-allowed}
+#subBtn:active:not(:disabled){transform:scale(.98)}
+.cl-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:8px;cursor:pointer;transition:.12s;}
+.cl-item:active{background:var(--sunk)}
+.cl-item.sel{background:var(--tint)}
+.cl-box{width:20px;height:20px;border:2px solid var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--posco);flex-shrink:0;}
+.cl-item.sel .cl-box{background:var(--posco);color:#fff;border-color:var(--posco)}
+.cl-txt{font-size:14px;font-weight:600;line-height:1.4;}
+.cl-cat{font-size:12px;font-weight:800;color:var(--posco);padding:6px 10px 4px;letter-spacing:.03em;}
+.cust-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--tint);padding:9px 11px;border-radius:8px;}
+.cust-txt{font-size:13.5px;font-weight:700;}
+.cust-del{background:none;border:0;color:var(--stop);font-size:20px;cursor:pointer;font-family:inherit;line-height:1;}
+</style>
 
 <script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
 var allWorks=[],dispWorks=[],violations=[],permits=[];
-var curFilter='recent',curWTab='all';
+var curFilter='recent';
 var ifWork=null,ifSev=null,ifItems=[],custItems=[],photoData=null;
 var noticeCollapsed=false;
 
-function init(){initTheme();clock();loadDB();loadViolations();updateWorkStatus();loadNotice();}
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+function init(){
+  initTheme();
+  clock();
+  loadDB();
+  loadViolations();
+  loadPermits();
+  loadNotice();
+}
 
 function clock(){
   function tick(){
     var n=new Date(),days=['일','월','화','수','목','금','토'];
-    setTxt('navDate',(n.getMonth()+1)+'월 '+n.getDate()+'일 ('+days[n.getDay()]+')');
-    setTxt('navTime',pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds()));
-    setTxt('todayDatePill',(n.getMonth()+1)+'월 '+n.getDate()+'일');
+    setTxt('navDate',(n.getMonth()+1)+'/'+n.getDate()+' ('+days[n.getDay()]+')');
+    setTxt('navTime',pad(n.getHours())+':'+pad(n.getMinutes()));
+    setTxt('inspDatePill',(n.getMonth()+1)+'월 '+n.getDate()+'일');
   }
-  tick();setInterval(tick,1000);
+  tick();
+  setInterval(tick,1000);
 }
+
 function pad(n){return('0'+n).slice(-2);}
-function fmtDate(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function fmtDate(d){
+  d = d || new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
 function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function escHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
+// ═══════════════════════════════════════
 // THEME
-function initTheme(){applyTheme(localStorage.getItem('theme')||'light');}
+// ═══════════════════════════════════════
+function initTheme(){
+  applyTheme(localStorage.getItem('theme')||'light');
+}
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme',t);
   var b=document.getElementById('themeBtn'),s=document.getElementById('themeStatus');
   if(b) b.textContent=t==='dark'?'☀️':'🌙';
-  if(s) s.textContent=t==='dark'?'끄기':'켜기';
+  if(s) s.textContent=t==='dark'?'켜기':'끄기';
   localStorage.setItem('theme',t);
 }
-function toggleTheme(){var c=document.documentElement.getAttribute('data-theme')||'light';applyTheme(c==='dark'?'light':'dark');}
+function toggleTheme(){
+  var c=document.documentElement.getAttribute('data-theme')||'light';
+  applyTheme(c==='dark'?'light':'dark');
+}
 
+// ═══════════════════════════════════════
 // NOTICE
+// ═══════════════════════════════════════
 function loadNotice(){
   var txt=localStorage.getItem('safetyNotice')||'';
   var savedDate=localStorage.getItem('safetyNoticeDate')||'';
@@ -830,6 +1082,7 @@ function loadNotice(){
   if(newBadge) newBadge.style.display=(savedDate!==seenDate)?'inline':'none';
   localStorage.setItem('safetyNoticeSeen',savedDate);
 }
+
 function saveNotice(){
   var txt=(document.getElementById('noticeInput').value||'').trim();
   localStorage.setItem('safetyNotice',txt);
@@ -838,15 +1091,23 @@ function saveNotice(){
   loadNotice();
   showToast(txt?'공지사항이 등록되었습니다':'공지사항이 삭제되었습니다','success');
 }
+
 function toggleNotice(){
   noticeCollapsed=!noticeCollapsed;
   var banner=document.getElementById('noticeBanner');
   var tog=document.getElementById('noticeToggle');
-  if(noticeCollapsed){banner.classList.add('collapsed');if(tog) tog.textContent='펼치기 ▼';}
-  else{banner.classList.remove('collapsed');if(tog) tog.textContent='접기 ▲';}
+  if(noticeCollapsed){
+    banner.classList.add('collapsed');
+    if(tog) tog.textContent='펼치기 ▼';
+  } else {
+    banner.classList.remove('collapsed');
+    if(tog) tog.textContent='접기 ▲';
+  }
 }
 
-// DB
+// ═══════════════════════════════════════
+// DB (작업 데이터베이스)
+// ═══════════════════════════════════════
 var companies=['원준','유공엔지니어링','직영','세광','에이스테크','안전공사','남양이엔에스','태정종합건설','서원종합건설','예준산업','파즈코리아','운강건설','금강건설','포스코PR테크','PR테크','위드테크','NCH','우진환경','다산','엠엔케이','KRST대한동방','GAFF','KRST','대한동방','포스코건설','현대건설','정비섹션'];
 var HR_CATS={HR01:{name:"화재폭발",kw:["인화성","가스","용접","그라인더","화기","폭발","보일러"]},HR02:{name:"밀폐공간",kw:["밀폐","질식","산소결핍","유해가스","송기마스크"]},HR03:{name:"유해화학물질",kw:["화학","강산","강염기","부식","황산","염산"]},HR04:{name:"고소작업",kw:["고소","추락","5m","높이","사다리","비계"]},HR05:{name:"중량물",kw:["크레인","양중","인양","중량물","지게차","호이스트"]},HR06:{name:"전기작업",kw:["고압","특고압","1000v","1500v","구역정전","복전"]}};
 var STD_HAZ={'감전':['감전','누전','통전'],'화재':['화재','불꽃','인화성','가연물','화기'],'폭발':['폭발','가스누출'],'추락':['추락','떨어짐','고소'],'질식':['질식','산소부족','유해가스'],'화상':['화상','고온'],'끼임':['끼임','협착','회전체'],'낙하':['낙하','비래'],'충돌':['충돌','부딪힘'],'절단':['절단','베임']};
@@ -855,819 +1116,878 @@ var SP=[{p:['안전모','헬멧'],s:'안전모 착용'},{p:['안전화'],s:'안�
 function loadDB(){
   try{
     var raw=localStorage.getItem('safetyDatabase');
-    allWorks=raw?(JSON.parse(raw).workHistory||[]).map(function(w){
-      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip (인덱스 fallback 금지)
+    allWorks = raw ? (JSON.parse(raw).workHistory||[]).map(function(w){
+      // CONVENTIONS §3.4: originalNo 없으면 skip
       if(!w.originalNo) return null;
       var rl=w.risk||'일반';if(rl==='중위험') rl='일반';
-      return{id:w.date+'_'+w.originalNo,date:w.date||'',workName:w.workName||'',workNameFull:w.workNameFull||'',
-        locationObj:w.location||{},location:locStr(w.location),riskLevel:rl,
-        company:w.company||'미지정',manager:w.manager||'미지정',ilsRequired:w.ilsRequired||'N',
+      return{
+        id:w.date+'_'+w.originalNo,
+        date:w.date||'',
+        workName:w.workName||'',
+        workNameFull:w.workNameFull||'',
+        locationObj:w.location||{},
+        location:locStr(w.location),
+        riskLevel:rl,
+        company:w.company||'미지정',
+        manager:w.manager||'미지정',
+        ilsRequired:w.ilsRequired||'N',
         hrCategoryNames:(w.highRiskCategories||[]).map(function(c){return c.category;}),
-        hazards:w.hazards||[],aiAnalysis:{riskScore:rscore(rl,w.highRiskCategories),safetyMeasures:w.safetyMeasures||[]}};
-    }).filter(function(w){return w!==null;}):[];
-
-  }catch(e){allWorks=[];}
-  updateDBUI();applyFilter();
+        hazards:w.hazards||[],
+        aiAnalysis:{
+          riskScore:rscore(rl,w.highRiskCategories),
+          safetyMeasures:w.safetyMeasures||[]
+        }
+      };
+    }).filter(function(w){return w!==null;}) : [];
+  }catch(e){
+    console.error('DB 로드 실패:',e);
+    allWorks=[];
+  }
+  updateDBUI();
+  applyFilter();
 }
-function locStr(l){if(!l) return '';return ((l.factory||'')+' '+(l.line?l.line+'라인':'')).trim();}
-function rscore(rl,cats){var b=rl==='고위험'?75:30;if(cats&&cats.length) b+=cats.length*5;return Math.min(b,99);}
+
+function locStr(l){
+  if(!l) return '';
+  return ((l.factory||'')+' '+(l.line?l.line+'라인':'')).trim();
+}
+
+function rscore(rl,cats){
+  var b=rl==='고위험'?75:30;
+  if(cats&&cats.length) b+=cats.length*5;
+  return Math.min(b,99);
+}
+
 function updateDBUI(){
   var on=allWorks.length>0;
-  var dot=document.getElementById('dbDot');if(dot) on?dot.classList.add('on'):dot.classList.remove('on');
   setTxt('dbStatusTxt',on?'연결됨':'DB 없음');
   setTxt('dbCount',on?allWorks.length+'건':'-');
 }
-function refreshAll(){loadDB();loadViolations();loadPermits();showToast('새로고침 완료','success');}
-function clearDB(){if(!confirm('DB를 초기화하시겠습니까?')) return;localStorage.removeItem('safetyDatabase');allWorks=[];dispWorks=[];updateDBUI();applyFilter();showToast('DB 초기화 완료','info');}
 
+function refreshAll(){
+  loadDB();
+  loadViolations();
+  loadPermits();
+  showToast('새로고침 완료','success');
+}
+
+function clearDB(){
+  if(!confirm('DB를 초기화하시겠습니까?')) return;
+  localStorage.removeItem('safetyDatabase');
+  allWorks=[];
+  dispWorks=[];
+  updateDBUI();
+  applyFilter();
+  showToast('DB 초기화 완료','info');
+}
+
+// ═══════════════════════════════════════
 // EXCEL PARSE
-function exDate(t){if(!t) return '';var m=t.match(/(\d{4})[-.](\d{1,2})[-.](\d{1,2})/);return m?m[1]+'-'+pad(m[2])+'-'+pad(m[3]):'';}
-function exCo(t){if(!t) return '';for(var i=0;i<companies.length;i++) if(t.indexOf(companies[i])>=0) return companies[i];return '';}
-function pLoc(wn){var m=wn.match(/(\d+)라인/)||wn.match(/(\d+)Line/i);if(m){var l=parseInt(m[1]);return l<=3?{factory:'1공장',line:l}:l<=5?{factory:'1공장',line:l}:{factory:'2공장',line:l};}if(wn.indexOf('2-2')>=0) return{factory:'2공장',line:null};if(wn.indexOf('2-1')>=0) return{factory:'1공장',line:null};return{factory:'',line:null};}
-function dILS(wf,sf){var t=(wf+' '+sf).toLowerCase();return['ils','ils 실시','ils point'].some(function(k){return t.indexOf(k)>=0;})?'Y':'N';}
-function dHR(wn,sf,isH){var t=(wn+' '+sf).toLowerCase();var det=[];for(var code in HR_CATS){var cat=HR_CATS[code];var cnt=cat.kw.filter(function(k){return t.indexOf(k.toLowerCase())>=0;}).length;if(code==='HR06'){if(cnt>=1&&isH) det.push({code:code,category:cat.name});}else if(cnt>=2) det.push({code:code,category:cat.name});}return det;}
-function mHaz(t){if(!t) return null;var l=t.toLowerCase();for(var h in STD_HAZ) if(STD_HAZ[h].some(function(k){return l.indexOf(k)>=0;})) return h;return null;}
-function sSafe(t){if(!t) return null;var l=t.toLowerCase();for(var i=0;i<SP.length;i++) if(SP[i].p.some(function(p){return l.indexOf(p.toLowerCase())>=0;})) return SP[i].s;return t.length>15?t.substring(0,15):t.length>=3?t:null;}
-function pHS(st){var hz=[],sm=[];if(!st) return{hazards:hz,safetyMeasures:sm};var items=st.replace(/(\d+)\.\s*/g,'|').replace(/[-•]\s*/g,'').split(/\||\n|;/).filter(function(s){return s.trim().length>2;});items.forEach(function(item){item=item.trim();if(item.indexOf('→')>=0||item.indexOf('->')>=0){item.split(/→|->/).forEach(function(p,i){p=p.trim();if(p.length<2) return;if(i===0){var h=mHaz(p);if(h&&hz.indexOf(h)<0) hz.push(h);}else{var s=sSafe(p);if(s&&sm.indexOf(s)<0) sm.push(s);}});}else{var h2=mHaz(item);if(h2&&hz.indexOf(h2)<0) hz.push(h2);var s2=sSafe(item);if(s2&&sm.indexOf(s2)<0) sm.push(s2);}});return{hazards:hz.slice(0,4),safetyMeasures:sm.slice(0,8)};}
-function sWN(wn){if(!wn) return '';var s=wn;if(s.indexOf('>')>=0){var segs=s.split('>'),skip=['ILS','지정됨','미실시','미지정'],best='';for(var i=segs.length-1;i>=0;i--){var seg=segs[i].trim();if(seg.length<5) continue;if(!skip.some(function(k){return seg.indexOf(k)>=0;})){best=seg;break;}}s=best||segs[0].trim();}['포항양극재2-2단계공장','포항양극재2-1단계공장','포항양극재공장','포항양극재','포항 양극재 2-2 단계','포항 양극재 2-1 단계','포항 양극재','양극재공장','양극재','포스코퓨처엠','포스코'].forEach(function(r){while(s.indexOf(r)>=0) s=s.replace(r,'');});var lp=0;while(s.indexOf('[')>=0&&lp<15){var bs=s.indexOf('['),be=s.indexOf(']',bs);s=be>=0?s.substring(0,bs)+s.substring(be+1):s.substring(0,bs)+s.substring(bs+1);lp++;}['ILS 시스템 지정 완료','ILS시스템 지정됨','ILS 지정됨','ILS 실시','ILS 미실시','ILS 불필요','ILS 지정','지정됨','미실시','미지정'].forEach(function(k){while(s.indexOf(k)>=0) s=s.replace(k,'');});s=s.replace(/\d+라인/g,'').replace(/\d+공장/g,'').replace(/\d+단계/g,'').replace(/\s+/g,' ').trim();var f=0;while(s.length>0&&f<8){if([',','.',':','-',' '].indexOf(s[0])>=0){s=s.substring(1);f++;}else break;}if(s.length>30) s=s.substring(0,30)+'...';return s||'작업';}
+// ═══════════════════════════════════════
+function exDate(t){
+  if(!t) return '';
+  var m=t.match(/(\d{4})[-.](\d{1,2})[-.](\d{1,2})/);
+  return m?m[1]+'-'+pad(m[2])+'-'+pad(m[3]):'';
+}
+
+function exCo(t){
+  if(!t) return '';
+  for(var i=0;i<companies.length;i++)
+    if(t.indexOf(companies[i])>=0) return companies[i];
+  return '';
+}
+
+function pLoc(wn){
+  var m=wn.match(/(\d+)라인/)||wn.match(/(\d+)Line/i);
+  if(m){
+    var l=parseInt(m[1]);
+    return l<=3?{factory:'1공장',line:l}:l<=5?{factory:'1공장',line:l}:{factory:'2공장',line:l};
+  }
+  if(wn.indexOf('2-2')>=0) return{factory:'2공장',line:null};
+  if(wn.indexOf('2-1')>=0) return{factory:'1공장',line:null};
+  return{factory:'',line:null};
+}
+
+function dILS(wf,sf){
+  var t=(wf+' '+sf).toLowerCase();
+  return['ils','ils 실시','ils point'].some(function(k){return t.indexOf(k)>=0;})?'Y':'N';
+}
+
+function dHR(wn,sf,isH){
+  var t=(wn+' '+sf).toLowerCase();
+  var det=[];
+  for(var code in HR_CATS){
+    var cat=HR_CATS[code];
+    var cnt=cat.kw.filter(function(k){return t.indexOf(k.toLowerCase())>=0;}).length;
+    if(code==='HR06'){
+      if(cnt>=1&&isH) det.push({code:code,category:cat.name});
+    }else if(cnt>=2) det.push({code:code,category:cat.name});
+  }
+  return det;
+}
+
+function mHaz(t){
+  if(!t) return null;
+  var l=t.toLowerCase();
+  for(var h in STD_HAZ)
+    if(STD_HAZ[h].some(function(k){return l.indexOf(k)>=0;})) return h;
+  return null;
+}
+
+function sSafe(t){
+  if(!t) return null;
+  var l=t.toLowerCase();
+  for(var i=0;i<SP.length;i++)
+    if(SP[i].p.some(function(p){return l.indexOf(p.toLowerCase())>=0;})) return SP[i].s;
+  return t.length>15?t.substring(0,15):t.length>=3?t:null;
+}
+
+function pHS(st){
+  var hz=[],sm=[];
+  if(!st) return{hazards:hz,safetyMeasures:sm};
+  var items=st.replace(/(\d+)\.\s*/g,'|').replace(/[-•]\s*/g,'').split(/\||\n|;/).filter(function(s){return s.trim().length>2;});
+  items.forEach(function(item){
+    item=item.trim();
+    if(item.indexOf('→')>=0||item.indexOf('->')>=0){
+      item.split(/→|->/).forEach(function(p,i){
+        p=p.trim();if(p.length<2) return;
+        if(i===0){var h=mHaz(p);if(h&&hz.indexOf(h)<0) hz.push(h);}
+        else{var s=sSafe(p);if(s&&sm.indexOf(s)<0) sm.push(s);}
+      });
+    }else{
+      var h2=mHaz(item);if(h2&&hz.indexOf(h2)<0) hz.push(h2);
+      var s2=sSafe(item);if(s2&&sm.indexOf(s2)<0) sm.push(s2);
+    }
+  });
+  return{hazards:hz.slice(0,4),safetyMeasures:sm.slice(0,8)};
+}
+
+function sWN(wn){
+  if(!wn) return '';
+  var s=wn;
+  if(s.indexOf('>')>=0){
+    var segs=s.split('>'),skip=['ILS','지정됨','미실시','미지정'],best='';
+    for(var i=segs.length-1;i>=0;i--){
+      var seg=segs[i].trim();
+      if(seg.length<5) continue;
+      if(!skip.some(function(k){return seg.indexOf(k)>=0;})){best=seg;break;}
+    }
+    s=best||segs[0].trim();
+  }
+  ['포항양극재2-2단계공장','포항양극재2-1단계공장','포항양극재공장','포항양극재','포항 양극재 2-2 단계','포항 양극재 2-1 단계','포항 양극재','양극재공장','양극재','포스코퓨처엠','포스코'].forEach(function(r){
+    while(s.indexOf(r)>=0) s=s.replace(r,'');
+  });
+  var lp=0;
+  while(s.indexOf('[')>=0&&lp<15){
+    var bs=s.indexOf('['),be=s.indexOf(']',bs);
+    s=be>=0?s.substring(0,bs)+s.substring(be+1):s.substring(0,bs)+s.substring(bs+1);
+    lp++;
+  }
+  ['ILS 시스템 지정 완료','ILS시스템 지정됨','ILS 지정됨','ILS 실시','ILS 미실시','ILS 불필요','ILS 지정','지정됨','미실시','미지정'].forEach(function(k){
+    while(s.indexOf(k)>=0) s=s.replace(k,'');
+  });
+  s=s.replace(/\d+라인/g,'').replace(/\d+공장/g,'').replace(/\d+단계/g,'').replace(/\s+/g,' ').trim();
+  var f=0;
+  while(s.length>0&&f<8){
+    if([',','.',':','-',' '].indexOf(s[0])>=0){s=s.substring(1);f++;}
+    else break;
+  }
+  if(s.length>30) s=s.substring(0,30)+'...';
+  return s||'작업';
+}
+
 function parseExcel(text){
   var results=[],rows=[],cur='',lines=text.split(/\r?\n/);
-  lines.forEach(function(line){if(line.match(/^\d{4}[-.]?\d{2}[-.]?\d{2}\t/)){if(cur) rows.push(cur);cur=line;}else if(cur) cur+=' '+line.trim();});
+  lines.forEach(function(line){
+    if(line.match(/^\d{4}[-.]?\d{2}[-.]?\d{2}\t/)){
+      if(cur) rows.push(cur);
+      cur=line;
+    }else if(cur) cur+=' '+line.trim();
+  });
   if(cur) rows.push(cur);
   rows.forEach(function(row){
-    var cols=row.split(/\t/),date=exDate(cols[0]);if(!date) return;
-    var origNo=(cols[1]||'').replace(/\s/g,''),wf=(cols[6]||'').trim();if(!wf||wf.length<10) return;
-    var isH=cols.some(function(c){var v=(c||'').trim().toLowerCase();return v==='고위험'||v==='고위험작업';});
+    var cols=row.split(/\t/),date=exDate(cols[0]);
+    if(!date) return;
+    var origNo=(cols[1]||'').replace(/\s/g,''),wf=(cols[6]||'').trim();
+    if(!wf||wf.length<10) return;
+    var isH=cols.some(function(c){
+      var v=(c||'').trim().toLowerCase();
+      return v==='고위험'||v==='고위험작업';
+    });
     var wn=sWN(wf),loc=pLoc(wf),co=exCo(cols[9]||'')||exCo(cols[10]||'');
-    var mgr='',m=(cols[11]||'').trim();if(m.match(/^[가-힣]{2,4}$/)) mgr=m;
-    var safety='';if(cols.length>20) safety=(cols[20]||'').trim();
-    if(!safety||safety.length<30){for(var s=cols.length-1;s>=15;s--){var cv=(cols[s]||'').trim();if(cv.length>100&&cv!==wf){safety=cv;break;}}}
+    var mgr='',m=(cols[11]||'').trim();
+    if(m.match(/^[가-힣]{2,4}$/)) mgr=m;
+    var safety='';
+    if(cols.length>20) safety=(cols[20]||'').trim();
+    if(!safety||safety.length<30){
+      for(var s=cols.length-1;s>=15;s--){
+        var cv=(cols[s]||'').trim();
+        if(cv.length>100&&cv!==wf){safety=cv;break;}
+      }
+    }
     var combined=(wf+' '+safety).toLowerCase();
     var risk=['밀폐','질식','산소부족','유해가스','추락','폭발','감전','누출'].some(function(k){return combined.indexOf(k)>=0;})?'고위험':'일반';
-    if(isH) risk='고위험';var hrCats=dHR(wf,safety,isH);if(hrCats.length>0) risk='고위험';
+    if(isH) risk='고위험';
+    var hrCats=dHR(wf,safety,isH);
+    if(hrCats.length>0) risk='고위험';
     var hs=pHS(safety);
-    results.push({originalNo:origNo||(results.length+1),date:date,workName:wn,workNameFull:wf,location:loc,risk:risk,company:co,manager:mgr,safety:safety,hazards:hs.hazards,safetyMeasures:hs.safetyMeasures,highRiskCategories:hrCats,ilsRequired:dILS(wf,safety),isHighRiskFromSource:isH});
+    results.push({
+      originalNo:origNo||(results.length+1),
+      date:date,workName:wn,workNameFull:wf,
+      location:loc,risk:risk,company:co,manager:mgr,
+      safety:safety,hazards:hs.hazards,
+      safetyMeasures:hs.safetyMeasures,
+      highRiskCategories:hrCats,
+      ilsRequired:dILS(wf,safety),
+      isHighRiskFromSource:isH
+    });
   });
   return results;
 }
+
 function parseAndSave(){
   var txt=document.getElementById('dbPaste').value;
-  if(!txt||txt.trim().length<10){showToast('데이터를 붙여넣기 하세요','info');return;}
+  if(!txt||txt.trim().length<10){
+    showToast('데이터를 붙여넣기 하세요','info');
+    return;
+  }
   try{
-    var nd=parseExcel(txt);if(!nd.length){showToast('파싱된 데이터가 없습니다','danger');return;}
-    var ex=[];try{var raw=localStorage.getItem('safetyDatabase');if(raw) ex=(JSON.parse(raw).workHistory)||[];}catch(e){}
-    // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip (인덱스 fallback 금지)
+    var nd=parseExcel(txt);
+    if(!nd.length){showToast('파싱된 데이터가 없습니다','error');return;}
+    var ex=[];
+    try{
+      var raw=localStorage.getItem('safetyDatabase');
+      if(raw) ex=(JSON.parse(raw).workHistory)||[];
+    }catch(e){}
     var map={};
     ex.forEach(function(w){if(w.originalNo) map[w.date+'_'+w.originalNo]=w;});
     nd.forEach(function(w){if(w.originalNo) map[w.date+'_'+w.originalNo]=w;});
     var merged=Object.values(map).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
-    localStorage.setItem('safetyDatabase',JSON.stringify({metadata:{version:'5.0',lastUpdate:new Date().toISOString()},workHistory:merged}));
-    // ⭐ CONVENTIONS §11.1: CustomEvent 발신
-    try{window.dispatchEvent(new CustomEvent('app-data-changed',{detail:{key:'safetyDatabase',timestamp:Date.now()}}));}catch(e){}
-    document.getElementById('dbPaste').value='';loadDB();
+    localStorage.setItem('safetyDatabase',JSON.stringify({
+      metadata:{version:'7.0',lastUpdate:new Date().toISOString()},
+      workHistory:merged
+    }));
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed',{
+        detail:{key:'safetyDatabase',timestamp:Date.now()}
+      }));
+    }catch(e){}
+    document.getElementById('dbPaste').value='';
+    loadDB();
     showToast('✅ '+nd.length+'건 추가 / 총 '+merged.length+'건 저장','success');
-  }catch(e){showToast('오류: '+e.message,'danger');}
+  }catch(e){
+    showToast('오류: '+e.message,'error');
+  }
 }
 
-// FILTER
+// ═══════════════════════════════════════
+// FILTER (필터 연동)
+// ═══════════════════════════════════════
 function setFilter(f,el){
   curFilter=f;
   document.querySelectorAll('.chip').forEach(function(b){b.classList.remove('active');});
   if(el) el.classList.add('active');
   applyFilter();
 }
+
 function applyFilter(){
   var now=new Date(),today=fmtDate(now);
-  if(curFilter==='today') dispWorks=allWorks.filter(function(w){return w.date===today;});
-  else if(curFilter==='week'){var wa=new Date(now);wa.setDate(wa.getDate()-7);var ws=fmtDate(wa);dispWorks=allWorks.filter(function(w){return w.date>=ws&&w.date<=today;});}
-  else if(curFilter==='all') dispWorks=allWorks.slice();
-  else{var ra=new Date(now);ra.setDate(ra.getDate()-3);var rs=fmtDate(ra);dispWorks=allWorks.filter(function(w){return w.date>=rs;});if(!dispWorks.length) dispWorks=allWorks.slice();}
-  renderHero();renderPending();renderPermitList();renderInspPage();
-}
-
-// HERO
-function renderHero(){
-  var hr=dispWorks.filter(function(w){return w.riskLevel==='고위험';});
-  setTxt('cntHR',hr.length);setTxt('cntAll',dispWorks.length);
-  var hc=document.getElementById('heroHR');
-  if(hc){if(!hr.length){hc.classList.remove('pulse','red');hc.classList.add('green');}else{hc.classList.remove('green');hc.classList.add('red','pulse');}}
-  var tv=getTodayV(),pend=tv.filter(function(v){return v.correction.status!=='완료';});
-  var ib=document.getElementById('inspBadge');
-  if(ib){if(pend.length){ib.style.display='flex';ib.textContent=pend.length;}else ib.style.display='none';}
-}
-
-// ═══════════════════════════════
-// PERMIT LIST
-// ═══════════════════════════════
-function loadPermits(){
-  try{ permits=JSON.parse(localStorage.getItem('safetyPermits')||'[]'); }
-  catch(e){ permits=[]; }
-  renderPermitList();
-}
-
-function getPermitStatus(workId){
-  // safetyPermits에서 해당 작업 허가서 상태 찾기
-  for(var i=0;i<permits.length;i++){
-    if(permits[i].sourceWorkId===workId) return permits[i];
+  if(curFilter==='today'){
+    dispWorks=allWorks.filter(function(w){return w.date===today;});
+  }else if(curFilter==='week'){
+    var wa=new Date(now);wa.setDate(wa.getDate()-7);
+    var ws=fmtDate(wa);
+    dispWorks=allWorks.filter(function(w){return w.date>=ws&&w.date<=today;});
+  }else if(curFilter==='all'){
+    dispWorks=allWorks.slice();
+  }else{
+    var ra=new Date(now);ra.setDate(ra.getDate()-3);
+    var rs=fmtDate(ra);
+    dispWorks=allWorks.filter(function(w){return w.date>=rs;});
+    if(!dispWorks.length) dispWorks=allWorks.slice();
   }
-  return null;
+  updateWorkStatus();  // 작업 현황 카운트 업데이트
+  renderInspPage();
 }
 
-function getStatusInfo(status){
-  var map={
-    '대기중':     {cls:'wait', lbl:'대기중'},
-    '허가진행중': {cls:'prog', lbl:'허가진행중'},
-    '허가완료':   {cls:'pdone',lbl:'허가완료'},
-    '작업중':     {cls:'work', lbl:'작업중'},
-    '점검중':     {cls:'prog', lbl:'점검중'}
-  };
-  return map[status]||{cls:'wait',lbl:status||'대기중'};
-}
-
-// 상태 흐름 단계
-var STATUS_STEPS=['대기중','허가완료','작업중','점검완료'];
-var STATUS_LABELS=['DB등록','허가완료','작업중','완료'];
-
-function sfBar(curStatus){
-  var steps=['대기중','허가완료','작업중','점검완료'];
-  var labels=['DB등록','허가완료','작업중','완료'];
-  var curIdx=steps.indexOf(curStatus);if(curIdx<0) curIdx=0;
-  var html='<div class="sf-bar">';
-  steps.forEach(function(s,i){
-    var isDone=i<curIdx, isAct=i===curIdx;
-    html+='<div class="sf-item">'+
-      '<div class="sf-dot'+(isDone?' dn':isAct?' act':'')+'"></div>'+
-      '<div class="sf-lbl'+(isDone?' dn':isAct?' act':'')+'">'+labels[i]+'</div>'+
-      (i<steps.length-1?'<div class="sf-arr">›</div>':'');
-    html+='</div>';
+// ═══════════════════════════════════════
+// 작업 현황 카운트 (필터 연동)
+// ═══════════════════════════════════════
+function updateWorkStatus(){
+  // dispWorks 기준으로 카운트 (필터 연동!)
+  var permitList = [];
+  try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
+  var permitMap = {};
+  permitList.forEach(function(p){
+    if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
   });
-  html+='</div>';
-  return html;
+  
+  var tbmList = [];
+  try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
+  var tbmMap = {};
+  tbmList.forEach(function(t){
+    if(t.permitNo) tbmMap[t.permitNo] = t;
+  });
+  
+  var cntWait=0, cntRun=0, cntStop=0, cntDone=0, cntDanger=0;
+  
+  dispWorks.forEach(function(w){
+    // 고위험 카운트 (상태 무관)
+    if(w.riskLevel === '고위험') cntDanger++;
+    
+    // 상태 분류
+    var permit = permitMap[w.id];
+    var status = permit ? permit.status : '대기중';
+    
+    // TBM 있으면 작업중
+    if(permit && permit.permitNo && tbmMap[permit.permitNo]){
+      status = '작업중';
+    }
+    
+    // 4단계 그룹핑
+    if(status === '작업완료' || status === '완료'){
+      cntDone++;
+    } else if(status === '작업중지'){
+      cntStop++;
+    } else if(status === '허가완료' || status === '작업중'){
+      cntRun++;
+    } else {
+      cntWait++;  // 대기중, 허가진행중, 기타
+    }
+  });
+  
+  var total = dispWorks.length;
+  
+  // UI 업데이트
+  setTxt('cntTotal', total);
+  setTxt('cntDanger', cntDanger);
+  setTxt('cntWait', cntWait);
+  setTxt('cntRun', cntRun);
+  setTxt('cntStop', cntStop);
+  setTxt('cntDone', cntDone);
+  
+  // 0건 흐리게
+  ['cntWait','cntRun','cntStop','cntDone'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    var val = parseInt(el.textContent,10) || 0;
+    if(val === 0) el.classList.add('zero');
+    else el.classList.remove('zero');
+  });
+}
+// ═══════════════════════════════════════
+// 상태별 작업 목록 시트 (카드 클릭 → 목록)
+// ═══════════════════════════════════════
+function openStatusSheet(filter){
+  var permitList = [];
+  try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
+  var permitMap = {};
+  permitList.forEach(function(p){
+    if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
+  });
+  
+  var tbmList = [];
+  try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
+  var tbmMap = {};
+  tbmList.forEach(function(t){
+    if(t.permitNo) tbmMap[t.permitNo] = t;
+  });
+  
+  // 각 작업에 상태 정보 추가
+  var enriched = dispWorks.map(function(w){
+    var permit = permitMap[w.id];
+    var status = permit ? permit.status : '대기중';
+    if(permit && permit.permitNo && tbmMap[permit.permitNo]){
+      status = '작업중';
+    }
+    return {
+      workId: w.id,
+      workName: w.workName || '미지정',
+      company: w.company || '-',
+      location: w.location || '미지정',
+      riskLevel: w.riskLevel || '일반',
+      status: status,
+      permit: permit,
+      permitNo: permit ? permit.permitNo : null,
+      tbm: permit && permit.permitNo ? tbmMap[permit.permitNo] : null
+    };
+  });
+  
+  // 필터링
+  var filtered = [];
+  var title = '작업 목록';
+  
+  if(filter === 'wait'){
+    filtered = enriched.filter(function(w){
+      return w.status !== '허가완료' && w.status !== '작업중' && 
+             w.status !== '작업중지' && w.status !== '작업완료' && w.status !== '완료';
+    });
+    title = '🟡 허가전 작업';
+  } else if(filter === 'run'){
+    filtered = enriched.filter(function(w){
+      return w.status === '허가완료' || w.status === '작업중';
+    });
+    title = '🟠 작업중';
+  } else if(filter === 'stop'){
+    filtered = enriched.filter(function(w){
+      return w.status === '작업중지';
+    });
+    title = '🔴 작업중지';
+  } else if(filter === 'done'){
+    filtered = enriched.filter(function(w){
+      return w.status === '작업완료' || w.status === '완료';
+    });
+    title = '🟢 작업완료';
+  } else if(filter === 'danger'){
+    filtered = enriched.filter(function(w){
+      return w.riskLevel === '고위험';
+    });
+    title = '🚨 고위험 작업';
+  } else {
+    filtered = enriched;
+    title = '📋 전체 작업';
+  }
+  
+  // 시트 제목
+  var titleEl = document.getElementById('wsSheetTitle');
+  if(titleEl){
+    titleEl.innerHTML = title + ' <span style="background:var(--tint);color:var(--posco);font-size:12px;font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' + filtered.length + '건</span>';
+  }
+  
+  // 시트 렌더링
+  renderStatusSheet(filtered, filter);
+  openSheet('ws');
 }
 
-function renderPermitList(){
-  var list=document.getElementById('permitList');if(!list) return;
-  var today=fmtDate(new Date());
-  var todayWorks=allWorks.filter(function(w){return w.date===today;});
-
-  // permits에서 오늘 신규 생성된 작업도 합치기
-  var permitToday=permits.filter(function(p){
-    return p.startDate===today && !todayWorks.find(function(w){return w.id===p.sourceWorkId;});
-  });
-
-  if(!todayWorks.length && !permitToday.length){
-    list.innerHTML='<div class="permit-empty">'+
-      '<div class="permit-empty-ico">📋</div>'+
-      '<div class="permit-empty-txt">오늘 등록된 작업이 없습니다</div>'+
-      '</div>';
+function renderStatusSheet(works, filter){
+  var body = document.getElementById('wsBody');
+  if(!body) return;
+  
+  if(!works.length){
+    var messages = {
+      'wait': '허가전 작업이 없습니다',
+      'run': '작업중인 작업이 없습니다',
+      'stop': '작업중지된 작업이 없습니다',
+      'done': '완료된 작업이 없습니다',
+      'danger': '고위험 작업이 없습니다',
+      'all': '작업이 없습니다'
+    };
+    body.innerHTML = '<div class="empty">' +
+      '<div class="empty-ico">📭</div>' +
+      '<div class="empty-txt">' + (messages[filter] || '작업이 없습니다') + '</div>' +
+    '</div>';
     return;
   }
-
-  var html='';
-
-  // DB 작업 목록
-  todayWorks.forEach(function(w){
-    var permit=getPermitStatus(w.id);
-    var status=permit?permit.status:(w.riskLevel==='고위험'?'대기중':'대기중');
-    var si=getStatusInfo(status);
-    var isDgr=w.riskLevel==='고위험';
-    var fac=(w.locationObj&&w.locationObj.factory)||'';
-    var wid=w.id;
-
-    html+='<div class="permit-card'+(isDgr?' danger':'')+'">'+
-      '<div class="permit-card-top">'+
-      '<span class="p-risk '+(isDgr?'r':'g')+'">'+(isDgr?'고위험':'일반')+'</span>'+
-      '<span class="p-status '+si.cls+'">'+si.lbl+'</span>'+
-      '</div>'+
-      '<div class="permit-name">'+w.workName+'</div>'+
-      '<div class="permit-meta">'+
-      (fac?'<span>🏭 '+fac+'</span>':'')+
-      '<span>🏢 '+(w.company||'-')+'</span>'+
-      '</div>'+
-      sfBar(status)+
-      '<div class="permit-action">';
-
-    if(!permit){
-      html+='<span class="p-time">'+today+'</span>'+
-        '<a href="안전작업허가서_v2.html?workId='+encodeURIComponent(wid)+'" class="p-btn permit">🔐 허가서 신청</a>';
-    } else if(permit.status==='허가완료'){
-      html+='<span class="p-time">'+permit.permitNo+'</span>'+
-        '<a href="TBM_및_작업중지권_v2.html?permitNo='+encodeURIComponent(permit.permitNo)+'&workName='+encodeURIComponent(permit.workName)+'&company='+encodeURIComponent(permit.companyName)+'&location='+encodeURIComponent((permit.location||'')+(permit.detailLocation?' '+permit.detailLocation:''))+'&workers='+encodeURIComponent(permit.workerCount||'')+'" class="p-btn tbm">📝 TBM 작성</a>';
-    } else if(permit.status==='작업중'){
-      html+='<span class="p-time">'+permit.permitNo+'</span>'+
-        '<button class="p-btn insp" onclick="openInspSheet(\''+wid+'\')">🚨 점검 등록</button>';
+  
+  var html = '';
+  works.forEach(function(w){
+    var isDanger = w.riskLevel === '고위험';
+    var itemClass = 'work-item';
+    var statusClass = 'wait';
+    
+    if(isDanger) itemClass += ' danger';
+    
+    if(w.status === '작업완료' || w.status === '완료'){
+      statusClass = 'done';
+    } else if(w.status === '작업중지'){
+      statusClass = 'stop';
+    } else if(w.status === '허가완료' || w.status === '작업중'){
+      statusClass = 'run';
     } else {
-      html+='<span class="p-time">'+today+'</span>'+
-        '<a href="안전작업허가서_v2.html?workId='+encodeURIComponent(wid)+'" class="p-btn permit">🔐 허가서 신청</a>';
+      statusClass = 'wait';
     }
-
-    html+='</div></div>';
+    itemClass += ' ' + statusClass;
+    
+    var statusEmoji = '⏳';
+    if(w.status === '작업중') statusEmoji = '🔄';
+    else if(w.status === '허가완료') statusEmoji = '✅';
+    else if(w.status === '작업중지') statusEmoji = '🛑';
+    else if(w.status === '작업완료' || w.status === '완료') statusEmoji = '✔️';
+    
+    html += '<div class="' + itemClass + '">';
+    html += '<div class="wi-top">';
+    html += '<span class="wi-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
+    html += '<span class="wi-status ' + statusClass + '">' + statusEmoji + ' ' + w.status + '</span>';
+    html += '</div>';
+    html += '<div class="wi-name">' + escHtml(w.workName) + '</div>';
+    html += '<div class="wi-meta">';
+    html += '<span>📍 ' + escHtml(w.location) + '</span>';
+    html += '<span>🏢 ' + escHtml(w.company) + '</span>';
+    html += '</div>';
+    
+    // 상태별 액션 버튼
+    if(w.status === '대기중' || w.status === '허가진행중'){
+      html += '<a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(w.workId) + '" class="wi-btn">🔐 허가서 신청 →</a>';
+    } else if(w.status === '허가완료'){
+      html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(w.permitNo) + '" class="wi-btn">📝 TBM 작성 →</a>';
+    } else if(w.status === '작업중'){
+      html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(w.permitNo) + '" class="wi-btn secondary">📝 TBM 보기 →</a>';
+    } else if(w.status === '작업중지'){
+      html += '<div class="wi-btn secondary" style="cursor:default;">🛑 작업중지 상태</div>';
+    } else if(w.status === '작업완료' || w.status === '완료'){
+      html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 완료됨</div>';
+    } else {
+      html += '<a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(w.workId) + '" class="wi-btn">🔐 허가서 신청 →</a>';
+    }
+    
+    html += '</div>';
   });
-
-  // 허가서에서 신규 생성된 작업
-  permitToday.forEach(function(p){
-    var si=getStatusInfo(p.status||'허가완료');
-    html+='<div class="permit-card">'+
-      '<div class="permit-card-top">'+
-      '<span class="p-risk g">신규</span>'+
-      '<span class="p-status '+si.cls+'">'+si.lbl+'</span>'+
-      '</div>'+
-      '<div class="permit-name">'+p.workName+'</div>'+
-      '<div class="permit-meta">'+
-      '<span>🏭 '+p.location+'</span>'+
-      '<span>🏢 '+p.companyName+'</span>'+
-      '</div>'+
-      sfBar(p.status||'허가완료')+
-      '<div class="permit-action">'+
-      '<span class="p-time">'+p.permitNo+'</span>'+
-      '<a href="TBM_및_작업중지권_v2.html?permitNo='+encodeURIComponent(p.permitNo)+'&workName='+encodeURIComponent(p.workName)+'&company='+encodeURIComponent(p.companyName)+'&location='+encodeURIComponent((p.location||'')+(p.detailLocation?' '+p.detailLocation:''))+'&workers='+encodeURIComponent(p.workerCount||'')+'" class="p-btn tbm">📝 TBM 작성</a>'+
-      '</div></div>';
-  });
-
-  list.innerHTML=html;
+  
+  body.innerHTML = html;
 }
 
-function goToPermit(){
-  window.location.href='안전작업허가서_v2.html';
-}
-// PENDING
-function renderPending(){
-  var tv=getTodayV();
-  var pend=tv.filter(function(v){return v.correction.status!=='완료';});
-  var done=tv.filter(function(v){return v.correction.status==='완료';});
-  setTxt('sTot',tv.length);setTxt('sPend',pend.length);setTxt('sDone',done.length);
-  var list=document.getElementById('pendingList');if(!list) return;
-  if(!pend.length){
-    list.innerHTML='<div class="pend-empty"><div class="pend-empty-ico">✅</div><div class="pend-empty-txt">미시정 점검사항이 없습니다</div></div>';return;
-  }
-  var html=pend.slice(0,2).map(function(v){
-    var sc=v.violation.severity==='중대'?'critical':v.violation.severity==='경미'?'minor':'advisory';
-    var ico=v.violation.severity==='중대'?'🔴':v.violation.severity==='경미'?'🟡':'🟢';
-    var nm=v.violation.item||'';if(nm.length>24) nm=nm.substring(0,24)+'...';
-    return '<div class="pend-card '+sc+'" onclick="goTab(\'inspect\')">'+
-      '<div class="pend-ico">'+ico+'</div>'+
-      '<div class="pend-info"><div class="pend-name">'+nm+'</div>'+
-      '<div class="pend-meta">📍 '+v.workInfo.location+' · 🏢 '+v.workInfo.company+'</div></div>'+
-      '<div class="pend-elapsed">'+(v.correction.elapsedMinutes||0)+'분 경과</div></div>';
-  }).join('');
-  if(pend.length>2) html+='<div style="text-align:center;padding:9px;font-size:14px;color:var(--blue);font-weight:700;cursor:pointer;" onclick="goTab(\'inspect\')">+ '+(pend.length-2)+'건 더 보기 ›</div>';
-  list.innerHTML=html;
+// ═══════════════════════════════════════
+// PERMITS
+// ═══════════════════════════════════════
+function loadPermits(){
+  try{permits=JSON.parse(localStorage.getItem('safetyPermits')||'[]');}
+  catch(e){permits=[];}
+  updateWorkStatus();
 }
 
-// WORK SHEET
-function openWorkSheet(mode){
-  curWTab=mode==='danger'?'danger':'all';
-  setTxt('woTitle',mode==='danger'?'⚠️ 고위험 작업':'📋 전체 작업 목록');
-  document.querySelectorAll('.rtab').forEach(function(b){b.className='rtab';});
-  var tabs=document.querySelectorAll('.rtab');
-  if(mode==='danger'&&tabs[1]) tabs[1].classList.add('ar');else if(tabs[0]) tabs[0].classList.add('ab');
-  var ws=document.getElementById('wSearch');if(ws) ws.value='';
-  renderWList();openSheet('wo');
-}
-function setWTab(tab,el){
-  curWTab=tab;
-  document.querySelectorAll('.rtab').forEach(function(b){b.className='rtab';});
-  el.classList.add(tab==='danger'?'ar':tab==='normal'?'ag':'ab');
-  renderWList();
-}
-function renderWList(){
-  var body=document.getElementById('wListBody');if(!body) return;
-  var q=((document.getElementById('wSearch')||{}).value||'').toLowerCase();
-  var works=dispWorks.filter(function(w){
-    if(((w.workName||'')+(w.company||'')).toLowerCase().indexOf(q)<0) return false;
-    if(curWTab==='danger') return w.riskLevel==='고위험';
-    if(curWTab==='normal') return w.riskLevel!=='고위험';
-    return true;
-  });
-  if(!works.length){body.innerHTML='<div class="empty"><div class="empty-ico">📭</div><div class="empty-txt">해당하는 작업이 없습니다.</div></div>';return;}
-  var danger=works.filter(function(w){return w.riskLevel==='고위험';});
-  var normal=works.filter(function(w){return w.riskLevel!=='고위험';});
-  var html='';
-  if(danger.length) html+='<div class="grp-lbl">🔴 고위험 · '+danger.length+'건</div>'+danger.map(wCardHTML).join('');
-  if(normal.length) html+='<div class="grp-lbl">🟢 일반 · '+normal.length+'건</div>'+normal.map(wCardHTML).join('');
-  body.innerHTML=html;
-}
-function wCardHTML(w){
-  var isDgr=w.riskLevel==='고위험',fac=(w.locationObj&&w.locationObj.factory)||'',score=(w.aiAnalysis&&w.aiAnalysis.riskScore)||0;
-  return '<div class="wcard'+(isDgr?' danger':'')+'" onclick="openWDetail(\''+w.id+'\')">'+
-    '<div class="wcard-top"><span class="wbadge '+(isDgr?'r':'g')+'">'+(isDgr?'고위험':'일반')+'</span>'+(fac?'<span class="wfactory">'+fac+'</span>':'')+  '</div>'+
-    '<div class="wname">'+w.workName+'</div>'+
-    '<div class="wmeta"><span>📅 '+(w.date||'')+'</span><span>🏢 '+(w.company||'-')+'</span></div>'+
-    '<div class="winspect"><button class="wi-btn" onclick="event.stopPropagation();openInspSheet(\''+w.id+'\')">🚨 점검 등록</button></div></div>';
-}
-
-// WORK DETAIL
-function openWDetail(wid){
-  var w=allWorks.find(function(x){return x.id===wid;});if(!w) return;
-  var isDgr=w.riskLevel==='고위험',fac=(w.locationObj&&w.locationObj.factory)||'',line=w.locationObj&&w.locationObj.line?w.locationObj.line+'라인':'';
-  var measures=(w.aiAnalysis&&w.aiAnalysis.safetyMeasures)||[];
-  var html='<div class="det-hero '+(isDgr?'r':'b')+'"><span class="det-badge">'+w.riskLevel+'</span>'+
-    '<div class="det-name">'+w.workName+'</div>'+
-    '<div class="det-meta-txt">'+(fac?fac+(line?' · ':' '):'')+line+'</div></div>';
-  html+='<div class="det-sec"><div class="det-sec-t">작업 정보</div>'+
-    ['작업일|'+(w.date||'-'),'협력사|'+(w.company||'-'),'담당자|'+(w.manager||'-'),
-     'ILS|'+(w.ilsRequired==='Y'?'✅ 필요':'➖ 불필요'),'AI 위험도|'+((w.aiAnalysis&&w.aiAnalysis.riskScore)||0)+'점']
-    .map(function(r){var p=r.split('|');return '<div class="det-row"><span class="det-rl">'+p[0]+'</span><span class="det-rv">'+p[1]+'</span></div>';}).join('')+'</div>';
-  if(w.hrCategoryNames&&w.hrCategoryNames.length){
-    html+='<div class="det-sec"><div class="det-sec-t">고위험 분류</div><div style="display:flex;flex-wrap:wrap;gap:7px;padding:3px 0;">'+
-      w.hrCategoryNames.map(function(n){return '<span style="background:var(--red2);color:#fff;padding:5px 13px;border-radius:9px;font-size:13px;font-weight:800;">'+n+'</span>';}).join('')+'</div></div>';
-  }
-  if(measures.length){
-    html+='<div class="det-sec"><div class="det-sec-t">안전조치사항</div>'+
-      measures.map(function(m){return '<div class="safety-li"><div class="safety-dot"></div><div class="safety-txt">'+m+'</div></div>';}).join('')+'</div>';
-  }
-  html+='<button class="det-ins-btn" onclick="closeSheet(\'wd\');setTimeout(function(){openInspSheet(\''+wid+'\');},220);">🚨 이 작업 점검 등록</button>';
-  var bd=document.getElementById('wdBody');if(bd) bd.innerHTML=html;
-  closeSheet('wo');setTimeout(function(){openSheet('wd');},220);
-}
-
-// INSPECT FORM
+// ═══════════════════════════════════════
+// 점검 등록 폼
+// ═══════════════════════════════════════
 function openInspSheet(wid){
   resetIF();
   ifWork=wid?allWorks.find(function(x){return x.id===wid;}):null;
   var ban=document.getElementById('ifBanner'),nm=document.getElementById('ifWName');
-  if(ifWork){if(ban) ban.style.display='block';if(nm) nm.textContent=ifWork.workName;buildCL(ifWork);}
-  else{if(ban) ban.style.display='none';buildGenCL();}
+  if(ifWork){
+    if(ban) ban.style.display='block';
+    if(nm) nm.textContent=ifWork.workName;
+    buildCL(ifWork);
+  }else{
+    if(ban) ban.style.display='none';
+    buildGenCL();
+  }
   openSheet('if');
 }
-function buildCL(w){var ms=(w.aiAnalysis&&w.aiAnalysis.safetyMeasures)||[];var cats=ms.length?{'안전작업허가서 항목':ms}:{'안전조치':['소화기 비치 확인','화기감시자 배치','환기장치 가동 확인'],'보호구':['안전모 착용','안전화 착용','안전대 착용','보안경 착용']};renderCL(cats);}
-function buildGenCL(){renderCL({'정리정돈':['작업장 정리정돈 불량','폐기물 방치','자재 적재 불량'],'통로/안전':['통로 확보 불량','안전표지 미부착','소화기 미비치'],'기타':['기타 안전 위반사항']});}
-function renderCL(cats){var html='';for(var cat in cats){html+='<div class="cl-cat">'+cat+'</div>';cats[cat].forEach(function(item){var e=item.replace(/'/g,"\\'");html+='<div class="cl-item" onclick="togCL(this,\''+e+'\')"><div class="cl-box"></div><div class="cl-txt">'+item+'</div></div>';});}document.getElementById('clBody').innerHTML=html;}
-function togCL(el,item){el.classList.toggle('sel');var box=el.querySelector('.cl-box');if(el.classList.contains('sel')){box.textContent='✓';if(ifItems.indexOf(item)<0) ifItems.push(item);}else{box.textContent='';ifItems=ifItems.filter(function(i){return i!==item;});}valForm();}
-function addCust(){var inp=document.getElementById('custInp'),t=(inp.value||'').trim();if(!t) return;if(custItems.indexOf(t)>=0){showToast('이미 추가된 항목','info');return;}custItems.push(t);ifItems.push(t);inp.value='';renderCustList();valForm();}
-function renderCustList(){var ct=document.getElementById('custList');if(ct) ct.innerHTML=custItems.map(function(item,i){return '<div class="cust-item"><span class="cust-txt">✓ '+item+'</span><button class="cust-del" onclick="delCust('+i+')">×</button></div>';}).join('');}
-function delCust(i){var item=custItems[i];custItems.splice(i,1);ifItems=ifItems.filter(function(x){return x!==item;});renderCustList();valForm();}
-function selSev(sev,el){ifSev=sev;document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('sc','sm','sa');});el.classList.add(sev==='중대'?'sc':sev==='경미'?'sm':'sa');valForm();}
-function onPhoto(e){var f=e.target.files[0];if(!f) return;var r=new FileReader();r.onload=function(ev){photoData=ev.target.result;document.getElementById('photoImg').src=photoData;document.getElementById('photoPrev').style.display='block';};r.readAsDataURL(f);}
-function delPhoto(){photoData=null;document.getElementById('photoPrev').style.display='none';document.getElementById('photoFile').value='';}
-function valForm(){var role=(document.getElementById('repRole').value||'').trim(),name=(document.getElementById('repName').value||'').trim(),btn=document.getElementById('subBtn');if(btn) btn.disabled=!(ifSev&&ifItems.length>0&&role&&name);}
-function submitInsp(){
-  var role=document.getElementById('repRole').value,name=document.getElementById('repName').value;
-  var loc='공장 전체',company='해당없음',workName='일반 점검사항',wid='general';
-  if(ifWork){loc=ifWork.location||'미지정';company=ifWork.company||'미지정';workName=ifWork.workName;wid=ifWork.id;}
-  violations.push({id:'SV-'+Date.now(),createdAt:new Date().toISOString(),reporter:{name:name,role:role},workInfo:{workId:wid,workName:workName,location:loc,company:company},violation:{severity:ifSev,item:ifItems.join(', '),source:wid==='general'?'일반 점검':'안전작업허가서',photo:photoData},correction:{status:'미시정',elapsedMinutes:0,completedAt:null}});
-  saveViolations();closeSheet('if');renderPending();renderHero();renderInspPage();
-  showToast('점검사항이 등록되었습니다','success');
-  if(ifSev==='중대') setTimeout(function(){showToast('🚨 중대 위반! 즉시 조치 바랍니다','danger');},500);
-}
-function resetIF(){ifWork=null;ifSev=null;ifItems=[];custItems=[];photoData=null;['repRole','repName'].forEach(function(id){var el=document.getElementById(id);if(el) el.value='';});var sb=document.getElementById('subBtn');if(sb) sb.disabled=true;var cl=document.getElementById('custList');if(cl) cl.innerHTML='';document.getElementById('photoPrev').style.display='none';document.getElementById('photoFile').value='';document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('sc','sm','sa');});}
 
+function buildCL(w){
+  var ms=(w.aiAnalysis&&w.aiAnalysis.safetyMeasures)||[];
+  var cats=ms.length?{'안전작업허가서 항목':ms}:{
+    '안전조치':['소화기 비치 확인','화기감시자 배치','환기장치 가동 확인'],
+    '보호구':['안전모 착용','안전화 착용','안전대 착용','보안경 착용']
+  };
+  renderCL(cats);
+}
+
+function buildGenCL(){
+  renderCL({
+    '정리정돈':['작업장 정리정돈 불량','폐기물 방치','자재 적재 불량'],
+    '통로/안전':['통로 확보 불량','안전표지 미부착','소화기 미비치'],
+    '기타':['기타 안전 위반사항']
+  });
+}
+
+function renderCL(cats){
+  var html='';
+  for(var cat in cats){
+    html+='<div class="cl-cat">'+escHtml(cat)+'</div>';
+    cats[cat].forEach(function(item){
+      var e=item.replace(/'/g,"\\'");
+      html+='<div class="cl-item" onclick="togCL(this,\''+e+'\')">'+
+        '<div class="cl-box"></div>' +
+        '<div class="cl-txt">'+escHtml(item)+'</div>'+
+      '</div>';
+    });
+  }
+  document.getElementById('clBody').innerHTML=html;
+}
+
+function togCL(el,item){
+  el.classList.toggle('sel');
+  var box=el.querySelector('.cl-box');
+  if(el.classList.contains('sel')){
+    box.textContent='✓';
+    if(ifItems.indexOf(item)<0) ifItems.push(item);
+  }else{
+    box.textContent='';
+    ifItems=ifItems.filter(function(i){return i!==item;});
+  }
+  valForm();
+}
+
+function addCust(){
+  var inp=document.getElementById('custInp'),t=(inp.value||'').trim();
+  if(!t) return;
+  if(custItems.indexOf(t)>=0){showToast('이미 추가된 항목','info');return;}
+  custItems.push(t);ifItems.push(t);
+  inp.value='';
+  renderCustList();
+  valForm();
+}
+
+function renderCustList(){
+  var ct=document.getElementById('custList');
+  if(!ct) return;
+  ct.innerHTML=custItems.map(function(item,i){
+    return '<div class="cust-item">' +
+      '<span class="cust-txt">✓ '+escHtml(item)+'</span>' +
+      '<button class="cust-del" onclick="delCust('+i+')">×</button>' +
+    '</div>';
+  }).join('');
+}
+
+function delCust(i){
+  var item=custItems[i];
+  custItems.splice(i,1);
+  ifItems=ifItems.filter(function(x){return x!==item;});
+  renderCustList();
+  valForm();
+}
+
+function selSev(sev,el){
+  ifSev=sev;
+  document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  valForm();
+}
+
+function onPhoto(e){
+  var f=e.target.files[0];if(!f) return;
+  var r=new FileReader();
+  r.onload=function(ev){
+    photoData=ev.target.result;
+    document.getElementById('photoImg').src=photoData;
+    document.getElementById('photoPrev').style.display='block';
+  };
+  r.readAsDataURL(f);
+}
+
+function delPhoto(){
+  photoData=null;
+  document.getElementById('photoPrev').style.display='none';
+  document.getElementById('photoFile').value='';
+}
+
+function valForm(){
+  var role=(document.getElementById('repRole').value||'').trim();
+  var name=(document.getElementById('repName').value||'').trim();
+  var btn=document.getElementById('subBtn');
+  if(btn) btn.disabled=!(ifSev&&ifItems.length>0&&role&&name);
+}
+
+function submitInsp(){
+  var role=document.getElementById('repRole').value;
+  var name=document.getElementById('repName').value;
+  var loc='공장 전체',company='해당없음',workName='일반 점검사항',wid='general';
+  if(ifWork){
+    loc=ifWork.location||'미지정';
+    company=ifWork.company||'미지정';
+    workName=ifWork.workName;
+    wid=ifWork.id;
+  }
+  violations.push({
+    id:'SV-'+Date.now(),
+    createdAt:new Date().toISOString(),
+    reporter:{name:name,role:role},
+    workInfo:{workId:wid,workName:workName,location:loc,company:company},
+    violation:{
+      severity:ifSev,
+      item:ifItems.join(', '),
+      source:wid==='general'?'일반 점검':'안전작업허가서',
+      photo:photoData
+    },
+    correction:{status:'미시정',elapsedMinutes:0,completedAt:null}
+  });
+  saveViolations();
+  closeSheet('if');
+  renderInspPage();
+  showToast('점검사항이 등록되었습니다','success');
+  if(ifSev==='중대') setTimeout(function(){showToast('🚨 중대 위반! 즉시 조치 바랍니다','error');},500);
+}
+
+function resetIF(){
+  ifWork=null;ifSev=null;ifItems=[];custItems=[];photoData=null;
+  ['repRole','repName'].forEach(function(id){var el=document.getElementById(id);if(el) el.value='';});
+  var sb=document.getElementById('subBtn');if(sb) sb.disabled=true;
+  var cl=document.getElementById('custList');if(cl) cl.innerHTML='';
+  var pp=document.getElementById('photoPrev');if(pp) pp.style.display='none';
+  var pf=document.getElementById('photoFile');if(pf) pf.value='';
+  document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('on');});
+}
+
+// ═══════════════════════════════════════
 // VIOLATIONS
-function loadViolations(){try{violations=JSON.parse(localStorage.getItem('safetyViolations')||'[]');}catch(e){violations=[];}renderPending();renderInspPage();}
+// ═══════════════════════════════════════
+function loadViolations(){
+  try{violations=JSON.parse(localStorage.getItem('safetyViolations')||'[]');}
+  catch(e){violations=[];}
+  renderInspPage();
+}
+
 function saveViolations(){
   localStorage.setItem('safetyViolations',JSON.stringify(violations));
-  // ⭐ CONVENTIONS §11.1: CustomEvent 발신
-  try{window.dispatchEvent(new CustomEvent('app-data-changed',{detail:{key:'safetyViolations',timestamp:Date.now()}}));}catch(e){}
+  try{
+    window.dispatchEvent(new CustomEvent('app-data-changed',{
+      detail:{key:'safetyViolations',timestamp:Date.now()}
+    }));
+  }catch(e){}
 }
-function getTodayV(){var t=fmtDate(new Date());return violations.filter(function(v){return v.createdAt&&v.createdAt.indexOf(t)===0;});}
+
+function getTodayV(){
+  var t=fmtDate(new Date());
+  return violations.filter(function(v){return v.createdAt&&v.createdAt.indexOf(t)===0;});
+}
+
 function renderInspPage(){
   var tv=getTodayV();
   setTxt('iT',tv.length);
   setTxt('iC',tv.filter(function(v){return v.violation.severity==='중대';}).length);
   setTxt('iM',tv.filter(function(v){return v.violation.severity==='경미';}).length);
   setTxt('iD',tv.filter(function(v){return v.correction.status==='완료';}).length);
-  var list=document.getElementById('inspList');if(!list) return;
-  if(!tv.length){list.innerHTML='<div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">오늘 등록된 점검사항이 없습니다.</div></div>';return;}
+  setTxt('heroInspNum',tv.length);
+  
+  // 하단 배지
+  var pend=tv.filter(function(v){return v.correction.status!=='완료';});
+  var ib=document.getElementById('inspBadge');
+  if(ib){
+    if(pend.length){ib.style.display='flex';ib.textContent=pend.length;}
+    else ib.style.display='none';
+  }
+  
+  var list=document.getElementById('inspList');
+  if(!list) return;
+  
+  if(!tv.length){
+    list.innerHTML='<div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">오늘 등록된 점검사항이 없습니다.</div></div>';
+    return;
+  }
+  
   list.innerHTML=tv.map(function(v){
     var sc=v.violation.severity==='중대'?'cr':v.violation.severity==='경미'?'mn':'ad';
     var time=new Date(v.createdAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     var done=v.correction.status==='완료';
-    return '<div class="ic-card '+sc+'">'+
-      '<div class="ic-top"><span class="ic-sev '+sc+'">'+v.violation.severity+'</span><span class="ic-time">'+time+'</span></div>'+
-      '<div class="ic-name">'+v.violation.item+'</div>'+
-      '<div class="ic-meta"><span>📍 '+v.workInfo.location+'</span><span>🏢 '+v.workInfo.company+'</span></div>'+
-      '<div class="ic-status"><span class="spill '+(done?'d':'p')+'">'+(done?'완료':'미시정')+'</span>'+
-      (!done?'<span class="spill-elapsed">경과 '+(v.correction.elapsedMinutes||0)+'분</span>':'')+
-      '</div></div>';
+    return '<div class="ic-card '+sc+'">' +
+      '<div class="ic-top">' +
+        '<span class="ic-sev '+sc+'">'+escHtml(v.violation.severity)+'</span>' +
+        '<span class="ic-time">'+time+'</span>' +
+      '</div>' +
+      '<div class="ic-name">'+escHtml(v.violation.item)+'</div>' +
+      '<div class="ic-meta">' +
+        '<span>📍 '+escHtml(v.workInfo.location)+'</span>' +
+        '<span>🏢 '+escHtml(v.workInfo.company)+'</span>' +
+      '</div>' +
+      '<div class="ic-status-row">' +
+        '<span class="spill '+(done?'d':'p')+'">'+(done?'완료':'미시정')+'</span>' +
+        (!done?'<span class="spill-elapsed">경과 '+(v.correction.elapsedMinutes||0)+'분</span>':'') +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
+// ═══════════════════════════════════════
 // TABS
+// ═══════════════════════════════════════
 function goTab(tab){
-  ['home','inspect','settings'].forEach(function(t){var p=document.getElementById('page'+cap(t));if(p) p.classList.remove('active');});
-  ['Home','Inspect','Settings'].forEach(function(t){var el=document.getElementById('tab'+t);if(el) el.classList.remove('active');});
+  ['home','inspect','settings'].forEach(function(t){
+    var p=document.getElementById('page'+cap(t));if(p) p.classList.remove('active');
+  });
+  ['Home','Inspect','Settings'].forEach(function(t){
+    var el=document.getElementById('tab'+t);if(el) el.classList.remove('active');
+  });
   var page=document.getElementById('page'+cap(tab));if(page) page.classList.add('active');
   var tabEl=document.getElementById('tab'+cap(tab));if(tabEl) tabEl.classList.add('active');
+  window.scrollTo(0,0);
 }
 
+// ═══════════════════════════════════════
 // SHEETS
-function openSheet(n){var ov=document.getElementById(n+'Ov'),sh=document.getElementById(n+'Sheet');if(ov) ov.classList.add('active');if(sh) setTimeout(function(){sh.classList.add('open');},10);}
-function closeSheet(n){var sh=document.getElementById(n+'Sheet');if(sh) sh.classList.remove('open');setTimeout(function(){var ov=document.getElementById(n+'Ov');if(ov) ov.classList.remove('active');},340);}
+// ═══════════════════════════════════════
+function openSheet(n){
+  var ov=document.getElementById(n+'Ov'),sh=document.getElementById(n+'Sheet');
+  if(ov) ov.classList.add('active');
+  if(sh) setTimeout(function(){sh.classList.add('open');},10);
+}
 
+function closeSheet(n){
+  var sh=document.getElementById(n+'Sheet');
+  if(sh) sh.classList.remove('open');
+  setTimeout(function(){
+    var ov=document.getElementById(n+'Ov');
+    if(ov) ov.classList.remove('active');
+  },340);
+}
+
+// ═══════════════════════════════════════
 // TOAST
-function showToast(msg,type){var wrap=document.getElementById('toastWrap');if(!wrap) return;var t=document.createElement('div');t.className='toast '+(type||'info');t.textContent=msg;wrap.appendChild(t);setTimeout(function(){if(t.parentNode) t.parentNode.removeChild(t);},3500);}
+// ═══════════════════════════════════════
+function showToast(msg,type){
+  var wrap=document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t=document.createElement('div');
+  t.className='toast '+(type||'info');
+  t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(function(){if(t.parentNode) t.parentNode.removeChild(t);},3500);
+}
 
+// ═══════════════════════════════════════
 // EVENTS
-document.addEventListener('keydown',function(e){if(e.key==='Escape')['wo','wd','if'].forEach(function(n){closeSheet(n);});});
-document.getElementById('custInp').addEventListener('keypress',function(e){if(e.key==='Enter'){e.preventDefault();addCust();}});
+// ═══════════════════════════════════════
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') ['ws','if'].forEach(function(n){closeSheet(n);});
+});
 
-// ──────────────────────────────────────────────────────────
-// ⭐ 권한 검증 및 초기화 (CONVENTIONS §2: 소문자 role)
-// ──────────────────────────────────────────────────────────
-
-// 사용자 역할 확인
-function getUserRole() {
-  try {
-    var userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-    return userInfo.role || 'worker'; // 기본값: worker (규약 §2)
-  } catch (e) {
-    return 'worker';
-  }
-}
-
-// Admin 권한 확인
-function isAdmin() {
-  return getUserRole() === 'admin';
-}
-
-// Manager 권한 확인
-function isManager() {
-  var role = getUserRole();
-  return role === 'admin' || role === 'manager';
-}
-
-// 페이지 초기화 (권한 분기)
-function initializeWithRole() {
-  var role = getUserRole();
-  console.log('사용자 역할:', role);
-  
-  if (role === 'admin') {
-    // Admin 화면 초기화
-    showAdminTabs();
-    console.log('Admin 모드 활성화');
-  } else {
-    // User 화면 초기화
-    showUserTabs();
-    console.log('User 모드 활성화');
-  }
-}
-
-// Admin 탭 표시
-function showAdminTabs() {
-  // 추후 구현: 관리자 탭 추가 (사용자관리, 업체관리, 작업관리, 협력사관리)
-  console.log('Admin 탭 활성화 - 미구현');
-}
-
-// User 탭 표시
-function showUserTabs() {
-  // 추후 구현: 사용자 탭 표시 (허가서, TBM, 위험성평가)
-  console.log('User 탭 활성화 - 미구현');
-}
-
-// 상태 표시 업데이트 (CONVENTIONS §5.1: 정식 저장소 키)
-function updateStatusIndicators() {
-  try {
-    // 규약 준수 저장소 키 사용
-    var provisions = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
-    var quizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
-    var permitList = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    var assessments = JSON.parse(localStorage.getItem('riskAssessments') || '[]');
-    var tbms = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-    var emergencies = JSON.parse(localStorage.getItem('emergencies') || '[]');
-    
-    console.log('상태 현황:', {
-      '안전정보': provisions.length,
-      '안전퀴즈': quizzes.length,
-      '허가서': permitList.length,
-      '위험평가': assessments.length,
-      'TBM': tbms.length,
-      '긴급조치': emergencies.length
-    });
-    
-  } catch (e) {
-    console.error('상태 조회 실패:', e);
-  }
-}
-
-init();
-initializeWithRole();
-
-// ──────────────────────────────────────────────────────────
-// ⭐ 작업별 실시간 상태 업데이트 (CONVENTIONS §9: KST, §3.4: workId)
-// ──────────────────────────────────────────────────────────
-
-function updateWorkStatus() {
-  try {
-    var raw = localStorage.getItem('safetyDatabase');
-    if (!raw) {
-      resetWorkStatus();
-      return;
-    }
-    
-    var db = JSON.parse(raw);
-    var works = db.workHistory || [];
-    // ⭐ CONVENTIONS §9: KST 기준 fmtDate 사용 (UTC 금지)
-    var today = fmtDate(new Date());
-    var todayWorks = works.filter(function(w) { return w.date === today; });
-    
-    // 허가서 상태 확인 (CONVENTIONS §5.1: safetyPermits)
-    var permitList = [];
-    try {
-      permitList = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    } catch(e) {}
-    
-    var permitMap = {};
-    permitList.forEach(function(p) {
-      if (p.sourceWorkId) permitMap[p.sourceWorkId] = p;
-    });
-    
-    // 상태별 카운트
-    var statusReady = 0;   // 허가완료
-    var statusWorking = 0; // 작업중
-    var statusStopped = 0; // 작업중지
-    var statusCompleted = 0; // 작업완료
-    
-    todayWorks.forEach(function(w) {
-      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip
-      if(!w.originalNo) return;
-      var permit = permitMap[w.date + '_' + w.originalNo];
-      var status = permit ? permit.status : '대기중';
-      
-      if (status === '허가완료') {
-        statusReady++;
-      } else if (status === '작업중') {
-        statusWorking++;
-      } else if (status === '작업중지') {
-        statusStopped++;
-      } else if (status === '작업완료') {
-        statusCompleted++;
-      }
-    });
-    
-    // 상태 표시 업데이트
-    setTxt('statusReady', statusReady);
-    setTxt('statusWorking', statusWorking);
-    setTxt('statusStopped', statusStopped);
-    setTxt('statusCompleted', statusCompleted);
-    
-    console.log('작업별 상태:', {
-      '허가완료': statusReady,
-      '작업중': statusWorking,
-      '작업중지': statusStopped,
-      '작업완료': statusCompleted
-    });
-    
-  } catch (e) {
-    console.error('작업 상태 조회 실패:', e);
-    resetWorkStatus();
-  }
-}
-
-// 상태 초기화
-function resetWorkStatus() {
-  setTxt('statusReady', '0');
-  setTxt('statusWorking', '0');
-  setTxt('statusStopped', '0');
-  setTxt('statusCompleted', '0');
-}
-
-updateStatusIndicators();
-
-// ═══════════════════════════════
-// 🔥 당일 작업허가 리스트 관리 (CONVENTIONS §5.1, §3.4)
-// ═══════════════════════════════
-var todayPermits = [];
-var lastPermitUpdate = 0;
-var lastTBMUpdate = 0;
-
-function loadTodayPermits() {
-  // ⭐ CONVENTIONS §9: KST 기준
-  var today = fmtDate(new Date());
-  var permitArr = [];
-  
-  try {
-    // safetyDatabase에서 작업 로드
-    var db = JSON.parse(localStorage.getItem('safetyDatabase') || '{}');
-    var works = (db.workHistory || []).filter(function(w) {
-      return w.date === today;
-    });
-    
-    if (!works.length) {
-      document.getElementById('todayPermitSection').style.display = 'none';
-      return;
-    }
-    
-    // safetyPermits에서 허가 현황 로드 (CONVENTIONS §5.1)
-    var permitData = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    var permitMap = {};
-    permitData.forEach(function(p) {
-      if (p.sourceWorkId) permitMap[p.sourceWorkId] = p;
-    });
-    
-    // safetyTBM에서 TBM 현황 로드 (CONVENTIONS §5.1: tbmLogs 폐기)
-    var tbmData = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-    var tbmMap = {};
-    tbmData.forEach(function(t) {
-      if (t.permitNo) tbmMap[t.permitNo] = t;
-    });
-    
-    // 각 작업에 대한 권한서 생성
-    works.forEach(function(w) {
-      // ⭐ CONVENTIONS §3.4: originalNo 없으면 skip
-      if(!w.originalNo) return;
-      var workId = w.date + '_' + w.originalNo;
-      var permit = permitMap[workId];
-      var permitNo = permit ? permit.permitNo : null;
-      var tbm = permitNo ? tbmMap[permitNo] : null;
-      
-      // 상태 결정
-      var status = '대기중';
-      if (permit) {
-        if (tbm) status = '작업중';
-        else status = permit.status || '허가진행중';
-      }
-      
-      permitArr.push({
-        workId: workId,
-        permitNo: permitNo,
-        workName: w.workName || w.workNameFull || '미지정',
-        company: w.company || '-',
-        location: w.location ? (w.location.factory || '') + (w.location.line ? w.location.line + '라인' : '') : '미지정',
-        riskLevel: w.risk || '일반',
-        status: status,
-        permit: permit,
-        tbm: tbm
-      });
-    });
-    
-    todayPermits = permitArr;
-    renderTodayPermits();
-    document.getElementById('todayPermitSection').style.display = permitArr.length ? 'block' : 'none';
-  } catch(e) {
-    console.error('당일 작업 로드 실패:', e);
-    document.getElementById('todayPermitSection').style.display = 'none';
-  }
-}
-
-function renderTodayPermits() {
-  var list = document.getElementById('todayPermitList');
-  if (!list) return;
-  
-  if (!todayPermits.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><div class="empty-txt">오늘 작업이 없습니다.</div></div>';
-    return;
-  }
-  
-  var html = '';
-  todayPermits.forEach(function(p) {
-    var isDanger = p.riskLevel === '고위험';
-    var statusClass = p.status === '작업중' ? 'working' : p.status === '허가완료' ? 'done' : 'pending';
-    var statusEmoji = p.status === '작업중' ? '🔄' : p.status === '허가완료' ? '✅' : '⏳';
-    
-    html += '<div class="permit-card ' + (isDanger ? 'danger' : '') + '">';
-    html += '  <div class="pc-top">';
-    html += '    <span class="pc-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
-    html += '    <span class="pc-status ' + statusClass + '">' + statusEmoji + ' ' + p.status + '</span>';
-    html += '  </div>';
-    html += '  <div class="pc-name">' + p.workName + '</div>';
-    html += '  <div class="pc-meta">';
-    html += '    <span>📍 ' + p.location + '</span>';
-    html += '    <span>🏢 ' + p.company + '</span>';
-    html += '  </div>';
-    html += '  <div class="pc-actions">';
-    
-    // 상태별 버튼 (CONVENTIONS §6.1: 규약 파일명)
-    if (p.status === '대기중') {
-      html += '    <a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(p.workId) + '" class="pc-btn primary">허가서 신청 →</a>';
-    } else if (p.status === '허가진행중') {
-      html += '    <a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(p.workId) + '" class="pc-btn secondary">허가서 계속 →</a>';
-    } else if (p.status === '허가완료') {
-      html += '    <a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(p.permitNo) + '" class="pc-btn primary">TBM 작성 →</a>';
-    } else if (p.status === '작업중') {
-      html += '    <a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(p.permitNo) + '" class="pc-btn secondary">TBM 보기 →</a>';
-    }
-    
-    html += '  </div>';
-    html += '</div>';
+var custInpEl = document.getElementById('custInp');
+if(custInpEl){
+  custInpEl.addEventListener('keypress',function(e){
+    if(e.key==='Enter'){e.preventDefault();addCust();}
   });
-  
-  list.innerHTML = html;
 }
 
-function refreshTodayPermits() {
-  loadTodayPermits();
-  showToast('당일 작업 목록을 새로고침했습니다', 'success');
-}
+// ═══════════════════════════════════════
+// 실시간 동기화
+// ═══════════════════════════════════════
+var lastSyncUpdate = 0;
 
-// ⭐ CONVENTIONS §11.2: 실시간 동기화 - 다른 탭 감지 (표준 storage 이벤트)
-window.addEventListener('storage', function(e) {
-  var now = Date.now();
+window.addEventListener('storage',function(e){
+  var now=Date.now();
+  if(now - lastSyncUpdate < 500) return;
+  lastSyncUpdate = now;
   
-  if (e.key === 'safetyDatabase' && now - lastPermitUpdate > 500) {
-    lastPermitUpdate = now;
-    setTimeout(function() { loadDB(); loadTodayPermits(); }, 100);
+  if(e.key==='safetyDatabase'){
+    setTimeout(function(){loadDB();},100);
   }
-  
-  if (e.key === 'safetyPermits' && now - lastPermitUpdate > 500) {
-    lastPermitUpdate = now;
-    setTimeout(function() { loadPermits(); loadTodayPermits(); }, 100);
+  if(e.key==='safetyPermits'){
+    setTimeout(function(){loadPermits();},100);
   }
-  
-  if (e.key === 'safetyTBM' && now - lastTBMUpdate > 500) {
-    lastTBMUpdate = now;
-    setTimeout(function() { 
-      loadTodayPermits();
-      refreshAll();
-    }, 100);
+  if(e.key==='safetyTBM'){
+    setTimeout(function(){updateWorkStatus();},100);
   }
-  
-  if (e.key === 'safetyViolations') {
-    setTimeout(function() { loadViolations(); }, 100);
-  }
-  
-  if (e.key === 'safetyQuizzes' || e.key === 'riskAssessments' || 
-      e.key === 'safetyProvisions' || e.key === 'emergencies') {
-    setTimeout(function() { updateStatusIndicators(); }, 100);
+  if(e.key==='safetyViolations'){
+    setTimeout(function(){loadViolations();},100);
   }
 });
 
-// ⭐ CONVENTIONS §11.2: 같은 탭 감지 (CustomEvent)
-window.addEventListener('app-data-changed', function(e) {
-  var key = e.detail && e.detail.key;
+window.addEventListener('app-data-changed',function(e){
+  var key=e.detail && e.detail.key;
   if(!key) return;
-  var now = Date.now();
+  var now=Date.now();
+  if(now - lastSyncUpdate < 500) return;
+  lastSyncUpdate = now;
   
-  if (key === 'safetyDatabase' && now - lastPermitUpdate > 500) {
-    lastPermitUpdate = now;
-    setTimeout(function() { loadDB(); loadTodayPermits(); updateWorkStatus(); }, 100);
+  if(key==='safetyDatabase'){
+    setTimeout(function(){loadDB();},100);
   }
-  
-  if (key === 'safetyPermits' && now - lastPermitUpdate > 500) {
-    lastPermitUpdate = now;
-    setTimeout(function() { loadPermits(); loadTodayPermits(); updateWorkStatus(); }, 100);
+  if(key==='safetyPermits'){
+    setTimeout(function(){loadPermits();},100);
   }
-  
-  if (key === 'safetyTBM' && now - lastTBMUpdate > 500) {
-    lastTBMUpdate = now;
-    setTimeout(function() { loadTodayPermits(); updateWorkStatus(); }, 100);
+  if(key==='safetyTBM'){
+    setTimeout(function(){updateWorkStatus();},100);
   }
-  
-  if (key === 'safetyViolations') {
-    setTimeout(function() { loadViolations(); }, 100);
-  }
-  
-  if (key === 'safetyQuizzes' || key === 'riskAssessments' || 
-      key === 'safetyProvisions' || key === 'emergencies') {
-    setTimeout(function() { updateStatusIndicators(); }, 100);
+  if(key==='safetyViolations'){
+    setTimeout(function(){loadViolations();},100);
   }
 });
 
-// 초기화 시 로드
-setTimeout(function() { loadTodayPermits(); }, 300);
-
-/* ══════ 시그널 타일 디자인 패치 ══════ */
-(function(){
-  var _renderInsp = renderInspPage;
-  window.renderInspPage = function(){
-    _renderInsp();
-    try{ setTxt('heroInspNum', getTodayV().length); }catch(e){}
-  };
-
-  var _updateDBUI = updateDBUI;
-  window.updateDBUI = function(){
-    _updateDBUI();
-    var on = allWorks.length > 0, d2 = document.getElementById('dbDot2');
-    if(d2){ on ? d2.classList.add('on') : d2.classList.remove('on'); }
-  };
-
-  /* 히어로 우측 고위험 블록 */
-  var _renderHero = renderHero;
-  window.renderHero = function(){
-    _renderHero();
-    var hr = dispWorks.filter(function(w){ return w.riskLevel === '고위험'; });
-    var c = document.getElementById('heroHR');
-    if(!c) return;
-    c.classList.remove('red','green');
-    c.classList.add(hr.length ? 'red' : 'green');
-    c.innerHTML = '<div class="hr-l"><i></i>고위험</div>' +
-                  '<div class="hr-n">' + hr.length + '<small>건</small></div>';
-  };
-
-  /* 작업별 실시간 상태 — 0건이면 타일을 흐리게 */
-  var _updateWorkStatus = updateWorkStatus;
-  window.updateWorkStatus = function(){
-    _updateWorkStatus();
-    ['statusReady','statusWorking','statusStopped','statusCompleted'].forEach(function(id){
-      var el = document.getElementById(id);
-      if(!el) return;
-      var tile = el.closest('.tile');
-      if(tile) tile.classList.toggle('zero', (parseInt(el.textContent,10) || 0) === 0);
-    });
-  };
-
-  function inspDate(){
-    var n = new Date();
-    setTxt('inspDatePill', (n.getMonth()+1) + '/' + n.getDate());
-  }
-  inspDate();
-  setInterval(inspDate, 60000);
-
-  window.renderHero();
-  window.renderInspPage();
-  window.updateDBUI();
-  window.updateWorkStatus();
-})();
+// ═══════════════════════════════════════
+// 시작
+// ═══════════════════════════════════════
+init();
 
 </script>
 </body>
 </html>
+
