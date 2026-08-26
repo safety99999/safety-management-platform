@@ -1997,6 +1997,48 @@ inspectionNo
       "updatedBy": "",
       "schemaVersion": 2
     }
+### 31.3A 모든 허가작업의 3시간 이내 확인 필드
+
+일반 허가 이행점검에는 다음 필드를 사용한다.
+
+    {
+      "inspectionType": "일반허가",
+      "inspectionRole": "작업수행사 관리감독자",
+      "dueRule": "작업시작후3시간이내",
+      "workStartedAt": null,
+      "dueAt": null,
+      "inspectedAt": null,
+      "overdue": false,
+      "delayMinutes": 0,
+      "delayReason": "",
+      "inspector": {
+        "userId": "",
+        "department": "",
+        "position": "",
+        "name": ""
+      },
+      "items": [],
+      "overallResult": "양호",
+      "opinion": "",
+      "findings": [],
+      "correctiveActions": [],
+      "workStopped": false,
+      "emergencyNo": "",
+      "status": "예정"
+    }
+
+dueAt은 실제 작업 시작시각을 기준으로 설정한다.
+
+작업 예정 시작시각과 실제 작업 시작시각이 다르면 실제 작업 시작시각을 우선한다.
+
+점검기한 초과 여부는 다음 정보를 비교하여 계산한다.
+
+- workStartedAt
+- dueAt
+- inspectedAt
+
+기한 초과 기록을 삭제하거나 정상 점검으로 덮어쓰지 않는다.
+
 
 ### 31.4 inspectionType 허용값
 
@@ -2032,8 +2074,26 @@ inspectionNo
       "actionOwner": "",
       "reinspectionResult": ""
     }
+### 31.7 모든 허가작업의 기본 점검주기
 
-### 31.7 고위험 점검주기
+모든 허가 대상 작업은 작업 시작 후 3시간 이내에 작업수행사 관리감독자가 안전 이행상태를 확인한다.
+
+이 점검은 고위험작업 여부와 관계없이 적용한다.
+
+확인결과에는 다음을 포함한다.
+
+- 허가조건 이행
+- 위험성평가 대책 이행
+- 작업조건 변경
+- ILS 상태 유지
+- 보호구·작업구역·장비 상태
+- 신규 위험
+- 점검 의견
+- 미흡사항 및 조치결과
+
+Audit 부서 확인란은 별도 사내기준에 따라 적용한다.
+
+### 31.8 고위험 점검주기
 
 - 생명지킴이: 2시간마다
 - 정비부서 담당자: 오전·오후 각 1회
