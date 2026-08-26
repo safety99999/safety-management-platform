@@ -2094,20 +2094,29 @@ function parseMeasures(text){
     var cleaned = item.replace(/^\d+\.\s*/, '').trim();
     if(!cleaned) return;
     
-    // 태그 추출 [법령] [사내] [AI] 등
-    var source = 'WRK'; // 기본
-    var match = cleaned.match(/^
-\[(법령|사내|표준|JSA|TBM|허가|재해|아차|권고|외부|AI)\]
-\s*/);
-    if(match){
+    // 태그 추출 (정규식 없이 안전하게)
+      var source = 'WRK';
+      var tagList = ['법령', '사내', '표준', 'JSA', 'TBM', '허가', '재해', '아차', '권고', '외부', 'AI'];
       var tagMap = {
-        '법령':'LAW', '사내':'INT', '표준':'SOP', 'JSA':'JSA', 
-        'TBM':'TBM', '허가':'PTW', '재해':'ACC', '아차':'NMS',
-        '권고':'REC', '외부':'EXT', 'AI':'AI'
+        '법령': 'LAW',
+        '사내': 'INT',
+        '표준': 'SOP',
+        'JSA': 'JSA',
+        'TBM': 'TBM',
+        '허가': 'PTW',
+        '재해': 'ACC',
+        '아차': 'NMS',
+        '권고': 'REC',
+        '외부': 'EXT',
+        'AI': 'AI'
       };
-      source = tagMap[match[1]] || 'WRK';
-      cleaned = cleaned.substring(match[0].length).trim();
-    }
+      for (var t = 0; t < tagList.length; t++) {
+        var tag = '[' + tagList[t] + ']';
+        if (cleaned.indexOf(tag) === 0) {
+          source = tagMap[tagList[t]];
+          cleaned = cleaned.substring(tag.length).trim();
+          break;
+        }
     
     if(cleaned){
       result.push({ text: cleaned, source: source });
