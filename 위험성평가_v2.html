@@ -1940,11 +1940,28 @@ function isSimilarWorkType(a, b){
   return false;
 }
 
-// 키워드 토큰화
+// 키워드 토큰화 (한글 리터럴 사용 - 정규식 안전)
 function tokenize(text){
   if(!text) return [];
-  return String(text).replace(/[^\uAC00-\uD7A3a-zA-Z0-9]/g,' ')
-    .split(/\s+/).filter(function(t){ return t.length > 0; });
+  var str = String(text);
+  var result = [];
+  var current = '';
+  for(var i=0; i= 0xAC00 && code <= 0xD7A3) ||  // 한글
+      (code >= 0x30 && code <= 0x39) ||       // 0-9
+      (code >= 0x41 && code <= 0x5A) ||       // A-Z
+      (code >= 0x61 && code <= 0x7A);         // a-z
+    
+    if(isValid){
+      current += ch;
+    } else {
+      if(current.length > 0){
+        result.push(current);
+        current = '';
+      }
+    }
+  }
+  if(current.length > 0) result.push(current);
+  return result;
 }
 
 // Jaccard 유사도
