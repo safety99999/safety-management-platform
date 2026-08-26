@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,8 +8,20 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 /* ═══════════════════════════════════════
-   안전작업허가서 · 시그널 타일 디자인
+   안전작업허가서 v2 - 통합 완성판
+   최종 수정: 2026-08-26
+   
+   포함 사항:
+   ✅ Phase B: Critical 4개 클래스 통일
+   ✅ 홈버튼 + 다크모드 + 반응형
+   ✅ PSM 섹션 완전 숨김
+   ✅ 일반작업 카드 + 체크리스트
+   ✅ 3단계 조건부 "해당없음" 버튼
+   ✅ 6단계 조건부 "해당없음" (Q4/6/8/9)
+   ✅ 사유 입력 모달
+   ✅ 자동화 훅 함수
    ═══════════════════════════════════════ */
+
 :root{
   --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
   --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
@@ -23,18 +35,70 @@
   --sh:0 2px 10px rgba(15,29,43,.06);
   --sh-m:0 4px 16px rgba(15,29,43,.09);
 }
+
+/* 다크모드 (대시보드와 동일 팔레트) */
+[data-theme="dark"]{
+  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
+  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
+  --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
+  --faint:#5A7288; --line:#1E3145;
+  --run:#FF8A3D; --run-bg:#2A1A0E;
+  --stop:#FF5F70; --stop-bg:#2B1116;
+  --done:#3DD9AE; --done-bg:#0D2620;
+  --warn:#FBBF24; --warn-bg:#2A2010;
+  --sh:0 2px 10px rgba(0,0,0,.35);
+  --sh-m:0 4px 16px rgba(0,0,0,.45);
+}
+
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
+
+/* 반응형 방안 A (대시보드와 동일) */
 body{
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:var(--bg);color:var(--ink);line-height:1.5;font-size:17px
+  color:var(--ink);line-height:1.5;font-size:17px;
+  background:linear-gradient(135deg,
+    #003C7E 0%,
+    #0067B1 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+  min-height:100vh;
+  transition:background .25s,color .25s;
 }
-.app{max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:40px}
+[data-theme="dark"] body{
+  background:linear-gradient(135deg,
+    #0A1B2E 0%,
+    #12283F 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+}
+
+.app{
+  max-width:480px;margin:0 auto;min-height:100vh;
+  padding-bottom:40px;
+  background:var(--bg);position:relative;
+}
+
+/* PC/태블릿 카드 느낌 */
+@media(min-width:768px){
+  body{padding:24px 0}
+  .app{
+    min-height:calc(100vh - 48px);
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:
+      0 0 40px rgba(0,60,126,.2),
+      0 20px 60px rgba(0,0,0,.15);
+  }
+}
+
 .screen{display:none;padding:0 16px}
 .screen.active{display:block;animation:fade .22s ease}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-/* ═══ 상단바 ═══ */
+/* ═══ 상단바 (홈버튼 포함) ═══ */
 .topnav{
   position:sticky;top:0;z-index:50;
   background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
@@ -47,16 +111,20 @@ body{
   border-radius:50%;pointer-events:none
 }
 .topnav-l{display:flex;align-items:center;gap:11px;min-width:0;position:relative;z-index:1}
-.topnav-r{position:relative;z-index:1;flex-shrink:0}
-.back-btn{
+.topnav-r{
+  display:flex;align-items:center;gap:8px;
+  position:relative;z-index:1;flex-shrink:0
+}
+.back-btn,.home-btn{
   width:40px;height:40px;border:0;border-radius:12px;background:rgba(255,255,255,.16);
   color:#fff;font-size:22px;line-height:1;cursor:pointer;font-family:inherit;
   display:grid;place-items:center;transition:.15s;flex-shrink:0
 }
-.back-btn:active{transform:scale(.9);background:rgba(255,255,255,.3)}
+.back-btn:active,.home-btn:active{transform:scale(.9);background:rgba(255,255,255,.3)}
+.home-btn{font-size:20px}
 .topnav-title{font-size:19px;font-weight:800;letter-spacing:-.03em;white-space:nowrap}
 .permit-no-badge{
-  font-size:13px;font-weight:800;padding:7px 12px;border-radius:10px;
+  font-size:12px;font-weight:800;padding:6px 10px;border-radius:8px;
   background:rgba(255,255,255,.18);font-variant-numeric:tabular-nums;
   letter-spacing:-.01em;white-space:nowrap
 }
@@ -74,7 +142,7 @@ body{
 .pstep.done{background:var(--done)}
 .pstep.active{background:var(--posco);box-shadow:0 0 0 3px rgba(0,103,177,.15)}
 .progress-info{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.progress-label{font-size:16px;font-weight:800;letter-spacing:-.03em}
+.progress-label{font-size:16px;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
 .progress-pct{
   font-size:15px;font-weight:800;color:var(--posco);background:var(--tint);
   padding:4px 11px;border-radius:8px;font-variant-numeric:tabular-nums;flex-shrink:0
@@ -106,7 +174,7 @@ body{
   width:58px;height:58px;margin:0 auto 11px;border-radius:17px;background:var(--tint);
   display:grid;place-items:center;font-size:28px
 }
-.mode-title{font-size:17px;font-weight:800;letter-spacing:-.03em;margin-bottom:6px}
+.mode-title{font-size:17px;font-weight:800;letter-spacing:-.03em;margin-bottom:6px;color:var(--ink)}
 .mode-desc{font-size:13.5px;color:var(--sub);font-weight:600;line-height:1.5}
 
 /* ═══ 정보 박스 3종 ═══ */
@@ -126,6 +194,7 @@ body{
   font-size:15.5px;color:var(--body);line-height:1.72;font-weight:600
 }
 .danger-box-text{color:#8C1728}
+[data-theme="dark"] .danger-box-text{color:#FF9BAB}
 .warn-box-text strong{font-weight:800}
 
 /* ═══ W/O 박스 ═══ */
@@ -138,6 +207,7 @@ body{
   font-size:27px;font-weight:800;letter-spacing:-.03em;color:var(--deep);
   font-variant-numeric:tabular-nums
 }
+[data-theme="dark"] .wo-box-number{color:var(--bright)}
 .wo-manual-toggle{
   display:block;width:100%;margin-top:13px;padding:12px;border:2px solid var(--line);
   border-radius:11px;background:var(--sunk);color:var(--posco);font-family:inherit;
@@ -149,10 +219,18 @@ body{
 .form-section{
   background:var(--card);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--sh)
 }
+
+/* PSM 섹션 완전 숨김 (포항양극재공장 미대상) */
+.form-section.psm-hidden,
+.info-box.psm-hidden{
+  display:none !important;
+}
+
 .form-section-title{
   font-size:18px;font-weight:800;letter-spacing:-.035em;color:var(--deep);
   margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--tint)
 }
+[data-theme="dark"] .form-section-title{color:var(--bright)}
 .form-group{margin-bottom:16px}
 .form-group:last-child{margin-bottom:0}
 .f-label{
@@ -160,10 +238,14 @@ body{
   margin-bottom:8px;letter-spacing:-.02em
 }
 .req{color:var(--stop);margin-left:3px}
+
+/* 입력 필드 통일 (높이 52px) */
 .f-input,.f-select,.f-textarea{
   width:100%;padding:15px 16px;border:2px solid var(--line);border-radius:var(--r-s);
-  background:var(--sunk);color:var(--ink);font-family:inherit;font-size:17px;
-  font-weight:600;transition:.15s
+  background:var(--sunk);color:var(--ink);font-family:inherit;font-size:16px;
+  font-weight:600;transition:.15s;
+  min-height:52px;
+  box-sizing:border-box;
 }
 .f-input:focus,.f-select:focus,.f-textarea:focus{
   outline:0;border-color:var(--posco);background:var(--card);
@@ -171,14 +253,28 @@ body{
 }
 .f-input::placeholder,.f-textarea::placeholder{color:var(--faint);font-weight:500}
 .f-textarea{min-height:110px;resize:vertical;line-height:1.65}
+
+/* date/time picker 높이 통일 */
+.f-input[type="date"],
+.f-input[type="time"],
+.f-input[type="datetime-local"]{
+  min-height:52px;
+  padding:12px 14px;
+  font-variant-numeric:tabular-nums;
+}
+
 .f-select{
   appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 15px center;background-size:19px;
   padding-right:46px
 }
+[data-theme="dark"] .f-select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 
+/* PSM 라디오 버튼 (숨김이지만 코드 유지) */
 .radio-group{display:flex;gap:9px;flex-wrap:wrap}
 .radio-btn{
   flex:1;min-width:88px;padding:15px 10px;border:2.5px solid var(--line);border-radius:var(--r-s);
@@ -187,24 +283,29 @@ body{
 }
 .radio-btn:active{transform:scale(.96)}
 .radio-btn.active{
-  border-color:var(--posco);background:var(--tint);color:var(--posco)
+  border-color:var(--posco);background:var(--tint);color:var(--posco);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
 }
 
-/* ═══ 작업 유형 선택 ═══ */
+/* ═══ 작업 유형 카드 ═══ */
 .work-type-grid{display:flex;flex-direction:column;gap:10px}
 .wt-card{
   background:var(--card);border:2.5px solid var(--line);border-radius:var(--r);
   padding:16px 17px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.15s
 }
 .wt-card:active{transform:scale(.98)}
-.wt-card.active{border-color:var(--posco);background:var(--tint)}
+.wt-card.active{
+  border-color:var(--posco);background:var(--tint);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
+}
 .wt-ico{
   width:50px;height:50px;border-radius:15px;background:var(--sunk);
   display:grid;place-items:center;font-size:25px;flex-shrink:0;transition:.15s
 }
 .wt-card.active .wt-ico{background:#fff}
+[data-theme="dark"] .wt-card.active .wt-ico{background:var(--card)}
 .wt-info{flex:1;min-width:0}
-.wt-title{font-size:18px;font-weight:800;letter-spacing:-.035em;margin-bottom:4px}
+.wt-title{font-size:18px;font-weight:800;letter-spacing:-.035em;margin-bottom:4px;color:var(--ink)}
 .wt-desc{font-size:14px;color:var(--sub);font-weight:600;line-height:1.45}
 .wt-check{
   width:28px;height:28px;border-radius:50%;border:2.5px solid var(--line);flex-shrink:0;
@@ -215,6 +316,31 @@ body{
 }
 .wt-card.active .wt-check::after{content:'✓';font-weight:900}
 
+/* 일반작업 카드 (배타적 선택) */
+.wt-card.general{
+  border-left:5px solid var(--done);
+}
+.wt-card.general .wt-ico{
+  background:var(--done-bg);
+}
+.wt-card.general.active{
+  border-color:var(--done);
+  background:var(--done-bg);
+  box-shadow:0 0 0 3px rgba(14,138,107,.15);
+}
+.wt-card.general.active .wt-check{
+  background:var(--done);
+  border-color:var(--done);
+}
+
+/* 일반작업 선택 시 다른 카드 비활성화 */
+.wt-card.disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+  pointer-events:none;
+  filter:grayscale(0.5);
+}
+
 /* ═══ 체크리스트 ═══ */
 .cl-section{
   background:var(--card);border-radius:var(--r);margin-bottom:14px;
@@ -223,6 +349,9 @@ body{
 .cl-section-header{
   background:linear-gradient(150deg,var(--deep),var(--posco));color:#fff;
   padding:16px 18px;font-size:18px;font-weight:800;letter-spacing:-.035em
+}
+.cl-section-header.general{
+  background:linear-gradient(150deg,#0B7A5F,var(--done));
 }
 .cl-progress{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -235,11 +364,15 @@ body{
 .cl-items{padding:6px 0}
 .cl-item{
   display:flex;align-items:center;gap:12px;padding:15px 18px;
-  border-bottom:1px solid var(--line);transition:.15s
+  border-bottom:1px solid var(--line);transition:.15s;flex-wrap:wrap;
 }
 .cl-item:last-child{border-bottom:0}
 .cl-item.ok{background:var(--done-bg)}
 .cl-item.no{background:var(--stop-bg)}
+.cl-item.na-selected{
+  background:var(--sunk);
+  border-left:3px solid var(--sub);
+}
 .cl-num{
   font-size:13.5px;font-weight:800;color:var(--posco);background:var(--tint);
   padding:5px 9px;border-radius:8px;flex-shrink:0;font-variant-numeric:tabular-nums;
@@ -247,29 +380,76 @@ body{
 }
 .cl-item.ok .cl-num{background:#fff;color:var(--done)}
 .cl-item.no .cl-num{background:#fff;color:var(--stop)}
-.cl-text{flex:1;min-width:0;font-size:16px;font-weight:600;line-height:1.5;letter-spacing:-.02em}
-.cl-radios{display:flex;gap:7px;flex-shrink:0}
+[data-theme="dark"] .cl-item.ok .cl-num{background:var(--card)}
+[data-theme="dark"] .cl-item.no .cl-num{background:var(--card)}
+.cl-text{flex:1;min-width:0;font-size:16px;font-weight:600;line-height:1.5;letter-spacing:-.02em;color:var(--ink)}
+.cl-radios{display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+
+/* 체크리스트 라디오 버튼 */
 .cl-radio-btn{
   width:48px;height:48px;border:2.5px solid var(--line);border-radius:13px;
   background:var(--card);font-size:21px;line-height:1;cursor:pointer;font-family:inherit;
   display:grid;place-items:center;transition:.15s;padding:0
 }
 .cl-radio-btn:active{transform:scale(.9)}
-.cl-radio-btn.ok{border-color:var(--done);background:var(--done-bg)}
-.cl-radio-btn.no{border-color:var(--stop);background:var(--stop-bg)}
+.cl-radio-btn.ok{
+  border-color:var(--done);background:var(--done-bg);
+  box-shadow:0 0 0 2px rgba(14,138,107,.2);
+}
+.cl-radio-btn.no{
+  border-color:var(--stop);background:var(--stop-bg);
+  box-shadow:0 0 0 2px rgba(214,39,61,.2);
+}
+
+/* "해당없음" 버튼 */
+.cl-radio-btn.na-btn{
+  width:auto;
+  min-width:70px;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--sub);
+  letter-spacing:-.02em;
+}
+.cl-radio-btn.na-btn.na-active{
+  border-color:var(--sub);
+  background:var(--body);
+  color:#fff;
+  box-shadow:0 0 0 2px rgba(94,113,131,.2);
+}
+[data-theme="dark"] .cl-radio-btn.na-btn.na-active{
+  background:var(--sub);
+  color:var(--card);
+}
+
+/* 해당없음 사유 표시 */
+.na-reason{
+  display:block;
+  width:100%;
+  margin-top:8px;
+  padding:8px 10px;
+  font-size:13px;
+  color:var(--sub);
+  background:var(--sunk);
+  border-radius:8px;
+  border:1px dashed var(--line);
+  font-style:italic;
+}
 
 /* ═══ 가스 측정 표 ═══ */
 .gas-table-wrap{
   background:var(--card);border-radius:var(--r);overflow:hidden;
-  box-shadow:var(--sh);margin-bottom:12px
+  box-shadow:var(--sh);margin-bottom:12px;overflow-x:auto;
 }
-.gas-table{width:100%;border-collapse:collapse}
+.gas-table{width:100%;border-collapse:collapse;min-width:600px}
 .gas-table th{
   background:var(--deep);color:#fff;font-size:14px;font-weight:800;
   padding:13px 8px;text-align:center;letter-spacing:-.02em;white-space:nowrap
 }
 .gas-table td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}
 .gas-table tr:last-child td{border-bottom:0}
+.gas-table tr.danger{background:var(--stop-bg)}
+.gas-table tr.safe{background:var(--done-bg)}
 .gas-input{
   width:100%;min-width:64px;padding:11px 8px;border:2px solid var(--line);border-radius:10px;
   background:var(--sunk);color:var(--ink);font-family:inherit;font-size:15.5px;
@@ -287,21 +467,36 @@ body{
 .q-item{
   background:var(--card);border-radius:var(--r);padding:17px 18px;margin-bottom:11px;box-shadow:var(--sh)
 }
+.q-item.yes-ans{border-left:5px solid var(--done)}
+.q-item.no-ans{border-left:5px solid var(--stop)}
+.q-item.na-ans{border-left:5px solid var(--sub)}
 .q-num{
   display:inline-block;font-size:13.5px;font-weight:800;color:#fff;background:var(--posco);
   padding:4px 11px;border-radius:8px;margin-bottom:9px
 }
-.q-text{font-size:16.5px;font-weight:700;line-height:1.5;letter-spacing:-.025em;margin-bottom:13px}
-.q-btns{display:flex;gap:9px}
+.q-text{font-size:16.5px;font-weight:700;line-height:1.5;letter-spacing:-.025em;margin-bottom:13px;color:var(--ink)}
+.q-btns{display:flex;gap:9px;flex-wrap:wrap}
 .q-btn{
-  flex:1;padding:14px;border:2.5px solid var(--line);border-radius:var(--r-s);
+  flex:1;min-width:80px;padding:14px;border:2.5px solid var(--line);border-radius:var(--r-s);
   background:var(--card);color:var(--sub);font-family:inherit;font-size:16px;
   font-weight:800;cursor:pointer;transition:.15s
 }
 .q-btn:active{transform:scale(.96)}
 .q-btn.active{border-color:var(--posco);background:var(--tint);color:var(--posco)}
-.q-btn.yes.active{border-color:var(--done);background:var(--done-bg);color:var(--done)}
-.q-btn.no.active{border-color:var(--stop);background:var(--stop-bg);color:var(--stop)}
+.q-btn.yes.active{
+  border-color:var(--done);background:var(--done-bg);color:var(--done);
+  box-shadow:0 0 0 3px rgba(14,138,107,.15);
+}
+.q-btn.no.active{
+  border-color:var(--stop);background:var(--stop-bg);color:var(--stop);
+  box-shadow:0 0 0 3px rgba(214,39,61,.15);
+}
+.q-btn.na{font-size:14px}
+.q-btn.na.active{
+  border-color:var(--sub);background:var(--body);color:#fff;
+  box-shadow:0 0 0 3px rgba(94,113,131,.15);
+}
+[data-theme="dark"] .q-btn.na.active{background:var(--sub)}
 
 /* ═══ 서명 ═══ */
 .sig-box{background:var(--sunk);border-radius:var(--r-s);padding:15px}
@@ -310,6 +505,7 @@ body{
   width:100%;height:170px;background:#fff;border:2.5px dashed var(--line);
   border-radius:var(--r-s);display:block;touch-action:none;cursor:crosshair
 }
+[data-theme="dark"] .sig-canvas{background:#F7FAFC}
 .sig-clear{
   width:100%;margin-top:11px;padding:12px;border:2px solid var(--line);border-radius:11px;
   background:var(--card);color:var(--sub);font-family:inherit;font-size:15px;
@@ -330,9 +526,10 @@ body{
 .summary-key{font-size:15.5px;font-weight:700;color:var(--sub);flex-shrink:0}
 .summary-val{
   font-size:16.5px;font-weight:800;text-align:right;letter-spacing:-.025em;
-  min-width:0;word-break:break-all
+  min-width:0;word-break:break-all;color:var(--ink)
 }
 .summary-val.highlight{color:var(--posco);font-size:18px;font-variant-numeric:tabular-nums}
+[data-theme="dark"] .summary-val.highlight{color:var(--bright)}
 
 /* ═══ 버튼 ═══ */
 .btn-row{display:flex;gap:11px;margin:22px 0 30px}
@@ -361,50 +558,6 @@ body{
 .complete-title{font-size:27px;font-weight:800;letter-spacing:-.045em;position:relative;z-index:1}
 .complete-sub{font-size:15.5px;opacity:.9;margin-top:11px;line-height:1.65;font-weight:600;position:relative;z-index:1}
 
-/* ═══ 당일 작업 카드 (JS 생성) ═══ */
-.today-work-card{
-  background:var(--card);border-radius:var(--r);padding:18px;margin-bottom:12px;
-  box-shadow:var(--sh);border-left:7px solid var(--posco);cursor:pointer;transition:.15s
-}
-.today-work-card:active{transform:scale(.985)}
-.today-work-card.danger{border-left-color:var(--stop)}
-.today-work-card.done{border-left-color:var(--done);opacity:.72}
-.twc-top{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap}
-.twc-badge{font-size:14px;font-weight:800;padding:6px 12px;border-radius:999px;background:var(--tint);color:var(--posco)}
-.twc-badge.r{background:var(--stop-bg);color:var(--stop)}
-.twc-status{
-  font-size:14px;font-weight:800;padding:6px 13px;border-radius:999px;
-  margin-left:auto;background:var(--sunk);color:var(--sub)
-}
-.twc-status.pdone{background:var(--posco);color:#fff}
-.twc-status.work{background:var(--run);color:#fff}
-.twc-status.wait{background:var(--sub);color:#fff}
-.twc-name{font-size:22px;font-weight:800;letter-spacing:-.04em;line-height:1.3;margin-bottom:9px}
-.twc-meta{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px}
-.twc-meta span{
-  font-size:15px;font-weight:700;color:var(--sub);background:var(--sunk);
-  padding:8px 12px;border-radius:8px
-}
-.twc-action{
-  display:flex;align-items:center;justify-content:flex-end;gap:11px;flex-wrap:wrap;
-  padding-top:13px;border-top:1px solid var(--line)
-}
-.twc-btn{
-  padding:14px 20px;border:0;border-radius:12px;background:var(--deep);color:#fff;
-  font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;
-  text-decoration:none;letter-spacing:-.02em;transition:.15s
-}
-.twc-btn:active{transform:scale(.95)}
-.twc-done-label{font-size:15px;font-weight:800;color:var(--done)}
-
-/* ═══ 빈 목록 ═══ */
-.empty-list{
-  background:var(--card);border-radius:var(--r);padding:44px 20px;
-  text-align:center;box-shadow:var(--sh)
-}
-.empty-list-ico{font-size:46px;margin-bottom:12px;opacity:.35}
-.empty-list-txt{font-size:17px;color:var(--sub);font-weight:700;line-height:1.7}
-
 /* ═══ 토스트 ═══ */
 .toast-wrap{
   position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:200;
@@ -416,20 +569,99 @@ body{
   letter-spacing:-.02em;text-align:center
 }
 .toast.success{background:var(--done)}
-.toast.error{background:var(--stop)}
+.toast.error,.toast.danger{background:var(--stop)}
 .toast.warning{background:var(--warn)}
 .toast.info{background:var(--deep)}
 @keyframes tslide{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+
+/* ═══ 사유 입력 모달 ═══ */
+.reason-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.55);backdrop-filter:blur(3px);
+  z-index:300;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.reason-overlay.active{opacity:1;pointer-events:auto}
+.reason-modal{
+  width:100%;max-width:400px;
+  background:var(--card);
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  transform:translateY(20px);
+  transition:transform .25s cubic-bezier(.32,.72,0,1);
+}
+.reason-overlay.active .reason-modal{transform:translateY(0)}
+.reason-title{
+  font-size:18px;font-weight:800;letter-spacing:-.03em;
+  color:var(--ink);margin-bottom:6px;
+}
+.reason-sub{
+  font-size:14px;color:var(--sub);font-weight:600;
+  margin-bottom:14px;line-height:1.5;
+}
+.reason-target{
+  background:var(--sunk);
+  border-left:3px solid var(--sub);
+  padding:10px 12px;border-radius:8px;
+  font-size:14px;color:var(--body);font-weight:600;
+  margin-bottom:14px;
+}
+.reason-textarea{
+  width:100%;min-height:100px;padding:12px;
+  border:2px solid var(--line);border-radius:var(--r-s);
+  background:var(--sunk);color:var(--ink);
+  font-family:inherit;font-size:15px;font-weight:600;
+  resize:vertical;line-height:1.5;transition:.15s;
+  box-sizing:border-box;
+}
+.reason-textarea:focus{
+  outline:0;border-color:var(--posco);background:var(--card);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
+}
+.reason-quick{
+  display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;
+}
+.reason-chip{
+  padding:8px 12px;border:1.5px solid var(--line);border-radius:999px;
+  background:var(--card);color:var(--sub);
+  font-family:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;transition:.15s;
+}
+.reason-chip:active{transform:scale(.95)}
+.reason-chip:hover{border-color:var(--posco);color:var(--posco);background:var(--tint)}
+.reason-buttons{
+  display:flex;gap:10px;margin-top:14px;
+}
+.reason-btn-cancel,.reason-btn-save{
+  flex:1;padding:13px;border:0;border-radius:12px;
+  font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+  transition:.15s;letter-spacing:-.02em;
+}
+.reason-btn-cancel{
+  background:var(--sunk);color:var(--sub);
+  border:1.5px solid var(--line);
+}
+.reason-btn-save{
+  background:var(--deep);color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.2);
+}
+.reason-btn-save:active,.reason-btn-cancel:active{transform:scale(.97)}
+.reason-btn-save:disabled{
+  background:var(--line);color:var(--faint);
+  box-shadow:none;cursor:not-allowed;
+}
 
 /* ═══ 좁은 화면 ═══ */
 @media(max-width:360px){
   .welcome-title{font-size:23px}
   .complete-title{font-size:24px}
-  .twc-name{font-size:20px}
   .cl-text{font-size:15px}
   .cl-radio-btn{width:44px;height:44px;font-size:19px}
+  .cl-radio-btn.na-btn{width:auto;min-width:60px;font-size:11px}
   .f-row{grid-template-columns:1fr}
   .btn-row{flex-direction:column}
+  .permit-no-badge{display:none}
 }
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
@@ -437,7 +669,7 @@ body{
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
   
   const firebaseConfig = {
     apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
@@ -450,20 +682,21 @@ body{
   
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  
   window.firebaseApp = { db };
 </script>
 </head>
 <body>
 <div class="app">
 
+<!-- ═══ 상단바 (홈버튼 포함) ═══ -->
 <nav class="topnav">
   <div class="topnav-l">
-    <button class="back-btn" onclick="goBack()">←</button>
+    <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
     <div class="topnav-title">안전작업허가서</div>
   </div>
   <div class="topnav-r">
     <div class="permit-no-badge" id="permitNoBadge"></div>
+    <button class="home-btn" onclick="goHome()" aria-label="홈">🏠</button>
   </div>
 </nav>
 
@@ -486,7 +719,7 @@ body{
   </div>
 </div>
 
-<!-- ══ SCREEN 0: 시작 (작업 선택) ══ -->
+<!-- ══ SCREEN 0: 시작 화면 ══ -->
 <div class="screen active" id="screen-welcome">
   <div style="padding:16px 14px;">
     <div class="welcome-hero">
@@ -508,7 +741,6 @@ body{
       </a>
     </div>
 
-    <!-- 작업 안내 -->
     <div class="info-box">
       <div class="info-box-title">📌 작성 안내</div>
       <div class="info-box-text">
@@ -527,7 +759,7 @@ body{
     <div class="wo-box-label">W/O 번호 (Work Order)</div>
     <div class="wo-box-number" id="wo-display">자동 생성</div>
     <label class="wo-manual-toggle">
-      <input type="checkbox" id="manual-wo" onchange="toggleManualWO()" style="width:16px;height:16px;">
+      <input type="checkbox" id="manual-wo" onchange="toggleManualWO()" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">
       수동 입력
     </label>
     <input class="f-input" id="wo-manual-input" placeholder="W/O 번호 직접 입력"
@@ -539,7 +771,7 @@ body{
 
     <div class="form-group">
       <label class="f-label">작업명<span class="req">*</span></label>
-      <input class="f-input" id="work-name" placeholder="예: 1공장 배관 용접 작업">
+      <input class="f-input" id="work-name" placeholder="예: 3라인 소성로 시운전 작업">
     </div>
     <div class="f-row">
       <div class="form-group">
@@ -548,14 +780,12 @@ body{
           <option value="">선택</option>
           <option value="포항양극재 1공장">포항양극재 1공장</option>
           <option value="포항양극재 2공장">포항양극재 2공장</option>
-          <option value="광양양극재">광양양극재</option>
-          <option value="포항음극재">포항음극재</option>
           <option value="기타">기타</option>
         </select>
       </div>
       <div class="form-group">
         <label class="f-label">세부 위치<span class="req">*</span></label>
-        <input class="f-input" id="detail-location" placeholder="1공장 2층 배관실">
+        <input class="f-input" id="detail-location" placeholder="3층 3라인 예비소성로">
       </div>
     </div>
     <div class="f-row">
@@ -585,12 +815,12 @@ body{
       </div>
       <div class="form-group">
         <label class="f-label">협력사명<span class="req">*</span></label>
-        <input class="f-input" id="company-name" placeholder="ABC건설">
+        <input class="f-input" id="company-name" placeholder="보겸건설">
       </div>
     </div>
     <div class="form-group">
       <label class="f-label">작업 책임자<span class="req">*</span></label>
-      <input class="f-input" id="supervisor" placeholder="홍길동">
+      <input class="f-input" id="supervisor" placeholder="이안전">
     </div>
     <div class="form-group">
       <label class="f-label">작업 내용<span class="req">*</span></label>
@@ -598,19 +828,21 @@ body{
     </div>
   </div>
 
-  <div class="form-section">
+  <!-- PSM 섹션 (포항양극재공장 미대상 - 완전 숨김) -->
+  <div class="form-section psm-hidden">
     <div class="form-section-title">🏭 나. PSM 설비 구분</div>
     <div class="form-group">
-      <label class="f-label">PSM 설비 여부<span class="req">*</span></label>
+      <label class="f-label">PSM 설비 여부</label>
       <div class="radio-group">
         <div class="radio-btn" id="psm-yes-btn" onclick="selPSM('yes')">예 (PSM 설비)</div>
-        <div class="radio-btn" id="psm-no-btn" onclick="selPSM('no')">아니오 (일반)</div>
+        <div class="radio-btn active" id="psm-no-btn" onclick="selPSM('no')">아니오 (일반)</div>
       </div>
     </div>
-    <div class="info-box" style="margin-bottom:0;">
-      <div class="info-box-title">💡 PSM이란?</div>
-      <div class="info-box-text">공정안전관리 대상 설비 · PSM 설비는 추가 안전조치 필요</div>
-    </div>
+  </div>
+  <!-- PSM 안내 (완전 숨김) -->
+  <div class="info-box psm-hidden" style="margin-bottom:0;">
+    <div class="info-box-title">💡 PSM이란?</div>
+    <div class="info-box-text">공정안전관리 대상 설비 · PSM 설비는 추가 안전조치 필요</div>
   </div>
 
   <div class="btn-row">
@@ -626,6 +858,18 @@ body{
     <div class="warn-box-text">선택한 유형별 체크리스트가 다음 단계에서 표시됩니다</div>
   </div>
   <div class="work-type-grid">
+
+    <!-- 일반작업 (배타적 선택) -->
+    <div class="wt-card general" onclick="togGeneralWT(this)">
+      <div class="wt-ico">✅</div>
+      <div class="wt-info">
+        <div class="wt-title">0. 일반작업</div>
+        <div class="wt-desc">기본 안전조치만 필요</div>
+      </div>
+      <div class="wt-check"></div>
+    </div>
+
+    <!-- 위험작업 6종 -->
     <div class="wt-card" onclick="togWT(this,'fire')">
       <div class="wt-ico">🔥</div>
       <div class="wt-info">
@@ -681,24 +925,38 @@ body{
   </div>
 </div>
 
-<!-- ══ SCREEN 3: 체크리스트 ══ -->
+<!-- ══ SCREEN 3: 체크리스트 (앞부분) ══ -->
 <div class="screen" id="screen-step3">
   <div class="danger-box">
     <div class="danger-box-title">⚠️ 모든 항목을 ⭕ 적합으로 체크해야 합니다</div>
-    <div class="danger-box-text">❌ 부적합 항목이 있으면 작업 허가 불가</div>
+    <div class="danger-box-text">❌ 부적합 항목이 있으면 작업 허가 불가 · ➖ 해당없음 선택 시 사유 입력 필요</div>
+  </div>
+
+  <!-- 일반작업 체크리스트 -->
+  <div class="cl-section" id="cl-general" style="display:none;">
+    <div class="cl-section-header general">✅ 일반작업 체크리스트</div>
+    <div class="cl-items">
+      <div class="cl-item" id="ci-general-1"><div class="cl-num">0.1</div><div class="cl-text">포항양극재 11대 안전철칙 및 그라운드룰(Ground Rule) 준수</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',1,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-general-2"><div class="cl-num">0.2</div><div class="cl-text">개인보호구 착용 (안전모·안전화)</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',2,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-general-3"><div class="cl-num">0.3</div><div class="cl-text">작업구역 정리정돈 상태</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',3,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-general-4"><div class="cl-num">0.4</div><div class="cl-text">작업 도구 및 장비 상태 확인</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',4,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-general-5"><div class="cl-num">0.5</div><div class="cl-text">비상연락 체계 확보</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',5,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-general-6"><div class="cl-num">0.6</div><div class="cl-text">작업 전 TBM(Tool Box Meeting) 실시</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',6,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-general-7"><div class="cl-num">0.7</div><div class="cl-text">작업 후 뒷정리 및 안전 확인</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('general',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('general',7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('general',7,this)">해당없음</button></div></div>
+    </div>
   </div>
 
   <!-- 화기작업 -->
   <div class="cl-section" id="cl-fire" style="display:none;">
     <div class="cl-section-header">🔥 화기작업 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item" id="ci-fire-1"><div class="cl-num">1.1</div><div class="cl-text">용접방화포(KFI인증) 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',1,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-fire-2"><div class="cl-num">1.2</div><div class="cl-text">소화기 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',2,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-fire-3"><div class="cl-num">1.3</div><div class="cl-text">가연성·인화성물질 제거</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',3,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-fire-4"><div class="cl-num">1.4</div><div class="cl-text">용접·용단 작업 전 상부·주변 위험요소 제거</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',4,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-fire-5"><div class="cl-num">1.5</div><div class="cl-text">화재감시자 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',5,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-fire-6"><div class="cl-num">1.6</div><div class="cl-text">배관등 용단 작업시 인화성가스·증기 유무확인, 환기/퍼지 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',6,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-fire-7"><div class="cl-num">1.7</div><div class="cl-text">작업 전 안전교육</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',7,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-fire-1"><div class="cl-num">1.1</div><div class="cl-text">용접방화포(KFI인증) 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',1,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-fire-2"><div class="cl-num">1.2</div><div class="cl-text">소화기 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',2,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-fire-3"><div class="cl-num">1.3</div><div class="cl-text">가연성·인화성물질 제거</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',3,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-fire-4"><div class="cl-num">1.4</div><div class="cl-text">용접·용단 작업 전 상부·주변 위험요소 제거</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',4,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-fire-5"><div class="cl-num">1.5</div><div class="cl-text">화재감시자 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',5,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-fire-6"><div class="cl-num">1.6</div><div class="cl-text">배관등 용단 작업시 인화성가스·증기 유무확인, 환기/퍼지 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',6,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-fire-7"><div class="cl-num">1.7</div><div class="cl-text">작업 전 안전교육</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('fire',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('fire',7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('fire',7,this)">해당없음</button></div></div>
     </div>
   </div>
 
@@ -706,13 +964,13 @@ body{
   <div class="cl-section" id="cl-electric" style="display:none;">
     <div class="cl-section-header">⚡ 전기작업 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item" id="ci-electric-1"><div class="cl-num">2.1</div><div class="cl-text">교차작업 금지관리 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',1,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-electric-2"><div class="cl-num">2.2</div><div class="cl-text">구조물 바닥 절연 확인</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',2,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-electric-3"><div class="cl-num">2.3</div><div class="cl-text">누전차단기 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',3,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-electric-4"><div class="cl-num">2.4</div><div class="cl-text">차단판(잠금) 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',4,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-electric-5"><div class="cl-num">2.5</div><div class="cl-text">절연용 보호구 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',5,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-electric-6"><div class="cl-num">2.6</div><div class="cl-text">배출기 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',6,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-electric-7"><div class="cl-num">2.7</div><div class="cl-text">감전재해 예방장비 비치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',7,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-1"><div class="cl-num">2.1</div><div class="cl-text">교차작업 금지관리 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',1,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-electric-2"><div class="cl-num">2.2</div><div class="cl-text">구조물 바닥 절연 확인</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',2,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-electric-3"><div class="cl-num">2.3</div><div class="cl-text">누전차단기 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',3,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-electric-4"><div class="cl-num">2.4</div><div class="cl-text">차단판(잠금) 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',4,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-electric-5"><div class="cl-num">2.5</div><div class="cl-text">절연용 보호구 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',5,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-electric-6"><div class="cl-num">2.6</div><div class="cl-text">배출기 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',6,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-electric-7"><div class="cl-num">2.7</div><div class="cl-text">감전재해 예방장비 비치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric',7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('electric',7,this)">해당없음</button></div></div>
     </div>
   </div>
 
@@ -720,27 +978,27 @@ body{
   <div class="cl-section" id="cl-height" style="display:none;">
     <div class="cl-section-header">⬆️ 고소작업 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item" id="ci-height-1"><div class="cl-num">3.1</div><div class="cl-text">추락방지 안전난간 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',1,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-height-2"><div class="cl-num">3.2</div><div class="cl-text">추락방지망·개구부 덮개 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',2,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-height-3"><div class="cl-num">3.3</div><div class="cl-text">안전대 부착설비 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',3,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-height-4"><div class="cl-num">3.4</div><div class="cl-text">고소작업대·비계·달비계 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',4,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-height-5"><div class="cl-num">3.5</div><div class="cl-text">작업발판 설치 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',5,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-height-6"><div class="cl-num">3.6</div><div class="cl-text">사다리 안전 사용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',6,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-height-7"><div class="cl-num">3.7</div><div class="cl-text">안전모 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',7,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-height-1"><div class="cl-num">3.1</div><div class="cl-text">추락방지 안전난간 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',1,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-height-2"><div class="cl-num">3.2</div><div class="cl-text">추락방지망·개구부 덮개 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',2,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-height-3"><div class="cl-num">3.3</div><div class="cl-text">안전대 부착설비 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',3,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-height-4"><div class="cl-num">3.4</div><div class="cl-text">고소작업대·비계·달비계 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',4,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-height-5"><div class="cl-num">3.5</div><div class="cl-text">작업발판 설치 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',5,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-height-6"><div class="cl-num">3.6</div><div class="cl-text">사다리 안전 사용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',6,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-height-7"><div class="cl-num">3.7</div><div class="cl-text">안전모 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('height',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('height',7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('height',7,this)">해당없음</button></div></div>
     </div>
   </div>
 
-  <!-- 전기충전 -->
+  <!-- 전기(충전)작업 - 해당없음 없음 (안전상 필수) -->
   <div class="cl-section" id="cl-electric-live" style="display:none;">
     <div class="cl-section-header">⚡ 전기(충전)작업 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item" id="ci-el-1"><div class="cl-num">4.1</div><div class="cl-text">충전전로 인근작업 실시</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',1,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-el-2"><div class="cl-num">4.2</div><div class="cl-text">도전성 제어(전원) 차단</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',2,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-el-3"><div class="cl-num">4.3</div><div class="cl-text">절연용 방호구 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',3,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-el-4"><div class="cl-num">4.4</div><div class="cl-text">인접 충전부 절연보호 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',4,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-el-5"><div class="cl-num">4.5</div><div class="cl-text">활선작업용 기구 사용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',5,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-el-6"><div class="cl-num">4.6</div><div class="cl-text">감시인 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',6,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-el-7"><div class="cl-num">4.7</div><div class="cl-text">접지장치 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('el',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('el',7,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-1"><div class="cl-num">4.1</div><div class="cl-text">충전전로 인근작업 실시</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',1,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-2"><div class="cl-num">4.2</div><div class="cl-text">도전성 제어(전원) 차단</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',2,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-3"><div class="cl-num">4.3</div><div class="cl-text">절연용 방호구 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',3,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-4"><div class="cl-num">4.4</div><div class="cl-text">인접 충전부 절연보호 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',4,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-5"><div class="cl-num">4.5</div><div class="cl-text">활선작업용 기구 사용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',5,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-6"><div class="cl-num">4.6</div><div class="cl-text">감시인 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',6,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-electric-live-7"><div class="cl-num">4.7</div><div class="cl-text">접지장치 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('electric-live',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('electric-live',7,'no',this)">❌</button></div></div>
     </div>
   </div>
 
@@ -748,25 +1006,25 @@ body{
   <div class="cl-section" id="cl-heavy" style="display:none;">
     <div class="cl-section-header">🏗️ 중량물·유해가스 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item" id="ci-heavy-1"><div class="cl-num">5.1</div><div class="cl-text">작업운전 시작조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',1,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-heavy-2"><div class="cl-num">5.2</div><div class="cl-text">신호수 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',2,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-heavy-3"><div class="cl-num">5.3</div><div class="cl-text">추락방지조치·이동트레일러 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',3,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-heavy-4"><div class="cl-num">5.4</div><div class="cl-text">중량물 인양 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',4,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-heavy-5"><div class="cl-num">5.5</div><div class="cl-text">작업구역 및 출입금지 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',5,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-heavy-6"><div class="cl-num">5.6</div><div class="cl-text">작업반경관리 확인 및 도면비치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',6,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-heavy-7"><div class="cl-num">5.7</div><div class="cl-text">중량물 인양 작업계획서</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',7,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-heavy-1"><div class="cl-num">5.1</div><div class="cl-text">작업운전 시작조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',1,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-heavy-2"><div class="cl-num">5.2</div><div class="cl-text">신호수 배치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',2,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-heavy-3"><div class="cl-num">5.3</div><div class="cl-text">추락방지조치·이동트레일러 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',3,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-heavy-4"><div class="cl-num">5.4</div><div class="cl-text">중량물 인양 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',4,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-heavy-5"><div class="cl-num">5.5</div><div class="cl-text">작업구역 및 출입금지 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',5,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-heavy-6"><div class="cl-num">5.6</div><div class="cl-text">작업반경관리 확인 및 도면비치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',6,this)">해당없음</button></div></div>
+      <div class="cl-item" id="ci-heavy-7"><div class="cl-num">5.7</div><div class="cl-text">중량물 인양 작업계획서</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('heavy',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('heavy',7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setCheckNA('heavy',7,this)">해당없음</button></div></div>
     </div>
   </div>
 
-  <!-- 밀폐공간 -->
+  <!-- 밀폐공간 - 해당없음 없음 (안전상 필수) -->
   <div class="cl-section" id="cl-confined" style="display:none;">
     <div class="cl-section-header">🚪 밀폐공간·굴착 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item" id="ci-confined-1"><div class="cl-num">6.1</div><div class="cl-text">출입인원과 감시자 배치 및 교육</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',1,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-confined-2"><div class="cl-num">6.2</div><div class="cl-text">산소 및 유해가스 농도 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',2,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-confined-3"><div class="cl-num">6.3</div><div class="cl-text">환기설비 비치 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',3,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-confined-1"><div class="cl-num">6.1</div><div class="cl-text">출입인원 및 감시자 배치 · 산소농도 측정자 교육 확인</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',1,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-confined-2"><div class="cl-num">6.2</div><div class="cl-text">산소 및 유해가스 측정(5GAS측정)</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',2,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-confined-3"><div class="cl-num">6.3</div><div class="cl-text">환기팬 비치 준비</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',3,'no',this)">❌</button></div></div>
       <div class="cl-item" id="ci-confined-4"><div class="cl-num">6.4</div><div class="cl-text">비상연락 수단 확보</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',4,'no',this)">❌</button></div></div>
-      <div class="cl-item" id="ci-confined-5"><div class="cl-num">6.5</div><div class="cl-text">개인산소계·경보기 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',5,'no',this)">❌</button></div></div>
+      <div class="cl-item" id="ci-confined-5"><div class="cl-num">6.5</div><div class="cl-text">휴대용 가스농도측정기 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',5,'no',this)">❌</button></div></div>
       <div class="cl-item" id="ci-confined-6"><div class="cl-num">6.6</div><div class="cl-text">송기마스크 등 호흡용 보호구 착용</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',6,'no',this)">❌</button></div></div>
       <div class="cl-item" id="ci-confined-7"><div class="cl-num">6.7</div><div class="cl-text">작업 시작 30분 전 신청 완료</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setCheck('confined',7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setCheck('confined',7,'no',this)">❌</button></div></div>
     </div>
@@ -813,7 +1071,7 @@ body{
             <td><input class="gas-input" type="number" step="0.1" id="gco21" placeholder="0" oninput="chkGas(1)"></td>
             <td><input class="gas-input" type="number" step="0.1" id="gh1" placeholder="0" oninput="chkGas(1)"></td>
             <td><input class="gas-input" type="number" step="0.1" id="gl1" placeholder="0" oninput="chkGas(1)"></td>
-            <td><input class="gas-input" type="text" id="gm1" placeholder="홍길동"></td>
+            <td><input class="gas-input" type="text" id="gm1" placeholder="이안전"></td>
           </tr>
         </tbody>
       </table>
@@ -835,13 +1093,13 @@ body{
   <div class="cl-section">
     <div class="cl-section-header">🔒 ILS 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item"><div class="cl-num">1</div><div class="cl-text">전기 차단 및 잠금 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(1,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(1,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">2</div><div class="cl-text">공유압 차단 및 잠금 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(2,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(2,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">3</div><div class="cl-text">잔류에너지 방출(방전)조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(3,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(3,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">4</div><div class="cl-text">GIB 운영(ILS열쇠보관)</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(4,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(4,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">5</div><div class="cl-text">가스(누출) 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(5,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(5,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">6</div><div class="cl-text">차단판(잠금장치) 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(6,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(6,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">7</div><div class="cl-text">작업구역 설정 및 위험표지 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(7,'no',this)">❌</button><button class="cl-radio-btn" onclick="setILS(7,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">1</div><div class="cl-text">전기 차단 및 잠금 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(1,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">2</div><div class="cl-text">공유압 차단 및 잠금 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(2,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">3</div><div class="cl-text">잔류에너지 방출(방전)조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(3,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">4</div><div class="cl-text">GIB 운영(ILS열쇠보관)</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(4,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">5</div><div class="cl-text">가스(누출) 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(5,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">6</div><div class="cl-text">차단판(잠금장치) 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(6,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">7</div><div class="cl-text">작업구역 설정 및 위험표지 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(7,'na',this)">해당없음</button></div></div>
     </div>
   </div>
   <div class="btn-row">
@@ -850,22 +1108,22 @@ body{
   </div>
 </div>
 
-<!-- ══ SCREEN 6: 9개 질문 ══ -->
+<!-- ══ SCREEN 6: 9개 질문 (Q4,Q6,Q8,Q9는 해당없음 가능) ══ -->
 <div class="screen" id="screen-step6">
   <div class="danger-box">
-    <div class="danger-box-title">⚠️ 9개 질문 모두 "예"로 답변해야 허가 가능</div>
-    <div class="danger-box-text">"아니오" 항목이 있으면 작업 허가 불가</div>
+    <div class="danger-box-title">⚠️ 9개 질문에 답변해야 허가 가능</div>
+    <div class="danger-box-text">필수 항목은 "예"로만 답변 가능 · 일부 항목은 "해당없음" 선택 가능</div>
   </div>
 
-  <div class="q-item" id="q1"><div class="q-num">질문 1</div><div class="q-text">작업자가 안전작업허가서 내용을 충분히 숙지하고 있는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(1,'yes',this)">예</button><button class="q-btn" onclick="setQ(1,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q2"><div class="q-num">질문 2</div><div class="q-text">관계자 및 관리자가 안전한 작업방법에 대한 사전교육을 받았는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(2,'yes',this)">예</button><button class="q-btn" onclick="setQ(2,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q3"><div class="q-num">질문 3</div><div class="q-text">작업 이행 계획 및 안전대책을 해당 작업자에게 충분히 전달하였는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(3,'yes',this)">예</button><button class="q-btn" onclick="setQ(3,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q4"><div class="q-num">질문 4</div><div class="q-text">충전부 근접 작업 시 감전사고 예방을 위한 충분한 이격거리를 확보하였는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(4,'yes',this)">예</button><button class="q-btn" onclick="setQ(4,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q5"><div class="q-num">질문 5</div><div class="q-text">관련 규정 및 상세기준에 따라 안전조치를 실시하였는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(5,'yes',this)">예</button><button class="q-btn" onclick="setQ(5,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q6"><div class="q-num">질문 6</div><div class="q-text">외부 작업 시 안전방호 조치를 완료하였는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(6,'yes',this)">예</button><button class="q-btn" onclick="setQ(6,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q7"><div class="q-num">질문 7</div><div class="q-text">보호구·공구·통신장비·경보설비 등이 정상 작동하는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(7,'yes',this)">예</button><button class="q-btn" onclick="setQ(7,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q8"><div class="q-num">질문 8</div><div class="q-text">작업 중 계측장비로 가스농도를 지속 측정하고 있는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(8,'yes',this)">예</button><button class="q-btn" onclick="setQ(8,'no',this)">아니오</button></div></div>
-  <div class="q-item" id="q9"><div class="q-num">질문 9</div><div class="q-text">작업 전 환기 실시 및 적정 환기상태가 유지되고 있는가?</div><div class="q-btns"><button class="q-btn" onclick="setQ(9,'yes',this)">예</button><button class="q-btn" onclick="setQ(9,'no',this)">아니오</button></div></div>
+  <div class="q-item" id="q1"><div class="q-num">질문 1</div><div class="q-text">작업자가 안전작업허가서 내용을 충분히 숙지하고 있는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(1,'yes',this)">예</button><button class="q-btn no" onclick="setQ(1,'no',this)">아니오</button></div></div>
+  <div class="q-item" id="q2"><div class="q-num">질문 2</div><div class="q-text">관계자 및 관리자가 안전한 작업방법에 대한 사전교육을 받았는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(2,'yes',this)">예</button><button class="q-btn no" onclick="setQ(2,'no',this)">아니오</button></div></div>
+  <div class="q-item" id="q3"><div class="q-num">질문 3</div><div class="q-text">작업 이행 계획 및 안전대책을 해당 작업자에게 충분히 전달하였는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(3,'yes',this)">예</button><button class="q-btn no" onclick="setQ(3,'no',this)">아니오</button></div></div>
+  <div class="q-item" id="q4"><div class="q-num">질문 4</div><div class="q-text">충전부 근접 작업 시 감전사고 예방을 위한 충분한 이격거리를 확보하였는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(4,'yes',this)">예</button><button class="q-btn no" onclick="setQ(4,'no',this)">아니오</button><button class="q-btn na" onclick="setQNA(4,this)">해당없음</button></div></div>
+  <div class="q-item" id="q5"><div class="q-num">질문 5</div><div class="q-text">관련 규정 및 상세기준에 따라 안전조치를 실시하였는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(5,'yes',this)">예</button><button class="q-btn no" onclick="setQ(5,'no',this)">아니오</button></div></div>
+  <div class="q-item" id="q6"><div class="q-num">질문 6</div><div class="q-text">외부 작업 시 안전방호 조치를 완료하였는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(6,'yes',this)">예</button><button class="q-btn no" onclick="setQ(6,'no',this)">아니오</button><button class="q-btn na" onclick="setQNA(6,this)">해당없음</button></div></div>
+  <div class="q-item" id="q7"><div class="q-num">질문 7</div><div class="q-text">보호구·공구·통신장비·경보설비 등이 정상 작동하는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(7,'yes',this)">예</button><button class="q-btn no" onclick="setQ(7,'no',this)">아니오</button></div></div>
+  <div class="q-item" id="q8"><div class="q-num">질문 8</div><div class="q-text">작업 중 계측장비로 가스농도를 지속 측정하고 있는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(8,'yes',this)">예</button><button class="q-btn no" onclick="setQ(8,'no',this)">아니오</button><button class="q-btn na" onclick="setQNA(8,this)">해당없음</button></div></div>
+  <div class="q-item" id="q9"><div class="q-num">질문 9</div><div class="q-text">작업 전 환기 실시 및 적정 환기상태가 유지되고 있는가?</div><div class="q-btns"><button class="q-btn yes" onclick="setQ(9,'yes',this)">예</button><button class="q-btn no" onclick="setQ(9,'no',this)">아니오</button><button class="q-btn na" onclick="setQNA(9,this)">해당없음</button></div></div>
 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goToStep(5)">← 이전</button>
@@ -893,7 +1151,7 @@ body{
     <div class="form-section-title">👤 작업 책임자 정보</div>
     <div class="form-group">
       <label class="f-label">책임자 이름<span class="req">*</span></label>
-      <input class="f-input" id="sup-name" placeholder="홍길동">
+      <input class="f-input" id="sup-name" placeholder="이안전">
     </div>
     <div class="form-group">
       <label class="f-label">연락처<span class="req">*</span></label>
@@ -955,119 +1213,100 @@ body{
 
 </div><!-- /.app -->
 
+<!-- 🆕 사유 입력 모달 -->
+<div class="reason-overlay" id="reasonOverlay">
+  <div class="reason-modal">
+    <div class="reason-title">➖ 해당없음 사유</div>
+    <div class="reason-sub">이 항목이 해당되지 않는 이유를 간단히 기록해주세요. (감사 시 참조)</div>
+    <div class="reason-target" id="reasonTarget">항목명</div>
+    
+    <textarea class="reason-textarea" id="reasonInput" placeholder="예: 밀폐공간 작업이 아니므로 가스 측정 불필요"></textarea>
+    
+    <div class="reason-quick">
+      <button class="reason-chip" onclick="fillReason('밀폐공간 작업 아님')">밀폐공간 아님</button>
+      <button class="reason-chip" onclick="fillReason('전기 작업 아님')">전기 아님</button>
+      <button class="reason-chip" onclick="fillReason('실외 작업')">실외 작업</button>
+      <button class="reason-chip" onclick="fillReason('일반 정비 작업')">일반 정비</button>
+    </div>
+    
+    <div class="reason-buttons">
+      <button class="reason-btn-cancel" onclick="cancelReason()">취소</button>
+      <button class="reason-btn-save" id="reasonSaveBtn" onclick="saveReason()" disabled>저장</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
 var permitData = {
   woNumber:'', workName:'', location:'', detailLocation:'',
   startDate:'', startTime:'', endDate:'', endTime:'',
   workerCount:0, companyName:'', supervisor:'', workDescription:'',
-  psmFacility:'', workTypes:[], checklist:{}, gasMeasurements:[],
-  ILSChecklist:{}, questions:{}, workerSignature:null,
+  psmFacility:'일반 설비', workTypes:[], checklist:{}, checklistReasons:{},
+  gasMeasurements:[],
+  ILSChecklist:{}, ILSReasons:{},
+  questions:{}, questionReasons:{},
+  workerSignature:null,
   supervisorName:'', supervisorPhone:'', supervisorEmail:'',
-  sourceWorkId:null  // DB에서 가져온 작업 ID
+  sourceWorkId:null
 };
 
 var currentStep = 0;
 var gasRowCount = 1;
-var psmSelected = null;
+var psmSelected = 'no'; // 포항양극재공장 PSM 미대상 - 자동 설정
 var isFromDB = false;
 
-// ═══════════════════════════════
-// INIT
-// ═══════════════════════════════
-window.addEventListener('DOMContentLoaded', function() {
-  var today = new Date().toISOString().split('T')[0];
-  document.getElementById('start-date').value = today;
-  document.getElementById('end-date').value = today;
-  document.getElementById('wo-display').textContent = genWO();
+// 사유 모달 관련
+var reasonContext = null; // { type, category, num }
 
-  // 현재 datetime
-  var now = new Date();
-  var dt = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+
-            pad(now.getHours())+':'+pad(now.getMinutes());
-  document.getElementById('gt1').value = dt;
-
-  // loadTodayWorks(); // ✂️ 작업 목록 제거
-  initSigPad();
-
-  // URL 파라미터로 특정 작업 자동 선택
-  var params = new URLSearchParams(window.location.search);
-  var wid = params.get('workId');
-  if(wid) {
-    setTimeout(function(){ startFromDB(wid); }, 300);
-  }
-});
-
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
 function pad(n){return('0'+n).slice(-2);}
+function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
+function setVal(id,v){var el=document.getElementById(id);if(el)el.value=v;}
+function setTxt(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
 
-// ═══════════════════════════════
-// TODAY WORKS (DB에서 로드)
-// ═══════════════════════════════
-function loadTodayWorks() {
-  var list = document.getElementById('todayWorkList');
-  if(!list) return;   // 작업 목록 UI 제거됨
-  var today = new Date().toISOString().split('T')[0];
-
-  try {
-    var raw = localStorage.getItem('safetyDatabase');
-    if(!raw) { showEmptyList(list); return; }
-    var db = JSON.parse(raw);
-    var works = (db.workHistory||[]).filter(function(w){ return w.date === today; });
-
-    if(!works.length) { showEmptyList(list); return; }
-
-    // 허가서 현황 로드
-    var permits = getPermits();
-    var permitMap = {};
-    permits.forEach(function(p){ if(p.sourceWorkId) permitMap[p.sourceWorkId] = p; });
-
-    var html = '';
-    works.forEach(function(w) {
-      var isDgr = w.risk === '고위험';
-      var permit = permitMap[w.date+'_'+(w.originalNo||'')];
-      var status = permit ? permit.status : '대기중';
-      var badgeCls = isDgr?'r': status==='허가완료'?'done': status==='허가진행중'?'p':'g';
-      var wName = (w.workName||w.workNameFull||'').substring(0,28);
-      var loc = w.location ? (w.location.factory||'')+(w.location.line?w.location.line+'라인':'') : '';
-      var wid = w.date+'_'+(w.originalNo||'');
-
-      html += '<div class="today-work-card'+(isDgr?' danger':'')+'">';
-      html += '<div class="twc-top">';
-      html += '<span class="twc-badge '+badgeCls+'">'+(isDgr?'고위험':'일반')+'</span>';
-      html += '<span class="twc-status">'+status+'</span>';
-      html += '</div>';
-      html += '<div class="twc-name">'+wName+'</div>';
-      html += '<div class="twc-meta">';
-      if(loc) html += '<span>📍 '+loc+'</span>';
-      html += '<span>🏢 '+(w.company||'-')+'</span>';
-      html += '</div>';
-      html += '<div class="twc-action">';
-      if(status === '허가완료') {
-        html += '<div class="twc-done-label">✅ 허가 완료</div>';
-      } else {
-        html += '<button class="twc-btn" onclick="startFromDB(\''+wid+'\')">허가서 신청 →</button>';
-      }
-      html += '</div>';
-      html += '</div>';
-    });
-    list.innerHTML = html;
-  } catch(e) {
-    showEmptyList(list);
+// ═══════════════════════════════════════════════════════
+// THEME (다크모드 - 대시보드와 동기화)
+// ═══════════════════════════════════════════════════════
+function initTheme(){
+  var saved = localStorage.getItem('theme');
+  if(saved){
+    document.documentElement.setAttribute('data-theme', saved);
+  } else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){
+    document.documentElement.setAttribute('data-theme', 'dark');
   }
+  window.addEventListener('storage', function(e){
+    if(e.key === 'theme'){
+      document.documentElement.setAttribute('data-theme', e.newValue || 'light');
+    }
+  });
 }
 
-function showEmptyList(list) {
-  list.innerHTML = '<div class="empty-list">'+
-    '<div class="empty-list-ico">📋</div>'+
-    '<div class="empty-list-txt">오늘 등록된 작업이 없습니다.<br>신규 작업 생성으로 직접 입력하세요.</div>'+
-    '</div>';
+// ═══════════════════════════════════════════════════════
+// 홈버튼 / 뒤로가기
+// ═══════════════════════════════════════════════════════
+function goHome(){
+  if(currentStep > 0 || document.getElementById('screen-complete').classList.contains('active')){
+    if(!confirm('작성 중인 내용이 사라집니다. 홈으로 이동할까요?')) return;
+  }
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
 
-// ═══════════════════════════════
+function goBack() {
+  if(currentStep > 1) goToStep(currentStep-1);
+  else if(currentStep === 1) goToScreen('screen-welcome');
+  else if(document.getElementById('screen-complete').classList.contains('active'))
+    goToScreen('screen-welcome');
+  else history.back();
+}
+
+// ═══════════════════════════════════════════════════════
 // MODE SELECT
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
 function selectMode(mode) {
   if(mode === 'new') {
     isFromDB = false;
@@ -1076,7 +1315,6 @@ function selectMode(mode) {
     document.getElementById('wo-display').textContent = permitData.woNumber;
     goToStep(1);
   }
-  // 'from-db'는 카드에서 직접 선택
 }
 
 function startFromDB(wid) {
@@ -1103,14 +1341,12 @@ function startFromDB(wid) {
     permitData.endDate = work.date || new Date().toISOString().split('T')[0];
     permitData.woNumber = genWO();
 
-    // 폼에 자동 입력
     setVal('work-name', permitData.workName);
     setVal('company-name', permitData.companyName);
     setVal('supervisor', permitData.supervisor);
     setVal('start-date', permitData.startDate);
     setVal('end-date', permitData.endDate);
 
-    // location select
     var locSel = document.getElementById('location');
     var locVal = permitData.location;
     for(var i=0; i<locSel.options.length; i++){
@@ -1121,6 +1357,9 @@ function startFromDB(wid) {
     setVal('detail-location', permitData.detailLocation);
     document.getElementById('wo-display').textContent = permitData.woNumber;
 
+    // 🆕 자동화 훅: 위험성평가 자동 매칭 시도 (향후 확장)
+    tryAutoMatchRiskAssessment(wid);
+
     goToStep(1);
     showToast('작업 정보가 자동 입력되었습니다', 'success');
   } catch(e) {
@@ -1128,9 +1367,35 @@ function startFromDB(wid) {
   }
 }
 
-// ═══════════════════════════════
-// WO NUMBER
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
+// 🆕 자동화 훅 (미래 대비 - 위험성평가 자동 반영)
+// ═══════════════════════════════════════════════════════
+function tryAutoMatchRiskAssessment(workId) {
+  try {
+    // TODO Phase 2+: JSA_DB와 위험성평가 조회
+    // var jsa = getJSAByWorkId(workId);
+    // var risk = getRiskAssessment(workId);
+    // if(jsa && risk) {
+    //   permitData.autoRecommendedWorkTypes = jsa.workTypes;
+    //   permitData.autoRecommendedChecklist = mergeChecklists(jsa, risk);
+    //   showToast('AI 추천 위험요인 발견 - 2단계에서 확인하세요', 'info');
+    // }
+    console.log('[자동화 훅] tryAutoMatchRiskAssessment 준비됨:', workId);
+  } catch(e) {}
+}
+
+function generateChecklistFromRiskAssessment(workId, workTypes) {
+  // TODO Phase 3+: 위험성평가 기반 체크리스트 자동 생성
+  // var baseChecklist = getStandardChecklist(workTypes);
+  // var risk = getRiskAssessment(workId);
+  // var additionalItems = risk.hazards.flatMap(h => h.recommendedMeasures);
+  // return dedupeAndSort([...baseChecklist, ...additionalItems]);
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════
+// W/O NUMBER
+// ═══════════════════════════════════════════════════════
 function genWO() {
   var n = new Date();
   return 'WO-'+n.getFullYear()+pad(n.getMonth()+1)+pad(n.getDate())+'-'+
@@ -1150,9 +1415,9 @@ function toggleManualWO() {
   }
 }
 
-// ═══════════════════════════════
-// SCREEN / STEP NAV
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
+// SCREEN / STEP NAVIGATION
+// ═══════════════════════════════════════════════════════
 var STEP_LABELS = ['','기본정보','작업 유형','체크리스트','가스 측정','ILS','안전 확인','서명 및 승인'];
 
 function goToScreen(id) {
@@ -1160,6 +1425,7 @@ function goToScreen(id) {
   document.getElementById(id).classList.add('active');
   var pw = document.getElementById('progressWrap');
   pw.style.display = id === 'screen-welcome' || id === 'screen-complete' ? 'none' : 'block';
+  if(id === 'screen-welcome') currentStep = 0;
   window.scrollTo(0,0);
 }
 
@@ -1186,70 +1452,275 @@ function updateProgress(step) {
   document.getElementById('progressPct').textContent = step+'/7';
 }
 
-function goBack() {
-  if(currentStep > 1) goToStep(currentStep-1);
-  else if(currentStep === 1) goToScreen('screen-welcome');
-  else if(document.getElementById('screen-complete').classList.contains('active'))
-    goToScreen('screen-welcome');
-  else history.back();
-}
-
-// ═══════════════════════════════
-// PSM
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
+// PSM (포항양극재공장 미대상 - 항상 'no')
+// ═══════════════════════════════════════════════════════
 function selPSM(v) {
-  psmSelected = v;
-  document.getElementById('psm-yes-btn').className = 'radio-btn'+(v==='yes'?' sel-yes':'');
-  document.getElementById('psm-no-btn').className = 'radio-btn'+(v==='no'?' sel-no':'');
+  psmSelected = 'no'; // 어떤 값이 들어와도 'no' 유지
 }
 
-// ═══════════════════════════════
-// WORK TYPES
-// ═══════════════════════════════
+// ═══════════════════════════════════════════════════════
+// 작업 유형 선택 (일반작업 배타적)
+// ═══════════════════════════════════════════════════════
+
+// 일반작업 토글 (배타적 - 선택 시 다른 유형 자동 해제)
+function togGeneralWT(card) {
+  var isActive = card.classList.contains('active');
+  
+  if(!isActive) {
+    // 일반작업 선택 → 다른 카드 모두 해제 및 비활성화
+    document.querySelectorAll('.wt-card').forEach(function(c){
+      if(c !== card) {
+        c.classList.remove('active');
+        c.classList.add('disabled');
+      }
+    });
+    card.classList.add('active');
+    permitData.workTypes = ['general'];
+    showToast('일반작업 선택 - 다른 위험 유형 해제됨', 'info');
+  } else {
+    // 일반작업 해제 → 다른 카드 활성화
+    card.classList.remove('active');
+    document.querySelectorAll('.wt-card').forEach(function(c){
+      c.classList.remove('disabled');
+    });
+    permitData.workTypes = [];
+  }
+}
+
+// 위험작업 유형 선택 (일반작업과 배타적)
 function togWT(card, type) {
-  card.classList.toggle('selected');
-  var chk = card.querySelector('.wt-check');
-  if(card.classList.contains('selected')) {
-    chk.textContent = '✓';
+  // 일반작업이 선택되어 있으면 해제
+  var generalCard = document.querySelector('.wt-card.general');
+  if(generalCard && generalCard.classList.contains('active')) {
+    generalCard.classList.remove('active');
+    permitData.workTypes = permitData.workTypes.filter(function(t){ return t!=='general'; });
+    document.querySelectorAll('.wt-card').forEach(function(c){
+      c.classList.remove('disabled');
+    });
+  }
+  
+  card.classList.toggle('active');
+  if(card.classList.contains('active')) {
     if(permitData.workTypes.indexOf(type)<0) permitData.workTypes.push(type);
   } else {
-    chk.textContent = '';
     permitData.workTypes = permitData.workTypes.filter(function(t){ return t!==type; });
   }
 }
 
-// ═══════════════════════════════
-// CHECKLIST
-// ═══════════════════════════════
-var WT_MAP = {fire:'cl-fire',electric:'cl-electric',height:'cl-height','electric-live':'cl-electric-live',heavy:'cl-heavy',confined:'cl-confined'};
-var WT_ITEMS = {fire:7,electric:7,height:7,'el':7,heavy:7,confined:7,'electric-live':7};
+// ═══════════════════════════════════════════════════════
+// 체크리스트 매핑
+// ═══════════════════════════════════════════════════════
+var WT_MAP = {
+  general:'cl-general',
+  fire:'cl-fire',
+  electric:'cl-electric',
+  height:'cl-height',
+  'electric-live':'cl-electric-live',
+  heavy:'cl-heavy',
+  confined:'cl-confined'
+};
+var WT_ITEMS = {general:7,fire:7,electric:7,height:7,'electric-live':7,heavy:7,confined:7};
+
+// 해당없음 허용 여부 (충전작업 electric-live, 밀폐공간 confined 제외)
+var WT_NA_ALLOWED = {
+  general:true, fire:true, electric:true, height:true, heavy:true,
+  'electric-live':false, confined:false
+};
 
 function showChecklist() {
-  // 모두 숨기고
-  Object.values(WT_MAP).forEach(function(id){ document.getElementById(id).style.display='none'; });
-  // 선택된 것만 표시
-  permitData.workTypes.forEach(function(t){ var id=WT_MAP[t]; if(id) document.getElementById(id).style.display='block'; });
+  Object.values(WT_MAP).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  permitData.workTypes.forEach(function(t){
+    var id = WT_MAP[t];
+    if(id) {
+      var el = document.getElementById(id);
+      if(el) el.style.display='block';
+    }
+  });
   updateClProgress();
 }
 
+// ═══════════════════════════════════════════════════════
+// 체크리스트 선택 (⭕ 적합 / ❌ 부적합)
+// ═══════════════════════════════════════════════════════
 function setCheck(type, num, val, btn) {
   var key = type+'-'+num;
   permitData.checklist[key] = val;
   var item = document.getElementById('ci-'+type+'-'+num);
   if(item) {
-    item.classList.remove('ok','no');
+    item.classList.remove('ok','no','na-selected');
     item.classList.add(val);
+    
+    // 해당없음 사유 제거 (⭕/❌로 재선택 시)
+    var oldReason = item.querySelector('.na-reason');
+    if(oldReason) oldReason.remove();
+    if(permitData.checklistReasons) delete permitData.checklistReasons[key];
+    
     var btns = item.querySelectorAll('.cl-radio-btn');
-    btns.forEach(function(b){ b.classList.remove('ok-sel','no-sel'); });
-    btn.classList.add(val==='ok'?'ok-sel':'no-sel');
+    btns.forEach(function(b){
+      b.classList.remove('ok','no','na-active');
+    });
+    btn.classList.add(val);
   }
   updateClProgress();
 }
 
+// ═══════════════════════════════════════════════════════
+// 체크리스트 "해당없음" 선택 (사유 입력 모달)
+// ═══════════════════════════════════════════════════════
+function setCheckNA(type, num, btn) {
+  reasonContext = { context:'checklist', type:type, num:num, btn:btn };
+  var item = document.getElementById('ci-'+type+'-'+num);
+  var textEl = item ? item.querySelector('.cl-text') : null;
+  var itemText = textEl ? textEl.textContent : '항목';
+  showReasonModal('체크리스트: '+itemText);
+}
+
+// ═══════════════════════════════════════════════════════
+// ILS 체크
+// ═══════════════════════════════════════════════════════
+function setILS(num, val, btn) {
+  permitData.ILSChecklist[num] = val;
+  var btns = btn.parentNode.querySelectorAll('.cl-radio-btn');
+  btns.forEach(function(b){
+    b.classList.remove('ok','no','na-active');
+  });
+  if(val === 'na') {
+    btn.classList.add('na-active');
+  } else {
+    btn.classList.add(val);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// 9개 질문
+// ═══════════════════════════════════════════════════════
+function setQ(num, val, btn) {
+  permitData.questions[num] = val;
+  var item = document.getElementById('q'+num);
+  item.classList.remove('yes-ans','no-ans','na-ans');
+  item.classList.add(val+'-ans');
+  
+  // 사유 있으면 제거
+  var oldReason = item.querySelector('.na-reason');
+  if(oldReason) oldReason.remove();
+  if(permitData.questionReasons) delete permitData.questionReasons[num];
+  
+  var btns = item.querySelectorAll('.q-btn');
+  btns.forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+// 질문 "해당없음" (Q4, Q6, Q8, Q9만 호출됨)
+function setQNA(num, btn) {
+  reasonContext = { context:'question', num:num, btn:btn };
+  var item = document.getElementById('q'+num);
+  var textEl = item ? item.querySelector('.q-text') : null;
+  var qText = textEl ? textEl.textContent : '질문';
+  showReasonModal('질문 '+num+': '+qText);
+}
+
+// ═══════════════════════════════════════════════════════
+// 사유 모달
+// ═══════════════════════════════════════════════════════
+function showReasonModal(targetText) {
+  document.getElementById('reasonTarget').textContent = targetText;
+  document.getElementById('reasonInput').value = '';
+  document.getElementById('reasonSaveBtn').disabled = true;
+  document.getElementById('reasonOverlay').classList.add('active');
+  setTimeout(function(){
+    document.getElementById('reasonInput').focus();
+  }, 300);
+}
+
+function fillReason(text) {
+  var input = document.getElementById('reasonInput');
+  input.value = text;
+  input.dispatchEvent(new Event('input'));
+}
+
+function cancelReason() {
+  document.getElementById('reasonOverlay').classList.remove('active');
+  reasonContext = null;
+}
+
+function saveReason() {
+  var reason = (document.getElementById('reasonInput').value || '').trim();
+  if(!reason) return;
+  
+  if(!reasonContext) return;
+  
+  if(reasonContext.context === 'checklist') {
+    // 체크리스트 해당없음 처리
+    var key = reasonContext.type+'-'+reasonContext.num;
+    permitData.checklist[key] = 'na';
+    permitData.checklistReasons[key] = reason;
+    
+    var item = document.getElementById('ci-'+reasonContext.type+'-'+reasonContext.num);
+    if(item) {
+      item.classList.remove('ok','no');
+      item.classList.add('na-selected');
+      
+      // 기존 사유 제거
+      var oldReason = item.querySelector('.na-reason');
+      if(oldReason) oldReason.remove();
+      
+      // 새 사유 추가
+      var reasonEl = document.createElement('div');
+      reasonEl.className = 'na-reason';
+      reasonEl.textContent = '➖ 해당없음: ' + reason;
+      item.appendChild(reasonEl);
+      
+      // 버튼 활성화
+      var btns = item.querySelectorAll('.cl-radio-btn');
+      btns.forEach(function(b){
+        b.classList.remove('ok','no','na-active');
+      });
+      reasonContext.btn.classList.add('na-active');
+    }
+    updateClProgress();
+    
+  } else if(reasonContext.context === 'question') {
+    // 질문 해당없음 처리
+    permitData.questions[reasonContext.num] = 'na';
+    permitData.questionReasons[reasonContext.num] = reason;
+    
+    var qItem = document.getElementById('q'+reasonContext.num);
+    if(qItem) {
+      qItem.classList.remove('yes-ans','no-ans');
+      qItem.classList.add('na-ans');
+      
+      // 기존 사유 제거
+      var oldR = qItem.querySelector('.na-reason');
+      if(oldR) oldR.remove();
+      
+      // 새 사유 추가
+      var rEl = document.createElement('div');
+      rEl.className = 'na-reason';
+      rEl.textContent = '➖ 해당없음: ' + reason;
+      qItem.appendChild(rEl);
+      
+      // 버튼 활성화
+      var qbtns = qItem.querySelectorAll('.q-btn');
+      qbtns.forEach(function(b){ b.classList.remove('active'); });
+      reasonContext.btn.classList.add('active');
+    }
+  }
+  
+  cancelReason();
+  showToast('사유가 기록되었습니다', 'success');
+}
+
+// ═══════════════════════════════════════════════════════
+// 체크리스트 진행률
+// ═══════════════════════════════════════════════════════
 function updateClProgress() {
   var total=0, done=0;
   permitData.workTypes.forEach(function(t){
-    var cnt = t==='electric-live'?7: (WT_ITEMS[t]||7);
+    var cnt = WT_ITEMS[t] || 7;
     total += cnt;
     for(var i=1;i<=cnt;i++){
       if(permitData.checklist[t+'-'+i]) done++;
@@ -1259,28 +1730,9 @@ function updateClProgress() {
   if(el) el.textContent = done+' / '+total+' 항목';
 }
 
-// ═══════════════════════════════
-// ILS
-// ═══════════════════════════════
-function setILS(num, val, btn) {
-  permitData.ILSChecklist[num] = val;
-  var btns = btn.parentNode.querySelectorAll('.cl-radio-btn');
-  btns.forEach(function(b){ b.classList.remove('ok-sel','no-sel','na-sel'); });
-  btn.classList.add(val==='ok'?'ok-sel':val==='no'?'no-sel':'na-sel');
-}
-
-// 9 QUESTIONS
-function setQ(num, val, btn) {
-  permitData.questions[num] = val;
-  var item = document.getElementById('q'+num);
-  item.classList.remove('yes-ans','no-ans');
-  item.classList.add(val==='yes'?'yes-ans':'no-ans');
-  var btns = item.querySelectorAll('.q-btn');
-  btns.forEach(function(b){ b.classList.remove('yes-sel','no-sel'); });
-  btn.classList.add(val==='yes'?'yes-sel':'no-sel');
-}
-
-// GAS
+// ═══════════════════════════════════════════════════════
+// 가스 측정
+// ═══════════════════════════════════════════════════════
 function addGasRow() {
   gasRowCount++;
   var tbody = document.getElementById('gas-rows');
@@ -1293,7 +1745,7 @@ function addGasRow() {
     '<td><input class="gas-input" type="number" step="0.1" id="gco2'+n+'" placeholder="0" oninput="chkGas('+n+')"></td>'+
     '<td><input class="gas-input" type="number" step="0.1" id="gh'+n+'" placeholder="0" oninput="chkGas('+n+')"></td>'+
     '<td><input class="gas-input" type="number" step="0.1" id="gl'+n+'" placeholder="0" oninput="chkGas('+n+')"></td>'+
-    '<td><input class="gas-input" type="text" id="gm'+n+'" placeholder="홍길동"></td>';
+    '<td><input class="gas-input" type="text" id="gm'+n+'" placeholder="이안전"></td>';
   tbody.appendChild(tr);
 }
 
@@ -1305,11 +1757,16 @@ function chkGas(n) {
   var lel=parseFloat(document.getElementById('gl'+n).value||0);
   var isDanger=(o2<18||o2>=23.5||co>=30||co2>=1.5||h2s>=10||lel>=10)&&(o2||co||co2||h2s||lel);
   var row=document.getElementById('gas-row-'+n);
-  if(row){ row.classList.toggle('danger',isDanger); row.classList.toggle('safe',!isDanger&&o2>0); }
+  if(row){
+    row.classList.toggle('danger',isDanger);
+    row.classList.toggle('safe',!isDanger && (o2>0));
+  }
   if(isDanger) showToast('가스 농도 기준 초과! 작업 중지 후 환기','danger');
 }
 
-// SIGNATURE
+// ═══════════════════════════════════════════════════════
+// 서명 캔버스
+// ═══════════════════════════════════════════════════════
 function initSigPad() {
   var canvas = document.getElementById('worker-sig');
   if(!canvas) return;
@@ -1336,143 +1793,181 @@ function clearSig() {
   canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
 }
 
-// VALIDATIONS
+// ═══════════════════════════════════════════════════════
+// 검증 (Validation)
+// ═══════════════════════════════════════════════════════
 function validateStep1() {
   var wn=getVal('work-name'),loc=getVal('location'),dloc=getVal('detail-location'),
       sd=getVal('start-date'),st=getVal('start-time'),ed=getVal('end-date'),et=getVal('end-time'),
       wc=getVal('worker-count'),co=getVal('company-name'),sup=getVal('supervisor'),wd=getVal('work-description');
-  if(!wn||!loc||!dloc||!sd||!st||!ed||!et||!wc||!co||!sup||!wd){showToast('필수 항목을 모두 입력해주세요','danger');return;}
-  if(!psmSelected){showToast('PSM 설비 여부를 선택해주세요','danger');return;}
-  if(new Date(ed+' '+et)<=new Date(sd+' '+st)){showToast('종료일시는 시작일시 이후여야 합니다','danger');return;}
+  if(!wn||!loc||!dloc||!sd||!st||!ed||!et||!wc||!co||!sup||!wd){
+    showToast('필수 항목을 모두 입력해주세요','danger');return;
+  }
+  // PSM은 자동 'no' (포항양극재공장 미대상)
+  if(new Date(ed+' '+et)<=new Date(sd+' '+st)){
+    showToast('종료일시는 시작일시 이후여야 합니다','danger');return;
+  }
   var manualWO=document.getElementById('manual-wo').checked;
-  if(manualWO){var mwv=getVal('wo-manual-input');if(!mwv){showToast('W/O 번호를 입력해주세요','danger');return;}permitData.woNumber=mwv;}
-  else{permitData.woNumber=document.getElementById('wo-display').textContent;}
+  if(manualWO){
+    var mwv=getVal('wo-manual-input');
+    if(!mwv){showToast('W/O 번호를 입력해주세요','danger');return;}
+    permitData.woNumber=mwv;
+  } else {
+    permitData.woNumber=document.getElementById('wo-display').textContent;
+  }
   permitData.workName=wn;permitData.location=loc;permitData.detailLocation=dloc;
   permitData.startDate=sd;permitData.startTime=st;permitData.endDate=ed;permitData.endTime=et;
   permitData.workerCount=wc;permitData.companyName=co;permitData.supervisor=sup;
-  permitData.workDescription=wd;permitData.psmFacility=psmSelected==='yes'?'PSM 설비':'일반 설비';
+  permitData.workDescription=wd;permitData.psmFacility='일반 설비';
   goToStep(2);
 }
 
 function validateStep2() {
-  if(!permitData.workTypes.length){showToast('작업 유형을 최소 1개 이상 선택하세요','danger');return;}
-  showChecklist();goToStep(3);
+  if(!permitData.workTypes.length){
+    showToast('작업 유형을 최소 1개 이상 선택하세요','danger');return;
+  }
+  showChecklist();
+  goToStep(3);
 }
 
 function validateStep3() {
-  var hasNo=false,allDone=true;
+  var hasNo=false, allDone=true;
   permitData.workTypes.forEach(function(t){
-    for(var i=1;i<=7;i++){var key=t+'-'+i;if(!permitData.checklist[key])allDone=false;if(permitData.checklist[key]==='no')hasNo=true;}
+    for(var i=1;i<=7;i++){
+      var key=t+'-'+i;
+      if(!permitData.checklist[key]) allDone=false;
+      if(permitData.checklist[key]==='no') hasNo=true;
+    }
   });
-  if(!allDone){showToast('모든 체크리스트 항목을 확인해주세요','danger');return;}
-  if(hasNo){showToast('부적합 항목이 있습니다. 조치 후 재신청하세요','danger');return;}
-  if(permitData.workTypes.includes('confined'))goToStep(4);else goToStep(5);
+  if(!allDone){
+    showToast('모든 체크리스트 항목을 확인해주세요','danger');return;
+  }
+  if(hasNo){
+    showToast('부적합 항목이 있습니다. 조치 후 재신청하세요','danger');return;
+  }
+  // 일반작업만 선택한 경우 → 밀폐공간/ILS 스킵 → 바로 6단계
+  if(permitData.workTypes.length === 1 && permitData.workTypes[0] === 'general'){
+    goToStep(6);
+    return;
+  }
+  if(permitData.workTypes.includes('confined')) goToStep(4);
+  else goToStep(5);
 }
 
 function validateStep4() {
   var t=getVal('gt1'),o2=getVal('go1'),co=getVal('gc1'),co2=getVal('gco21'),h2s=getVal('gh1'),lel=getVal('gl1'),m=getVal('gm1');
-  if(!t||!o2||!co||!co2||!h2s||!lel||!m){showToast('가스 측정 기록을 모두 입력해주세요','danger');return;}
-  if(parseFloat(o2)<18||parseFloat(o2)>=23.5||parseFloat(co)>=30||parseFloat(co2)>=1.5||parseFloat(h2s)>=10||parseFloat(lel)>=10){showToast('가스 농도 기준 초과 — 작업 불가','danger');return;}
+  if(!t||!o2||!co||!co2||!h2s||!lel||!m){
+    showToast('가스 측정 기록을 모두 입력해주세요','danger');return;
+  }
+  if(parseFloat(o2)<18||parseFloat(o2)>=23.5||parseFloat(co)>=30||parseFloat(co2)>=1.5||parseFloat(h2s)>=10||parseFloat(lel)>=10){
+    showToast('가스 농도 기준 초과 — 작업 불가','danger');return;
+  }
   goToStep(5);
 }
 
 function validateStep5() {
   var keys=Object.keys(permitData.ILSChecklist);
-  if(!keys.length){showToast('ILS 체크리스트를 최소 1개 이상 확인하세요','danger');return;}
-  if(keys.some(function(k){return permitData.ILSChecklist[k]==='no';})){showToast('부적합 항목을 조치 완료하세요','danger');return;}
+  if(!keys.length){
+    showToast('ILS 체크리스트를 최소 1개 이상 확인하세요','danger');return;
+  }
+  if(keys.some(function(k){return permitData.ILSChecklist[k]==='no';})){
+    showToast('부적합 항목을 조치 완료하세요','danger');return;
+  }
   goToStep(6);
 }
 
 function validateStep6() {
-  if(Object.keys(permitData.questions).length<9){showToast('9개 질문에 모두 답변해주세요','danger');return;}
-  if(Object.values(permitData.questions).some(function(v){return v==='no';})){showToast('모든 질문에 예로 답변해야 합니다','danger');return;}
+  if(Object.keys(permitData.questions).length<9){
+    showToast('9개 질문에 모두 답변해주세요','danger');return;
+  }
+  if(Object.values(permitData.questions).some(function(v){return v==='no';})){
+    showToast('모든 질문에 예 또는 해당없음으로 답변해야 합니다','danger');return;
+  }
   goToStep(7);
 }
 
 function validateStep7() {
   var sn=getVal('sup-name'),sp=getVal('sup-phone'),se=getVal('sup-email');
-  if(!sn||!sp||!se){showToast('책임자 정보를 모두 입력해주세요','danger');return;}
+  if(!sn||!sp||!se){
+    showToast('책임자 정보를 모두 입력해주세요','danger');return;
+  }
   var canvas=document.getElementById('worker-sig');
   var imgData=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
   var hasSig=false;
   for(var i=0;i<imgData.data.length;i+=4)if(imgData.data[i+3]>0){hasSig=true;break;}
-  if(!hasSig){showToast('작업자 서명을 해주세요','danger');return;}
+  if(!hasSig){
+    showToast('작업자 서명을 해주세요','danger');return;
+  }
   permitData.supervisorName=sn;permitData.supervisorPhone=sp;permitData.supervisorEmail=se;
   permitData.workerSignature=canvas.toDataURL('image/png',0.3);
   var n=new Date();
   permitData.permitNo='PTW-'+n.getFullYear()+pad(n.getMonth()+1)+pad(n.getDate())+'-'+String(Math.floor(Math.random()*1000)).padStart(3,'0');
-  permitData.status='허가완료';permitData.createdAt=new Date().toISOString();
+  permitData.status='허가완료';
+  permitData.createdAt=new Date().toISOString();
   savePermit();
-  setTxt('fin-permit-no',permitData.permitNo);setTxt('fin-wo',permitData.woNumber);
-  setTxt('fin-name',permitData.workName);setTxt('fin-loc',permitData.location+' '+permitData.detailLocation);
+  setTxt('fin-permit-no',permitData.permitNo);
+  setTxt('fin-wo',permitData.woNumber);
+  setTxt('fin-name',permitData.workName);
+  setTxt('fin-loc',permitData.location+' '+permitData.detailLocation);
   setTxt('fin-period',permitData.startDate+' '+permitData.startTime+' ~ '+permitData.endDate+' '+permitData.endTime);
-  setTxt('fin-company',permitData.companyName);setTxt('fin-workers',permitData.workerCount+'명');
+  setTxt('fin-company',permitData.companyName);
+  setTxt('fin-workers',permitData.workerCount+'명');
   setTxt('fin-datetime',new Date().toLocaleString('ko-KR'));
-  var badge=document.getElementById('permitNoBadge');if(badge){badge.textContent=permitData.permitNo;badge.style.display='block';}
+  var badge=document.getElementById('permitNoBadge');
+  if(badge){badge.textContent=permitData.permitNo;badge.style.display='block';}
   goToScreen('screen-complete');
   showToast('허가서 제출 완료!','success');
 }
 
-// SAVE
+// ═══════════════════════════════════════════════════════
+// 저장 (규약 §5, §11.2 준수)
+// ═══════════════════════════════════════════════════════
 function savePermit() {
   var permits=getPermits();
   var permitRecord={
-    id:'PERMIT-'+Date.now(),permitNo:permitData.permitNo,woNumber:permitData.woNumber,
-    workName:permitData.workName,location:permitData.location,detailLocation:permitData.detailLocation,
-    startDate:permitData.startDate,startTime:permitData.startTime,endDate:permitData.endDate,endTime:permitData.endTime,
-    workerCount:permitData.workerCount,companyName:permitData.companyName,supervisor:permitData.supervisor,
-    workDescription:permitData.workDescription,psmFacility:permitData.psmFacility,
-    workTypes:permitData.workTypes,sourceWorkId:permitData.sourceWorkId,
-    status:'허가완료',createdAt:new Date().toISOString()
+    id:'PERMIT-'+Date.now(),
+    permitNo:permitData.permitNo,
+    woNumber:permitData.woNumber,
+    workName:permitData.workName,
+    location:permitData.location,
+    detailLocation:permitData.detailLocation,
+    startDate:permitData.startDate,
+    startTime:permitData.startTime,
+    endDate:permitData.endDate,
+    endTime:permitData.endTime,
+    workerCount:permitData.workerCount,
+    companyName:permitData.companyName,
+    supervisor:permitData.supervisor,
+    workDescription:permitData.workDescription,
+    psmFacility:permitData.psmFacility,
+    workTypes:permitData.workTypes,
+    checklist:permitData.checklist,
+    checklistReasons:permitData.checklistReasons,
+    ILSChecklist:permitData.ILSChecklist,
+    questions:permitData.questions,
+    questionReasons:permitData.questionReasons,
+    sourceWorkId:permitData.sourceWorkId,
+    status:'허가완료',
+    createdAt:new Date().toISOString()
   };
   permits.push(permitRecord);
   localStorage.setItem('safetyPermits',JSON.stringify(permits));
   
-  // 🔥 대시보드 실시간 동기화
+  // 대시보드 실시간 동기화 (§11.2)
   try {
-    var event = new Event('storage');
-    event.key = 'safetyPermits';
-    window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent('app-data-changed',{
+      detail:{key:'safetyPermits',timestamp:Date.now()}
+    }));
   } catch(e) {}
-  
-  // ⭐ Firestore 저장 (비동기)
-  try {
-    var firebaseData = {
-      permitNo: permitData.permitNo,
-      workName: permitData.workName,
-      workLocation: permitData.location,
-      workDetail: permitData.detailLocation,
-      startDate: permitData.startDate,
-      startTime: permitData.startTime,
-      endDate: permitData.endDate,
-      endTime: permitData.endTime,
-      companyName: permitData.companyName,
-      supervisor: permitData.supervisor,
-      workerCount: permitData.workerCount,
-      workDescription: permitData.workDescription,
-      workTypes: permitData.workTypes,
-      initialHazards: permitData.hazards || [],
-      adjustedHazards: permitData.adjustedHazards || permitData.hazards || [],
-      safetyMeasures: permitData.safetyMeasures || [],
-      status: '허가완료',
-      createdAt: new Date().toISOString()
-    };
-    
-    // localStorage에 Firestore 데이터도 저장 (Firebase 설정 전까지)
-    var firestoreData = JSON.parse(localStorage.getItem('firebasePermits') || '[]');
-    firestoreData.push(firebaseData);
-    localStorage.setItem('firebasePermits', JSON.stringify(firestoreData));
-    
-    console.log('허가서 저장 완료:', firebaseData);
-  } catch (e) {
-    console.error('Firestore 저장 시도:', e);
-  }
   
   if(!isFromDB) addNewWorkToDB();
   if(permitData.sourceWorkId) updateWorkStatus(permitData.sourceWorkId,'허가완료');
 }
 
-function getPermits(){try{return JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){return[];}}
+function getPermits(){
+  try{return JSON.parse(localStorage.getItem('safetyPermits')||'[]');}
+  catch(e){return[];}
+}
 
 function addNewWorkToDB(){
   try{
@@ -1480,110 +1975,125 @@ function addNewWorkToDB(){
     var db=raw?JSON.parse(raw):{metadata:{},workHistory:[]};
     db.workHistory=db.workHistory||[];
     db.workHistory.unshift({
-      originalNo:'NEW-'+Date.now(),date:permitData.startDate,
-      workName:permitData.workName,workNameFull:permitData.workName,
+      originalNo:'NEW-'+Date.now(),
+      date:permitData.startDate,
+      workName:permitData.workName,
+      workNameFull:permitData.workName,
       location:{factory:permitData.location,line:null,stage:''},
-      risk:'일반',company:permitData.companyName,manager:permitData.supervisor,
+      risk:'일반',
+      company:permitData.companyName,
+      manager:permitData.supervisor,
       safety:'',hazards:[],safetyMeasures:[],highRiskCategories:[],
-      ilsRequired:'N',permitNo:permitData.permitNo,status:'허가완료'
+      ilsRequired:'N',
+      permitNo:permitData.permitNo,
+      status:'허가완료'
     });
-    db.metadata=db.metadata||{};db.metadata.lastUpdate=new Date().toISOString();db.metadata.totalWorks=db.workHistory.length;
+    db.metadata=db.metadata||{};
+    db.metadata.lastUpdate=new Date().toISOString();
+    db.metadata.totalWorks=db.workHistory.length;
     localStorage.setItem('safetyDatabase',JSON.stringify(db));
+    
+    try {
+      window.dispatchEvent(new CustomEvent('app-data-changed',{
+        detail:{key:'safetyDatabase',timestamp:Date.now()}
+      }));
+    } catch(e) {}
   }catch(e){}
 }
 
 function updateWorkStatus(wid,status){
   try{
-    var raw=localStorage.getItem('safetyDatabase');if(!raw)return;
+    var raw=localStorage.getItem('safetyDatabase');
+    if(!raw)return;
     var db=JSON.parse(raw);
-    (db.workHistory||[]).forEach(function(w){if((w.date+'_'+(w.originalNo||''))===wid)w.status=status;});
+    (db.workHistory||[]).forEach(function(w){
+      if((w.date+'_'+(w.originalNo||''))===wid) w.status=status;
+    });
     localStorage.setItem('safetyDatabase',JSON.stringify(db));
   }catch(e){}
 }
 
 function goToTBM(){
-  var p='?permitNo='+encodeURIComponent(permitData.permitNo)+'&workName='+encodeURIComponent(permitData.workName)+'&company='+encodeURIComponent(permitData.companyName)+'&location='+encodeURIComponent(permitData.location+' '+permitData.detailLocation)+'&workers='+encodeURIComponent(permitData.workerCount);
+  var p='?permitNo='+encodeURIComponent(permitData.permitNo)+
+        '&workName='+encodeURIComponent(permitData.workName)+
+        '&company='+encodeURIComponent(permitData.companyName)+
+        '&location='+encodeURIComponent(permitData.location+' '+permitData.detailLocation)+
+        '&workers='+encodeURIComponent(permitData.workerCount);
   window.location.href='TBM_및_작업중지권_v2.html'+p;
 }
 
-function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
-function setVal(id,v){var el=document.getElementById(id);if(el)el.value=v;}
-function setTxt(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
-
+// ═══════════════════════════════════════════════════════
+// 토스트
+// ═══════════════════════════════════════════════════════
 function showToast(msg,type){
-  var wrap=document.getElementById('toastWrap');if(!wrap)return;
-  var t=document.createElement('div');t.className='toast '+(type||'info');t.textContent=msg;
-  wrap.appendChild(t);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},3500);
+  var wrap=document.getElementById('toastWrap');
+  if(!wrap)return;
+  var t=document.createElement('div');
+  t.className='toast '+(type||'info');
+  t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},3500);
 }
 
-window.addEventListener('DOMContentLoaded',function(){
-  var today=new Date().toISOString().split('T')[0];
-  setVal('start-date',today);setVal('end-date',today);
-  document.getElementById('wo-display').textContent=genWO();
-  var n=new Date();
-  var dt=n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate())+'T'+pad(n.getHours())+':'+pad(n.getMinutes());
-  setVal('gt1',dt);
+// ═══════════════════════════════════════════════════════
+// INIT (DOMContentLoaded - 1회만 등록!)
+// ═══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function() {
+  // 테마 초기화
+  initTheme();
+  
+  // 기본 날짜/시간 설정
+  var today = new Date().toISOString().split('T')[0];
+  setVal('start-date', today);
+  setVal('end-date', today);
+  setTxt('wo-display', genWO());
+  
+  var now = new Date();
+  var dt = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+
+            pad(now.getHours())+':'+pad(now.getMinutes());
+  setVal('gt1', dt);
+  
+  // 서명 패드 초기화
   initSigPad();
-  var params=new URLSearchParams(window.location.search);
-  var wid=params.get('workId');
-  if(wid)setTimeout(function(){startFromDB(wid);},300);
+  
+  // 사유 입력 텍스트 감지
+  var reasonInput = document.getElementById('reasonInput');
+  if(reasonInput){
+    reasonInput.addEventListener('input', function(){
+      var val = (this.value || '').trim();
+      document.getElementById('reasonSaveBtn').disabled = val.length < 2;
+    });
+  }
+  
+  // URL 파라미터로 특정 작업 자동 선택 (대시보드 연동)
+  var params = new URLSearchParams(window.location.search);
+  var wid = params.get('workId');
+  if(wid) {
+    setTimeout(function(){ startFromDB(wid); }, 300);
+  }
 });
 
-// ──────────────────────────────────────────────────────────
-// ⭐ 안전정보제공 + 퀴즈 상태 확인
-// ──────────────────────────────────────────────────────────
+// ESC 키로 뒤로가기 (모달 우선 닫기)
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    var overlay = document.getElementById('reasonOverlay');
+    if(overlay && overlay.classList.contains('active')){
+      cancelReason();
+      return;
+    }
+    if(currentStep > 0) goBack();
+  }
+});
 
-// 안전정보제공 완료 여부 확인
-function checkSafetyProvisionStatus() {
-  try {
-    var company = getVal('company') || sessionStorage.getItem('userCompany') || '';
-    if (!company) return false;
-    
-    var provisions = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
-    var current = provisions.find(function(p) {
-      return p.submittedCompany === company || p.submittedBy === getVal('supervisor');
+// 오버레이 클릭 시 모달 닫기
+document.addEventListener('DOMContentLoaded', function(){
+  var overlay = document.getElementById('reasonOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) cancelReason();
     });
-    
-    return !!current;
-  } catch (e) {
-    return false;
   }
-}
-
-// 안전퀴즈 합격 여부 확인
-function checkQuizStatus() {
-  try {
-    var company = getVal('company') || sessionStorage.getItem('userCompany') || '';
-    if (!company) return false;
-    
-    var quizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
-    var passed = quizzes.find(function(q) {
-      return (q.respondentCompany === company || q.respondent === getVal('supervisor')) && q.status === '합격';
-    });
-    
-    return !!passed;
-  } catch (e) {
-    return false;
-  }
-}
-
-// 허가서 신청 전 필수 조건 확인
-function validateBeforeSubmit() {
-  var safetyOk = checkSafetyProvisionStatus();
-  var quizOk = checkQuizStatus();
-  
-  if (!safetyOk) {
-    alert('⚠️ 먼저 안전정보제공을 완료해주세요!');
-    return false;
-  }
-  
-  if (!quizOk) {
-    alert('⚠️ 안전퀴즈에 합격해주세요!');
-    return false;
-  }
-  
-  return true;
-}
+});
 </script>
 </body>
 </html>
