@@ -1940,27 +1940,31 @@ function isSimilarWorkType(a, b){
   return false;
 }
 
-// 키워드 토큰화 (한글 리터럴 사용 - 정규식 안전)
-function tokenize(text){
-  if(!text) return [];
-  var str = String(text);
+// 키워드 토큰화 (안전한 버전)
+function tokenize(text) {
+  if (!text) return [];
+  var str = String(text).toLowerCase();
   var result = [];
-  var current = '';
-  for(var i=0; i= 0xAC00 && code <= 0xD7A3) ||  // 한글
-      (code >= 0x30 && code <= 0x39) ||       // 0-9
-      (code >= 0x41 && code <= 0x5A) ||       // A-Z
-      (code >= 0x61 && code <= 0x7A);         // a-z
-    
-    if(isValid){
-      current += ch;
+  var current = "";
+  var i;
+  for (i = 0; i < str.length; i++) {
+    var ch = str.charAt(i);
+    var code = str.charCodeAt(i);
+    var isKorean = (code >= 44032 && code <= 55203);
+    var isDigit = (code >= 48 && code <= 57);
+    var isLower = (code >= 97 && code <= 122);
+    if (isKorean || isDigit || isLower) {
+      current = current + ch;
     } else {
-      if(current.length > 0){
+      if (current.length > 0) {
         result.push(current);
-        current = '';
+        current = "";
       }
     }
   }
-  if(current.length > 0) result.push(current);
+  if (current.length > 0) {
+    result.push(current);
+  }
   return result;
 }
 
