@@ -1,0 +1,336 @@
+[
+  {
+    "jsaId": "JSA-WRK-000003",
+    "no": 3,
+    "classCode": "WRK",
+    "sheet": "원문",
+    "workType": "전기작업",
+    "workSubType": "히터 점검",
+    "workName": "소성로 히터·히터박스 점검 및 조치",
+    "workStage": "차단·점검·교체",
+    "equipment": "히터, 전기판넬, 수공구",
+    "materials": "1. 전기에너지 / 2. 고온 / 3. 수공구",
+    "originalHazard": "히터 교체 중 감전 위험 / 히터 접촉 화상 위험 / 수공구 사용 손가락 끼임 위험",
+    "accidentType": "감전/화상/끼임",
+    "scenario": "전원 미차단 감전 가능",
+    "detailedMeasures": "1. 전원 차단 및 ILS 실시 / 2. [AI] 무전압 확인 / 3. 방열장갑 착용 / 4. 방화포 설치 / 5. 2인1조 작업 / 6. 작업공간 확보 / 7. 적정 수공구 사용",
+    "standardMeasures": "1. 전원 차단 / 2. ILS 실시 / 3. 무전압 확인 / 4. 방열장갑 / 5. 방화포 / 6. 2인1조 / 7. 규격공구",
+    "controlAdequacy": "○",
+    "remark": "WO10975162 등 / 전기기준 확인 / AI 보완",
+    "workInfo": {
+      "primaryWorkType": "전기작업",
+      "workTypes": [
+        "전기작업",
+        "정비작업"
+      ],
+      "workSubType": "히터 점검",
+      "workName": "소성로 히터·히터박스 점검 및 조치",
+      "stages": [
+        "차단",
+        "점검",
+        "교체"
+      ],
+      "equipment": [
+        "히터",
+        "전기판넬",
+        "수공구"
+      ],
+      "materials": [],
+      "energySources": [
+        "전기에너지",
+        "열에너지"
+      ],
+      "riskSources": [
+        "히터 충전부",
+        "고온 히터",
+        "수공구"
+      ],
+      "keywords": [
+        "소성로",
+        "히터",
+        "히터박스",
+        "점검",
+        "교체",
+        "감전",
+        "화상",
+        "끼임",
+        "ILS"
+      ]
+    },
+    "hazards": [
+      {
+        "hazardId": "H01",
+        "text": "히터 교체 중 충전부 접촉 감전 위험",
+        "standardName": "충전부 접촉 감전",
+        "source": "WRK",
+        "sourceText": "히터 교체 중 감전 위험",
+        "stage": "교체",
+        "energySources": [
+          "전기에너지"
+        ],
+        "riskSources": [
+          "히터 충전부"
+        ],
+        "accidentTypes": [
+          "감전"
+        ],
+        "scenario": "전원 미차단 감전 가능",
+        "applicability": [
+          "히터 교체",
+          "전기설비 점검",
+          "전기설비 정비"
+        ],
+        "relatedMeasureIds": [
+          "M01",
+          "M02",
+          "M05"
+        ],
+        "critical": true,
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "hazardId": "H02",
+        "text": "고온 히터 접촉에 의한 화상 위험",
+        "standardName": "고온부 접촉 화상",
+        "source": "WRK",
+        "sourceText": "히터 접촉 화상 위험",
+        "stage": "점검·교체",
+        "energySources": [
+          "열에너지"
+        ],
+        "riskSources": [
+          "고온 히터"
+        ],
+        "accidentTypes": [
+          "화상"
+        ],
+        "scenario": "고온 히터 접촉 화상 가능",
+        "applicability": [
+          "히터 점검",
+          "히터 교체"
+        ],
+        "relatedMeasureIds": [
+          "M03",
+          "M04"
+        ],
+        "critical": false,
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "hazardId": "H03",
+        "text": "수공구 사용 중 손가락 끼임 위험",
+        "standardName": "수공구 사용 중 손가락 끼임",
+        "source": "WRK",
+        "sourceText": "수공구 사용 손가락 끼임 위험",
+        "stage": "점검·교체",
+        "energySources": [],
+        "riskSources": [
+          "수공구",
+          "협소한 작업공간"
+        ],
+        "accidentTypes": [
+          "끼임"
+        ],
+        "scenario": "수공구 사용 중 손가락 끼임 가능",
+        "applicability": [
+          "설비 점검",
+          "부품 교체",
+          "수공구 작업"
+        ],
+        "relatedMeasureIds": [
+          "M05",
+          "M06",
+          "M07"
+        ],
+        "critical": false,
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      }
+    ],
+    "measures": [
+      {
+        "measureId": "M01",
+        "text": "전원 차단 및 ILS 실시",
+        "standardName": "전원 차단 및 ILS 실시",
+        "source": "WRK",
+        "hierarchy": "administrative",
+        "required": true,
+        "applicability": [
+          "전기에너지가 존재하는 설비 정비"
+        ],
+        "conditions": [
+          "히터 또는 관련 전기설비를 점검·교체하는 경우"
+        ],
+        "verificationMethod": "차단점, 잠금 및 표지 상태 현장 확인",
+        "relatedHazardIds": [
+          "H01"
+        ],
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "measureId": "M02",
+        "text": "무전압 확인",
+        "standardName": "무전압 확인",
+        "source": "AI",
+        "hierarchy": "administrative",
+        "required": true,
+        "applicability": [
+          "전기설비 점검",
+          "전기설비 교체"
+        ],
+        "conditions": [
+          "전원 차단 후 작업을 시작하기 전"
+        ],
+        "verificationMethod": "적합한 계측기로 무전압 상태 확인",
+        "relatedHazardIds": [
+          "H01"
+        ],
+        "aiGenerated": true,
+        "reviewStatus": "review"
+      },
+      {
+        "measureId": "M03",
+        "text": "방열장갑 착용",
+        "standardName": "방열장갑",
+        "source": "WRK",
+        "hierarchy": "ppe",
+        "required": true,
+        "applicability": [
+          "고온부 접촉 가능 작업"
+        ],
+        "conditions": [
+          "히터의 잔열이 존재하거나 고온부 접촉 가능성이 있는 경우"
+        ],
+        "verificationMethod": "방열장갑의 적합성 및 착용 상태 확인",
+        "relatedHazardIds": [
+          "H02"
+        ],
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "measureId": "M04",
+        "text": "방화포 설치",
+        "standardName": "방화포 설치",
+        "source": "WRK",
+        "hierarchy": "engineering",
+        "required": false,
+        "applicability": [
+          "고온부 또는 화재 확산 우려가 있는 작업"
+        ],
+        "conditions": [
+          "주변 가연물 또는 열 영향 대상이 있는 경우"
+        ],
+        "verificationMethod": "방화포 설치 범위와 고정 상태 확인",
+        "relatedHazardIds": [
+          "H02"
+        ],
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "measureId": "M05",
+        "text": "2인1조 작업",
+        "standardName": "2인1조 작업",
+        "source": "WRK",
+        "hierarchy": "administrative",
+        "required": false,
+        "applicability": [
+          "전기설비 점검",
+          "히터 교체"
+        ],
+        "conditions": [
+          "비상대응 또는 작업 보조가 필요한 경우"
+        ],
+        "verificationMethod": "작업자 구성 및 역할분담 확인",
+        "relatedHazardIds": [
+          "H01",
+          "H03"
+        ],
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "measureId": "M06",
+        "text": "작업공간 확보",
+        "standardName": "작업공간 확보",
+        "source": "WRK",
+        "hierarchy": "administrative",
+        "required": true,
+        "applicability": [
+          "협소한 설비 주변 점검·교체 작업"
+        ],
+        "conditions": [
+          "수공구 조작 및 부품 이동 공간이 필요한 경우"
+        ],
+        "verificationMethod": "작업 반경과 통로의 장애물 제거 상태 확인",
+        "relatedHazardIds": [
+          "H03"
+        ],
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      },
+      {
+        "measureId": "M07",
+        "text": "적정 수공구 사용",
+        "standardName": "규격공구 사용",
+        "source": "WRK",
+        "hierarchy": "administrative",
+        "required": true,
+        "applicability": [
+          "수공구를 사용하는 점검·교체 작업"
+        ],
+        "conditions": [
+          "볼트 체결·해체 또는 부품 조정 작업"
+        ],
+        "verificationMethod": "작업 대상과 공구 규격의 적합성 확인",
+        "relatedHazardIds": [
+          "H03"
+        ],
+        "aiGenerated": false,
+        "reviewStatus": "review"
+      }
+    ],
+    "quality": {
+      "controlAdequacy": "○",
+      "adequacyReason": "전원 차단과 ILS가 포함되어 있으나 무전압 확인은 AI 보완으로 검토 필요",
+      "missingCriticalMeasures": [],
+      "unlinkedHazardCount": 0,
+      "unlinkedMeasureCount": 0,
+      "sourceVerified": false,
+      "terminologyVerified": true,
+      "duplicateChecked": true,
+      "qualityGrade": "C",
+      "reviewNotes": [
+        "전기작업 사내기준 확인 필요",
+        "무전압 확인의 필수대책 여부 검토",
+        "방화포 적용조건 검토",
+        "2인1조 작업의 필수 여부 검토"
+      ]
+    },
+    "metadata": {
+      "status": "review",
+      "version": 1,
+      "sourceDocumentName": "작업 원문",
+      "sourceDocumentVersion": "",
+      "sourceWorkDate": "",
+      "sourceVerifiedAt": null,
+      "reviewedAt": null,
+      "reviewedBy": null,
+      "approvedAt": null,
+      "approvedBy": null,
+      "createdAt": null,
+      "createdBy": "migration-test",
+      "updatedAt": null,
+      "updatedBy": "migration-test",
+      "retiredAt": null,
+      "retiredBy": null,
+      "replacedByJsaId": null
+    },
+    "historicalRiskReference": null,
+    "schemaVersion": 3
+  }
+]
