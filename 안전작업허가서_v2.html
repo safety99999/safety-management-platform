@@ -254,13 +254,112 @@ body{
 .f-input::placeholder,.f-textarea::placeholder{color:var(--faint);font-weight:500}
 .f-textarea{min-height:110px;resize:vertical;line-height:1.65}
 
-/* date/time picker 높이 통일 */
+/* ═══════════════════════════════════════
+   📅 🕐 date/time/datetime-local 통일 스타일
+   - PC/모바일 완전 동일 (크기만 다름)
+   - iOS Safari 기본 스타일 강제 초기화
+   ═══════════════════════════════════════ */
 .f-input[type="date"],
 .f-input[type="time"],
 .f-input[type="datetime-local"]{
+  /* 🔑 iOS 기본 스타일 완전 초기화 */
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+  
+  /* PC와 동일한 박스 스타일 강제 */
   min-height:52px;
-  padding:12px 14px;
+  padding:14px 44px 14px 16px;  /* 오른쪽 아이콘 자리 확보 */
+  font-family:inherit;
+  font-size:16px;
+  font-weight:600;
   font-variant-numeric:tabular-nums;
+  line-height:1.2;
+  color:var(--ink);
+  background-color:var(--sunk);
+  border:2px solid var(--line);
+  border-radius:var(--r-s);
+  
+  /* 텍스트 왼쪽 정렬 (iOS 중앙정렬 방지) */
+  text-align:left;
+  
+  /* 아이콘을 background로 통일 표시 */
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:20px 20px;
+}
+
+/* date 아이콘 (📅 캘린더) */
+.f-input[type="date"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+
+/* time 아이콘 (🕐 시계) */
+.f-input[type="time"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12 6 12 12 16 14'/%3E%3C/svg%3E");
+}
+
+/* datetime-local 아이콘 (캘린더+시계 조합) */
+.f-input[type="datetime-local"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3Ccircle cx='12' cy='16' r='2.5' fill='%235E7183' stroke='none'/%3E%3C/svg%3E");
+}
+
+/* 다크모드 아이콘 색상 (밝은 회색) */
+[data-theme="dark"] .f-input[type="date"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .f-input[type="time"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12 6 12 12 16 14'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .f-input[type="datetime-local"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3Ccircle cx='12' cy='16' r='2.5' fill='%23A0AEC0' stroke='none'/%3E%3C/svg%3E");
+}
+
+/* 🔑 iOS Safari: 내부 값(텍스트) 왼쪽 정렬 강제 */
+.f-input[type="date"]::-webkit-date-and-time-value,
+.f-input[type="time"]::-webkit-date-and-time-value,
+.f-input[type="datetime-local"]::-webkit-date-and-time-value{
+  text-align:left;
+  min-height:1.2em;
+}
+
+/* 🔑 iOS Safari: 내부 필드 컨테이너 왼쪽 정렬 */
+.f-input[type="date"]::-webkit-datetime-edit,
+.f-input[type="time"]::-webkit-datetime-edit,
+.f-input[type="datetime-local"]::-webkit-datetime-edit{
+  text-align:left;
+  padding:0;
+}
+
+/* 🔑 네이티브 아이콘(picker indicator) 숨김 → 우리가 그린 아이콘만 표시 */
+.f-input[type="date"]::-webkit-calendar-picker-indicator,
+.f-input[type="time"]::-webkit-calendar-picker-indicator,
+.f-input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  position:absolute;
+  right:0;
+  width:44px;
+  height:100%;
+  padding:0;
+  margin:0;
+  opacity:0;      /* 시각적으로 숨기고 */
+  cursor:pointer; /* 클릭 영역은 유지 */
+}
+
+/* placeholder 처럼 보이지 않도록 값 색상 유지 */
+.f-input[type="date"]:invalid,
+.f-input[type="time"]:invalid,
+.f-input[type="datetime-local"]:invalid{
+  color:var(--faint);
+}
+
+/* 포커스 상태 (기존 f-input:focus 규칙이 적용되지만 명시적 재선언) */
+.f-input[type="date"]:focus,
+.f-input[type="time"]:focus,
+.f-input[type="datetime-local"]:focus{
+  outline:0;
+  border-color:var(--posco);
+  background-color:var(--card);
+  box-shadow:0 0 0 4px rgba(0,103,177,.1);
 }
 
 .f-select{
@@ -273,14 +372,30 @@ body{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
-/* Phase 1-C: 날짜/시간 반응형 (좁은 화면 세로 배치) */
+/* Phase 1-C: 날짜/시간 반응형 (PC/모바일 형태 통일) */
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 
-/* 좁은 화면 (400px 이하): date/time 세로 배치 */
-@media(max-width:400px){
+/* 
+  🔑 PC와 모바일 형태 통일 원칙:
+  - 일반 스마트폰(360~430px)에서도 2열 유지 → PC와 동일한 시각적 형태
+  - 초소형 화면(320px 이하, iPhone SE 1세대 등)에서만 세로 배치
+*/
+@media(max-width:320px){
   .f-row.f-row-datetime{
     grid-template-columns:1fr;
     gap:12px;
+  }
+}
+
+/* 좁은 모바일(360px 이하): 폰트/패딩만 살짝 줄임 (레이아웃은 유지) */
+@media(max-width:360px){
+  .f-input[type="date"],
+  .f-input[type="time"],
+  .f-input[type="datetime-local"]{
+    font-size:14px;
+    padding:13px 40px 13px 12px;
+    background-size:18px 18px;
+    background-position:right 11px center;
   }
 }
 
