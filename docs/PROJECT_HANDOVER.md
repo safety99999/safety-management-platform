@@ -1,7 +1,7 @@
 # 📦 POSCO FM 안전관리 플랫폼 - 프로젝트 인수인계 문서
 
-**작성일**: 2026-08-26  
-**버전**: 3.0 (Phase 1-C/1-E 완료 반영)  
+**작성일**: 2026-08-27  
+**버전**: 3.1 (위험성평가 v2 + JSA_DB 연동 완료 반영)  
 **목적**: 새 세션에서 프로젝트를 즉시 이어서 진행할 수 있도록 하는 총괄 인수인계 문서  
 **대상**: Claude AI 새 세션 또는 신규 개발자
 
@@ -21,7 +21,7 @@
 | **배포** | Firebase Hosting | 운영 중 |
 | **코드 관리** | GitHub (`safety99999/safety-management-platform`) | 운영 중 |
 | **이메일** | EmailJS + 개인 Gmail (개발 단계) | 도입 예정 |
-| **AI 대체** | JSA_DB 사전 생성 + Firestore 조회 | 데이터 준비 완료 |
+| **JSA_DB** | 로컬 JSON → Firestore 이관 예정 | ⭐ 데이터 준비 시작 |
 
 ### 비용 정책
 - ✅ **Firebase Spark(무료) 플랜만 사용**
@@ -37,89 +37,336 @@
 | GitHub 저장소 | https://github.com/safety99999/safety-management-platform |
 | JSA_DB 업로드 도구 | https://safety-management-platfo-5f413.web.app/firestore_upload.html |
 | 안전작업허가서 | https://safety-management-platfo-5f413.web.app/안전작업허가서_v2.html |
+| TBM 앱 | https://safety-management-platfo-5f413.web.app/TBM_및_작업중지권_v2.html |
+| 위험성평가 앱 | https://safety-management-platfo-5f413.web.app/위험성평가_v2.html |
+| JSA_DB 데이터 | https://safety-management-platfo-5f413.web.app/data/jsa_database.json |
 
 ---
 
-## 📊 현재 상태 (Snapshot) - 2026-08-26 기준
+## 📊 현재 상태 (Snapshot) - 2026-08-27 기준
 
 ### 파일 완성도
 
-| 파일 | Phase B | Phase 1-C | Phase 1-E | 배포 |
+| 파일 | Phase B | Phase 1 | JSA_DB 연동 | 배포 |
 |---|:---:|:---:|:---:|:---:|
-| `안전관리플랫폼_대시보드_V6_.html` | ✅ Phase 1 | - | - | ✅ |
-| `안전작업허가서_v2.html` | ✅ | ✅ | ✅ | ✅ |
-| `TBM_및_작업중지권_v2.html` | ❌ | ❌ | ❌ | ⚠️ 부분 |
-| `위험성평가_v2.html` | ❌ | ❌ | ❌ | ❌ |
-| `포항양극재공장_안전퀴즈.html` | ❌ | ❌ | ❌ | ❌ |
-| `안전정보제공서_도급인용.html` | ❌ | ❌ | ❌ | ❌ |
-| `안전정보제공서_수급인용.html` | ❌ | ❌ | ❌ | ❌ |
+| `안전관리플랫폼_대시보드_V6_.html` | ✅ | - | - | ✅ |
+| `안전작업허가서_v2.html` | ✅ | ✅ (1-C/1-E) | - | ✅ |
+| `TBM_및_작업중지권_v2.html` | ✅ | ✅ (실무 프로세스) | - | ✅ |
+| `위험성평가_v2.html` | ✅ | ✅ (Phase 1 완성) | ✅ | ✅ |
+| `data/jsa_database.json` (신규) | - | ✅ (11건 샘플) | - | ✅ |
+| `포항양극재공장_안전퀴즈.html` | ❌ | - | - | ⚠️ 대기 |
+| `안전정보제공서_도급인용.html` | ❌ | - | - | ⚠️ 대기 |
+| `안전정보제공서_수급인용.html` | ❌ | - | - | ⚠️ 대기 |
 
-### 🎊 오늘 (2026-08-26) 완료 사항
+### 🎊 오늘 (2026-08-27) 완료 사항
 
-#### 1️⃣ 대시보드 V6 Phase 1
-- ✅ 다크모드 텍스트 변수 추가 (`--ink`, `--body`, `--sub`)
-- ✅ 공지사항 max-height + 내부 스크롤
-- ✅ CSS 중복 정의 제거 (`.quick-grid`, `.qbtn`)
-- ✅ 반응형 방안 A (배경 그라디언트 + PC 그림자)
+#### 1️⃣ 안전작업허가서 - date/time CSS 통일 ✅
+- **iOS Safari 기본 스타일 강제 초기화**
+- **PC/모바일 형태 완전 동일** (크기만 다름)
+- 📅 🕐 아이콘 명시적 표시 (SVG background)
+- 320px 이하만 세로 배치 (일반 스마트폰은 항상 2열)
+- 다크모드 아이콘 대응
+- **모바일 검증 완료**
 
-#### 2️⃣ 안전작업허가서 Phase B
-- ✅ Critical 4개 클래스 통일 (PSM/작업유형/체크리스트/질문)
-- ✅ 홈버튼 추가 (🏠)
-- ✅ 다크모드 지원 (대시보드와 동기화)
-- ✅ 반응형 방안 A 적용
-- ✅ DOMContentLoaded 중복 제거
+#### 2️⃣ TBM 앱 - Phase B 완성 ✅
+- ✅ CSS 변수 통일 (안전작업허가서와 동일 팔레트)
+- ✅ 반응형 방안 A (배경 그라디언트 + PC 카드 그림자)
+- ✅ 홈버튼 🏠 + 테마버튼 🌙 (둘 다 유지)
+- ✅ date/time 통일 (안전작업허가서와 동일 규약)
+- ✅ 다크모드 완전 대응
+- ✅ 바텀네비 라벨 명확화 (`작업중지권` → `작업중지 요청`)
 
-#### 3️⃣ 안전작업허가서 Phase 1-C ⭐ 대규모 개편
-- ✅ **3단계 체크리스트 필수/선택 분류** (`required` 필드)
-  - 필수 항목: 별표(*) 표시, ⭕/❌만 선택
-  - 선택 항목: ⭕/❌/해당없음 (사유 입력 모달)
-- ✅ **6단계 작업별 카테고리 질문** (`QUESTION_DEF`)
-  - 공통 5개 + 조건부 (화기 2, 전기 1, 충전 2, 고소 2, 중량물 2, 밀폐 3)
-  - 카테고리별 색상 헤더
-- ✅ **날짜/시간 반응형** (400px 이하 세로 배치)
-- ✅ **동적 렌더링 시스템** (`renderChecklist()`, `renderQuestions()`)
-- ✅ **PSM 섹션 완전 숨김** (포항양극재공장 미대상)
-- ✅ **일반작업 카드** (배타적 선택, 다른 유형 자동 해제)
+#### 3️⃣ TBM 앱 - 실무 프로세스 반영 ⭐ 중요
+- ✅ **시간 필드 정리**: `TBM 종료시간`, `작업 시작시간` 제거
+  - 근거: 작업 시간은 안전작업허가서에서 관리 (표 3, 아.5)
+- ✅ **작업중지권 고지 섹션 추가** (신규)
+  - 산안법 제52조 법정 고지
+  - 참여자 명단 (쉼표 구분)
+  - 대표자 서명
+  - **필수 검증**
 
-#### 4️⃣ 안전작업허가서 Phase 1-E ⭐ 연장 승인 기능
-- ✅ **연장 승인 화면** (SCREEN-EXTEND)
-- ✅ **유효기간 자동 계산**
-  - 주간(00:00~18:59 시작): 당일 24시까지
-  - 야간(19:00 이후 시작): 익일 07시까지
-- ✅ **연장 이력 관리** (`validity.extensions[]`)
-- ✅ **확인사항 3개 체크** (작업자/승인자/작업내용 변경 없음)
-- ✅ **승인자 서명** (별도 캔버스)
-- ✅ **URL 파라미터**: `?extend=PTW-...`
+#### 4️⃣ TBM 앱 - 허가서 자동 채움 ⭐ 핵심 UX
+- ✅ `permitNo`만 URL로 → localStorage 조회하여 6개 필드 자동 채움
+- ✅ **자동 채움 필드**:
+  - 작업명, 작업 장소, 협력사, 작업인원
+  - **작업 책임자** (신규)
+  - **밀폐공간 여부** (workTypes 자동 판단)
+- ✅ **허가서 배너 강화**: 상세 정보 표시 (유효기간, workTypes 아이콘)
+- ✅ **자동 채움 시각화** (`.f-input.auto` 초록 배경)
+- ✅ **편집 시 자동 해제** (사용자가 수정하면 흰색 배경)
+- ✅ **하위 호환**: 기존 URL 파라미터 방식도 계속 작동
 
-#### 5️⃣ UX 개선
-- ✅ 작성 안내 상세화 (6개 항목)
-- ✅ 관련 문의처 카드 (1공장/2공장 - placeholder)
-- ✅ 전화 링크 (`tel:` 프로토콜)
+#### 5️⃣ 위험성평가 앱 - Phase 1 완성 ⭐⭐⭐ 대규모 개편
+- ✅ **Phase B 전체 리팩토링**
+  - CSS 통일, 반응형, 홈버튼, date/time 통일
 
-### 이전 완료 작업 ✅
+- ✅ **JSA_DB 검색 시스템** (신규 핵심 기능)
+  - 자동 검색 (STEP 2 진입 시)
+  - 수동 재검색 버튼
+  - 다중 필드 유사도 (작업명 50% + 유형 30% + 설명 20%)
+  - Jaccard 유사도 알고리즘
+  - 상위 5건 표시
+  - 아코디언 상세 보기
+  - 12종 분류 태그 시각화
 
-#### Phase 0-1: 검토 & 문서화
-- [x] 11개 파일 전체 검토
-- [x] 프로젝트 방향성 확정
-- [x] `PROJECT_CONVENTIONS.md` 작성
-- [x] `IMPROVEMENT_PLAN.md` 작성
+- ✅ **안전대책 카드 선택 시스템** (신규 핵심 기능)
+  - JSA에서 도출한 대책을 카드로 표시
+  - 클릭으로 선택/해제
+  - 태그 표시 (법령/사내/AI 등)
+  - 사용자 추가 대책 입력
+  - 실시간 선택 현황
 
-#### Phase 2: 코드 개선 (5개 앱)
-- [x] **안전퀴즈** — localStorage 저장 로직 추가
-- [x] **위험성평가** — 규약 준수 개편
-- [x] **TBM & 작업중지권** — 규약 준수 개편
-- [x] **안전정보(도급인)** — 대개편 (MSDS 34종, 공장 2개)
-- [x] **안전정보(수급인)** — 대개편
+- ✅ **하이브리드 위험도 평가**
+  - **매트릭스 5×5** (빈도 × 강도) - 기존 유지
+  - **통제 적정성 ○/△/×** (신규) - JSA_DB 프롬프트 규약
+  - △·× 선택 시 Phase 2 AI 재평가 힌트 표시
 
-### 발견된 자산 (미활용)
-| 자산 | 위치 | 상태 |
-|---|---|---|
-| 포항양극재 비상상황체계도 | 이미지 파일 | GitHub 저장 대기 |
-| TBM 별첨 - 작업장비 체크리스트 | 이미지 파일 | GitHub 저장 대기 |
-| TBM 별첨 - 온열질환 자율진단 | 이미지 파일 | GitHub 저장 대기 |
-| MSDS 34종 데이터 | 코드에 하드코딩 완료 | 활용 중 |
-| JSA_DB 98개 문서 | Excel/JSON | Firestore 업로드 대기 |
-| 위험성평가 마스터 데이터 | Excel | JSON 변환 대기 |
+- ✅ **참조 JSA 추적**
+  - 어느 JSA에서 대책 도출인지 기록
+  - 감사 대응 (`referencedJSA` 필드)
+
+- ✅ **저장 스키마 v2**
+  - `selectedMeasures[]` (JSA 도출, source 태그)
+  - `userMeasures[]` (사용자 추가)
+  - `controlAdequacy` (통제 적정성)
+  - `referencedJSA` (JSA 참조)
+  - `schemaVersion: 2`
+
+#### 6️⃣ `data/jsa_database.json` - JSA_DB 데이터 파일 신규 생성 ⭐
+- ✅ **11건 샘플 데이터** (12종 분류 대표)
+- ✅ **JSA_DB 프롬프트 스키마** 완전 준수
+- ✅ **분류 커버리지**:
+  - WRK (원문) - 7건
+  - ACC (재해) - 1건
+  - NMS (아차) - 1건
+  - INT (사내) - 2건
+- ⏳ **나머지 76건** - 다음 세션에서 확장
+
+#### 7️⃣ 확보된 실무 자료 (3종) ⭐ 매우 중요
+- **표 3**: 안전작업허가서 작성 내용 및 방법
+  - 작성 주체별 역할 (□◇○)
+  - 시간 관리 원칙
+  - 밀폐공간 3자 확인
+  - 연장/변경/재허가 규정
+- **프로세스 다이어그램**: 안전작업허가서 → TBM → 작업 → 완료 흐름
+  - 서류 흐름
+  - 회수 및 보관
+- **JSA_DB 프롬프트**: 51개 세부 규칙 (별도 문서 필요)
+---
+---
+
+## 🔑 확립된 새 규약 (4종) ⭐ 중요
+
+### 1️⃣ date/time 통일 CSS 규약 (2026-08-27 신규)
+
+**목적**: PC/모바일에서 date/time 입력 형태 완전 통일
+
+**적용 대상**: 모든 앱의 `input[type="date"]`, `input[type="time"]`, `input[type="datetime-local"]`
+
+**핵심 CSS**:
+
+.f-input[type="date"],
+.f-input[type="time"],
+.f-input[type="datetime-local"]{
+  -webkit-appearance:none;
+  padding:13px 44px 13px 15px;
+  background-image: url("...SVG...");
+  background-position:right 14px center;
+  text-align:left;
+  font-variant-numeric:tabular-nums;
+}
+
+@media(max-width:320px){
+  .f-row.f-row-datetime{ grid-template-columns:1fr; }
+}
+
+**적용 완료**: 안전작업허가서, TBM, 위험성평가
+**대기**: 안전퀴즈, 안전정보 도급인/수급인
+
+### 2️⃣ 앱 간 자동 채움 원칙 (2026-08-27 신규)
+
+**원칙**:
+1. URL에 permitNo만 전달
+2. 받는 앱이 localStorage.safetyPermits에서 조회
+3. 자동 채움 필드는 .auto 클래스로 시각화 (초록 배경)
+4. 사용자가 수정하면 자동으로 .auto 클래스 해제
+5. 감사용 저장 시 autoFilledFrom 필드 기록 (선택)
+
+**자동 채움 규칙**:
+
+| 앱 | 자동 채움 대상 |
+|---|---|
+| **허가서 → TBM** | 작업명, 장소, 협력사, 인원, 책임자, 밀폐공간 여부 |
+| **허가서 → 위험성평가** | 작업명, 장소, 협력사, 인원, 작업유형 (workTypes → workType 매핑) |
+| **위험성평가 → 허가서** | 위험도 점수, 위험도, 통제 적정성, riskId, 선택된 대책 배열 |
+| **허가서 → TBM (via 위험성평가)** | 위험요인 카드 자동 채움 (Phase 1-D에서 완성) |
+
+### 3️⃣ 작업중지권 고지 규약 (2026-08-27 신규)
+
+**법적 근거**: 산업안전보건법 제52조
+
+**저장 위치**: TBM 저장 시 `safetyTBM[].stopNotice`
+
+**데이터 구조**:
+
+stopNotice: {
+  participants: ['홍길동', '김철수', '이영희'],
+  participantsText: '홍길동, 김철수, 이영희',
+  representativeName: '홍길동',
+  representativeSig: 'data:image/png;base64,...',
+  noticedAt: '2026-08-27T09:15:00Z',
+  legalBasis: '산업안전보건법 제52조'
+}
+
+**필수 검증**: TBM 제출 시
+- 참여자 명단 필수
+- 대표자 이름 필수
+- 대표자 서명 필수
+
+### 4️⃣ JSA_DB 스키마 v2 규약 (2026-08-27 신규) ⭐⭐⭐
+
+**12종 분류 체계**:
+
+| 코드 | 관리시트 | 의미 | 태그 |
+|:---:|---|---|:---:|
+| LAW | 법령 | 산안법 등 | `[법령]` |
+| INT | 사내 | 사내 안전기준 | `[사내]` |
+| SOP | 표준 | 작업표준서, SOP | `[표준]` |
+| JSA | JSA | 위험성평가 | `[JSA]` |
+| TBM | TBM | TBM 회의자료 | `[TBM]` |
+| PTW | 허가 | 작업허가서 | `[허가]` |
+| ACC | 재해 | 사고사례 | `[재해]` |
+| NMS | 아차 | 니어미스 | `[아차]` |
+| REC | 권고 | 안전지적 | `[권고]` |
+| EXT | 외부 | KOSHA 등 | `[외부]` |
+| WRK | 원문 | 실제 작업자료 | (태그 없음) |
+| UNK | 미분류 | 불명확 | - |
+
+**[AI] 태그 시스템**:
+- 원문 대책: 태그 없음
+- 근거 있는 대책: 해당 태그 (`[법령]`, `[사내]` 등)
+- AI 자동 보완: `[AI]` (실무 검증 대기)
+
+**통제 적정성 판정**:
+- **○**: 제거·대체·공학적·행정적 대책 포함, PPE 미의존
+- **△**: 대책은 있으나 행정·PPE 중심 (상위 통제 보완 필요)
+- **×**: 핵심 대책 없음, PPE만 있음, 필수대책 누락
+
+**JSA_DB 프롬프트**: 51개 세부 규칙 (별도 문서 `JSA_DB_PROMPT.md` 필요)
+
+---
+
+## 📚 확보된 실무 자료 (3종)
+
+### 1️⃣ 안전작업허가서 작성 방법 (표 3)
+
+**핵심 내용**:
+- 가~자 항목별 작성 방법
+- **3주체 시스템**:
+  - □ 작업지시자 (W/O 발행자)
+  - ◇ 작업수행사(부서) 소속 작업책임자
+  - ○ 운영부서 소속 승인(허가)자
+- **시간 관리 규정**:
+  - 작업 시작시간: 착수 직전 관리감독자 작성
+  - 작업 종료시간: 완료 후 관리감독자 작성
+  - **주간(00~18:59)**: 당일 24시까지 연장 가능
+  - **야간(19시~)**: 익일 07시까지 연장 가능
+- **밀폐공간 3자 확인**:
+  - 최초 측정: 작업수행사 관리감독자 + 운영부서 지정 측정·평가자 + 정비부서 담당자
+  - 작업 중: **1시간마다** 측정 (지정 측정·평가자)
+- **재허가/변경/연장 규정** (아. 안전작업허가)
+
+**저장 위치**: 필요 시 `docs/attachments/`에 이미지 저장 권장
+
+### 2️⃣ 프로세스 다이어그램
+
+**작업 흐름**:
+
+[작업 전]
+안전작업허가서 허가 → TBM 실시 → 안전작업허가서 현장비치
+                     ↓
+                     TBM 실시 및 서명 (문서 생성)
+                     작업중지권 고지 및 서명 (문서 생성)
+
+[작업 중]
+안전작업허가서 + TBM결과서 참조 → 작업중 안전조치 이행상태 확인
+
+[작업 종료]
+작업 완료 → 안전작업허가서 회수 → 안전작업허가서 보관
+                                    (+ TBM결과서, 작업중지권, 위험성평가서, 작업계획서)
+
+**핵심 인사이트**:
+- **TBM에 작업 시간 필드 불필요** (안전작업허가서 소관) ✅ 반영 완료
+- **작업중지권 = 고지 + 실행** (2가지 필요)
+  - 고지: TBM 시 (참여자 서명) ✅ 반영 완료
+  - 실행: 위험 발견 시 (별도 요청서) ✅ 반영 완료
+- **서류 회수 = DB 통합 리포트로 대체** (Phase 1-E 나머지)
+
+### 3️⃣ JSA_DB 프롬프트 (별도 문서 필요) ⭐
+
+**포함 내용**:
+- 12종 분류 체계
+- 15종 태그 시스템 ([법령], [사내], [AI] 등)
+- 통제 적정성 (○/△/×) 판정 기준
+- TSV 스키마 (엑셀 통합)
+- 용어 표준화 (LOTO → ILS, 추락 → 떨어짐, 내화학장갑 → 화학물질용 안전장갑)
+- 1행 통합 원칙
+- 51개 세부 규칙
+
+**활용**:
+- 이 프롬프트로 원문 → JSA_DB 자동 변환
+- Claude에게 프롬프트 전달 → TSV 출력 → 엑셀 붙여넣기 → JSON 변환
+
+**⚠️ 다음 세션에서 반드시 `JSA_DB_PROMPT.md`로 별도 저장 필요**
+
+---
+
+## 🎯 앱 간 완벽한 데이터 흐름 (2026-08-27 완성)
+
+1️⃣ 안전작업허가서 (허가 완료)
+    ├─ workTypes[]
+    ├─ startDate/Time, endDate/Time
+    ├─ validity{} (연장 정보)
+    └─ [위험성평가] 또는 [TBM] 버튼 클릭
+         ↓ URL: ?permitNo=PTW-...
+
+2️⃣ 위험성평가 앱
+    ├─ 기본정보 자동 채움 (허가서에서)
+    ├─ workTypes → workType 자동 매핑
+    ├─ JSA_DB 검색 (자동 + 수동)
+    ├─ 대책 카드 선택
+    ├─ 매트릭스 5×5 평가
+    ├─ 통제 적정성 ○/△/× 판정
+    └─ [평가 제출]
+         ↓ 자동 반영
+    허가서에 저장:
+    ├─ p.riskScore (매트릭스 점수)
+    ├─ p.riskLevel (저위험/중위험/고위험/매우고위험)
+    ├─ p.controlAdequacy (○/△/×) ⭐ 신규
+    ├─ p.riskId
+    └─ p.riskMeasures[] (선택된 대책 배열)
+
+3️⃣ TBM 앱
+    ├─ 기본정보 자동 채움 (허가서에서)
+    │   - 작업명, 장소, 협력사, 인원, 책임자
+    │   - 밀폐공간 여부 자동 판단
+    ├─ 위험요인 자동 채움 (Phase 1-D 통합)
+    │   - permit.riskMeasures[] → tbm.hazards[]
+    ├─ 작업중지권 고지 (신규)
+    ├─ [TBM 제출]
+    └─ 자동 반영:
+        ├─ permit.status = '작업중'
+        ├─ permit.tbmNo = 'TBM-...'
+        └─ workHistory[].status = '작업중'
+
+4️⃣ 작업중지 요청 (필요 시)
+    ├─ 사유 선택
+    ├─ 요청자 정보 + 서명
+    ├─ [작업중지 요청]
+    └─ 자동 반영:
+        ├─ emergencies[] 저장
+        ├─ permit.status = '작업중지'
+        └─ workHistory[].status = '작업중지'
 
 ---
 
@@ -127,605 +374,91 @@
 
 ### 🔴 P0 (다음 세션 최우선)
 
-#### 1. TBM 앱 리팩토링 ⭐ 최우선
-**중요도**: 안전작업허가서와 연동되는 핵심 앱
+#### 1. **JSA_DB 프롬프트 별도 문서화** ⭐⭐⭐
+- **파일**: `docs/JSA_DB_PROMPT.md`
+- **내용**: 51개 규칙 원본 그대로 보존
+- **예상 시간**: 15분
 
-**작업 내용**:
-- [ ] Phase B (홈버튼, 반응형, 다크모드)
-- [ ] CSS 변수명 통일 (`--navy` → `--deep` 등)
-- [ ] 안전작업허가서와 데이터 연동
-  - permitNo 매칭 개선
-  - 위험요인 자동 반영 훅
-- [ ] TBM에서 안전작업허가서로 돌아가는 링크 (연장 등)
+#### 2. **JSA_DB 데이터 확장** (11건 → 86건+)
+- **파일**: `data/jsa_database.json`
+- **작업**:
+  - 오늘 받은 표 데이터 76건 JSON 변환
+  - 프롬프트 규약 준수 검증
+  - 스키마 일관성 확인
+- **예상 시간**: 2~3시간
 
-**예상 시간**: 3~4시간
+#### 3. **위험성평가 → TBM 위험요인 자동 반영** ⭐
+- **위치**: TBM 앱 `loadFromPermit()` 함수 확장
+- **로직**:
 
----
+if(permit.riskMeasures && permit.riskMeasures.length > 0){
+  permit.riskMeasures.forEach(m => {
+    tbmData.hazards.push({
+      hazard: '(위험성평가에서 도출)',
+      measure: m,
+      person: ''
+    });
+  });
+}
 
-#### 2. 나머지 앱 3개 리팩토링 (Phase B)
-- [ ] 위험성평가_v2.html
+- **예상 시간**: 30분
+
+### 🟠 P1 (다음 다음 세션)
+
+#### 4. 다른 앱 Phase B 리팩토링
 - [ ] 포항양극재공장_안전퀴즈.html
 - [ ] 안전정보제공서_도급인용.html
 - [ ] 안전정보제공서_수급인용.html
 
-**각 앱당 예상**: 2~3시간  
-**총 예상**: 8~10시간 (2~3세션)
+**각 앱당 예상**: 1~2시간 (규약 확립되어 있어 빠름)
+**총 예상**: 4~6시간
 
----
+### 🟡 P2 (Phase 2: AI 재평가)
 
-### 🟠 P1 (Phase 1-D: JSA 연동)
+#### 5. 위험성평가 - AI 재평가 기능 ⭐
+- **트리거**: 통제 적정성 △ 또는 × 선택 시
+- **방식 옵션**:
+  - A. Claude API 직접 호출 (CORS 이슈 있음)
+  - B. 사전 생성 [AI] 태그 대책 DB 활용 (오늘 만든 방식)
+  - C. Cloud Functions (비용 발생)
+- **저장**: `aiReviews[]` 배열 (스키마 이미 준비됨)
+- **예상 시간**: 2~4시간
 
-#### 3. 안전 지식 베이스 연동 ⭐ 핵심 비전
-**중요도**: 위험성평가 → 허가서/TBM 자동 반영
-
-**계획**:
-1. **`SAFETY_KNOWLEDGE_BASE` 정의** (하드코딩, 7개 카테고리)
-2. **허가서 저장 시 자동 추출** (`autoRiskData`)
-3. **TBM 로드 시 자동 반영**
-
-**실무 검토 필요**:
-- 각 카테고리 위험요인·조치 정확성
-- 산안법 요구사항 충족 여부
-- 실무 담당자 의견 수렴
-
-**예상 시간**: 4~6시간
-
----
-
-### 🟡 P2 (Phase 1-E 나머지: 프로세스 완성)
-
-종이 문서 프로세스 분석 결과 미구현 기능:
+#### 6. Phase 1-E 나머지 (프로세스 완성)
 
 | # | 기능 | 예상 시간 |
 |---|---|:---:|
-| 4 | 변경 승인 (Change Approval) | 3~4시간 |
-| 5 | 재허가 (Re-issue) | 2~3시간 |
-| 6 | 작업 중 안전조치 이행상태 확인 | 4~5시간 |
-| 7 | 작업 완료 처리 | 2~3시간 |
-| 8 | 관련 서류 통합 조회 | 2~3시간 |
+| 6-1 | 변경 승인 (Change Approval) | 3~4시간 |
+| 6-2 | 재허가 (Re-issue) | 2~3시간 |
+| 6-3 | 작업 중 안전조치 이행상태 확인 | 4~5시간 |
+| 6-4 | 작업 완료 처리 | 2~3시간 |
+| 6-5 | **통합 리포트** (서류 회수 대체) ⭐ | 4~5시간 |
 
-**총 예상**: 16~22시간
+**총 예상**: 15~20시간
 
----
+### 🟢 P3 (Phase 3: Firestore 이관)
 
-### 🟢 P3 (Phase 2+: Firestore 이관)
-
-#### 9. Firebase Firestore 이관
+#### 7. Firebase Firestore 이관
 **시작 조건**: 데스크톱 접근 + 파일럿 데이터 확보
 
 **컬렉션 순서** (참조 무결성):
-```
+
 Phase A: 마스터 데이터
   ├─ MSDS (34종)
   ├─ 공장안전정보 (2개)
   ├─ 협력사관리
-  └─ JSA_DB (98개) ⭐ 신규
+  └─ JSA_DB (86+건) ⭐ 신규 - 오늘 준비 시작
 
 Phase B: 트랜잭션 데이터
   ├─ 작업DB
   ├─ 작업허가
-  ├─ 위험성평가
-  ├─ TBM
+  ├─ 위험성평가 (스키마 v2)
+  ├─ TBM (stopNotice 포함)
   └─ 안전정보제공
 
 Phase C: 기록 데이터
   ├─ 안전퀴즈
   ├─ 긴급조치
   └─ 안전점검사항
-```
 
 **예상 시간**: 2~3주 (단계적)
-
----
-
-## 🔑 프로젝트 규약 요약 (핵심만)
-
-### 저장소 키 매핑 (규약 준수)
-| 데이터 | localStorage 키 | Firestore 컬렉션 |
-|---|---|---|
-| 작업 | `safetyDatabase.workHistory[]` | `작업DB` |
-| 허가 | `safetyPermits[]` | `작업허가` |
-| TBM | `safetyTBM[]` | `TBM` |
-| 위험성평가 | `riskAssessments[]` | `위험성평가` |
-| 안전퀴즈 | `safetyQuizzes[]` | `안전퀴즈` |
-| 안전정보제공 | `safetyProvisions[]` | `안전정보제공` |
-| 긴급조치 | `emergencies[]` | `긴급조치` |
-
-### 자연키 형식
-| 종류 | 형식 | 예시 |
-|---|---|---|
-| workId | `{YYYY-MM-DD}_{originalNo}` | `2025-11-24_5` |
-| permitNo | `PTW-{YYYYMMDD}-{SEQ3}` | `PTW-20260826-001` |
-| riskId | `RA-{YYYYMMDD}-{SEQ3}` | `RA-20260826-001` |
-| tbmNo | `TBM-{YYYYMMDD}-{SEQ3}` | `TBM-20260826-001` |
-| quizId | `QZ-{YYYYMMDD}-{SEQ3}` | `QZ-20260826-001` |
-| emergencyNo | `EM-{YYYYMMDD}-{SEQ3}` | `EM-20260826-001` |
-| safeinfoNo | `SIP-{YYYYMMDD}-{SEQ3}` | `SIP-20260826-001` |
-| jsaId | `JSA-{YYYYMMDD}-{XXX}-{NN}` | `JSA-20260821-001-01` |
-| **extensionId** ⭐ 신규 | `EXT-{TIMESTAMP}` | `EXT-1724678400000` |
-
-### URL 파라미터
-| 파라미터 | 예시 | 용도 |
-|---|---|---|
-| `?workId=` | `?workId=2025-11-24_5` | 대시보드 → 허가서 (자동 채움) |
-| `?permitNo=` | `?permitNo=PTW-20260826-001` | 허가서 → TBM 연동 |
-| `?safeinfoNo=` | `?safeinfoNo=SIP-20260826-001` | 안전정보 서명 링크 |
-| `?riskId=` | `?riskId=RA-20260826-001` | 위험성평가 조회 |
-| **`?extend=`** ⭐ 신규 | `?extend=PTW-20260826-001` | 허가서 연장 화면 진입 |
-
-### 상태 값
-| 컬렉션 | 값 |
-|---|---|
-| `작업허가.status` | `대기중` / `허가진행중` / `허가완료` / `작업중` / `작업완료` / `작업중지` |
-| `안전퀴즈.status` | `합격` / `불합격` |
-| `안전정보제공.status` | `발행완료` / `서명완료` / `반려` |
-| `위험성평가.overallRisk` | `저위험` / `중위험` / `고위험` / `매우고위험` |
-
-### 감사 필드 (모든 문서 필수)
-```javascript
-{
-  createdAt: '2026-08-26T12:00:00Z',
-  createdBy: userId,
-  updatedAt: '2026-08-26T12:00:00Z',
-  updatedBy: userId,
-  schemaVersion: 1
-}
-```
-
-### 🆕 안전작업허가서 확장 데이터 구조 (Phase 1-C/1-E)
-
-```javascript
-{
-  // 기본 정보 (기존)
-  permitNo: 'PTW-20260826-001',
-  workName: '3라인 소성로 시운전',
-  // ...
-
-  // 🆕 Phase 1-C: 작업 유형
-  psmFacility: '일반 설비',       // PSM 미대상 자동
-  workTypes: ['fire', 'height'],  // 배열
-  
-  // 🆕 Phase 1-C: 체크리스트 (동적)
-  checklist: {
-    'fire-1.1': 'ok',
-    'fire-1.4': 'na',
-    'height-3.1': 'ok'
-  },
-  checklistReasons: {
-    'fire-1.4': '상부 위험요소 없음'
-  },
-  
-  // 🆕 Phase 1-C: 안전 확인 질문 (카테고리별)
-  questions: {
-    'C1': 'yes', 'C2': 'yes',      // 공통
-    'F1': 'yes', 'F2': 'yes'       // 화기
-  },
-  
-  // 🆕 Phase 1-E: 유효기간 관리
-  validity: {
-    isNight: false,
-    originalEndDateTime: '2026-08-26T18:00',
-    currentEndDateTime: '2026-08-26T22:00',
-    extensionCount: 1,
-    extensions: [
-      {
-        extensionId: 'EXT-1724678400000',
-        requestedAt: '2026-08-26T17:00:00Z',
-        requestedBy: '박감독',
-        previousEndTime: '2026-08-26T18:00',
-        newEndTime: '2026-08-26T22:00',
-        reason: '자재 도착 지연',
-        confirmations: {
-          worker: true,
-          approver: true,
-          content: true
-        },
-        approverSignature: 'data:image/png;base64...',
-        approvedBy: '박감독'
-      }
-    ]
-  }
-}
-```
-
-### 대시보드 매칭 필드 (각 앱별 필수)
-| 앱 | 필수 필드 |
-|---|---|
-| 안전퀴즈 | `respondent`, `respondentCompany`, `status`(`'합격'`) |
-| 위험성평가 | `workId`, `date`, `overallRisk`, `overallScore` |
-| TBM | `permitNo`, `workId`, `date`, `status` |
-| 안전정보제공 | `submittedCompany`, `submittedBy`, `status`, `date` |
-| 긴급조치 | `type`, `permitNo`, `workId`, `date` |
-| **허가서 (연장)** ⭐ | `validity.currentEndDateTime`, `validity.extensionCount` |
-
----
-
-## ⚠️ 폐기 예정 항목
-
-### localStorage 키
-| 폐기 키 | 대체 |
-|---|---|
-| `firebasePermits` | `safetyPermits` |
-| `safetyInfoDocs` | `safetyProvisions` |
-| `safetyInfoSigned` | `safetyProvisions.signature` (병합) |
-| `safetyViolations` | `emergencies` or `inspections` |
-| `riskDatabase` | `riskAssessments` |
-| `safetyRiskAssessments` | `riskAssessments` |
-| `safetyStopWork` | `emergencies.type='stop'` |
-| `tbmLogs` | `safetyTBM` |
-
-### 파일명
-| 폐기 | 대체 |
-|---|---|
-| `_v2_1_.html` | `_v2.html` |
-| `_V6_1_.html` | `_V6_.html` |
-| `_V7_통합.html` | `_V6_.html` |
-| `dashboard_v6.html` | `안전관리플랫폼_대시보드_V6_.html` |
-| `안전정보제공서_작성.html` | `안전정보제공서_도급인용.html` |
-
-### URL 파라미터
-| 폐기 | 대체 |
-|---|---|
-| `?doc=` | `?safeinfoNo=` |
-
-### 코드 패턴
-| 폐기 | 대체 |
-|---|---|
-| Claude API 브라우저 직접 호출 | JSA_DB Firestore 조회 |
-| Google Apps Script + `no-cors` | EmailJS |
-| `sessionStorage.userInfo.role` | Firebase Auth Custom Claims |
-| `Math.random()` 시퀀스 | Firestore Transaction |
-| `new Date().toISOString()` (UTC) | 로컬 시간 기반 `fmtDate()` |
-| `new Event('storage')` | `CustomEvent('app-data-changed')` |
-| `w.date + '_' + (originalNo\|\|i)` | `originalNo` 필수 (없으면 skip) |
-| `'TBM-' + Date.now()` | 로컬 시퀀스 발급 |
-
----
-## 🚀 미래 자동화 계획 (Phase 3+)
-
-### 🎯 비전
-
-**"관리자가 모바일에서 리모트로 리포트 발송"**
-
-관리자가 언제 어디서든 스마트폰으로 대시보드에 접속하여:
-1. 📧 오늘 작업 리포트 발송
-2. 📧 내일 작업 리스트 발송
-3. 🚨 긴급 알림 발송
-
-**구현 방식**: **하이브리드 (방식 C)** — 무료 티어 유지
-
-### 🔄 자동화 3대 흐름
-
-#### 흐름 1: 작업허가서 → 작업관리대장 자동 갱신 (완전 자동)
-```
-[허가서 승인]
-    ↓
-[클라이언트 저장 함수 내부]
-  ├─ 작업허가 컬렉션 저장
-  └─ 작업DB 컬렉션 자동 추가 (source: 'permit')
-    ↓
-[대시보드 실시간 반영]
-```
-
-#### 흐름 2: 매일 오전/오후 리포트 발송 (반자동)
-```
-[관리자 - 모바일]
-    ↓
-📱 대시보드 접속
-    ↓
-[📧 오늘 리포트 발송] 탭
-    ↓
-자동 수신자 목록 조회
-    ↓
-EmailJS 순차 발송
-    ↓
-[✅ 15명 발송 완료]
-```
-
-#### 흐름 3: 긴급 알림 즉시 발송 (반자동)
-```
-[사고/작업중지 발생]
-    ↓
-[관리자 - 어디서든]
-    ↓
-🚨 [긴급 알림 발송] 탭
-    ↓
-상황 입력 → 전체 관리자 즉시 발송
-```
-
-### 📊 자동화 구현 로드맵
-
-| Phase | Week | 내용 | 예상 시간 |
-|---|---|---|---|
-| **Phase 3** | 5-8 | 기본 자동화 (허가서 자동 갱신, 발송 UI) | 2주 |
-| **Phase 4** | 9-12 | 수신자 관리, 리포트 자동 생성 | 2주 |
-| **Phase 5** | 13-14 | 고도화 (이력 조회, 통계) | 2주 |
-
-### 💰 예상 비용
-
-**Firebase Spark 무료 티어**: $0  
-**EmailJS**: $0~15/월  
-**총 예상**: $0~15/월
-
-### 🎊 자동화 완성 후 기대 효과
-
-- ⏰ **매일 30~60분 절약** = 연 200~700시간
-- 📧 **놓치는 알림 0** = 안전사고 예방
-- 🌍 **위치 자유** = 재택/출장 대응
-- 💰 **비용 0~15/월** = 무료 티어
-
----
-
-## 📁 프로젝트 파일 구조 (목표)
-
-```
-safety-management-platform/
-├── index.html
-├── 안전관리플랫폼_대시보드_V6_.html      ✅ 완성 (Phase 1)
-├── 안전작업허가서_v2.html                ✅ 완성 (Phase B+1-C+1-E)
-├── TBM_및_작업중지권_v2.html              🔄 리팩토링 필요
-├── 위험성평가_v2.html                    🔄 리팩토링 필요
-├── 포항양극재공장_안전퀴즈.html            🔄 리팩토링 필요
-├── 안전정보제공서_도급인용.html            🔄 리팩토링 필요
-├── 안전정보제공서_수급인용.html            🔄 리팩토링 필요
-├── firestore_upload.html                 (JSA_DB 업로드용)
-├── firebase-config.js
-├── firebase.json                         (Hosting + 리다이렉트)
-│
-├── data/
-│   ├── msds_database.js                 (34종 MSDS)
-│   ├── factory_safety_info.js           (공장 비상정보)
-│   ├── jsa_database.json                (JSA_DB 마스터, Phase 6)
-│   └── safety_knowledge_base.js         ⭐ Phase 1-D 신규
-│
-└── docs/
-    ├── PROJECT_HANDOVER.md              ⭐ 이 문서 (v3.0)
-    ├── PROJECT_CONVENTIONS.md
-    ├── FILE_STORAGE_GUIDE.md
-    ├── IMPROVEMENT_PLAN.md
-    ├── DB_SCHEMA.md
-    ├── FIRESTORE_SECURITY_RULES.md
-    ├── DATA_MIGRATION_GUIDE.md
-    ├── JSA_DB_STRUCTURE.md
-    ├── COMPLETE_PROJECT_GUIDE.md
-    │
-    └── attachments/
-        ├── README.md
-        ├── emergency_response_diagram.png
-        ├── equipment_checklist_v1.png
-        └── heat_illness_selfcheck_v1.png
-```
-
----
-
-## 🎯 새 세션 시작 시 첫 프롬프트
-
-새 Claude 세션에서 이 프로젝트를 이어서 진행할 때, 아래 프롬프트를 사용하세요:
-
-### 옵션 1: TBM 앱 리팩토링 (권장) ⭐
-
-```
-안녕! POSCO FM 포항양극재공장 안전관리 프로젝트를 이어서 진행하려고 합니다.
-
-먼저 다음 3개 문서를 참고해서 상황 파악해주세요:
-1. docs/PROJECT_HANDOVER.md (v3.0) - 이 문서
-2. docs/PROJECT_CONVENTIONS.md - 규약 문서
-3. docs/FILE_STORAGE_GUIDE.md - 파일 저장 가이드
-
-어제(2026-08-26) 안전작업허가서 Phase 1-E까지 완성했고,
-오늘은 TBM 앱 리팩토링을 시작하고 싶습니다.
-
-목표:
-- Phase B (홈버튼, 반응형, 다크모드)
-- CSS 변수명 통일
-- 안전작업허가서와 데이터 연동 강화
-
-준비되시면 시작해주세요!
-```
-
-### 옵션 2: Phase 1-D (JSA 연동)
-
-```
-안녕! docs/PROJECT_HANDOVER.md (v3.0) 참고해주세요.
-
-Phase 1-D 안전 지식 베이스 연동을 시작하고 싶습니다.
-
-목표:
-- SAFETY_KNOWLEDGE_BASE 정의 (7개 카테고리)
-- 허가서 → TBM 자동 반영 (autoRiskData)
-- 실무 검토 안 논의
-
-준비되시면 시작해주세요!
-```
-
-### 옵션 3: 다른 앱 리팩토링
-
-```
-안녕! docs/PROJECT_HANDOVER.md (v3.0) 참고해주세요.
-
-위험성평가/안전퀴즈/안전정보 앱을 Phase B로 리팩토링하고 싶습니다.
-
-목표:
-- 홈버튼 + 반응형 + 다크모드 통일
-- 대시보드와 색상/스타일 통일
-
-준비되시면 시작해주세요!
-```
-
----
-
-## 📌 새 세션에서 Claude에게 알려야 할 것
-
-### 1. 프로젝트 방향성
-- ✅ Firebase + GitHub (무료 티어)
-- ✅ 회사 서버 이관 유보
-- ✅ Cloud Functions 미사용
-- ✅ **자동화는 방식 C (하이브리드) 확정** — 관리자 모바일 리모트
-
-### 2. 완성된 파일 (2026-08-26 기준)
-- ✅ **대시보드 V6** (Phase 1 완성)
-- ✅ **안전작업허가서** (Phase B+1-C+1-E 완성)
-
-### 3. 리팩토링 대기 파일
-- 🔄 TBM_및_작업중지권_v2.html ⭐ 최우선
-- 🔄 위험성평가_v2.html
-- 🔄 포항양극재공장_안전퀴즈.html
-- 🔄 안전정보제공서_도급인용.html
-- 🔄 안전정보제공서_수급인용.html
-
-### 4. 개발 환경 제약사항
-- 회사 환경 (Fasoo DRM 등 보안 시스템)
-- 모바일 위주 진행
-- Firebase Console 조작 어려움
-- 코드는 GitHub 웹 편집기 또는 로컬 저장 후 커밋
-
-### 5. 응답 스타일
-- 긴 코드는 **여러 파트로 나눠서** 제공 (응답 잘림 방지)
-- 각 파트마다 **명확한 경계 표시** (`⚠️ 여기부터` / `⚠️ 여기까지`)
-- Part 조립 시 **DOCTYPE, html, head, body 태그 중복 주의**
-- 실무자가 이해하기 쉬운 설명
-- 규약 준수 강조
-
-### 6. 향후 자동화 비전
-- ✅ **관리자 모바일 리모트 발송** (방식 C 확정)
-- 📧 오늘 리포트 / 내일 리스트 / 긴급 알림
-- 💰 무료 티어 유지 (Firebase Spark + EmailJS)
-- 🎯 예상 시작: Phase 3 (5~14주 단계적 진행)
-
----
-
-## 📊 지금까지의 성과 요약
-
-### 발견한 문제
-- ❌ 15+ 종의 localStorage 키 이름 불일치
-- ❌ 파일명 버전 접미어 혼재
-- ❌ 3가지 백엔드 병존 (Firebase, localStorage, Apps Script)
-- ❌ workId 규칙 3파일 모두 다름
-- ❌ 안전퀴즈 저장 자체가 없었음 (유령 데이터)
-- ❌ 대시보드 P0 버그들
-- ❌ Claude API CORS 실패
-- ❌ Google Apps Script URL 미설정
-- ❌ 역할값 대소문자 혼재
-- ❌ **안전작업허가서 4개 클래스 통일 안 됨** (버튼 시각 피드백 없음) ⭐ 오늘 해결
-- ❌ **6단계 안전 확인 - 모든 작업에 무관한 질문 표시** ⭐ 오늘 해결
-- ❌ **허가서 연장 승인 기능 없음** (법정 필수) ⭐ 오늘 해결
-
-### 해결한 것
-- ✅ 저장 키 규약 통일
-- ✅ 자연키 규약 통일
-- ✅ 감사 필드 표준화
-- ✅ 대시보드 매칭 필드 명시
-- ✅ 폐기 키 자동 마이그레이션
-- ✅ 상태값 통일
-- ✅ URL 파라미터 통일
-- ✅ MSDS 34종 데이터셋 구축
-- ✅ 공장 2개 사업장 비상정보 표준화
-- ✅ 안전정보 도급인 → 수급인 완전한 페어링
-- ✅ 미래 자동화 방향 확정 (방식 C)
-- ✅ **대시보드 V6 Phase 1 완성** ⭐ 오늘
-- ✅ **안전작업허가서 Phase B + 1-C + 1-E 완성** ⭐ 오늘
-
----
-
-## 🎓 프로젝트 이관 시 참고 사항
-
-### 사용자 특성
-- 실무자 (안전관리자)
-- 모바일 중심 사용 환경
-- 기술 배경 있으나 코드 작성보다 검토 중심
-- 프로젝트 방향성 및 우선순위 결정에 집중
-
-### 협업 방식
-- Claude가 코드 생성/수정 제안
-- 사용자가 GitHub에 커밋
-- 실제 배포는 Firebase Hosting
-- 결정 사항은 문서에 즉시 반영
-
-### 성공 패턴
-1. **규약 먼저** (혼란 방지)
-2. **문서화** (계속 참조 가능)
-3. **작은 단위 검증** (앱 단위)
-4. **응답 분할** (긴 코드는 여러 파트로, 경계 표시 명확히)
-5. **재활용 가능한 자산 축적** (MSDS, 비상정보, SAFETY_KB 등)
-6. **미래 비전 명확** (자동화 로드맵, Phase 1-D 계획)
-
-### 자주 하는 실수 방지 (경험 기반)
-- ❌ Part 조립 시 `<!DOCTYPE>` 중복
-- ❌ CSS `<style>` 태그 여러 개 분산
-- ❌ 파일명 대소문자 헷갈림
-- ❌ URL 파라미터 인코딩 실수
-- ❌ localStorage 키 오타
-- ❌ welcome 화면 닫는 태그 누락
-
----
-
-## 📞 참조 링크
-
-| 자원 | URL |
-|---|---|
-| **GitHub 저장소** | https://github.com/safety99999/safety-management-platform |
-| **Firebase Console** | https://console.firebase.google.com/project/safety-management-platfo-5f413 |
-| **배포된 사이트** | https://safety-management-platfo-5f413.web.app |
-| **JSA_DB 업로드 도구** | https://safety-management-platfo-5f413.web.app/firestore_upload.html |
-| **안전보건공단 MSDS** | https://msds.kosha.or.kr/ |
-| **EmailJS** | https://www.emailjs.com/ |
-
----
-
-## 📅 변경 이력
-
-| 버전 | 날짜 | 변경 사항 |
-|---|---|---|
-| 1.0 | 2026-08-24 | 최초 인수인계 문서 작성 (5개 앱 개선 완료 시점) |
-| 2.0 | 2026-08-24 | 자동화 로드맵 추가 (방식 C 확정) |
-| **3.0** | **2026-08-26** | **대시보드 Phase 1 + 안전작업허가서 Phase B/1-C/1-E 완료 반영** ⭐ |
-
----
-
-## ⚠️ 중요 안내
-
-**이 문서와 상충하는 경우 우선순위**:
-1. **PROJECT_CONVENTIONS.md** (규약 문서) - 최우선
-2. **PROJECT_HANDOVER.md** (이 문서) - 진행 상황
-3. **FILE_STORAGE_GUIDE.md** - 파일 저장 방법
-4. **DB_SCHEMA.md** - 세부 스키마
-5. **기타 문서** - 참고용
-
-**모든 코드 개선은 `PROJECT_CONVENTIONS.md` 규약을 반드시 준수합니다.**
-
----
-
-## 🎊 마무리
-
-이 문서를 통해:
-
-### 즉시 가능한 것
-- ✅ 새 Claude 세션에서 프로젝트 즉시 이어가기
-- ✅ 남은 작업 우선순위 명확 (TBM ⭐ 최우선)
-- ✅ 규약 준수 방향 확립
-- ✅ Phase 1-C/1-E 상세 데이터 구조 이해
-
-### 미래 준비된 것
-- 🚀 자동화 로드맵 (Phase 3~6)
-- 📧 이메일 리포트 시스템 (모바일 리모트)
-- 💾 Firebase 이관 계획
-- 📊 확장 가능한 아키텍처
-- 🎯 **Phase 1-D**: JSA 연동 (SAFETY_KNOWLEDGE_BASE)
-- 🎯 **Phase 1-E 나머지**: 변경/재허가/작업중 확인/완료 처리
-
-### 지금까지의 여정
-- 📋 11개 파일 검토
-- 🔧 5개 앱 저장 로직 개편 (Phase 2)
-- 🎨 대시보드 V6 Phase 1 완성
-- ⚡ 안전작업허가서 Phase B + 1-C + 1-E 완성
-- 📚 8개 문서 작성
-- 🎯 자동화 방향 확정
-
----
-
-**끝.**
-
-새 세션에서 이 문서를 참조하여 즉시 이어서 작업을 진행하세요! 🚀
-
-**"이 프로젝트는 잘 정리되어 있어, 언제든 이어갈 수 있다"** — 이것이 이 문서의 목표입니다. 💪
-
