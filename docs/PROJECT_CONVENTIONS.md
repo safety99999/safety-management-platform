@@ -1,1883 +1,3326 @@
-# 📘 PROJECT_CONVENTIONS.md
+# 프로젝트 공통 규약
 
-**POSCO FM 포항양극재공장 안전관리 시스템**  
-**규약 문서 (Single Source of Truth)**
-
-Version: 2.0 (Final)  
-Last Updated: 2026-08-24  
-Status: 확정 (5개 앱 개선 완료 반영)
-
----
-
-## 🎯 이 문서의 역할
-
-이 프로젝트의 **모든 코드·문서·데이터가 지켜야 할 규약**을 정의합니다.
-
-다른 문서(DB 스키마, 보안 규칙, 마이그레이션 가이드)와 상충 시 **이 문서가 우선**합니다.
+문서명: PROJECT_CONVENTIONS.md  
+프로젝트명: POSCO FM 포항양극재공장 안전관리 플랫폼  
+버전: 3.0  
+상태: 초안 검토  
+작성 기준일: 2026-08-27  
+문서 성격: 프로젝트 최상위 공통 규약  
+최종 확정자: 현업 담당자 및 안전보건 담당자
 
 ---
 
-## 1. 프로젝트 아키텍처
+## 1. 문서 목적
 
-### 1.1 확정된 스택
+이 문서는 안전관리 플랫폼의 코드, 데이터, 화면, 문서, 상태값 및 앱 간 연결이 따라야 할 공통 규칙을 정의한다.
 
-| 계층 | 기술 | 상태 |
-|---|---|---|
-| **프론트엔드** | HTML + CSS + Vanilla JS | 유지 |
-| **백엔드** | Firebase Firestore | 이관 진행 중 |
-| **인증** | Firebase Auth (Google OAuth) | 도입 예정 |
-| **배포** | Firebase Hosting | 운영 중 |
-| **코드 관리** | GitHub | 운영 중 |
-| **이메일** | EmailJS + 개인 Gmail (개발) | 도입 예정 |
-| **AI 대체** | JSA_DB 사전 생성 + Firestore 조회 | 데이터 완료 |
+주요 목적은 다음과 같다.
 
-### 1.2 비용 정책
+- 앱별 필드명과 저장 키 통일
+- 문서 식별번호 통일
+- 종이 안전서식의 필수항목 보존
+- 안전정보제공부터 작업완료까지 업무 흐름 연결
+- 위험성평가, 허가서 및 TBM의 데이터 일치
+- JSA_DB 기반 위험요인·안전대책 활용
+- 고위험작업 사전승인과 작업 중 점검
+- 안전퀴즈 합격자의 출입·작업 참여 검증
+- 별도 ILS 시스템과의 역할 분리
+- TBM과 실제 작업중지 요청의 기능 분리
+- 감사·승인·변경 이력 보존
+- Firestore 이관 시 데이터 충돌 방지
+- 모바일 현장 사용성 확보
+- Firebase 무료 요금제 유지
 
-- ✅ **Firebase Spark(무료) 플랜만 사용**
-- ❌ Blaze(유료) 전환 없음
-- ❌ Cloud Functions 사용 없음
-- ✅ 필요 시 EmailJS(월 200통 무료) 활용
-
-### 1.3 회사 서버 이관
-
-- 유보 상태 (Firebase 무기한 사용)
-
-### 1.4 개발 환경 제약사항
-
-- 회사 환경 (Fasoo DRM 등 보안 시스템)
-- 모바일 위주 진행
-- Firebase Console 조작은 데스크톱에서
-- 코드 저장은 GitHub 웹 편집기 or 로컬
+이 문서와 상충하는 구형 코드와 문서는 단계적으로 본 규약에 맞게 개정한다.
 
 ---
 
-## 2. 역할(Role) 규약
+## 2. 문서 우선순위
 
-### 2.1 역할 값 표기
+프로젝트 문서가 서로 충돌하면 다음 순서를 적용한다.
 
-| 역할 | 저장 값 | UI 라벨 |
-|---|---|---|
-| 관리자 | `'admin'` | 관리자 |
-| 매니저 | `'manager'` | 안전관리자 |
-| 작업자 | `'worker'` | 작업자 |
+1. PROJECT_CONVENTIONS.md
+2. HIGH_RISK_WORK_POLICY.md
+3. PAPER_FORM_DIGITAL_MAPPING.md
+4. JSA_DB_STRUCTURE.md
+5. JSA_DB_PROMPT.md
+6. DB_SCHEMA.md
+7. PROJECT_HANDOVER.md
+8. DATA_MIGRATION_GUIDE.md
+9. FILE_STORAGE_GUIDE.md
+10. 기타 참고문서
 
-**규약**:
-- ✅ **소문자로만** 저장 (`'admin'`, `'manager'`, `'worker'`)
-- ❌ `'ADMIN'`, `'Admin'`, `'USER'` 등 금지
-- ✅ 저장 위치: Firebase Auth Custom Claims
+단, 최신 법령, 회사 공식 기준 및 권한 있는 담당부서의 확정사항은 프로젝트 문서보다 우선한다.
 
-### 2.2 역할 검증 방식
-
-**클라이언트**:
-```javascript
-async function getUserRole() {
-  const user = firebase.auth().currentUser;
-  if (!user) return 'worker';
-  const token = await user.getIdTokenResult();
-  return token.claims.role || 'worker';
-}
-```
-
-**Firestore Rules**:
-```javascript
-function isAdmin() {
-  return request.auth != null && request.auth.token.role == 'admin';
-}
-function isManager() {
-  return request.auth != null && request.auth.token.role in ['admin', 'manager'];
-}
-```
-
-⚠️ **금지**: `get(/databases/.../users/$(uid)).data.role` 방식 (매 요청 Firestore 조회 = 비용 폭탄)
+법령·사내기준의 문서번호, 개정번호, 시행일 또는 유효 여부가 확인되지 않은 자료는 `review` 상태로 관리한다.
 
 ---
 
-## 3. 자연키(Natural Key) 생성 규칙
+## 3. 시스템 역할
 
-### 3.1 형식 규약
+이 플랫폼은 다음 안전업무를 연결하여 관리한다.
 
-| 종류 | 형식 | 예시 |
-|---|---|---|
-| **workId** | `{YYYY-MM-DD}_{originalNo}` | `2025-11-24_5` |
-| **permitNo** | `PTW-{YYYYMMDD}-{SEQ3}` | `PTW-20260824-001` |
-| **riskId** | `RA-{YYYYMMDD}-{SEQ3}` | `RA-20260824-001` |
-| **tbmNo** | `TBM-{YYYYMMDD}-{SEQ3}` | `TBM-20260824-001` |
-| **quizId** | `QZ-{YYYYMMDD}-{SEQ3}` | `QZ-20260824-001` |
-| **emergencyNo** | `EM-{YYYYMMDD}-{SEQ3}` | `EM-20260824-001` |
-| **inspectionNo** | `IN-{YYYYMMDD}-{SEQ3}` | `IN-20260824-001` |
-| **safeinfoNo** | `SIP-{YYYYMMDD}-{SEQ3}` | `SIP-20260824-001` |
-| **jsaId** | `JSA-{YYYYMMDD}-{XXX}-{NN}` | `JSA-20260821-001-01` |
+- 작업정보
+- 도급인 안전정보제공
+- 수급인 확인·서명
+- 출입자 안전퀴즈
+- 위험성평가
+- JSA_DB 검색·추천
+- 고위험작업 판정
+- 고위험작업 사전승인
+- 안전작업허가
+- 허가 전 ILS 상태 확인
+- 산소·유해가스 측정
+- TBM
+- 작업중지권 고지
+- 조건부 TBM 별지
+- 작업 중 안전조치 점검
+- 실제 작업중지 요청
+- 개선조치·재점검
+- 재평가·재허가·재TBM
+- 작업 종료
+- ILS 잠금 해제 완료 확인
+- 설비 인계
+- 통합 리포트
 
-### 3.2 시퀀스 발급 방식
+플랫폼은 안전관리자의 판단과 현장 확인을 대체하지 않는다.
 
-**임시 (localStorage 단계)**:
-```javascript
-function getNextSequence(prefix, date){
-  var dateStr = date.replace(/-/g, '');
-  var storageKey = 'safetyProvisions'; // 각 앱마다 다름
-  try {
-    var list = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    var todayCount = list.filter(function(d){
-      return d[prefix + 'No'] && d[prefix + 'No'].startsWith(prefix + '-' + dateStr);
-    }).length;
-    var seq = todayCount + 1;
-    return prefix + '-' + dateStr + '-' + String(seq).padStart(3, '0');
-  } catch(e) {
-    return prefix + '-' + dateStr + '-001';
-  }
-}
-```
-
-**정식 (Firestore Transaction 이관 후)**:
-```javascript
-async function getNextSequence(prefix, date) {
-  const dateStr = date.replace(/-/g, '');
-  const counterRef = db.doc(`counters/${prefix}_${dateStr}`);
- 
-  const seq = await db.runTransaction(async (t) => {
-    const doc = await t.get(counterRef);
-    const next = (doc.exists ? doc.data().count : 0) + 1;
-    t.set(counterRef, {
-      count: next,
-      lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    return next;
-  });
- 
-  return `${prefix}-${dateStr}-${String(seq).padStart(3, '0')}`;
-}
-```
-
-### 3.3 폐기 방식
-
-- ❌ `'PTW-' + Math.random()...` (충돌 위험)
-- ❌ `'TBM-' + Date.now()` (규약 불일치)
-- ❌ `w.date + '_' + (w.originalNo || i)` (fallback 위험)
-
-### 3.4 workId 특수 규약
-
-- `originalNo`가 없는 작업은 **저장 거부** (skip)
-- 인덱스 fallback(`i`), 빈 문자열 fallback(`''`) **모두 금지**
+AI와 JSA_DB는 위험요인과 안전대책을 제안하고 누락을 확인하는 보조수단으로 사용한다.
 
 ---
 
-## 4. Firestore 컬렉션 (16개 + JSA_DB)
+## 4. 확정 기술 구성
 
-### 4.1 Core Collections (7개)
-
-| 컬렉션명 | 문서ID | 자연키 필드 | 용도 |
-|---|---|---|---|
-| `users` | Firebase Auth UID | `uid` | 사용자 관리 |
-| `작업DB` | `{workId}` | `workId` | 원본 작업 정보 |
-| `작업허가` | `{permitNo}` | `permitNo` | 안전작업허가서 |
-| `TBM` | `{tbmNo}` | `tbmNo` | Tool Box Meeting |
-| `위험성평가` | `{riskId}` | `riskId` | 위험성 평가 |
-| `안전퀴즈` | `{quizId}` | `quizId` | 출입자 안전퀴즈 |
-| `긴급조치` | `{emergencyNo}` | `emergencyNo` | 사고 후 조치 + 작업중지권 |
-
-### 4.2 Safety Info Collections (3개)
-
-| 컬렉션명 | 문서ID | 자연키 필드 | 용도 |
-|---|---|---|---|
-| `안전정보제공` | `{safeinfoNo}` | `safeinfoNo` | 안전정보제공서 (도급↔수급) |
-| `안전점검사항` | `{inspectionNo}` | `inspectionNo` | 안전 점검·위반 |
-| `공장안전정보` | `{factoryId}` | `factoryId` | 공장별 위험 설비 (**2개 사업장**) |
-
-### 4.3 Management Collections (4개)
-
-| 컬렉션명 | 문서ID | 자연키 필드 | 용도 |
-|---|---|---|---|
-| `협력사관리` | `{contractorId}` | `contractorId` | 협력사 정보 |
-| `작업자관리` | `{workerId}` | `workerId` | 작업자 정보 |
-| `MSDS` | `{msdsId}` | `msdsId` | 화학물질 안전정보 (**34종**) |
-| `사내안전기준` | `{standardNo}` | `standardNo` | 사내 안전 기준 |
-
-### 4.4 Statistics Collections (2개)
-
-| 컬렉션명 | 문서ID | 갱신 방식 |
+| 계층 | 기술 | 운영 원칙 |
 |---|---|---|
-| `월간통계` | `{YYYY-MM}` | 클라이언트 실시간 계산 |
-| `협력사통계` | `{contractorId}` | 클라이언트 실시간 계산 |
-
-### 4.5 Special Collections
-
-| 컬렉션명 | 문서ID | 용도 |
-|---|---|---|
-| `JSA_DB` | `{jsaId}` | 사전 생성 JSA 데이터셋 (98개 문서, 690개 위험요소) |
-| `counters` | `{PREFIX}_{YYYYMMDD}` | 시퀀스 발급 (Transaction용) |
-| **`작업장비체크리스트`** | `EC-{YYYYMMDD}-{SEQ3}` | TBM 별첨 1 (Phase 7) |
-| **`온열질환진단`** | `HI-{YYYYMMDD}-{SEQ3}` | TBM 별첨 2 (Phase 7, 5~9월) |
+| 프론트엔드 | HTML, CSS, Vanilla JavaScript | 유지 |
+| 개발 저장소 | localStorage | 개발·기능시험 전용 |
+| 운영 데이터베이스 | Firebase Firestore | 단계적 이관 |
+| 인증 | Firebase Authentication | Google OAuth 도입 예정 |
+| 권한 | Firebase Auth 및 Firestore Rules | 최소권한 적용 |
+| 배포 | Firebase Hosting | 운영 |
+| 코드 관리 | GitHub | 운영 |
+| 이메일 | EmailJS 및 mailto 폴백 | 관리자 수동 발송 |
+| AI 지원 | JSA_DB 및 규칙 기반 검토 | 실시간 API 직접 호출 금지 |
+| 파일 저장 | 별도 정책 확정 필요 | 큰 Base64 저장 지양 |
 
 ---
 
-## 5. 저장소 키 매핑 (임시 → 정식)
+## 5. 비용 및 서비스 정책
 
-### 5.1 localStorage ↔ Firestore
+### 5.1 유지 정책
 
-| 데이터 | localStorage (임시) | Firestore (정식) |
-|---|---|---|
-| 작업 | `safetyDatabase.workHistory[]` | `작업DB` |
-| 허가 | `safetyPermits[]` | `작업허가` |
-| TBM | `safetyTBM[]` | `TBM` |
-| 위험성평가 | `riskAssessments[]` | `위험성평가` |
-| 안전퀴즈 | `safetyQuizzes[]` | `안전퀴즈` |
-| 긴급조치 | `emergencies[]` | `긴급조치` |
-| 안전점검 | `inspections[]` | `안전점검사항` |
-| 안전정보제공 | `safetyProvisions[]` | `안전정보제공` |
-| 사용자 (임시) | `sessionStorage.userInfo` | `users` (Firestore) |
+- Firebase Spark 무료 플랜을 유지한다.
+- Blaze 유료 플랜으로 전환하지 않는다.
+- Cloud Functions를 사용하지 않는다.
+- EmailJS는 무료 또는 승인된 요금 범위에서 사용한다.
+- 백그라운드 자동작업을 전제로 설계하지 않는다.
+- 관리자가 모바일 또는 데스크톱에서 실행하는 하이브리드 방식을 사용한다.
 
-### 5.2 폐기 예정 키 (마이그레이션 후 제거)
+### 5.2 구현 제한
 
-| 폐기 키 | 대체 | 자동 마이그레이션 |
-|---|---|---|
-| `firebasePermits` | `safetyPermits` | 필요 |
-| `safetyInfoDocs` | `safetyProvisions` | ✅ 구현됨 |
-| `safetyInfoSigned` | `safetyProvisions.signature` (병합) | ✅ 구현됨 |
-| `safetyViolations` | `emergencies` or `inspections` | 필요 |
-| `riskDatabase` | `riskAssessments` | ✅ 구현됨 |
-| `safetyRiskAssessments` | `riskAssessments` | ✅ 구현됨 |
-| `safetyStopWork` | `emergencies.type='stop'` | ✅ 구현됨 |
-| `tbmLogs` | `safetyTBM` | ✅ 구현됨 |
+Cloud Functions를 사용하지 않으므로 다음 기능은 자동 실행을 전제로 하지 않는다.
 
-**폐기 정책**: v1.0 배포 시 읽기 지원, 6개월 후 완전 제거
+- 예약 이메일 발송
+- 서버 기반 재시도
+- 기한 경과 자동 상태변경
+- 오래된 기록 자동 삭제
+- 주기적 통계 집계
+- 고위험 점검 알림의 백그라운드 실행
 
-### 5.3 한글 컬렉션명 유지 이유
+초기 구현은 다음 방식을 사용한다.
 
-- 배포된 스키마 그대로 (재작업 부담 없음)
-- 팀 커뮤니케이션 편함
-- Firebase 이관 시 데이터 이관 문서 그대로 사용
-- 통합 가이드에 이미 명시됨
+- 화면 진입 시 상태 계산
+- 대시보드 경고
+- 예정시간 표시
+- 관리자 수동 실행
+- 필요 시 데스크톱 관리 스크립트
 
 ---
-## 6. 파일명 규약
 
-### 6.1 정식 파일명
+## 6. 개발환경 제약
 
-| 페이지 | 정식 파일명 |
+- 회사 보안환경과 DRM을 고려한다.
+- 모바일 중심으로 화면과 입력 절차를 설계한다.
+- Firebase Console 작업은 가능하면 데스크톱에서 수행한다.
+- GitHub 웹 편집 또는 검증된 로컬 환경을 사용한다.
+- 긴 코드는 기능·함수·섹션 단위로 나누어 제공한다.
+- Part 경계에서 함수, 문자열, 정규식, 객체 및 HTML 태그를 자르지 않는다.
+- 각 Part 반영 후 즉시 Preview와 실행 테스트를 수행한다.
+- 이전 Part 테스트가 끝나기 전에 다음 Part를 반영하지 않는다.
+
+---
+
+## 7. 정식 파일명
+
+| 기능 | 정식 파일명 |
 |---|---|
-| 대시보드 | `안전관리플랫폼_대시보드_V6_.html` |
-| 안전작업허가서 | `안전작업허가서_v2.html` |
-| TBM | `TBM_및_작업중지권_v2.html` |
-| AI 위험성평가 | `위험성평가_v2.html` |
-| 안전퀴즈 | `포항양극재공장_안전퀴즈.html` |
-| 안전정보제공서 (도급인) | `안전정보제공서_도급인용.html` |
-| 안전정보제공서 (수급인) | `안전정보제공서_수급인용.html` |
-| JSA_DB 업로드 도구 | `firestore_upload.html` |
+| 진입 페이지 | index.html |
+| 대시보드 | 안전관리플랫폼_대시보드_V6_.html |
+| 안전작업허가서 | 안전작업허가서_v2.html |
+| 위험성평가 | 위험성평가_v2.html |
+| TBM | TBM_v2.html |
+| 작업중지권 | 작업중지권_v2.html |
+| 안전퀴즈 | 포항양극재공장_안전퀴즈.html |
+| 안전정보제공서 도급인용 | 안전정보제공서_도급인용.html |
+| 안전정보제공서 수급인용 | 안전정보제공서_수급인용.html |
+| JSA_DB 업로드 도구 | firestore_upload.html |
 
-### 6.2 폐기 파일명 (리다이렉트 대상)
+### 7.1 TBM 파일 분리
+
+기존 파일:
+
+    TBM_및_작업중지권_v2.html
+
+신규 구조:
+
+    TBM_v2.html
+    작업중지권_v2.html
+
+분리 원칙:
+
+- TBM에는 작업중지권 사전 고지를 유지한다.
+- 실제 작업중지 요청·개선조치·재개는 작업중지권 전용 파일에서 처리한다.
+- 신규 파일 검증 전까지 기존 통합 파일을 삭제하지 않는다.
+- 대시보드와 허가서 링크 수정 후 기존 경로의 안내 또는 리다이렉트를 검토한다.
+
+### 7.2 파일명 원칙
+
+- 한글 파일명을 유지한다.
+- 버전 접미어는 최대 한 개만 사용한다.
+- 이중 접미어를 사용하지 않는다.
+- 대소문자를 임의로 변경하지 않는다.
+- 배포된 링크 변경 시 리다이렉트 또는 안내페이지를 제공한다.
+
+### 7.3 폐기 파일명
+
+| 폐기 파일 | 대체 파일 |
+|---|---|
+| 안전관리플랫폼_대시보드_V6_1_.html | 안전관리플랫폼_대시보드_V6_.html |
+| 안전관리플랫폼_대시보드_V7_통합.html | 안전관리플랫폼_대시보드_V6_.html |
+| dashboard_v6.html | 안전관리플랫폼_대시보드_V6_.html |
+| 안전작업허가서_v2_1_.html | 안전작업허가서_v2.html |
+| 안전정보제공서_작성.html | 안전정보제공서_도급인용.html |
+
+기존 TBM 통합 파일의 폐기시점은 분리 파일의 검증 완료 후 결정한다.
+
+---
+
+## 8. URL 파라미터
+
+### 8.1 정식 파라미터
+
+| 파라미터 | 용도 |
+|---|---|
+| workId | 원본 작업 조회 |
+| safeinfoNo | 안전정보제공서 조회 |
+| quizId | 안전퀴즈 결과 조회 |
+| riskId | 위험성평가 조회 |
+| permitNo | 허가서 기반 앱 연결 |
+| tbmNo | TBM 조회 |
+| emergencyNo | 작업중지·긴급조치 조회 |
+| inspectionNo | 작업 중 점검 조회 |
+| mode | new, view, edit 등 진입 모드 |
+| extend | 허가서 연장 대상 번호 |
+
+### 8.2 앱 간 전달 원칙
+
+- URL에는 가능한 한 자연키만 전달한다.
+- 작업 상세정보를 URL에 반복 전달하지 않는다.
+- 받는 앱은 자연키로 원본 데이터를 조회한다.
+- 모든 파라미터 값은 encodeURIComponent를 사용한다.
+- URL 값만 신뢰하지 않고 원본 문서 존재 여부를 확인한다.
+- 권한이 필요한 문서는 사용자 권한을 검증한다.
+
+### 8.3 주요 연결
+
+| 출발 | 도착 | 기본 파라미터 |
+|---|---|---|
+| 대시보드 | 허가서 | workId |
+| 허가서 | 위험성평가 | permitNo |
+| 허가서 | TBM | permitNo |
+| TBM | 작업중지권 | permitNo, 필요 시 tbmNo |
+| 위험성평가 이력 | 위험성평가 조회 | riskId |
+| 안전정보 도급인 | 수급인 | safeinfoNo |
+| 작업중지 이력 | 작업중지권 조회 | emergencyNo |
+
+### 8.4 폐기 파라미터
 
 | 폐기 | 대체 |
 |---|---|
-| `안전관리플랫폼_대시보드_V6_1_.html` | `_V6_.html` |
-| `안전관리플랫폼_대시보드_V7_통합.html` | `_V6_.html` |
-| `dashboard_v6.html` | `_V6_.html` |
-| `안전작업허가서_v2_1_.html` | `_v2.html` |
-| `TBM_및_작업중지권_v2_1_.html` | `_v2.html` |
-| `안전정보제공서_작성.html` | `_도급인용.html` |
-
-### 6.3 파일명 규약 원칙
-
-- ✅ **한글 파일명 유지** (배포된 상태 보존)
-- ✅ 버전 접미어 최대 1개 (`_v2`, `_V6_`)
-- ❌ **이중 버전 접미어 금지** (`_v2_1_`, `_V6_1_`, `_V7_통합`)
-- ✅ Firebase Hosting 301 리다이렉트로 폐기 파일 커버
-
-### 6.4 firebase.json 리다이렉트 설정
-
-```json
-{
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "redirects": [
-      {
-        "source": "/안전관리플랫폼_대시보드_V6_1_.html",
-        "destination": "/안전관리플랫폼_대시보드_V6_.html",
-        "type": 301
-      },
-      {
-        "source": "/안전관리플랫폼_대시보드_V7_통합.html",
-        "destination": "/안전관리플랫폼_대시보드_V6_.html",
-        "type": 301
-      },
-      {
-        "source": "/dashboard_v6.html",
-        "destination": "/안전관리플랫폼_대시보드_V6_.html",
-        "type": 301
-      },
-      {
-        "source": "/안전작업허가서_v2_1_.html",
-        "destination": "/안전작업허가서_v2.html",
-        "type": 301
-      },
-      {
-        "source": "/TBM_및_작업중지권_v2_1_.html",
-        "destination": "/TBM_및_작업중지권_v2.html",
-        "type": 301
-      },
-      {
-        "source": "/안전정보제공서_작성.html",
-        "destination": "/안전정보제공서_도급인용.html",
-        "type": 301
-      }
-    ]
-  }
-}
-```
+| doc | safeinfoNo |
+| TBM 상세정보 URL 전달 | permitNo 기반 원본 조회 |
+| workName URL 전달 | permitNo 또는 workId 조회 |
+| company URL 전달 | permitNo 또는 workId 조회 |
+| location URL 전달 | permitNo 또는 workId 조회 |
+| workers URL 전달 | permitNo 또는 workId 조회 |
 
 ---
 
-## 7. URL 파라미터 규약
+## 9. 자연키 규칙
 
-### 7.1 정식 파라미터명
-
-| 파라미터 | 의미 | 예시 |
+| 데이터 | 필드 | 형식 |
 |---|---|---|
-| `workId` | 작업 ID | `?workId=2025-11-24_5` |
-| `permitNo` | 허가서 번호 | `?permitNo=PTW-20260824-001` |
-| `riskId` | 위험성평가 번호 | `?riskId=RA-20260824-001` |
-| `tbmNo` | TBM 번호 | `?tbmNo=TBM-20260824-001` |
-| `safeinfoNo` | 안전정보제공서 번호 | `?safeinfoNo=SIP-20260824-001` |
-| `emergencyNo` | 긴급조치 번호 | `?emergencyNo=EM-20260824-001` |
-| `mode` | 진입 모드 | `?mode=new` / `?mode=view` |
+| 작업 | workId | YYYY-MM-DD_originalNo |
+| 안전정보제공 | safeinfoNo | SIP-YYYYMMDD-SEQ3 |
+| 안전퀴즈 | quizId | QZ-YYYYMMDD-SEQ3 |
+| 위험성평가 | riskId | RA-YYYYMMDD-SEQ3 |
+| 안전작업허가 | permitNo | PTW-YYYYMMDD-SEQ3 |
+| TBM | tbmNo | TBM-YYYYMMDD-SEQ3 |
+| 재TBM | reTbmNo | RTBM-YYYYMMDD-SEQ3 |
+| 작업중지·긴급조치 | emergencyNo | EM-YYYYMMDD-SEQ3 |
+| 작업 중 점검 | inspectionNo | IN-YYYYMMDD-SEQ3 |
+| 고위험 사전승인 | approvalNo | HRA-YYYYMMDD-SEQ3 |
+| 가스측정기록 | measurementId | GAS-YYYYMMDD-SEQ4 |
+| 장비체크리스트 | equipmentCheckId | EC-YYYYMMDD-SEQ3 |
+| 온열질환진단 | heatIllnessId | HI-YYYYMMDD-SEQ3 |
+| JSA_DB | jsaId | JSA-classCode-SEQ6 |
 
-### 7.2 폐기 파라미터
+### 9.1 workId
 
-| 폐기 | 대체 |
-|---|---|
-| `?doc=SIP-001` | `?safeinfoNo=SIP-001` |
+workId 형식:
 
-### 7.3 인코딩
+    YYYY-MM-DD_originalNo
 
-모든 파라미터 값은 `encodeURIComponent()` 필수.
+예:
 
-```javascript
-// ✅ 올바른 방식
-const url = `안전작업허가서_v2.html?workId=${encodeURIComponent(workId)}`;
+    2026-08-27_5
 
-// ❌ 잘못된 방식
-const url = `안전작업허가서_v2.html?workId=${workId}`;
-```
+원칙:
 
-### 7.4 앱 간 링크 규약
+- originalNo가 없는 작업은 정식 workId를 생성하지 않는다.
+- 배열 인덱스를 대체번호로 사용하지 않는다.
+- 빈 문자열을 대체번호로 사용하지 않는다.
+- originalNo는 원본 자료와 추적 가능해야 한다.
 
-**도급인용 → 수급인용**:
-```javascript
-var signUrl = baseUrl + '안전정보제공서_수급인용.html?safeinfoNo=' +
-  encodeURIComponent(data.safeinfoNo);
-```
+### 9.2 jsaId
 
-**허가서 → TBM**:
-```javascript
-var tbmUrl = 'TBM_및_작업중지권_v2.html?permitNo=' +
-  encodeURIComponent(permitNo) + '&workName=' + encodeURIComponent(workName);
-```
+jsaId 형식:
 
-**허가서 → 위험성평가**:
-```javascript
-var riskUrl = '위험성평가_v2.html?permitNo=' +
-  encodeURIComponent(permitNo) + '&workId=' + encodeURIComponent(workId);
-```
+    JSA-WRK-000001
+    JSA-INT-000001
+    JSA-ACC-000001
 
-**모든 앱 → 대시보드**:
-```javascript
-window.location.href = '안전관리플랫폼_대시보드_V6_.html';
-```
+원칙:
+
+- AI는 TSV 생성 단계에서 jsaId를 생성하지 않는다.
+- 검토 완료 후 JSON 변환 또는 등록 단계에서 발급한다.
+- 원본 `no`는 별도 보존한다.
+- jsaId는 발급 후 변경하거나 재사용하지 않는다.
+- Firestore 문서 ID와 내부 jsaId를 동일하게 사용한다.
+
+### 9.3 시퀀스 발급
+
+개발 단계:
+
+- 기존 번호 중 가장 큰 순번을 확인한 뒤 1을 더한다.
+- 단순 데이터 건수에 1을 더하지 않는다.
+- 삭제된 중간 번호 때문에 기존 번호와 충돌하지 않도록 한다.
+
+Firestore 단계:
+
+- counters 컬렉션
+- Firestore Transaction
+- 문서 생성과 번호 발급의 중복 방지
+
+### 9.4 금지 방식
+
+- Math.random으로 자연키 생성
+- Date.now만으로 정식 자연키 생성
+- 현재 배열 길이만으로 시퀀스 생성
+- 삭제된 번호 재사용
+- workId 생성 시 배열 인덱스 사용
+- 임시 ID를 운영 Firestore 문서 ID로 사용
 
 ---
 
-## 8. 데이터 상태(Status) 규약
+## 10. localStorage 키
 
-### 8.1 작업 상태 흐름
+| 데이터 | 정식 키 |
+|---|---|
+| 작업 | safetyDatabase.workHistory |
+| 안전정보제공 | safetyProvisions |
+| 안전퀴즈 | safetyQuizzes |
+| 위험성평가 | riskAssessments |
+| 작업허가 | safetyPermits |
+| TBM | safetyTBM |
+| 작업중지·긴급조치 | emergencies |
+| 작업 중 점검 | inspections |
+| JSA_DB 캐시 | jsa_database |
+| JSA_DB 캐시 시각 | jsa_database_at |
+| JSA_DB 버전 | jsa_database_version |
+| 테마 | theme |
 
-```
-대기중 → 허가진행중 → 허가완료 → 작업중 → 작업완료
-                                    ↓
-                                작업중지 (특수)
-```
+### 10.1 폐기 키
 
-### 8.2 저장 값 (한글 유지)
+| 폐기 키 | 정식 키 |
+|---|---|
+| firebasePermits | safetyPermits |
+| safetyInfoDocs | safetyProvisions |
+| safetyInfoSigned | safetyProvisions 내부 서명 |
+| riskDatabase | riskAssessments |
+| safetyRiskAssessments | riskAssessments |
+| safetyStopWork | emergencies |
+| tbmLogs | safetyTBM |
+| safetyViolations | emergencies 또는 inspections |
 
-| 컬렉션 | 필드 | 허용 값 |
+### 10.2 마이그레이션 원칙
+
+- 구형 데이터를 읽은 즉시 삭제하지 않는다.
+- JSON 파싱에 성공한 데이터만 병합한다.
+- 자연키 기준으로 중복을 확인한다.
+- 병합 결과를 검증한 뒤 구형 키를 제거한다.
+- 마이그레이션 실패 시 원본을 유지한다.
+- 이전 데이터를 신규 승인자료로 자동 간주하지 않는다.
+- 마이그레이션 이력을 기록한다.
+
+---
+
+## 11. Firestore 컬렉션
+
+### 11.1 기준·마스터
+
+- users
+- 협력사관리
+- 작업자관리
+- MSDS
+- 공장안전정보
+- 사내안전기준
+- 안전철칙
+- 체크리스트마스터
+- JSA_DB
+
+### 11.2 업무
+
+- 작업DB
+- 안전정보제공
+- 안전퀴즈
+- 위험성평가
+- 고위험작업승인
+- 작업허가
+- TBM
+- 긴급조치
+- 작업중점검
+- 가스측정기록
+- 밀폐공간출입기록
+- 작업장비체크리스트
+- 온열질환진단
+
+### 11.3 운영
+
+- counters
+- 이메일로그
+- 월간통계
+- 협력사통계
+
+컬렉션 수를 고정 숫자로 문서화하지 않는다.
+
+새 컬렉션을 추가할 때 다음을 함께 정의한다.
+
+- 목적
+- 문서 ID
+- 필수 필드
+- 상태값
+- 참조관계
+- 읽기·쓰기 권한
+- 보존기간
+- 개인정보 여부
+- 마이그레이션 방법
+
+---
+
+## 12. 문서 연결 중심키
+
+### 12.1 작업 중심
+
+작업DB의 workId를 사용한다.
+
+### 12.2 허가·통합 리포트 중심
+
+작업허가의 permitNo를 사용한다.
+
+### 12.3 개별 문서
+
+- 위험성평가: riskId
+- TBM: tbmNo
+- 작업중지: emergencyNo
+- 점검: inspectionNo
+- 안전정보제공: safeinfoNo
+- 퀴즈: quizId
+
+### 12.4 안전 지식 출처
+
+JSA_DB의 jsaId를 사용한다.
+
+### 12.5 데이터 복제 원칙
+
+- 원본 전체를 여러 문서에 반복 저장하지 않는다.
+- 조회·표시·감사에 필요한 요약정보만 복제한다.
+- 상세 원본은 자연키로 조회한다.
+- 참조 당시의 버전과 핵심내용을 필요 시 스냅샷으로 저장한다.
+- 원본 변경으로 완료된 과거 기록의 의미가 바뀌지 않게 한다.
+
+---
+
+## 13. 날짜와 시간
+
+### 13.1 업무 날짜
+
+업무 날짜는 KST 로컬 기준 문자열로 저장한다.
+
+형식:
+
+    YYYY-MM-DD
+
+### 13.2 시간
+
+시간만 저장하는 경우 다음 형식을 사용한다.
+
+    HH:mm
+
+### 13.3 감사 시각
+
+Firestore 운영 단계:
+
+- serverTimestamp 사용을 우선한다.
+
+localStorage 개발 단계:
+
+- ISO 문자열을 사용할 수 있다.
+
+### 13.4 금지사항
+
+화면의 오늘 날짜를 구할 때 다음 방식은 사용하지 않는다.
+
+    new Date().toISOString().split('T')[0]
+
+이 방식은 한국시간 오전에 전날 날짜를 반환할 수 있다.
+
+화면 날짜는 로컬 연·월·일을 조합하여 계산한다.
+
+### 13.5 표시 원칙
+
+- 화면은 KST 기준으로 표시한다.
+- 저장값의 시간대 의미를 문서화한다.
+- 날짜 필드와 감사 Timestamp를 구분한다.
+- 작업 시작·종료 시각과 TBM 실시시각을 혼용하지 않는다.
+
+---
+
+## 14. 공통 감사 필드
+
+모든 업무 문서에는 다음 필드를 둔다.
+
+| 필드 | 필수 | 설명 |
+|---|:---:|---|
+| createdAt | 필수 | 최초 생성 시각 |
+| createdBy | 필수 | 최초 생성자 |
+| updatedAt | 필수 | 최종 수정 시각 |
+| updatedBy | 필수 | 최종 수정자 |
+| schemaVersion | 필수 | 스키마 버전 |
+
+필요한 문서에는 다음을 추가한다.
+
+- version
+- reviewedAt
+- reviewedBy
+- approvedAt
+- approvedBy
+- deletedAt
+- deletedBy
+- statusHistory
+- retentionCategory
+- retentionUntil
+- legalHold
+
+### 14.1 상태 변경 이력
+
+승인, 반려, 작업중지, 재개, 연장, 재허가, 종료 및 폐기 이력을 삭제하지 않는다.
+
+잘못된 변경을 수정할 때 기존 이력을 삭제하지 않고 정정 이력을 추가한다.
+
+---
+
+## 15. 사용자 역할
+
+| 역할 | 저장값 | 주요 범위 |
 |---|---|---|
-| `작업허가` | `status` | `'대기중'`, `'허가진행중'`, `'허가완료'`, `'작업중'`, `'작업완료'`, `'작업중지'` |
-| `안전퀴즈` | `status` | `'합격'`, `'불합격'` |
-| `안전점검사항` | `severity` | `'중대'`, `'경미'`, `'권고'` |
-| `안전점검사항` | `correctionStatus` | `'미시정'`, `'시정중'`, `'완료'` |
-| `위험성평가` | `overallRisk` | `'저위험'`, `'중위험'`, `'고위험'`, `'매우고위험'` |
-| `안전정보제공` | `status` | `'발행완료'`, `'서명완료'`, `'반려'` |
-| `TBM` | `status` | `'완료'`, `'취소'` |
-| `긴급조치` | `type` | `'사고'`, `'중지'`, `'긴급'` |
-| `긴급조치` | `status` | `'요청'`, `'조치중'`, `'완료'` |
+| 관리자 | admin | 기준·권한·승인·폐기·이관 |
+| 안전관리자 | manager | 위험성평가·허가 검토·점검·재개 검토 |
+| 작업자 | worker | 본인 작업·TBM 확인·작업중지 요청 |
 
-### 8.3 상태 전환 규약
+역할값은 소문자로 저장한다.
 
-**안전정보제공서 흐름**:
-```
-[도급인 발행]
-  status: '발행완료'
-       ↓
-[수급인 서명]
-  status: '서명완료'
-       ↓
-[문제 발견 시]
-  status: '반려'
-```
+금지값 예:
 
-**작업허가서 흐름**:
-```
-[신청]
-  status: '대기중'
-       ↓
-[승인 대기]
-  status: '허가진행중'
-       ↓
-[승인 완료]
-  status: '허가완료'
-       ↓
-[TBM 완료 & 작업 시작]
-  status: '작업중'
-       ↓
-[작업 완료]
-  status: '작업완료'
-```
+- ADMIN
+- Admin
+- USER
+- Worker
+- Manager
 
-### 8.4 폐기 방식
+### 15.1 인증·권한 원칙
 
-- ❌ `passYN` boolean (안전퀴즈)
-- ❌ 영문 상태 값 (`'approved'`, `'working'`)
-- ❌ 대소문자 혼용 (`'대기중'` vs `'대기 중'`)
+- 화면의 버튼 숨김만으로 권한을 보호하지 않는다.
+- Firestore Security Rules로 권한을 검증한다.
+- 일반 사용자가 역할과 승인정보를 직접 변경할 수 없어야 한다.
+- Custom Claims는 일반 브라우저에서 발급하지 않는다.
+- 역할 부여는 신뢰할 수 있는 관리자 환경에서 수행한다.
+- Auth 도입 전 임시 사용자정보를 정식 보안으로 간주하지 않는다.
 
 ---
 
-## 9. 날짜·시간 규약
+## 16. 공통 상태값
 
-### 9.1 저장 형식
+### 16.1 작업허가
 
-| 종류 | 타입 | 예시 | 규칙 |
-|---|---|---|---|
-| 날짜만 | `string` (KST) | `"2025-11-24"` | 로컬 시간 기반 `YYYY-MM-DD` |
-| 날짜+시간 (감사) | Firestore `Timestamp` or ISO string | `Timestamp(...)` or `"2025-11-24T14:30:00.000Z"` | `serverTimestamp()` or `new Date().toISOString()` |
-| 시간만 | `string` | `"09:00"` | `HH:mm` |
+- 대기중
+- 허가진행중
+- 허가완료
+- 작업중
+- 작업중지
+- 작업완료
 
-### 9.2 "오늘" 판정 (KST 기준)
+### 16.2 안전정보제공
 
-**❌ 잘못된 방식 (UTC 기준)**:
-```javascript
-new Date().toISOString().split('T')[0]
-// UTC 자정~KST 오전 9시 사이는 어제 날짜 반환
-```
+- 발행완료
+- 서명완료
+- 반려
 
-**✅ 올바른 방식 (KST 기준)**:
-```javascript
-function fmtDate(d) {
-  d = d || new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+### 16.3 안전퀴즈
 
-// 사용
-const today = fmtDate();  // "2025-11-24"
-```
+- 합격
+- 불합격
 
-### 9.3 Firestore 저장
+### 16.4 위험성평가
 
-```javascript
-// ✅ 권장 저장 방식
-{
-  date: '2025-11-24',                                            // string, 쿼리·표시용
-  createdAt: firebase.firestore.FieldValue.serverTimestamp(),   // Timestamp, 감사용
-  updatedAt: firebase.firestore.FieldValue.serverTimestamp()    // Timestamp, 감사용
-}
-```
+- 작성중
+- 평가완료
+- 재검토필요
+- 폐기
 
-### 9.4 규약
+### 16.5 고위험작업 사전승인
 
-- ✅ `getFullYear()`, `getMonth()`, `getDate()` (로컬 시간)
-- ❌ `toISOString()` (UTC 변환) - 날짜 표시용으로 사용 금지
-- ✅ 서버 저장 시에만 UTC Timestamp
-- ✅ 표시 시 항상 KST 기준
-- ✅ `date` 필드는 항상 오늘 필터용으로 저장 (예: `"2025-11-24"`)
+- 승인불필요
+- 승인대기
+- 보완요청
+- 승인
+- 반려
+- 재승인필요
 
----
-## 10. 감사 필드 (Audit Fields)
+### 16.6 TBM
 
-### 10.1 모든 컬렉션 문서 필수 필드
+- 작성중
+- 완료
+- 취소
+- 재TBM필요
 
-```javascript
-{
-  // ... 비즈니스 데이터 ...
- 
-  // 감사 필드 (필수)
-  createdAt: firebase.firestore.FieldValue.serverTimestamp(),  // 또는 ISO 문자열
-  createdBy: firebase.auth().currentUser.uid,                  // 또는 사용자명
-  updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  updatedBy: firebase.auth().currentUser.uid,
-  schemaVersion: 1  // 마이그레이션용
-}
-```
+### 16.7 긴급조치 상위 상태
 
-### 10.2 Soft Delete (선택)
+- 요청
+- 조치중
+- 완료
 
-```javascript
-{
-  deletedAt: null,           // Timestamp | null
-  deletedBy: null            // string | null
-}
-```
+### 16.8 작업중지 세부 상태
 
-### 10.3 로컬 저장 시 대안 (Firebase Auth 미도입 상태)
+- 요청접수
+- 작업중지
+- 현장확인
+- 조치중
+- 재점검
+- 재개검토
+- 재개승인
+- 완료
 
-```javascript
-{
-  createdAt: new Date().toISOString(),
-  createdBy: sessionStorage.getItem('userName') || 'anonymous',
-  updatedAt: new Date().toISOString(),
-  updatedBy: sessionStorage.getItem('userName') || 'anonymous',
-  schemaVersion: 1
-}
-```
+### 16.9 작업 중 점검
 
-### 10.4 상태 변경 시 감사
+- 예정
+- 점검중
+- 양호
+- 미흡
+- 조치중
+- 재점검완료
+- 미실시
 
-**수급인이 서명 시** (안전정보제공서):
-```javascript
-{
-  // 기존 데이터 유지
-  ...existingData,
- 
-  // 서명 정보 추가
-  signerName: '홍길동',
-  signerPhone: '010-1234-5678',
-  signature: 'data:image/png;base64,...',
-  signedAt: new Date().toISOString(),
-  signedBy: sessionStorage.getItem('userName') || 'anonymous',
-  status: '서명완료',  // 발행완료 → 서명완료
- 
-  // updatedAt/updatedBy는 갱신, createdAt/createdBy는 보존
-  updatedAt: new Date().toISOString(),
-  updatedBy: sessionStorage.getItem('userName') || 'anonymous'
-}
-```
+### 16.10 작업 종료 보조 상태
+
+- 작업중
+- 종료확인중
+- 미흡조치중
+- ILS해제대기
+- 설비인계대기
+- 종료완료
+
+### 16.11 JSA_DB
+
+- draft
+- review
+- approved
+- retired
+
+영문 상태와 한글 상태를 같은 필드에서 혼용하지 않는다.
 
 ---
 
-## 11. Storage 이벤트 & 실시간 동기화
+## 17. 앱 간 자동 채움
 
-### 11.1 localStorage 갱신 시 이벤트 발생
+### 17.1 기본 원칙
 
-**표준 방식** (같은 탭 감지 포함):
+1. URL에는 자연키만 전달한다.
+2. 받는 앱이 원본 데이터를 조회한다.
+3. 자동 채움 필드는 시각적으로 구분한다.
+4. 사용자가 수정하면 자동 채움 표시를 해제한다.
+5. 필요하면 출처와 수정 여부를 저장한다.
+6. 원본 문서를 찾지 못하면 임의 정보로 진행하지 않는다.
 
-```javascript
-function saveAndBroadcast(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
- 
-  // 같은 탭에도 알림 (표준 storage 이벤트는 다른 탭만 감지)
-  window.dispatchEvent(new CustomEvent('app-data-changed', {
-    detail: { key: key, timestamp: Date.now() }
-  }));
-}
+### 17.2 안전정보제공서 → 위험성평가
 
-// 사용 예시
-function savePermit() {
-  const permits = getPermits();
-  permits.push(permitData);
-  saveAndBroadcast('safetyPermits', permits);
-}
-```
+- 작업장 고유 위험
+- 위험설비
+- 화학물질
+- MSDS
+- 작업 제한사항
+- 필수 보호구
+- 비상정보
 
-### 11.2 대시보드에서 리스너 등록
+### 17.3 작업DB·허가서 → 위험성평가
 
-```javascript
-// 같은 탭 감지
-window.addEventListener('app-data-changed', function(e) {
-  const key = e.detail.key;
-  if (key === 'safetyPermits') refreshPermitList();
-  if (key === 'safetyQuizzes') updateQuizCount();
-  if (key === 'safetyProvisions') refreshProvisionCount();
-  if (key === 'riskAssessments') refreshRiskCount();
-  if (key === 'safetyTBM') refreshTBMCount();
-  if (key === 'emergencies') refreshEmergencyCount();
-});
+- workId
+- permitNo
+- 작업명
+- 작업장소
+- 세부 위치
+- 협력사
+- 작업인원
+- 작업책임자
+- 작업유형
+- 작업내용
+- ILS 필요 여부
+- 고위험 여부
 
-// 다른 탭 감지 (표준 storage 이벤트)
-window.addEventListener('storage', function(e) {
-  // 같은 처리
-});
-```
+### 17.4 위험성평가 → 허가서
 
-### 11.3 Firestore 실시간 리스너 (Firebase 이관 후)
+- riskId
+- 종합 최초 위험도
+- 종합 잔여 위험도
+- 통제 적정성
+- 주요 위험요인
+- 승인된 안전대책
+- 미해결 위험
+- 참조 JSA
+- AI 보완안 포함 여부
+- 고위험 판정
 
-```javascript
-db.collection('작업허가')
-  .where('startDate', '==', today)
-  .onSnapshot(function(snapshot) {
-    snapshot.docChanges().forEach(function(change) {
-      if (change.type === 'added') {
-        console.log('신규 허가서:', change.doc.data());
-      }
-    });
-    refreshPermitList();
-  });
-```
+### 17.5 허가서·위험성평가 → TBM
 
-### 11.4 폐기 방식
+- permitNo
+- riskId
+- 작업 기본정보
+- 주요 위험요인
+- 사고시나리오
+- 안전대책
+- 조치 예정자
+- 확인방법
+- 작업중지 조건
+- ILS 상태
+- 고위험 여부
+- 비상정보
 
-```javascript
-// ❌ 잘못된 방식 (같은 탭 감지 안 됨)
-var event = new Event('storage');
-event.key = 'safetyPermits';  // key는 read-only, 무시됨
-window.dispatchEvent(event);
-```
+### 17.6 TBM → 작업중지권
+
+- permitNo
+- 필요 시 tbmNo
+
+작업중지권 앱이 자연키를 이용해 관련 정보를 조회한다.
+
+### 17.7 작업중지권 → 재TBM
+
+- emergencyNo
+- 작업중지 원인
+- 추가 안전조치
+- 변경된 위험성평가
+- 재개 조건
 
 ---
 
-## 12. 협력사 마스터 데이터
+## 18. 데이터 원본 우선순위
 
-### 12.1 정의
+### 18.1 작업정보
 
-| 구분 | 설명 |
+- 작업DB 또는 작업허가서가 원본이다.
+
+### 18.2 위험성평가
+
+- 위험성평가 컬렉션이 원본이다.
+- 허가서와 TBM에는 필요한 요약만 저장한다.
+
+### 18.3 ILS
+
+- 기존 ILS 시스템이 상세 잠금·해제 기록의 원본이다.
+- 이 플랫폼은 실시 완료와 해제 완료 사실만 확인한다.
+
+### 18.4 MSDS
+
+- 공식 원본 MSDS가 기준이다.
+- 플랫폼 요약정보가 원본 문서를 대체하지 않는다.
+
+### 18.5 JSA_DB
+
+- approved 상태의 현재 버전이 추천 기준이다.
+- review 자료와 AI 초안은 승인자료와 구분한다.
+
+### 18.6 종이서식
+
+전자화 이후에는 전자 원본의 인정범위와 종이 병행기간을 담당부서가 확정한다.
+
+---
+
+## 19. UI 공통 규약
+
+### 19.1 색상·테마
+
+- 대시보드와 동일한 CSS 변수 팔레트를 사용한다.
+- 라이트·다크모드를 지원한다.
+- 다크모드에서도 텍스트 대비를 확보한다.
+- 상태색만으로 의미를 전달하지 않고 텍스트·아이콘을 함께 사용한다.
+
+### 19.2 상단 버튼
+
+업무 앱에는 다음을 적용한다.
+
+- 뒤로가기
+- 홈
+- 필요 시 테마 전환
+
+### 19.3 반응형
+
+- 모바일을 우선한다.
+- 일반 스마트폰에서는 PC와 같은 논리적 필드 배치를 유지한다.
+- 초소형 화면에서만 필요한 항목을 세로 배치한다.
+- 가로 스크롤 표는 항목 누락 없이 사용할 수 있어야 한다.
+- 버튼과 입력필드는 현장 장갑 사용 가능성을 고려한다.
+
+### 19.4 자동 채움
+
+- 자동 채움은 초록 계열 배경 등으로 표시한다.
+- 사용자가 수정하면 자동 표시를 해제한다.
+- 읽기 전용 정보와 수정 가능한 자동 채움 정보를 구분한다.
+- ILS 원본 상태처럼 외부 시스템 기준정보는 읽기 전용으로 표시한다.
+
+### 19.5 접근성
+
+- 아이콘만 있는 버튼에는 aria-label을 사용한다.
+- 필수항목은 텍스트로 표시한다.
+- 오류는 색상뿐 아니라 문구로 안내한다.
+- 키보드와 터치 조작을 모두 지원한다.
+- 서명 외의 주요 기능은 키보드로도 사용할 수 있어야 한다.
+
+---
+
+## 20. 날짜·시간 입력 CSS 규약
+
+모든 앱의 다음 입력유형에 동일한 스타일 원칙을 적용한다.
+
+- date
+- time
+- datetime-local
+
+원칙:
+
+- iOS Safari 기본 스타일을 초기화한다.
+- 오른쪽에 명확한 아이콘 영역을 둔다.
+- 텍스트를 왼쪽 정렬한다.
+- PC와 모바일의 논리적 형태를 통일한다.
+- 다크모드 아이콘을 제공한다.
+- 네이티브 선택기 클릭 영역을 유지한다.
+- 초소형 화면에서만 날짜·시간 열을 세로 배치한다.
+
+적용 대상:
+
+- 안전작업허가서
+- 위험성평가
+- TBM
+- 작업중지권
+- 안전정보제공서
+- 안전퀴즈
+- 작업 중 점검
+- 가스측정
+- 온열질환진단
+
+---
+
+## 21. 정규식 및 문자열 처리 규약
+
+### 21.1 기본 원칙
+
+- 정규식 사용을 최소화한다.
+- 단순 구분은 indexOf, substring, split 또는 반복문을 우선 검토한다.
+- 문자 종류 판정은 필요한 경우 charCodeAt을 사용할 수 있다.
+- 복잡한 정규식은 별도 함수로 분리한다.
+- 정규식은 반드시 한 줄에 완결한다.
+- 정규식을 Part 경계에서 자르지 않는다.
+- 정규식 변경 후 즉시 해당 기능을 테스트한다.
+
+### 21.2 JSA 데이터 처리
+
+- 앱에서 긴 문자열을 반복 파싱하지 않는다.
+- JSON 변환 단계에서 위험요인과 대책을 배열화한다.
+- 구조화 필드가 있으면 문자열 파싱보다 구조화 필드를 우선한다.
+- 레거시 문자열 파싱은 하위 호환 기간에만 사용한다.
+- 파싱 결과를 자동 승인하지 않는다.
+
+### 21.3 마크다운 작성
+
+- HTML pre 태그와 Markdown 코드블록을 혼합하지 않는다.
+- 코드블록 시작·종료를 같은 Part에 둔다.
+- 코드블록을 중첩하지 않는다.
+- 표 안에 긴 코드블록을 넣지 않는다.
+- Part를 함수·객체·문서 섹션 중간에서 자르지 않는다.
+- 붙여넣기 후 GitHub Preview를 확인한다.
+
+---
+
+## 22. Part 1 완료 범위
+
+Part 1에서는 다음 규약을 정의하였다.
+
+- 문서 우선순위
+- 시스템 역할
+- 기술 구성
+- 비용 및 서비스 정책
+- 개발환경 제약
+- 정식 파일명
+- TBM·작업중지권 파일 분리
+- URL 파라미터
+- 자연키
+- localStorage 키
+- Firestore 컬렉션
+- 문서 중심키
+- 날짜·시간
+- 감사 필드
+- 사용자 역할
+- 상태값
+- 앱 간 자동 채움
+- 데이터 원본 우선순위
+- UI 공통 규약
+- date/time 입력 규약
+- 정규식·마크다운 작성 규약
+
+Part 2에서는 다음 내용을 정의한다.
+
+- 전체 안전업무 흐름
+- 안전정보제공
+- 안전퀴즈 출입 게이트
+- JSA_DB
+- AI 역할
+- 위험성평가
+- 고위험작업
+- 안전작업허가
+- ILS 허가 전 확인
+- 밀폐공간 가스측정
+- 연장·변경·재허가
+
+---
+
+## 23. 전체 안전업무 흐름
+
+플랫폼은 다음 업무 순서를 기본으로 한다.
+
+1. 작업정보 등록
+2. 도급인 안전정보제공서 발행
+3. 수급인 안전정보 확인 및 서명
+4. 출입자 안전퀴즈 응시 및 합격
+5. 위험성평가 실시
+6. 고위험작업 해당 여부 판정
+7. 고위험작업 맞춤 체크리스트 작성
+8. 필요한 경우 담당 임원 또는 실장 사전승인
+9. 안전작업허가 신청
+10. 필수 안전조치 확인
+11. ILS 대상 작업의 실시 완료 확인
+12. 밀폐공간 작업의 최초 가스측정 확인
+13. 운영부서 허가자의 최종 승인
+14. TBM 실시
+15. 위험요인·사고시나리오·안전대책 전달
+16. 참석자 안전퀴즈 합격 여부 확인
+17. 작업중지권 고지 및 확인
+18. 필요한 TBM 별지 작성
+19. 작업 시작
+20. 작업 중 안전조치 이행점검
+21. 고위험작업 주기별 점검
+22. 위험 발견 시 작업중지
+23. 개선조치 및 재점검
+24. 필요한 경우 위험성평가 재실시
+25. 허가 재확인 또는 재허가
+26. 재TBM
+27. 권한 있는 사람의 작업 재개 승인
+28. 작업 종료
+29. 작업자·공구·자재 철수
+30. 방호장치 및 설비 복구
+31. 기존 ILS 시스템에서 잠금 해제
+32. 안전관리 플랫폼에서 ILS 해제 완료 확인
+33. 설비운영부서 인계
+34. 최종 작업완료
+35. permitNo 기반 통합 리포트 보관
+
+각 단계의 필수조건을 충족하지 않은 경우 다음 단계로 자동 전환하지 않는다.
+
+---
+
+## 24. 단계별 필수 게이트
+
+| 단계 | 필수조건 |
 |---|---|
-| **협력사(contractor)** | 도급 계약 관계인 외부 업체 |
-| **내부 조직(internal)** | 직영, 정비섹션 등 자체 조직 |
-
-### 12.2 필드 구조
-
-```javascript
-{
-  contractorId: 'wonjun',              // 영문 슬러그 (문서ID로도 사용)
-  contractorName: '원준',              // 표시명 (짧은 이름)
-  contractorNameFull: '원준산업',      // 정식명 (긴 이름)
-  contractorType: 'contract',          // 'contract' | 'internal'
-  status: 'active',                    // 'active' | 'inactive'
-  registrationDate: Timestamp,
-  contactInfo: {
-    phone: '',
-    email: '',
-    address: ''
-  },
-  statistics: {
-    totalWorks: 0,
-    violations: 0,
-    accidents: 0,
-    tbmRate: 0
-  }
-}
-```
-
-### 12.3 현재 대시보드 하드코딩 27개 리스트
-
-```javascript
-[
-  '원준', '유공엔지니어링', '직영', '세광', '에이스테크', '안전공사',
-  '남양이엔에스', '태정종합건설', '서원종합건설', '예준산업', '파즈코리아',
-  '운강건설', '금강건설', '포스코PR테크', 'PR테크', '위드테크', 'NCH', '우진환경',
-  '다산', '엠엔케이', 'KRST대한동방', 'GAFF', 'KRST', '대한동방', '포스코건설',
-  '현대건설', '정비섹션'
-]
-```
-
-### 12.4 이관 절차
-
-1. 각 항목의 `contractorType` 지정
-   - `직영`, `정비섹션` → `'internal'`
-   - 나머지 → `'contract'`
-2. Firestore `협력사관리` 컬렉션에 업로드
-3. 대시보드에서 Firestore 조회로 변경
+| 안전정보제공 | 도급인 발행 및 수급인 확인·서명 |
+| 안전퀴즈 | 필수 출입자의 유효한 합격 기록 |
+| 위험성평가 | 위험요인·안전대책·위험도 검토 완료 |
+| 고위험작업 | 맞춤 체크리스트와 사전승인 완료 |
+| 작업허가 | 필수 안전조치와 ILS 상태 확인 |
+| 밀폐공간 허가 | 최초 가스측정과 확인자 기록 완료 |
+| TBM | 위험·대책 전달, 퀴즈 검증, 작업중지권 고지 |
+| 작업 시작 | 허가완료 및 TBM 완료 |
+| 작업 중 | 필수 주기점검 및 가스측정 수행 |
+| 작업중지 후 재개 | 조치·재점검·허가 확인·재TBM·재개승인 |
+| 작업 종료 | 철수·복구·미흡사항 종결 |
+| ILS 작업 종료 | 기존 ILS 시스템의 해제 완료 확인 |
+| 최종 작업완료 | 설비 인계 및 종료 게이트 충족 |
 
 ---
 
-## 13. AI 위험성평가 (JSA_DB 방식)
+## 25. 안전정보제공 규약
 
-### 13.1 확정된 방식
+### 25.1 역할
 
-**❌ Claude API 브라우저 직접 호출** (CORS 차단, 유료)  
-**✅ JSA_DB 사전 생성 + Firestore 조회** (무료, 즉시 응답)
+안전정보제공서는 도급인이 수급인에게 작업장 및 작업 관련 위험정보를 제공하고, 수급인이 이를 확인하는 문서이다.
 
-### 13.2 JSA_DB 스키마
+도급인용과 수급인용은 별도 화면을 사용할 수 있으나 하나의 safeinfoNo와 하나의 업무 문서로 연결한다.
 
-```javascript
-{
-  workInfo: {
-    jsaId: "JSA-20260821-001-01",
-    workName: "3라인 예비소성로 2~5존 수직히터 교체",
-    workType: "정비",
-    workTypeDetail: "히터 교체"
-  },
- 
-  riskAssessment: [
-    {
-      stageNo: 4,
-      stageName: "에너지 차단",
-      equipment: ["수공구", "계측기"],
-      materials: ["전기"],
-      hazards: [
-        {
-          originalHazard: "히터 교체 작업 중 감전 위험",
-          standardAccidentType: "감전",
-          scenario: "전원 차단·확인 미흡 상태에서...",
-          severity: 4,
-          probability: 2,
-          riskScore: 8
-        }
-      ],
-      currentMeasures: ["전원 차단 및 ILS 실시 후 작업"],
-      standardMeasures: ["ILS/LOTO 실시"],
-      controlAdequacy: "○"
-    }
-  ],
- 
-  metadata: {
-    jsaId: "JSA-20260821-001-01",
-    createdAt: "2026-08-21T12:00:00Z",
-    status: "active",
-    dataSource: "작업관리대장",
-    version: "1.0",
-    verified: false
-  }
-}
-```
+### 25.2 정식 파일
 
-### 13.3 활용 흐름
+- 안전정보제공서_도급인용.html
+- 안전정보제공서_수급인용.html
 
-```
-사용자: "3라인 히터 교체" 입력
-      ↓
-JSA_DB에서 유사 작업 검색 (키워드 매칭)
-      ↓
-후보 3개 표시 (유사도 %)
-      ↓
-사용자 선택
-      ↓
-위험성평가 폼 자동 채움 (단계·위험요인·대책)
-      ↓
-사용자 검토·수정
-      ↓
-Firestore `위험성평가` 컬렉션 저장
-      ↓
-자동으로 JSA_DB에도 추가 (다음 검색 활용)
-```
+### 25.3 저장소
 
-### 13.4 유사도 검색 코드
+개발 단계:
 
-```javascript
-// 키워드 매칭 기반 유사도 계산
-function findSimilarJSA(workName, allJSA) {
-  const inputTokens = tokenize(workName);
- 
-  return allJSA
-    .map(jsa => ({
-      jsa: jsa,
-      score: calculateSimilarity(inputTokens, tokenize(jsa.workInfo.workName))
-    }))
-    .filter(item => item.score > 0.3)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-}
+    safetyProvisions
 
-function tokenize(text) {
-  return text
-    .replace(/[^\uAC00-\uD7A3a-zA-Z0-9]/g, ' ')
-    .split(/\s+/)
-    .filter(t => t.length > 0);
-}
+운영 단계:
 
-function calculateSimilarity(tokensA, tokensB) {
-  const common = tokensA.filter(t => tokensB.includes(t));
-  return common.length / Math.max(tokensA.length, tokensB.length);
-}
-```
+    안전정보제공
 
-### 13.5 캐시 정책
+### 25.4 상태값
 
-```javascript
-// 1일 1회 JSA_DB 전체 로드
-async function initJSACache() {
-  const CACHE_KEY = 'jsa_cache';
-  const CACHE_TIME_KEY = 'jsa_cache_at';
-  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
- 
-  const cachedAt = parseInt(localStorage.getItem(CACHE_TIME_KEY) || '0');
-  const cached = localStorage.getItem(CACHE_KEY);
- 
-  if (cached && Date.now() - cachedAt < CACHE_DURATION) {
-    return JSON.parse(cached);
-  }
- 
-  // Firestore에서 로드
-  const snapshot = await db.collection('JSA_DB').get();
-  const data = snapshot.docs.map(d => d.data());
- 
-  localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-  localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
- 
-  return data;
-}
-```
+- 발행완료
+- 서명완료
+- 반려
 
-### 13.6 저장 시 참조 정보
+### 25.5 필수 정보
 
-위험성평가 저장 시 JSA_DB 참조를 감사용으로 기록:
+- safeinfoNo
+- workId
+- 작업명
+- 작업장소
+- 작업기간
+- 도급인 정보
+- 수급인 정보
+- 작업장 고유 위험
+- 위험설비
+- 화학물질 및 MSDS
+- 작업 제한사항
+- 필수 보호구
+- 필요 서류
+- 비상연락망
+- 비상구·AED·구급함
+- 발행자
+- 수급인 확인자
+- 서명 및 확인시각
+- 상태
+- 감사 필드
 
-```javascript
-{
-  ...riskAssessmentData,
- 
-  // JSA_DB 참조 정보 (감사용)
-  aiSource: 'JSA_DB',                     // 'JSA_DB' | 'manual' | null
-  originalJsaId: 'JSA-20260821-001-01',   // 참조한 JSA ID
-  similarity: 0.85                         // 유사도 (선택)
-}
-```
+### 25.6 허가 진행 조건
+
+안전정보제공 대상 작업은 다음 조건을 충족해야 한다.
+
+- 도급인 발행 완료
+- 수급인 확인·서명 완료
+- 반려사항 없음
+- 작업명·작업장소·협력사 일치
+- 필요한 MSDS 확인
+- 추가 요청사항 처리 완료
+
+### 25.7 위험성평가 연계
+
+다음 정보는 위험성평가의 입력자료로 활용한다.
+
+- 작업장 고유 위험
+- 위험설비
+- 화학물질
+- MSDS
+- 제한사항
+- 필수 보호구
+- 비상정보
+
+자동 반영된 정보는 `안전정보제공서 출처`로 표시한다.
 
 ---
 
-## 14. 대시보드 매칭 필드 (앱별 필수)
+## 26. 안전퀴즈 출입 게이트
 
-각 앱이 저장할 때 대시보드가 조회할 수 있도록 반드시 포함해야 하는 필드:
+### 26.1 기본 원칙
 
-### 14.1 안전퀴즈 (`safetyQuizzes`)
+안전퀴즈 합격은 사내기준상 필수 대상자의 현장 출입 및 작업 참여 조건이다.
 
-```javascript
-{
-  quizId: 'QZ-20260824-001',
-  respondent: '홍길동',              // ⭐ 응시자 이름
-  respondentCompany: '원준',         // ⭐ 소속 회사 (허가서 검증용)
-  status: '합격',                    // ⭐ '합격' | '불합격'
-  date: '2026-08-24',                // ⭐ 응시 날짜
-  score: 95,
-  createdAt: '...',
-  createdBy: '...'
-}
-```
+최소 확인 대상:
 
-### 14.2 위험성평가 (`riskAssessments`)
+- 직접 작업자
+- 작업책임자
+- 관계수급사 작업자
+- 작업 지원인원
+- 사내기준에서 지정한 현장 출입자
 
-```javascript
-{
-  riskId: 'RA-20260824-001',
-  workId: '2026-08-24_5',            // ⭐ 원본 작업 매칭
-  permitNo: 'PTW-20260824-001',      // ⭐ 허가서 참조 (선택)
-  date: '2026-08-24',                // ⭐ 평가 날짜
-  overallRisk: '고위험',             // ⭐ '저위험'/'중위험'/'고위험'/'매우고위험'
-  overallScore: 12,                  // ⭐ 위험도 점수
-  assessor: '홍길동',
-  company: '원준',
-  createdAt: '...',
-  createdBy: '...'
-}
-```
+방문자·점검자·감독자 등 예외 범위는 사내 출입기준으로 확정한다.
 
-### 14.3 TBM (`safetyTBM`)
+### 26.2 저장소
 
-```javascript
-{
-  tbmNo: 'TBM-20260824-001',
-  permitNo: 'PTW-20260824-001',      // ⭐ 허가서 매칭 (필수)
-  workId: '2026-08-24_5',            // ⭐ 원본 작업 매칭
-  date: '2026-08-24',                // ⭐ 실시 날짜
-  status: '완료',                    // ⭐ '완료' | '취소'
-  workName: '...',
-  supervisor: '...',
-  createdAt: '...',
-  createdBy: '...'
-}
-```
+개발 단계:
 
-### 14.4 안전정보제공 (`safetyProvisions`)
+    safetyQuizzes
 
-```javascript
-{
-  safeinfoNo: 'SIP-20260824-001',
-  submittedCompany: '원준',          // ⭐ 협력사명 (대시보드 매칭)
-  submittedBy: '홍길동',             // ⭐ 도급인 담당자 (허가서 매칭)
-  status: '발행완료',                // ⭐ '발행완료' | '서명완료' | '반려'
-  date: '2026-08-24',                // ⭐ 발행 날짜
-  workName: '...',
-  location: '포항양극재 1공장',
-  createdAt: '...',
-  createdBy: '...'
-}
-```
+운영 단계:
 
-### 14.5 긴급조치 (`emergencies`)
+    안전퀴즈
 
-```javascript
-{
-  emergencyNo: 'EM-20260824-001',
-  type: 'stop',                      // ⭐ 'accident' | 'stop' | 'urgent'
-  permitNo: 'PTW-20260824-001',      // ⭐ 관련 허가서 (있는 경우)
-  workId: '2026-08-24_5',            // ⭐ 원본 작업
-  date: '2026-08-24',                // ⭐ 발생 날짜
-  status: '요청',                    // ⭐ '요청' | '조치중' | '완료'
-  reasons: ['화재·폭발 위험'],
-  requesterName: '홍길동',
-  createdAt: '...',
-  createdBy: '...'
-}
-```
+### 26.3 필수 매칭 필드
 
----
-## 15. 이메일 발송 규약 (EmailJS + 자동화)
+- quizId
+- respondentId
+- respondent
+- respondentCompany
+- quizVersion
+- date
+- completedAt
+- score
+- status
+- validFrom
+- validUntil
 
-### 15.1 확정된 방식
+### 26.4 상태값
 
-**개발 단계**: EmailJS + 개인 Gmail (월 200통 무료)  
-**폴백**: mailto 링크 (기본 동작)  
-**자동화 방식**: **방식 C (하이브리드)** — 관리자가 모바일에서 리모트 발송  
-**폐기**: Google Apps Script (URL 미설정, no-cors 문제)
+- 합격
+- 불합격
 
-### 15.2 EmailJS 설정
+### 26.5 작업 참여 제한
 
-- 서비스: https://www.emailjs.com/
-- Gmail 계정 연결
-- 도메인 화이트리스트 필수
-- Template 종류:
-  - `sign_request` — 안전정보제공서 서명 요청 (도급→수급)
-  - `sign_complete` — 서명 완료 알림 (수급→도급)
-  - `resend` — 재발송
-  - **`daily_today`** — 오늘 작업 리포트 (신규)
-  - **`daily_tomorrow`** — 내일 작업 리스트 (신규)
-  - **`urgent_alert`** — 긴급 알림 (신규)
+다음 대상자는 작업 참여를 제한한다.
 
-### 15.3 3-way 폴백 코드 패턴
+- 미응시자
+- 불합격자
+- 유효기간 만료자
+- 필요한 퀴즈 버전을 이수하지 않은 사람
+- 본인 식별이 불가능한 사람
+- 등록 소속과 작업 소속이 일치하지 않는 사람
 
-**SDK 로드**:
-```html
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-<script>
-  emailjs.init('YOUR_PUBLIC_KEY');
-  window.EMAILJS_CONFIG = {
-    serviceId: 'service_xxx',
-    templates: {
-      signRequest: 'template_sign_request',
-      signComplete: 'template_sign_complete',
-      resend: 'template_resend',
-      dailyToday: 'template_daily_today',        // 신규
-      dailyTomorrow: 'template_daily_tomorrow',  // 신규
-      urgentAlert: 'template_urgent'              // 신규
-    }
-  };
-</script>
-```
+필수 대상자 중 한 명이라도 조건을 충족하지 못하면 TBM 최종 완료와 작업 시작을 제한한다.
 
-**발송 함수 표준 패턴**:
-```javascript
-async function sendEmail(templateType, to, params) {
-  const templates = window.EMAILJS_CONFIG.templates;
-  const templateId = templates[templateType];
- 
-  if (!templateId) {
-    console.error('알 수 없는 템플릿:', templateType);
-    return { ok: false, error: 'Unknown template' };
-  }
- 
-  // 1순위: EmailJS
-  if (typeof emailjs !== 'undefined' && window.EMAILJS_CONFIG) {
-    try {
-      const response = await emailjs.send(
-        window.EMAILJS_CONFIG.serviceId,
-        templateId,
-        { to_email: to, ...params }
-      );
-      return { ok: true, response };
-    } catch (error) {
-      console.error('EmailJS 발송 실패:', error);
-      // 폴백으로 mailto 시도
-    }
-  }
- 
-  // 2순위: mailto (폴백)
-  return sendViaMailto(to, params, templateType);
-}
-```
+### 26.6 작업중지 신고 예외
 
-### 15.4 mailto 폴백 예시
+안전퀴즈 상태는 위험 신고 또는 작업중지권 행사를 제한하는 조건으로 사용하지 않는다.
 
-```javascript
-function sendViaMailto(to, params, templateType) {
-  const subjects = {
-    signRequest: '[안전정보제공서] ' + params.safeinfoNo + ' 서명 요청',
-    dailyToday: '[POSCO FM] ' + params.date + ' 오늘 작업 리포트',
-    dailyTomorrow: '[POSCO FM] ' + params.date + ' 내일 작업 준비 안내',
-    urgentAlert: '🚨 [POSCO FM] 긴급 알림 - ' + params.title
-  };
- 
-  const subject = encodeURIComponent(subjects[templateType] || '알림');
-  const body = encodeURIComponent(generateEmailBody(templateType, params));
- 
-  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-  return { ok: true, method: 'mailto' };
-}
-```
+미응시자·불합격자·방문자도 위험을 발견한 경우 작업중지를 요청할 수 있다.
 
-### 15.5 발송 이력 저장 규약
+### 26.7 미확정 정책
 
-**모든 발송은 `이메일로그` 컬렉션에 기록**:
+다음은 사내 출입·교육 기준 확인 후 확정한다.
 
-```javascript
-async function logEmailSent(logData) {
-  const log = {
-    logId: 'LOG-' + fmtDate(new Date()).replace(/-/g, '') + '-' + getNextSeq(),
-    type: logData.type,                    // 'sign_request' | 'daily_today' | ...
-    templateId: logData.templateId,
-    sentAt: firebase.firestore.FieldValue.serverTimestamp(),
-    sentBy: firebase.auth().currentUser?.uid || 'anonymous',
-    recipients: logData.recipients,        // [{ email, name, status }]
-    totalSent: logData.totalSent,
-    totalFailed: logData.totalFailed,
-    metadata: logData.metadata,            // 리포트 요약 등
-    schemaVersion: 1
-  };
- 
-  await db.collection('이메일로그').add(log);
-}
-```
+- 합격 점수
+- 필수문항 오답 허용 여부
+- 합격 유효기간
+- 재응시 제한
+- 방문자·감독자 예외
+- 작업자 본인 식별방법
+- 퀴즈 버전 변경 시 재응시 기준
 
-### 15.6 발송 실패 처리 규약
-
-**실패 시 재시도 정책**:
-```
-1차 실패 → 5초 후 재시도
-2차 실패 → 30초 후 재시도
-3차 실패 → 실패 로그 저장 후 관리자 알림
-```
-
-```javascript
-async function sendWithRetry(templateType, to, params, maxRetries = 3) {
-  const delays = [0, 5000, 30000]; // 0초, 5초, 30초
- 
-  for (let i = 0; i < maxRetries; i++) {
-    if (i > 0) await new Promise(r => setTimeout(r, delays[i]));
-   
-    const result = await sendEmail(templateType, to, params);
-    if (result.ok) return result;
-   
-    console.warn(`발송 실패 (시도 ${i+1}/${maxRetries}):`, result.error);
-  }
- 
-  // 최종 실패
-  await logFailure(templateType, to, params);
-  return { ok: false, error: '최대 재시도 초과' };
-}
-```
-
-### 15.7 보안 & 개인정보
-
-**⚠️ 필수 준수 사항**:
-- ✅ EmailJS Public Key는 코드에 노출 가능 (도메인 화이트리스트로 보호)
-- ✅ 도메인 화이트리스트 설정 필수
-- ✅ 수신 동의 확인 (`users.receiveReports` 활성 여부)
-- ✅ 개인정보보호법 준수
-- ✅ 발송 이력 6개월 보관 후 자동 삭제
-
-### 15.8 폐기 방식
-
-- ❌ **Google Apps Script + `no-cors`** (성공/실패 판정 불가)
-- ❌ 이메일 서버 직접 구축 (관리 부담)
-- ❌ 서드파티 대량 발송 서비스 (스팸 위험)
+미확정 값을 코드에 고정하지 않는다.
 
 ---
 
-## 16. MSDS 데이터 (34종)
+## 27. JSA_DB 운영 규약
 
-### 16.1 카테고리 구성
+### 27.1 역할
 
-| 카테고리 | 개수 | 설명 |
-|---|---|---|
-| **완제품** (`product`) | 4종 | NCMA, NCA, LFP 완제품/반제품 |
-| **전구체** (`precursor`) | 4종 | Ni/Co/Mn 수산화물/이산화물 등 |
-| **원료** (`material`) | 16종 | 리튬화합물, 금속산화물, 강산염기, 가스, 세라믹, 유기용제 |
-| **유틸리티** (`utility`) | 10종 | 접착제, 세척제, 방청제, 미생물제거제 등 |
-| **총합** | **34종** | |
+JSA_DB는 위험성평가에 다음 정보를 제공하는 안전 지식 데이터베이스이다.
 
-### 16.2 데이터 구조
+- 유사 작업
+- 작업단계
+- 위험요인
+- 사고유형
+- 사고시나리오
+- 안전대책
+- 사내기준
+- 재해·아차사고
+- 권고사항
+- 외부 안전자료
+- AI 보완 후보
 
-```javascript
-{
-  id: 'MSDS-001',
-  name: 'NCMA (양극활물질)',                        // 표시명 (간결)
-  substance: 'Lithium Nickel Manganese Cobalt Oxide', // 물질명
-  cas: '182442-95-1',                              // CAS 번호
-  msdsNo: 'AA00786-0000000363',                    // MSDS 등록번호 (KOSHA)
-  category: 'product'                              // 카테고리
-}
-```
+JSA_DB는 실제 작업의 최종 위험성평가를 대신하지 않는다.
 
-### 16.3 규약
+### 27.2 데이터 계층
 
-- ✅ **공급사 정보 제거** (표시명 간결)
-- ✅ **동일 CAS+MSDS 번호 중복 제거**
-- ✅ **표시명 간단히** (예: "NCMA (양극활물질)")
-- ✅ **CAS + MSDS 등록번호로 원본 문서 조회 가능**
-- ✅ **상세 유해성/보호구/응급조치는 원본 MSDS 참조** (자체 정리 안 함)
+JSA_DB는 다음 계층을 구분한다.
 
-### 16.4 34종 리스트 (요약)
+1. TSV 15열 원천자료
+2. 구조화 JSON 안전 지식 DB
+3. 실제 작업별 위험성평가 기록
 
-**완제품 (4)**:
-- NCMA (양극활물질) - CAS: 182442-95-1
-- NCA (양극활물질) - CAS: 177997-13-6
-- LFP 완제품
-- LFP 반제품
+### 27.3 정식 ID
 
-**전구체 (4)**:
-- 전구체 (수산화물) - CAS: 189139-63-7
-- 전구체 (이산화물) - CAS: 58591-45-0
-- 전구체 (Ni/Co/Mn 3종)
-- 전구체 (Ni/Co 산화물)
+형식:
 
-**원료 (16)**:
-- 리튬 화합물: 수산화리튬 (LiOH·H₂O), 무수수산화리튬
-- 금속 산화물/수산화물: 수산화코발트, 수산화알루미늄, 산화이트륨, 산화지르코늄, 황산코발트, 탄산마그네슘
-- 강산/강염기: 수산화나트륨 25%, 붕산
-- 가스: 질소, 산소, 천연가스
-- 세라믹: Sagger 형A, 형B
-- 유기용제: 에탄올 94.5%
+    JSA-{분류코드}-{6자리 순번}
 
-**유틸리티 (10)**:
-- 가스켓 리무버, 접착제, 경화제, 중화제, 차염소산나트륨, 스케일방지제, 윤활제, 부식방지제, 세척제, 미생물제거제
+예:
 
-### 16.5 향후 활용
+    JSA-WRK-000001
+    JSA-INT-000001
+    JSA-ACC-000001
 
-- **지금**: 안전정보(도급인) HTML에 하드코딩
-- **다음**: 다른 앱들도 참조 (수급인용, 위험성평가, TBM)
-- **Phase 6**: Firestore `MSDS` 컬렉션으로 이관
-- **Phase 7**: 원본 MSDS PDF 링크 추가 (선택)
+원칙:
+
+- 원본 `no`와 시스템 `jsaId`를 구분한다.
+- AI는 TSV 생성 시 jsaId를 발급하지 않는다.
+- 검토 완료 후 등록 단계에서 발급한다.
+- 발급된 ID를 변경하거나 재사용하지 않는다.
+- Firestore 문서 ID와 내부 jsaId를 동일하게 사용한다.
+
+### 27.4 승인 상태
+
+- draft
+- review
+- approved
+- retired
+
+위험성평가의 일반 추천에는 원칙적으로 approved 자료만 사용한다.
+
+개발 단계에서 review 자료를 사용할 경우 승인자료와 명확히 구분한다.
+
+### 27.5 위험성평가 결과의 승격
+
+위험성평가 결과를 JSA_DB에 자동 등록하지 않는다.
+
+다음 절차를 거친다.
+
+1. 후보 등록
+2. 중복 검토
+3. 원문 및 출처 확인
+4. 위험요인·대책 연결 검토
+5. 현업 검토
+6. 안전보건 검토
+7. 승인
+8. JSA_DB 게시
 
 ---
 
-## 17. 공장 안전정보 (2개 사업장)
+## 28. JSA_DB 출처 규약
 
-### 17.1 사업장 구성
+### 28.1 분류코드
 
-| 사업장 | 특징 |
+- LAW
+- INT
+- SOP
+- JSA
+- TBM
+- PTW
+- ACC
+- NMS
+- REC
+- EXT
+- WRK
+- UNK
+
+### 28.2 개별 항목 source
+
+위험요인과 대책의 개별 출처에는 다음 값을 사용할 수 있다.
+
+- LAW
+- INT
+- SOP
+- JSA
+- TBM
+- PTW
+- ACC
+- NMS
+- REC
+- EXT
+- WRK
+- AI
+- USER
+
+### 28.3 AI 구분
+
+AI가 보완한 위험요인 또는 안전대책은 반드시 다음 정보를 가진다.
+
+- source: AI
+- aiGenerated: true
+- reviewStatus: draft 또는 review
+
+AI 제안을 법령·사내기준·원문 대책처럼 저장하지 않는다.
+
+### 28.4 원문 대책
+
+WRK 자료의 원문 대책은 화면에서 태그를 생략할 수 있으나 내부 source는 WRK로 저장한다.
+
+INT, ACC, NMS 등 다른 자료에서 태그가 생략되었더라도 무조건 WRK로 분류하지 않는다.
+
+자료 전체의 classCode와 실제 출처를 기준으로 판단한다.
+
+---
+
+## 29. JSA_DB 구조화 원칙
+
+### 29.1 위험요인
+
+각 위험요인은 다음 정보를 가진다.
+
+- hazardId
+- text
+- standardName
+- source
+- sourceText
+- 작업단계
+- 에너지원
+- 위험원
+- 사고유형
+- 사고시나리오
+- 적용조건
+- 관련 대책 ID
+- 중대위험 여부
+- AI 생성 여부
+- 검토상태
+
+### 29.2 안전대책
+
+각 안전대책은 다음 정보를 가진다.
+
+- measureId
+- text
+- standardName
+- source
+- hierarchy
+- controlFunction
+- required
+- 적용조건
+- 확인방법
+- 관련 위험 ID
+- AI 생성 여부
+- 검토상태
+
+### 29.3 위험과 대책의 연결
+
+- 위험요인마다 관련 안전대책을 연결한다.
+- 안전대책마다 관련 위험요인을 연결한다.
+- 연결이 불명확하면 임의 확정하지 않는다.
+- 대책이 없는 위험은 미통제 위험으로 표시한다.
+- 위험과 연결되지 않은 대책은 검토 대상으로 표시한다.
+- 필수대책을 개수 제한으로 삭제하지 않는다.
+
+### 29.4 통제계층
+
+허용값:
+
+- elimination
+- substitution
+- engineering
+- administrative
+- ppe
+- emergency
+- unknown
+
+### 29.5 통제기능
+
+권장값:
+
+- isolation
+- guarding
+- grounding
+- leakageProtection
+- ventilation
+- detection
+- accessControl
+- supervision
+- communication
+- permit
+- planning
+- inspection
+- verification
+- training
+- recordkeeping
+- contaminationControl
+- emergencyResponse
+- restoration
+- ppe
+
+필요한 통제기능은 문서화 후 추가할 수 있다.
+
+---
+
+## 30. JSA_DB 검색 규약
+
+### 30.1 검색항목
+
+다음 정보를 종합하여 유사 자료를 검색한다.
+
+- 작업명
+- 대표 작업유형
+- 복수 작업유형
+- 세부작업유형
+- 작업단계
+- 작업 상세내용
+- 설비·공구
+- 사용물질
+- 에너지원
+- 위험원
+- 사고유형
+- 위험요인
+- 검색 키워드
+
+### 30.2 검색 결과 구분
+
+검색 결과를 가능하면 다음 그룹으로 나누어 표시한다.
+
+1. 유사 실제 작업
+2. 관련 사내기준
+3. 관련 작업표준
+4. 관련 재해사례
+5. 관련 아차사고
+6. 관련 법령·외부자료
+7. AI 보완 후보
+
+### 30.3 검색 승인조건
+
+기본 검색대상:
+
+- approved 상태
+- retired가 아님
+- 현재 유효 버전
+- 품질등급 A 또는 B
+- 출처와 적용조건 확인 완료
+
+### 30.4 검색 구현
+
+- Firestore 접두어 검색만으로 유사도를 판단하지 않는다.
+- 현재 규모에서는 승인된 JSA를 로드한 뒤 클라이언트에서 유사도를 계산한다.
+- 캐시는 단순 시간뿐 아니라 데이터셋 버전으로 갱신한다.
+- JSA_DB 로딩이 완료되기 전 검색을 실행하지 않는다.
+- 상위 검색결과만으로 안전대책을 자동 확정하지 않는다.
+
+---
+
+## 31. AI 활용 규약
+
+### 31.1 현재 단계
+
+현재 시스템은 다음 방식으로 운영한다.
+
+- 사전 생성 JSA_DB
+- 규칙 기반 검색
+- 유사도 계산
+- 위험·대책 후보 제시
+- 사용자 선택
+- 통제 적정성 검토
+
+브라우저에서 Claude API 등 외부 생성형 AI API를 직접 호출하지 않는다.
+
+### 31.2 AI가 수행할 수 있는 기능
+
+- 누락 위험요인 후보 제시
+- 작업단계별 위험 제안
+- 에너지원 기반 위험 제안
+- 재해·아차 유사사례 경고
+- 필수대책 누락 확인
+- PPE 중심 대책 경고
+- 상위 통제수단 제안
+- 위험과 대책의 연결 오류 확인
+- 통제 적정성 추천
+- 사용자 판정과 시스템 추천의 불일치 안내
+
+### 31.3 AI가 자동 확정하면 안 되는 사항
+
+- 최종 위험도
+- 법령 준수 여부
+- 작업허가 승인
+- 작업 가능 여부
+- 고위험작업 예외
+- 사내기준 적용 여부
+- 작업중지 후 재개
+- ILS 완료·해제
+- 작업완료
+- JSA_DB 승인
+
+### 31.4 AI 제안 반영
+
+- AI 위험과 대책은 기본 미선택으로 표시한다.
+- 사용자가 선택한 경우에만 실제 평가에 반영한다.
+- AI 항목을 선택한 사용자와 시각을 기록한다.
+- AI 제안의 검토상태를 기록한다.
+- AI 제안이 공식 기준으로 승격되려면 별도 검토·승인을 거친다.
+
+---
+
+## 32. 위험성평가 규약
+
+### 32.1 중심 구조
+
+위험성평가는 전체 작업에 점수 하나만 부여하는 방식에서 위험요인별 평가 방식으로 발전시킨다.
+
+각 위험항목은 다음을 포함한다.
+
+- 위험요인
+- 출처
+- 작업단계
+- 에너지원
+- 사고유형
+- 사고시나리오
+- 최초 위험도
+- 선택 안전대책
+- 잔여 위험도
+- 통제 적정성
+- 판정 사유
+- 미해결 위험
+- 조치 담당자
+- 조치기한
+
+### 32.2 위험요인 출처
+
+- 작업 원문
+- 안전정보제공서
+- JSA_DB
+- 사내기준
+- 작업표준
+- 재해사례
+- 아차사고
+- 외부자료
+- AI
+- 사용자 추가
+
+### 32.3 위험요인 선택
+
+- JSA_DB 위험요인을 후보로 표시한다.
+- 사용자가 적용 여부를 선택한다.
+- 사용자가 현장 위험을 추가할 수 있다.
+- AI 위험은 원문 위험과 구분한다.
+- 선택하지 않은 위험도 감사 목적상 후보 이력으로 보존할 수 있다.
+- 중대한 위험을 제외하면 제외 사유를 기록하도록 검토한다.
+
+### 32.4 최초·잔여 위험도
+
+각 위험요인에 다음 값을 저장한다.
+
+- initialRisk.frequency
+- initialRisk.severity
+- initialRisk.score
+- initialRisk.level
+- residualRisk.frequency
+- residualRisk.severity
+- residualRisk.score
+- residualRisk.level
+
+JSA_DB의 과거 위험점수는 현재 평가에 자동 적용하지 않는다.
+
+### 32.5 종합 위험도
+
+종합 위험도는 위험요인별 평가 결과를 바탕으로 산정한다.
+
+구체 산정방식은 별도 위험성평가 기준으로 확정한다.
+
+기존 `overallScore`와 `overallRisk`는 대시보드와 하위 호환을 위해 유지할 수 있다.
+
+### 32.6 통제 적정성
+
+허용값:
+
+- ○
+- △
+- ×
+
+다음 정보를 함께 저장한다.
+
+- 시스템 추천값
+- 사용자 최종값
+- 판정 사유
+- 필수대책 누락
+- PPE 중심 여부
+- 상위 통제수단 포함 여부
+- 미해결 위험 수
+
+대책이 변경되면 통제 적정성을 다시 확인한다.
+
+사용자가 시스템 추천값과 다른 값을 선택하면 변경 사유를 기록한다.
+
+### 32.7 복수 JSA 참조
+
+신규 위험성평가는 `referencedJSAs` 배열을 사용한다.
+
+참조정보:
+
+- jsaId
+- classCode
+- workName
+- similarity
+- 참조 버전
+- 선택한 hazardId
+- 선택한 measureId
+- 참조 시각
+
+기존 `referencedJSA` 단일 객체는 하위 호환을 위해 읽을 수 있다.
+
+### 32.8 재평가
+
+공식 재평가는 기존 평가를 덮어쓰지 않는다.
+
+다음 정보를 연결한다.
+
+- previousRiskId
+- 신규 riskId
+- assessmentVersion
+- 재평가 사유
+- 변경된 위험요인
+- 변경된 안전대책
+- 재평가자
+- 재평가 시각
+
+단순 오탈자 수정과 공식 재평가를 구분한다.
+
+---
+
+## 33. 고위험작업 규약
+
+### 33.1 분류
+
+최소 분류:
+
+- 화재·폭발 위험개소
+- 밀폐공간
+- 고부식성 강산·강염기
+- 고소
+- 중량물·양중
+- 전기
+
+### 33.2 복합 고위험
+
+하나의 작업이 여러 고위험 분류에 해당할 수 있다.
+
+대표 유형 하나로 축소하지 않는다.
+
+각 분류의 위험과 필수대책을 모두 확인한다.
+
+### 33.3 처리 절차
+
+1. 고위험 여부 판정
+2. 합동 사전검토
+3. 합동 위험성평가
+4. 맞춤 체크리스트 작성
+5. 생명지킴이 지정
+6. 필요한 사전승인
+7. 허가 전 안전조치 확인
+8. ILS 상태 확인
+9. TBM
+10. 작업 중 주기점검
+11. 미흡 조치
+12. 작업중지·재개
+13. 작업 종료
+14. ILS 해제 확인
+15. 기록 보관
+
+상세 판정기준과 예외는 HIGH_RISK_WORK_POLICY.md를 따른다.
+
+### 33.4 고위험 허가 게이트
+
+다음이 완료되지 않으면 최종 허가를 제한한다.
+
+- 고위험 판정
+- 위험성평가
+- 맞춤 체크리스트
+- 필수 작업계획서
+- 생명지킴이
+- 사전승인
+- ILS 적용 여부
+- 미해결 중대위험 조치
+
+---
+
+## 34. 안전작업허가 규약
+
+### 34.1 역할 구분
+
+안전작업허가의 역할을 다음과 같이 구분한다.
+
+- 신청자
+- 작업수행사 작업책임자
+- 작업지시자
+- 운영부서 허가자
+- 필요 시 안전관리자
+
+### 34.2 상태 흐름
+
+    대기중
+      → 허가진행중
+      → 허가완료
+      → 작업중
+      → 작업완료
+
+특수 상태:
+
+    작업중지
+
+### 34.3 제출과 승인
+
+- 작업자 또는 신청자의 제출은 승인 요청이다.
+- 작업자 서명만으로 허가완료 처리하지 않는다.
+- 작업책임자 확인과 운영부서 허가자의 최종 승인을 구분한다.
+- 승인자, 승인 시각, 의견 및 서명 또는 인증을 기록한다.
+- 반려 또는 보완요청 사유를 기록한다.
+
+### 34.4 허가 전 필수 확인
+
+- 작업정보
+- 작업자·책임자
+- 안전정보제공
+- 안전퀴즈
+- 위험성평가
+- 고위험 판정
+- 고위험 사전승인
+- 작업계획서
+- 작업유형별 안전조치
+- 보호구
+- 감시인·신호수·작업지휘자
+- 작업장비
+- 비상연락
+- ILS 상태
+- 밀폐공간 최초 측정
+- 미해결 위험
+
+### 34.5 저장 원칙
+
+- permitNo를 정식 식별번호로 사용한다.
+- 별도의 `PERMIT-Date.now` 식별자를 만들지 않는다.
+- 허가번호에 Math.random을 사용하지 않는다.
+- 위험성평가 상세 원본을 전부 복제하지 않는다.
+- riskId와 승인에 필요한 요약을 저장한다.
+- 필수대책을 임의 개수로 잘라 저장하지 않는다.
+- 상태 변경 이력을 보존한다.
+
+---
+
+## 35. 허가 전 ILS 확인
+
+### 35.1 플랫폼 역할
+
+별도 ILS 시스템이 상세 잠금·해제 이력의 원본이다.
+
+안전관리 플랫폼은 다음만 관리한다.
+
+- ILS 적용 대상 여부
+- ILS 실시 상태
+- 기존 ILS 시스템 참조번호
+- 기계설비 ILS 상태
+- 전기설비 ILS 상태
+- GIB 번호
+- 대상 설비 일치 여부
+- 허가 전 확인자
+- 확인 시각
+- 비대상 사유
+- 가동 Test·미세조정 여부
+
+### 35.2 확인 문구
+
+허가자는 다음 취지로 확인한다.
+
+> 해당 작업에 필요한 ILS가 기존 ILS 시스템에서 완료되었으며, 대상 설비와 작업범위가 일치함을 확인하였습니다.
+
+### 35.3 허가 제한
+
+ILS 대상 작업에서 다음 중 하나라도 해당하면 허가완료로 전환하지 않는다.
+
+- 미실시
+- 진행 중
+- 참조번호 없음
+- 확인자 없음
+- 확인 시각 없음
+- 대상 설비 불일치
+- 기존 ILS 시스템 확인 불가
+- 특수절차 승인 미확인
+
+### 35.4 TBM 연계
+
+TBM은 허가서의 ILS 결과를 읽기 전용으로 표시한다.
+
+TBM에서 상세 ILS 정보를 다시 입력하거나 수정하지 않는다.
+
+---
+
+## 36. 밀폐공간 가스측정 규약
+
+### 36.1 적정공기 기준
+
+현재 확인된 기준:
+
+| 항목 | 적정 기준 |
 |---|---|
-| **포항양극재 1공장** | A동 (1단계) |
-| **포항양극재 2공장** | B동 (2-1단계) + C동 (2-2단계) |
+| 산소 | 18% 이상, 23.5% 미만 |
+| 일산화탄소 | 30ppm 미만 |
+| 이산화탄소 | 1.5% 미만 |
+| 황화수소 | 10ppm 미만 |
+| 인화성가스 | LEL 10% 미만 |
 
-### 17.2 데이터 구조
+### 36.2 측정 시기
 
-```javascript
-{
-  '포항양극재 1공장': {
-    emergencyContact: '통합운전실 054-240-5191 / 119',
-    emergencyExit: '각 건물별 지정 비상구 (안내판 확인)',
-    firstAid: '1층 안전관리실, 각 층 승강기 앞 안전보호함 (총 34개소)',
-    aedLocations: '1,2 사무동 1층, 품질분석실 입구, A동 1·2층 승강기 앞 (총 11대)',
-    emergencyProcedure:
-      '1. 최초 목격자는 주변 소화전 발신기 동작, 통합운전실(054-240-5191)에 연락\n' +
-      '2. 운전실 근무자는 비상방송(대피, 화재발생, 소화펌프 전개) 실시\n' +
-      '3. 관리감독자는 119에 신고 및 계통 보고\n' +
-      '4. 자위소방대 투입하여 초기진화 및 유도자 배치\n' +
-      '5. 지정된 집결장소로 신속히 대피',
-    safetyManagerPhone: '054-240-5131 (안전관리자) / HP 010-3060-0909'
-  },
-  '포항양극재 2공장': {
-    // 동일 (AED 위치만 C동으로 다름)
-  }
-}
-```
+- 당일 작업 개시 전
+- 작업자 전원 교대 후 작업 시작 전
+- 전원이 작업장소를 떠났다가 재진입하기 전
+- 작업자 신체·환기장치 등에 이상이 있을 때
+- 연속작업 중 1시간마다
+- 작업중지 원인 조치 후 재진입 전
+- 사업장 프로그램에 따라 간격을 단축한 경우
 
-### 17.3 자동 채우기 규약
+### 36.3 측정 위치
 
-**작업장소 선택 시 자동 채움 필드**:
-- 비상연락처
-- 비상구 위치
-- 구급약품 위치
+- 수직방향 다점
+- 수평방향 다점
+- 상부·중부·하부
+- 출입구
+- 작업자 호흡 위치
+- 가스 유입 예상 위치
+- 실제 작업지점
+
+### 36.4 최초 측정 확인
+
+원칙적으로 다음 관련자의 합동 확인을 기록한다.
+
+- 작업수행사 관리감독자
+- 운영부서 지정 측정·평가자
+- 정비부서 담당자
+
+운영부서 직접 수행으로 2자 확인을 적용하는 경우 근거를 기록한다.
+
+### 36.5 저장 원칙
+
+- 모든 측정행을 저장한다.
+- 첫 번째 행만 검증하지 않는다.
+- 측정 위치와 측정자를 저장한다.
+- 부적합 결과를 삭제하거나 적합 결과로 덮어쓰지 않는다.
+- 조치 후 재측정은 별도 기록으로 저장한다.
+- 측정기 상태·교정·경보설정을 확인한다.
+- 현재 확인된 사내기준에 따른 보존기간을 준수한다.
+
+### 36.6 작업 제한
+
+다음 경우 작업 시작·계속 수행을 제한한다.
+
+- 측정값 누락
+- 필수 위치 측정 누락
+- 확인자 누락
+- 측정기 이상
+- 적정공기 기준 이탈
+- 측정주기 초과
+- 환기장치 이상
+- 후속조치 미완료
+- 재측정 필요 상태
+
+---
+
+## 37. 허가 연장·변경·재허가
+
+### 37.1 연장
+
+연장 요청과 승인을 분리한다.
+
+연장 시 확인사항:
+
+- 작업내용 변경 없음
+- 작업범위 변경 없음
+- 작업장소 변경 없음
+- 설비 변경 없음
+- 물질·에너지원 변경 없음
+- 위험성평가 유효
+- 고위험 사전승인 유효
+- ILS 상태 유지
+- 가스측정 유효
+- TBM 또는 재TBM 필요 여부
+- 미흡사항 없음
+
+### 37.2 변경
+
+다음 변경이 있으면 기존 평가·허가·TBM의 유효성을 재확인한다.
+
+- 작업자
+- 작업책임자
+- 허가자
+- 작업내용
+- 작업범위
+- 작업장소
+- 설비
+- 장비·공구
+- 물질
+- 에너지원
+- 작업유형
+- 작업시간
+- 동시작업
+- 고위험 조건
+- ILS 적용조건
+
+### 37.3 재허가
+
+다음 경우 재허가를 검토한다.
+
+- 작업내용 또는 범위 변경
+- 설비·물질·에너지원 변경
+- 작업유형 추가
+- 새로운 고위험 조건 발생
+- ILS 차단조건 변경
+- 기존 허가 만료
+- 작업중지 원인의 중대한 변경
+- 기존 대책으로 통제할 수 없는 위험 발생
+- 사전승인 조건 변경
+
+### 37.4 재TBM
+
+변경·연장·재허가 과정에서 작업자에게 다시 알려야 할 사항이 있으면 재TBM을 실시한다.
+
+재TBM은 기존 TBM을 덮어쓰지 않고 별도 이력으로 저장한다.
+
+---
+
+## 38. Part 2 완료 범위
+
+Part 2에서는 다음 규약을 정의하였다.
+
+- 전체 안전업무 흐름
+- 단계별 필수 게이트
+- 안전정보제공
+- 안전퀴즈 출입 필수조건
+- JSA_DB 운영·출처·구조화·검색
+- AI 활용 범위와 제한
+- 위험요인별 위험성평가
+- 복수 JSA 참조
+- 최초·잔여 위험도
+- 고위험작업
+- 안전작업허가
+- 허가 전 ILS 확인
+- 밀폐공간 가스측정
+- 연장·변경·재허가
+
+Part 3에서는 다음 내용을 정의한다.
+
+- TBM
+- 작업중지권
+- 재TBM
+- 작업 중 점검
+- 작업 종료 및 ILS 해제 확인
+- 조건부 별지
+- 비상정보
+- 개인정보·서명·첨부파일
+- Firestore 권한·이관
+- 테스트·배포·문서관리 규칙
+
+---
+
+## 39. TBM 운영 규약
+
+### 39.1 정식 파일
+
+TBM 전용 파일은 다음 이름을 사용한다.
+
+    TBM_v2.html
+
+기존 통합 파일은 신규 TBM 파일과 작업중지권 파일의 검증이 끝날 때까지 유지한다.
+
+    TBM_및_작업중지권_v2.html
+
+### 39.2 TBM의 역할
+
+TBM은 작업 시작 전에 다음 사항을 작업자에게 전달하고 확인하는 현장 실행 문서이다.
+
+- 작업 기본정보
+- 작업범위와 작업방법
+- 위험성평가에서 확정한 위험요인
+- 사고시나리오
+- 안전대책
+- 조치 예정자
+- 현장 확인방법
+- 작업중지 조건
+- 비상연락 및 대피정보
+- 허가서의 ILS 상태
+- 고위험작업 승인조건
+- 작업중지권
+- 조건부 별지
+- 참석자 안전퀴즈 결과
+
+TBM은 위험성평가를 대체하지 않는다.
+
+TBM은 위험성평가에서 확정된 내용을 작업자에게 전달하고, 현장 실행 여부를 확인하는 문서이다.
+
+### 39.3 저장소
+
+개발 단계:
+
+    safetyTBM
+
+운영 단계:
+
+    TBM
+
+### 39.4 TBM 식별번호
+
+형식:
+
+    TBM-YYYYMMDD-SEQ3
+
+재TBM도 별도의 TBM 문서로 저장한다.
+
+재TBM 전용 식별번호를 사용하는 경우 다음 형식을 사용할 수 있다.
+
+    RTBM-YYYYMMDD-SEQ3
+
+### 39.5 TBM 상태
+
+- 작성중
+- 완료
+- 취소
+- 재TBM필요
+
+### 39.6 허가서 자동 채움
+
+TBM은 URL로 전달된 permitNo를 이용해 작업허가 원본을 조회한다.
+
+다음 정보를 허가서에서 자동으로 가져온다.
+
+- permitNo
+- workId
+- riskId
+- 작업명
+- 작업장소
+- 세부 위치
+- 협력사
+- 작업인원
+- 작업책임자
+- 작업유형
+- 고위험작업 여부
+- ILS 상태
+- 작업 유효기간
+- 비상정보
+
+작업명, 협력사, 장소, 인원 등의 상세값을 URL 파라미터로 반복 전달하지 않는다.
+
+### 39.7 위험성평가 자동 반영
+
+TBM에는 위험성평가의 다음 정보를 위험항목별로 반영한다.
+
+- riskItemId
+- 위험요인
+- 사고시나리오
+- 안전대책
+- 조치 예정자
+- 확인방법
+- 작업중지 조건
+- sourceJsaId
+- 자동 채움 출처
+
+다음과 같은 일반 문구만 위험요인으로 저장하지 않는다.
+
+    위험성평가에서 도출
+
+실제 위험요인 문구와 연결된 안전대책을 저장한다.
+
+### 39.8 중복 방지
+
+동일한 위험요인을 다시 불러올 때 다음 식별정보를 우선 사용한다.
+
+- riskId
+- riskItemId
+- measureId
+- sourceJsaId
+
+구조화 ID가 없는 레거시 자료는 위험문구와 대책문구를 비교하여 임시 중복 방지를 적용할 수 있다.
+
+위험성평가가 변경되어도 기존 TBM을 자동으로 덮어쓰지 않는다.
+
+사용자가 `최신 위험성평가 다시 불러오기`를 실행한 경우에만 갱신한다.
+
+갱신 시 다음을 기록한다.
+
+- 이전 riskId
+- 신규 riskId
+- 변경된 위험요인
+- 변경된 안전대책
+- 갱신자
+- 갱신 시각
+- 재TBM 필요 여부
+
+### 39.9 TBM 완료 조건
+
+다음 조건을 모두 충족해야 TBM을 완료할 수 있다.
+
+- 안전작업허가 상태가 허가완료
+- 작업허가 유효기간 내
+- 고위험 사전승인 완료
+- 위험성평가 완료
+- 미해결 중대위험 없음
+- ILS 대상 작업의 완료상태 확인
+- 참석자 안전퀴즈 검증 완료
+- 위험요인과 대책 전달
+- 조치 예정자 지정
+- 작업중지 조건 전달
+- 작업중지권 고지
+- 참석자 확인·서명
+- 필요한 별지 작성
+
+TBM 완료 후에만 허가 상태를 작업중으로 전환한다.
+
+---
+
+## 40. TBM 참석자 안전퀴즈 검증
+
+### 40.1 기본 원칙
+
+작업에 참여하는 출입자는 유효한 안전퀴즈 합격 기록이 있어야 한다.
+
+TBM 참석자 명단과 안전퀴즈 기록을 대조한다.
+
+### 40.2 확인정보
+
+참석자별로 다음 정보를 확인한다.
+
+- 작업자 식별값
+- 이름
+- 소속
+- 안전퀴즈 ID
+- 합격 여부
+- 응시일
+- 유효 종료일
+- 퀴즈 버전
+- 검증 결과
+- 검증 시각
+
+### 40.3 검증 결과
+
+| 결과 | 처리 |
+|---|---|
+| 합격·유효 | 작업 참여 가능 |
+| 불합격 | 작업 참여 제한 |
+| 미응시 | 퀴즈 응시 후 참여 |
+| 유효기간 만료 | 재응시 필요 |
+| 신원 불일치 | 관리자 확인 |
+| 소속 불일치 | 관리자 확인 |
+| 확인 불가 | 작업 참여 제한 |
+
+필수 대상자 중 한 명이라도 조건을 충족하지 못하면 TBM 최종 완료와 작업 시작을 제한한다.
+
+### 40.4 작업자 변경
+
+TBM 완료 후 작업자가 추가되거나 변경되면 다음을 수행한다.
+
+1. 신규 작업자 신원·소속 확인
+2. 안전퀴즈 합격 여부 확인
+3. 위험요인·대책 재주지
+4. 작업중지권 재고지
+5. 필요한 경우 재TBM
+6. 참석자 변경이력 기록
+
+### 40.5 위험 신고 예외
+
+안전퀴즈 미응시자 또는 불합격자도 위험 신고와 작업중지 요청을 할 수 있다.
+
+안전퀴즈는 작업 참여 조건이며 위험 신고 권리를 제한하는 조건이 아니다.
+
+---
+
+## 41. TBM의 ILS 확인
+
+### 41.1 원칙
+
+TBM에서는 상세 ILS 잠금정보를 다시 입력하지 않는다.
+
+작업허가서에서 허가자가 확인한 ILS 정보를 읽기 전용으로 표시한다.
+
+### 41.2 표시 항목
+
+- ILS 적용 여부
+- ILS 완료 상태
+- ILS 참조번호
+- 기계설비 ILS 참조번호
+- 전기설비 ILS 참조번호
+- GIB 번호
+- 대상 설비
+- 허가 전 확인자
+- 확인 시각
+- 기존 ILS 시스템 확인 여부
+
+### 41.3 TBM 확인 문구
+
+다음 취지의 문구를 표시한다.
+
+> 안전작업허가서에서 확인된 ILS 실시 상태와 참조번호를 확인하였으며, 작업 중 잠금장치의 임의 해제·변경·바이패스 및 설비 조작을 하지 않겠습니다.
+
+### 41.4 제한 조건
+
+다음 경우 TBM 완료와 작업 시작을 제한한다.
+
+- ILS 대상인데 완료되지 않음
+- ILS 참조번호가 없음
+- 대상 설비가 허가서와 다름
+- ILS 상태가 변경됨
+- 기존 ILS 시스템 확인 불가
+- 가동 Test·미세조정 승인조건 미확인
+
+---
+
+## 42. 작업중지권 고지 규약
+
+### 42.1 TBM에 유지할 기능
+
+작업중지권의 사전 고지는 TBM에 유지한다.
+
+고지 내용에는 다음 취지를 포함한다.
+
+- 급박한 위험이 있으면 작업을 중지하고 대피할 수 있음
+- 위험상황을 관리감독자에게 보고해야 함
+- 필요한 안전보건조치 후 작업을 재개함
+- 합리적인 작업중지권 행사에 불리한 처우를 하지 않음
+- 작업중지 요청 방법
+- 비상연락 방법
+
+### 42.2 stopNotice 필수정보
+
+- 참여자 명단
+- 참여자 원문
+- 대표자 이름
+- 대표자 서명 또는 전자확인
+- 고지 시각
+- 법적 근거
+- 고지 문구 버전
+- 확인 결과
+
+### 42.3 저장 원칙
+
+- 고지 문구의 버전을 기록한다.
+- 법령 문구는 최신성 검토 후 사용한다.
+- 참석자 변경 시 신규 참석자에게 다시 고지한다.
+- 재TBM 시 고지 필요 여부를 확인한다.
+- 실제 작업중지 요청과 고지 기록을 구분한다.
+
+---
+
+## 43. 작업중지권 전용 앱 규약
+
+### 43.1 정식 파일
+
+실제 작업중지 요청과 조치·재개 관리는 다음 파일에서 수행한다.
+
+    작업중지권_v2.html
+
+### 43.2 역할
+
+작업중지권 전용 앱은 다음 기능을 담당한다.
+
+- 위험상황 신고
+- 작업중지 요청
+- 즉시 대피·현장통제 기록
+- 안전조치 미흡내용
+- 즉시조치
+- 추가 안전조치
+- 조치 담당자
+- 재점검
+- 위험성평가 재검토
+- 허가 재확인 또는 재허가
+- ILS 상태 재확인
+- 재TBM
+- 작업 재개 승인
+- 종결
+
+### 43.3 진입 방식
+
+TBM 또는 대시보드에서 다음 자연키를 전달한다.
+
+- permitNo
+- 필요 시 tbmNo
+- 조회 시 emergencyNo
+
+작업명·장소·협력사 등 상세정보는 URL로 반복 전달하지 않는다.
+
+### 43.4 저장소
+
+개발 단계:
+
+    emergencies
+
+운영 단계:
+
+    긴급조치
+
+작업중지 기록은 다음 값으로 구분한다.
+
+    type: 중지
+
+### 43.5 작업중지 요청 제한 금지
+
+위험을 발견한 사람은 안전퀴즈 결과와 관계없이 작업중지를 요청할 수 있어야 한다.
+
+로그인하지 않은 사용자의 요청을 허용할지는 사내 정책과 보안정책으로 결정한다.
+
+긴급한 신고가 인증 절차 때문에 지연되지 않도록 별도 신고 경로를 검토한다.
+
+---
+
+## 44. 작업중지 상태 및 연동
+
+### 44.1 상위 상태
+
+- 요청
+- 조치중
+- 완료
+
+### 44.2 세부 상태
+
+- 요청접수
+- 작업중지
+- 현장확인
+- 조치중
+- 재점검
+- 재개검토
+- 재개승인
+- 완료
+
+### 44.3 요청 시 처리
+
+작업중지 요청이 저장되면 다음 상태를 연결한다.
+
+- 긴급조치 기록 생성
+- 작업허가 상태를 작업중지로 변경
+- 작업DB 상태를 작업중지로 변경
+- 관련 TBM에 emergencyNo 연결
+- 관련 위험성평가를 재검토필요로 표시
+- 대시보드에 작업중지 상태 표시
+- 필요한 경우 긴급 알림 제공
+
+기존 위험성평가와 TBM 원본을 자동으로 덮어쓰지 않는다.
+
+### 44.4 역할 분리
+
+다음 역할을 구분하여 기록한다.
+
+- 작업중지 요청자
+- 현장 확인자
+- 개선조치 담당자
+- 재점검자
+- 허가 재확인자
+- 재TBM 실시자
+- 작업 재개 승인자
+
+작업중지 요청자가 자동으로 재개 승인자가 되지 않는다.
+
+---
+
+## 45. 작업중지 후 재개 규약
+
+### 45.1 재개 조건
+
+다음 조건을 모두 확인한 후 작업 재개를 승인한다.
+
+1. 위험상황의 원인 확인
+2. 즉시조치 완료
+3. 추가 안전조치 완료
+4. 미흡사항 재점검
+5. 미해결 중대위험 없음
+6. 위험성평가 재검토
+7. 필요한 경우 신규 위험성평가 작성
+8. 허가 재확인 또는 재허가
+9. ILS 상태 재확인
+10. 필요한 경우 기존 ILS 시스템에서 재처리
+11. 재TBM 완료
+12. 변경된 위험·대책을 작업자에게 전달
+13. 참석자 안전퀴즈 상태 재확인
+14. 권한 있는 사람의 재개 승인
+
+### 45.2 재개 기록
+
+다음 정보를 저장한다.
+
+- 재개 요청 시각
+- 재개 요청자
+- 위험원인
+- 완료된 조치
+- 재점검 결과
+- 신규 riskId
+- 재확인 또는 신규 permitNo
+- 재TBM 번호
+- ILS 재확인 결과
+- 재개 승인자
+- 재개 승인 시각
+- 재개 의견
+
+### 45.3 불변 이력
+
+작업중지 원본, 최초 미흡 판정 및 이전 위험성평가를 삭제하거나 정상 상태로 덮어쓰지 않는다.
+
+조치와 재개는 별도 이력으로 누적한다.
+
+---
+
+## 46. 재TBM 규약
+
+### 46.1 실시 조건
+
+다음 상황에서는 재TBM을 실시한다.
+
+- 작업방법 변경
+- 작업장소 변경
+- 작업범위 변경
+- 작업자·작업팀 변경
+- 설비 변경
+- 장비·공구 변경
+- 사용물질 변경
+- 에너지원 변경
+- 새로운 위험요인 발견
+- 위험성평가 변경
+- 작업중지 후 재개
+- 허가조건 변경
+- ILS 상태 또는 차단조건 변경
+- 장시간 작업중단 후 재개
+- 고위험 분류 변경
+
+### 46.2 저장 원칙
+
+- 기존 TBM을 덮어쓰지 않는다.
+- 별도의 tbmNo 또는 reTbmNo를 발급한다.
+- 원본 TBM 번호를 기록한다.
+- 재실시 사유를 기록한다.
+- 변경 전·후 위험과 대책을 기록한다.
+- 참석자 안전퀴즈를 다시 확인한다.
+- 필요한 경우 작업중지권을 다시 고지한다.
+- 참석자와 서명을 새로 기록한다.
+
+---
+
+## 47. TBM 조건부 별지
+
+### 47.1 적용 원칙
+
+작업유형, 사용장비, 계절, 고위험 판정 및 위험성평가 결과에 따라 필요한 별지만 표시한다.
+
+현장 담당자가 자동 추천된 별지 외에 추가 별지를 선택할 수 있어야 한다.
+
+### 47.2 별지 적용표
+
+| 조건 | 별지 |
+|---|---|
+| 밀폐공간 | 밀폐공간 작업 체크리스트 |
+| 산소·유해가스 측정 필요 | 산소·유해가스 측정기록 |
+| 밀폐공간 진입 | 밀폐공간 출입현황 |
+| 방사선 관련 작업 | 방사선 관리 기록 |
+| 장비·공구 사용 | 작업장비 체크리스트 |
+| 고위험작업 | 고위험작업 이행점검표 |
+| 하절기·고온작업 | 온열질환 자율진단 |
+| 모든 작업 | 비상정보 |
+| 작업조건 변경 | 재TBM |
+
+### 47.3 별지 저장 원칙
+
+TBM 본문에 별지 원본 전체를 중복 저장하지 않는다.
+
+다음 참조정보를 저장한다.
+
+- 별지 유형
+- 문서 ID
+- 필수 여부
+- 작성 상태
+- 확인자
+- 확인 시각
+
+---
+
+## 48. 작업장비 체크리스트
+
+### 48.1 적용 장비
+
+최소한 다음 장비군을 지원한다.
+
+- 핸드 그라인더
+- 고속절단기
+- 비계
+- 이동식 비계
+- 이동식 사다리
+- 와이어로프
+- 슬링벨트
+- 체인블록
+- 체인슬링
+- 샤클
+- 크레인
+- 호이스트
+- 용접기
+- 이동전기기구
+- 전동·회전공구
+- 목재가공기계
+- 기타
+
+### 48.2 점검값
+
+- 양호
+- 미흡
+- 해당 없음
+
+해당 없음에는 사유를 기록한다.
+
+필수 안전장치가 미흡하면 TBM 완료와 작업 시작을 제한한다.
+
+### 48.3 미흡 처리
+
+- 미흡내용
+- 즉시조치
+- 조치 담당자
+- 조치 완료시각
+- 재점검 결과
+- 작업중지 여부
+
+손상된 장비 또는 줄걸이 용구를 다시 정상으로 덮어쓰지 않고 최초 미흡과 조치 이력을 모두 보존한다.
+
+---
+
+## 49. 비상정보 규약
+
+### 49.1 역할
+
+작업장소에 따른 비상연락, 대피 및 응급시설 정보를 제공한다.
+
+### 49.2 자동 표시 정보
+
+- 통합운전실 연락처
+- 119 신고절차
+- 비상방송 절차
+- 비상구
+- 집결지
+- 소방차·구급차 출동 위치
 - AED 위치
-- 비상상황 대응 절차 (5단계)
+- 인명구조함
+- 안전보호구함
 - 안전관리자 연락처
 
-**적용 앱**:
-- ✅ 안전정보제공서 (도급인용)
-- ⏳ 향후: 위험성평가, TBM
+### 49.3 운영 원칙
 
-### 17.4 필드 처리
-
-**표시**: 자동 채움된 필드는 `readonly`로 표시 (파란색 배경)
-```html
-<input class="f-input auto-filled" id="emergency-contact" readonly>
-```
-
-**저장**: 자동 채움된 값 그대로 저장 (규약 준수)
-
-### 17.5 향후 확장
-
-- **Phase 6**: Firestore `공장안전정보` 컬렉션으로 이관
-- **Phase 7**: 관리자 UI로 공장 정보 편집 기능
-- **필요 시**: 추가 사업장 (광양양극재, 포항음극재 등)
+- 공장 선택에 따라 자동 표시한다.
+- 읽기 전용으로 제공한다.
+- 마지막 확인일을 표시한다.
+- 실제 연락처 변경 여부를 정기적으로 확인한다.
+- 내부 연락망은 인증된 사용자에게만 제공하도록 검토한다.
+- Public GitHub에 실제 개인 휴대전화번호를 저장하지 않는다.
 
 ---
 
-## 18. 폐기 예정 항목 총정리
+## 50. 작업 중 안전조치 이행점검
 
-### 18.1 localStorage 키
+### 50.1 일반 이행점검
 
-| 폐기 키 | 대체 | 자동 마이그레이션 | 폐기 시점 |
-|---|---|---|---|
-| `firebasePermits` | `safetyPermits` → Firestore | ⏳ 필요 | v1.1 |
-| `safetyInfoDocs` | `safetyProvisions` | ✅ 구현됨 | v1.1 |
-| `safetyInfoSigned` | `safetyProvisions.signature` (병합) | ✅ 구현됨 | v1.1 |
-| `safetyViolations` | `emergencies` or `inspections` | ⏳ 필요 | v1.1 |
-| `riskDatabase` | `riskAssessments` | ✅ 구현됨 | v1.1 |
-| `safetyRiskAssessments` | `riskAssessments` | ✅ 구현됨 | v1.1 |
-| `safetyStopWork` | `emergencies.type='stop'` | ✅ 구현됨 | v1.1 |
-| `tbmLogs` | `safetyTBM` → `TBM` (Firestore) | ✅ 구현됨 | v1.1 |
+모든 허가작업에서 다음 사항을 확인할 수 있어야 한다.
 
-### 18.2 코드 패턴
+- 허가조건 유지
+- 위험성평가 대책 이행
+- 작업방법 변경 여부
+- 작업자 변경 여부
+- 설비·장비 변경 여부
+- 사용물질 변경 여부
+- 보호구 착용
+- 작업구역 통제
+- ILS 상태 유지
+- 신규 위험 발생 여부
+- 작업중지 조건 발생 여부
 
-| 폐기 | 대체 |
+### 50.2 고위험작업 주기점검
+
+현재 확인된 점검주기는 다음과 같다.
+
+| 점검 주체 | 주기 |
 |---|---|
-| Claude API 브라우저 직접 호출 | JSA_DB Firestore 조회 |
-| Google Apps Script + `no-cors` | EmailJS |
-| `sessionStorage.userInfo.role` | Firebase Auth Custom Claims |
-| `Math.random()` 시퀀스 | Firestore Transaction |
-| `new Date().toISOString()` (UTC) | 로컬 시간 기반 `fmtDate()` |
-| `new Event('storage')` | `CustomEvent('app-data-changed')` |
-| `w.date + '_' + (originalNo\|\|i)` | `originalNo` 필수 (없으면 skip) |
-| `'TBM-' + Date.now()` | Firestore Transaction 시퀀스 (또는 로컬 순차) |
-| MSDS 하드코딩 12종 | MSDS 34종 하드코딩 (→ Firestore) |
+| 생명지킴이 | 2시간마다 |
+| 정비부서 담당자 | 오전·오후 각 1회 |
+| 운영부서 관리감독자 | 오전·오후 각 1회 |
+| 안전환경부서 | 오전·오후 각 1회 |
 
-### 18.3 파일명
+작업 시작 시 예정 점검시간을 계산하고, 실제 점검시각을 별도로 기록한다.
 
-| 폐기 | 대체 |
-|---|---|
-| `_v2_1_.html` | `_v2.html` |
-| `_V6_1_.html` | `_V6_.html` |
-| `_V7_통합.html` | `_V6_.html` |
-| `dashboard_v6.html` | `안전관리플랫폼_대시보드_V6_.html` |
-| `안전정보제공서_작성.html` | `안전정보제공서_도급인용.html` |
+Cloud Functions를 사용하지 않으므로 백그라운드 자동 실행을 전제로 하지 않는다.
 
-### 18.4 role 값
+### 50.3 대리점검
 
-| 폐기 | 대체 |
-|---|---|
-| `'USER'` (대문자) | `'worker'` |
-| `'ADMIN'` (대문자) | `'admin'` |
-| `'Worker'` (파스칼) | `'worker'` |
-| `'Manager'` (파스칼) | `'manager'` |
-| `'Admin'` (파스칼) | `'admin'` |
+사내기준에 따라 대리점검을 허용하는 경우 다음을 기록한다.
 
-### 18.5 URL 파라미터
+- 원 점검자
+- 대리점검자
+- 위임 사유
+- 위임자
+- 위임 시각
+- 적용 회차
 
-| 폐기 | 대체 |
-|---|---|
-| `?doc=SIP-001` | `?safeinfoNo=SIP-001` |
+현재 확보된 기준에 따라 생명지킴이는 임의로 대체하지 않는다.
 
-### 18.6 공장 옵션
+### 50.4 점검 결과
 
-| 폐기 | 대체 |
-|---|---|
-| 5개 옵션 (1공장, 2공장, 광양양극재, 포항음극재, 기타) | **2개 옵션** (포항양극재 1공장, 2공장) |
+기본 판정값:
+
+- ○: 양호
+- ×: 미흡
+- -: 해당 없음
+
+미흡 발생 시 다음을 기록한다.
+
+- 미흡 항목
+- 위험내용
+- 발견자
+- 발견 시각
+- 즉시조치
+- 조치 담당자
+- 조치 완료시각
+- 작업중지 여부
+- 재점검 결과
 
 ---
 
-## 19. 개선 완료 현황 (v2.0)
+## 51. 작업 종료 규약
 
-### 19.1 완료된 5개 앱
+### 51.1 종료 전 확인
 
-| # | 파일 | 개선 내용 |
-|---|---|---|
-| 1 | 포항양극재공장_안전퀴즈.html | localStorage 저장 로직 추가 (`safetyQuizzes`) |
-| 2 | 위험성평가_v2.html | 규약 준수 개편 (`riskAssessments`, `RA-` 형식, 감사 필드) |
-| 3 | TBM_및_작업중지권_v2.html | 규약 준수 개편 (`safetyTBM`, `TBM-YYYYMMDD-SEQ3`, `emergencies` 통합) |
-| 4 | 안전정보제공서_도급인용.html | 대개편 (MSDS 34종, 공장 자동채움, `safetyProvisions`) |
-| 5 | 안전정보제공서_수급인용.html | 대개편 (`?safeinfoNo=`, 도급인 서명 표시, 페어링) |
+작업을 종료할 때 다음 사항을 확인한다.
 
-### 19.2 각 앱의 규약 준수 여부
+- 실제 작업 완료
+- 작업자 전원 철수
+- 밀폐공간 출입자 전원 퇴실
+- 공구·자재·잔여물 제거
+- 임시 설치물 제거
+- 방호장치·커버 복구
+- 작업장 정리정돈
+- 화기작업 잔불 확인
+- 화학물질 잔류·누출 확인
+- 고소작업 임시시설 상태
+- 모든 미흡사항 조치 완료
+- 필수 작업 중 점검 완료
+- 관련 부서 작업 종료 통보
 
-| 앱 | 저장 키 | 자연키 형식 | 감사 필드 | 대시보드 매칭 |
-|---|---|---|---|---|
-| 안전퀴즈 | ✅ | ✅ | ✅ | ✅ |
-| 위험성평가 | ✅ | ✅ | ✅ | ✅ |
-| TBM | ✅ | ✅ | ✅ | ✅ |
-| 안전정보(도급) | ✅ | ✅ | ✅ | ✅ |
-| 안전정보(수급) | ✅ | ✅ | ✅ | ✅ |
+### 51.2 종료 보조 상태
 
-### 19.3 남은 작업
+- 작업중
+- 종료확인중
+- 미흡조치중
+- ILS해제대기
+- 설비인계대기
+- 종료완료
 
-- ⏳ **대시보드 P0 버그 수정** (5개 앱 데이터를 실제로 표시)
-- ⏳ 파일명 통일 & Firebase Hosting 리다이렉트
-- ⏳ Firebase 보안 조치 (데스크톱)
-- ⏳ 통합 테스트
-- ⏳ Firestore 이관 (Phase 6+)
+최종 작업허가 상태 `작업완료`는 종료완료 조건을 충족한 경우에만 적용한다.
 
 ---
 
-## 20. 관련 문서
+## 52. 작업 종료 시 ILS 해제 확인
+
+### 52.1 기본 원칙
+
+실제 잠금 해제는 기존 ILS 시스템과 사내 ILS 절차에 따라 수행한다.
+
+안전관리 플랫폼은 실제 잠금을 해제하지 않고 해제 완료 사실을 확인한다.
+
+### 52.2 해제 전 확인
+
+- 작업자 전원 철수
+- 개인잠금 상태 확인
+- 공구·자재 제거
+- 임시 설치물 제거
+- 방호장치 복구
+- 설비 내부 인원 없음
+- 미흡사항 조치 완료
+- 관련 부서 종료 통보
+
+### 52.3 해제 완료 확인정보
+
+- ILS 적용 여부
+- 기존 ILS 시스템 참조번호
+- 해제 상태
+- 개인잠금 해제 확인
+- 해제 확인자
+- 해제 확인 시각
+- 대상 설비
+- 방호장치 복구
+- 설비운영부서 인계
+- 재가동 승인
+- 확인 의견
+
+### 52.4 확인 문구
+
+다음 취지의 문구를 사용한다.
+
+> 작업자 전원 철수, 공구·자재 제거 및 설비 복구를 확인한 후 기존 ILS 시스템 절차에 따라 잠금 해제가 완료되었음을 확인하였습니다.
+
+### 52.5 완료 제한
+
+다음 조건에서는 최종 작업완료 처리를 제한한다.
+
+- 작업자 철수 미확인
+- 개인잠금 해제 미확인
+- 공구·자재 잔류
+- 방호장치 미복구
+- 미흡사항 미조치
+- ILS 대상인데 해제 완료 미확인
+- 설비운영부서 인계 미완료
+- 재가동 승인 필요상태
+- 필수 점검기록 미완료
+
+---
+
+## 53. 통합 리포트
+
+### 53.1 중심키
+
+통합 리포트는 permitNo를 중심으로 관련 문서를 조회한다.
+
+### 53.2 포함 자료
+
+- 작업정보
+- 안전정보제공서
+- 작업자 안전퀴즈 검증 요약
+- 위험성평가
+- 참조 JSA
+- 고위험 판정
+- 고위험 사전승인
+- 안전작업허가서
+- 허가 전 ILS 확인
+- 산소·유해가스 측정
+- TBM
+- 작업중지권 고지
+- 조건부 별지
+- 작업장비 체크리스트
+- 밀폐공간 출입기록
+- 작업 중 이행점검
+- 작업중지 요청
+- 개선조치
+- 재평가
+- 재허가
+- 재TBM
+- 작업 종료 확인
+- ILS 해제 확인
+- 설비 인계
+- 상태 변경 이력
+
+### 53.3 원칙
+
+- 통합 리포트는 원본 기록을 임의로 수정하지 않는다.
+- 권한에 따라 개인정보 표시 범위를 제한한다.
+- 작업중지권 행사자를 불이익 평가에 사용하지 않는다.
+- 건강정보는 일반 리포트에서 제외한다.
+- 출처 문서 ID와 상태를 표시한다.
+- 누락된 필수 문서를 경고한다.
+
+---
+
+## 54. 개인정보 및 서명
+
+### 54.1 최소수집
+
+다음 정보는 업무상 필요한 범위에서만 수집한다.
+
+- 이름
+- 소속
+- 직책
+- 연락처
+- 이메일
+- 작업자 식별값
+- 서명
+- 퀴즈·교육 이력
+- 출입기록
+- 승인·점검 이력
+
+### 54.2 민감정보
+
+다음 정보는 제한적으로 관리한다.
+
+- 온열질환 자율진단
+- 건강상태
+- 부상정보
+- 사고 관련 개인기록
+- 개인별 출입이력
+- 서명 이미지
+
+### 54.3 저장 원칙
+
+- 실제 개인정보를 Public GitHub에 저장하지 않는다.
+- 테스트에는 가명과 예시 연락처를 사용한다.
+- 큰 Base64 서명을 업무 문서에 반복 저장하지 않는다.
+- 목록 조회 시 서명 이미지를 자동 다운로드하지 않는다.
+- 서명·첨부파일 저장방식은 별도 보안정책으로 확정한다.
+- 건강정보를 협력사 평가에 사용하지 않는다.
+- 작업중지권 행사 기록을 불이익 자료로 사용하지 않는다.
+
+---
+
+## 55. Firestore 보안 규약
+
+### 55.1 기본 원칙
+
+- 운영 컬렉션의 무인증 읽기·쓰기를 금지한다.
+- 최소권한 원칙을 적용한다.
+- UI에서 버튼을 숨기는 것만으로 권한을 통제하지 않는다.
+- Firestore Security Rules로 읽기·쓰기 권한을 검증한다.
+- 일반 사용자가 역할·승인·폐기 상태를 변경할 수 없어야 한다.
+- 일반 사용자가 JSA_DB 승인상태를 변경할 수 없어야 한다.
+- 승인자 정보와 상태 변경을 보호한다.
+
+### 55.2 중요 보호대상
+
+- users.role
+- 사내안전기준.status
+- JSA_DB.metadata.status
+- 고위험작업승인
+- 작업허가.approvals
+- 작업허가.ils
+- 작업허가.closeout
+- 작업중지.restartApproval
+- 안전퀴즈 개인정보
+- 밀폐공간 출입기록
+- 건강정보
+- 서명
+- 내부 비상연락망
+
+### 55.3 Custom Claims
+
+Custom Claims는 일반 브라우저에서 설정하지 않는다.
+
+역할 부여는 신뢰할 수 있는 관리자 환경에서 수행한다.
+
+운영방식이 확정되기 전까지 웹 클라이언트에 관리자 역할 부여 기능을 만들지 않는다.
+
+---
+
+## 56. 기록 보존
+
+### 56.1 기본 원칙
+
+보존기간은 최신 법령, 사내 문서관리 기준 및 개인정보 처리기준을 확인한 후 확정한다.
+
+### 56.2 우선 관리 대상
+
+- 안전정보제공서
+- 안전퀴즈
+- 위험성평가
+- 고위험 사전승인
+- 작업허가서
+- TBM
+- 산소·유해가스 측정기록
+- 밀폐공간 출입기록
+- 작업 중 점검
+- 작업중지·재개 기록
+- 작업 종료·ILS 해제 확인
+- 서명
+- 건강정보
+
+### 56.3 밀폐공간 측정기록
+
+현재 확보된 사내기준에는 산소·유해가스 측정 및 평가 기록의 3년 보존이 명시되어 있다.
+
+정식 운영 전 다음을 확인한다.
+
+- 기준 문서 최신성
+- 보존 시작시점
+- 전자기록 인정요건
+- 접근권한
+- 삭제 제한
+- 백업·내보내기 방법
+
+### 56.4 자동 삭제 제약
+
+Cloud Functions를 사용하지 않으므로 자동 삭제를 전제로 하지 않는다.
+
+관리자 정리 화면, 승인된 수동 절차 또는 관리 스크립트를 사용한다.
+
+---
+
+## 57. Firestore 이관 원칙
+
+### 57.1 이관 순서
+
+#### 기준·마스터
+
+1. 공장안전정보
+2. MSDS
+3. 협력사관리
+4. 작업자관리
+5. 사내안전기준
+6. 안전철칙
+7. 체크리스트마스터
+8. JSA_DB
+
+#### 작업 전 기록
+
+9. 작업DB
+10. 안전정보제공
+11. 안전퀴즈
+12. 위험성평가
+13. 고위험작업승인
+14. 작업허가
+
+#### 작업 실행 기록
+
+15. TBM
+16. 가스측정기록
+17. 밀폐공간출입기록
+18. 작업장비체크리스트
+19. 작업중점검
+20. 긴급조치
+21. 온열질환진단
+
+#### 운영 기록
+
+22. 이메일로그
+23. 통계
+24. counters
+
+### 57.2 이관 검증
+
+- 자연키 중복 없음
+- 문서 ID와 내부 자연키 일치
+- 필수 참조문서 존재
+- 상태값 유효
+- 감사 필드 존재
+- schemaVersion 존재
+- 승인되지 않은 JSA 추천 차단
+- 작업자 제출만으로 허가완료되지 않음
+- 퀴즈 미합격자 작업 참여 제한
+- ILS 미확인 상태에서 허가완료 제한
+- ILS 해제 미확인 상태에서 작업완료 제한
+- 실제 개인정보가 테스트 데이터에 없음
+
+### 57.3 오류 처리
+
+마이그레이션 오류가 있는 문서를 자동 삭제하지 않는다.
+
+허용 오류상태 예:
+
+- migration_pending
+- migration_error
+- review_required
+- duplicate_candidate
+- missing_reference
+- invalid_status
+- invalid_schema
+
+---
+
+## 58. 개발 및 코드 작성 규칙
+
+### 58.1 변경 단위
+
+한 번에 전체 앱을 재작성하지 않는다.
+
+다음 단위로 나누어 변경한다.
+
+1. 데이터 구조
+2. 데이터 로드
+3. 화면 표시
+4. 입력 검증
+5. 저장
+6. 앱 간 연동
+7. 상태 변경
+8. 이력·감사
+9. 모바일 UI
+
+각 단위를 완료한 직후 테스트한다.
+
+### 58.2 긴 코드 제공
+
+긴 코드는 여러 Part로 나눈다.
+
+각 Part에는 다음 경계를 명확히 표시한다.
+
+- 여기부터
+- 여기까지
+
+다음 항목 중간에서 Part를 분리하지 않는다.
+
+- 함수
+- 객체
+- 배열
+- 문자열
+- 템플릿 리터럴
+- 정규식
+- HTML 태그
+- CSS 블록
+- Markdown 코드블록
+
+### 58.3 정규식
+
+- 정규식은 최소화한다.
+- 단순 파싱은 indexOf, substring, split 또는 반복문을 우선 검토한다.
+- 문자 판정은 필요한 경우 charCodeAt을 사용한다.
+- 정규식은 한 줄에서 완결한다.
+- 정규식 변경 후 즉시 테스트한다.
+- 정규식을 Part 경계와 Markdown 경계에 두지 않는다.
+
+### 58.4 HTML
+
+- DOCTYPE을 중복하지 않는다.
+- html, head, body 태그를 중복하지 않는다.
+- style과 script 태그의 닫힘을 확인한다.
+- 동적 HTML에는 사용자 입력을 그대로 삽입하지 않는다.
+- 사용자 입력은 안전하게 이스케이프한다.
+- 중복 ID를 만들지 않는다.
+- 숨김 화면의 필수 입력이 제출을 방해하지 않도록 한다.
+
+### 58.5 저장
+
+- 저장 성공 전 완료 화면을 표시하지 않는다.
+- 제출 중 버튼을 비활성화한다.
+- 중복 제출을 방지한다.
+- 저장 실패 시 원본 입력값을 유지한다.
+- 여러 문서가 연결되는 저장은 부분 실패를 확인한다.
+- 상태 변경과 감사 이력을 함께 기록한다.
+
+---
+
+## 59. 테스트 규약
+
+### 59.1 테스트 순서
+
+각 기능은 다음 순서로 검증한다.
+
+1. 단독 화면 동작
+2. 필수값 검증
+3. 저장 데이터 확인
+4. 새로고침 후 조회
+5. 앱 간 자동 채움
+6. 중복 방지
+7. 상태 변경
+8. 오류·취소 처리
+9. 모바일 화면
+10. 다크모드
+11. 기존 데이터 호환
+
+### 59.2 필수 브라우저
+
+가능한 범위에서 다음 환경을 확인한다.
+
+- Android Chrome
+- iOS Safari
+- 데스크톱 Chrome
+- 데스크톱 Edge
+
+### 59.3 핵심 시나리오
+
+- 안전정보 발행·서명·반려
+- 안전퀴즈 미응시·불합격·합격
+- 위험성평가 생성·재평가
+- 복합 고위험 판정
+- 허가 신청·검토·승인
+- ILS 완료 확인
+- 밀폐공간 다점 측정
+- TBM 참석자 검증
+- 작업중지권 고지
+- 작업중지 요청
+- 개선조치·재점검
+- 재TBM
+- 작업 종료
+- ILS 해제 확인
+- 통합 리포트
+
+### 59.4 Part별 검증
+
+Part를 반영한 직후 다음을 확인한다.
+
+- JavaScript 콘솔 오류
+- 화면 렌더링
+- 버튼 동작
+- 필수값 검증
+- localStorage 내용
+- URL 이동
+- 이전 데이터 호환
+- 모바일 레이아웃
+- GitHub Preview
+
+이전 Part가 통과하기 전에 다음 Part를 반영하지 않는다.
+
+---
+
+## 60. 문서 작성 규칙
+
+### 60.1 Markdown
+
+- 하나의 문서에서 Markdown과 복잡한 HTML을 혼용하지 않는다.
+- HTML pre 태그 사용을 피한다.
+- fenced code block을 사용한다.
+- 코드블록 시작과 종료를 같은 Part에 둔다.
+- 코드블록을 중첩하지 않는다.
+- 표는 열 개수를 일치시킨다.
+- 붙여넣기 후 GitHub Preview를 확인한다.
+
+### 60.2 문서 메타정보
+
+중요 문서에는 다음 정보를 표시한다.
+
+- 문서명
+- 버전
+- 상태
+- 작성일 또는 기준일
+- 적용 대상
+- 변경 이력
+- 관련 문서
+
+### 60.3 문서 상태
+
+- draft
+- review
+- approved
+- retired
+
+기준자료의 최신성과 승인이 확인되지 않은 경우 approved를 사용하지 않는다.
+
+---
+
+## 61. 배포 규약
+
+### 61.1 배포 전 확인
+
+- 파일명 확인
+- 링크 경로 확인
+- 리다이렉트 확인
+- 콘솔 오류 확인
+- localStorage 저장 확인
+- 모바일 테스트
+- 개인정보 제거
+- 테스트 데이터 분리
+- Firebase Rules 확인
+- 백업 커밋 확인
+
+### 61.2 배포 후 확인
+
+- 배포 URL 접속
+- 주요 화면 로드
+- 앱 간 링크
+- 한글 파일명 URL
+- date/time 입력
+- 자동 채움
+- 저장·조회
+- 다크모드
+- 캐시 갱신
+- 오류 로그
+
+### 61.3 롤백
+
+큰 변경 전에 백업 커밋 또는 태그를 생성한다.
+
+권장 예:
+
+    Backup before risk assessment schema v3
+    Backup before TBM split
+    Backup before Firestore migration
+
+배포 오류가 발생하면 검증된 이전 커밋으로 복원할 수 있어야 한다.
+
+---
+
+## 62. 폐기 코드 패턴
+
+다음 방식은 신규 코드에서 사용하지 않는다.
+
+- 브라우저에서 Claude API 직접 호출
+- Google Apps Script no-cors 호출
+- Math.random 기반 자연키
+- Date.now만 사용하는 정식 문서번호
+- 화면 날짜에 toISOString 분할 사용
+- 배열 인덱스를 workId 대체번호로 사용
+- 같은 탭 동기화를 위한 가짜 storage 이벤트
+- URL에 작업 상세정보 반복 전달
+- 위험성평가 결과의 JSA_DB 자동 승인 등록
+- 같은 workId의 재평가 기록 덮어쓰기
+- 위험성평가 대책을 개수 제한으로 잘라 저장
+- 미흡 결과를 양호 결과로 덮어쓰기
+- 서명·사진의 큰 Base64 값을 여러 문서에 반복 저장
+- 일반 사용자의 승인상태 직접 변경
+- ILS 잠금을 안전관리 플랫폼에서 직접 해제하는 표현
+
+---
+
+## 63. 하위 호환
+
+마이그레이션 기간에는 다음 레거시 필드를 읽을 수 있다.
+
+- referencedJSA
+- riskMeasures
+- riskDatabase
+- safetyRiskAssessments
+- tbmLogs
+- safetyStopWork
+- firebasePermits
+
+신규 저장은 최신 구조를 우선한다.
+
+- referencedJSAs
+- riskItems
+- riskSummary
+- structured hazards
+- structured measures
+- statusHistory
+- ils.preApproval
+- ils.closeout
+
+구형 데이터가 있다는 이유로 신규 데이터를 구형 구조로 저장하지 않는다.
+
+---
+
+## 64. 미확정 항목
+
+다음 사항은 담당부서 확인 전 코드에 고정하지 않는다.
+
+- 안전퀴즈 합격 점수
+- 안전퀴즈 유효기간
+- 안전퀴즈 적용대상·예외
+- 법령 조항 최신성
+- 사내기준 문서번호·개정번호·시행일
+- 고위험작업 예외 범위
+- CCTV 적용범위
+- 생명지킴이 자격·대리 가능 여부
+- 오전·오후 점검 시간대
+- 화기작업 LEL 0% 적용범위
+- 화재감시자 거리와 감시범위
+- 잔불 확인시간
+- 사다리 높이·작업높이·용도 기준
+- 온열질환 기준값과 적용기간
+- ILS 시스템 연동방법
+- ILS 참조번호 형식
+- 재개 승인권자
+- 서명·첨부파일 저장방식
+- 개인정보·건강정보 보존기간
+- Auth 역할 부여 방법
+- 전자기록의 공식 인정범위
+
+---
+
+## 65. 구현 우선순위
+
+### P0: 문서·스키마
+
+1. PROJECT_CONVENTIONS.md v3.0 확정
+2. JSA_DB_PROMPT.md 저장
+3. JSA_DB_STRUCTURE.md 저장
+4. PAPER_FORM_DIGITAL_MAPPING.md 저장
+5. HIGH_RISK_WORK_POLICY.md 저장
+6. DB_SCHEMA.md v2 저장
+7. 문서 간 용어·필드·상태 충돌 점검
+
+### P1: 필수 안전 게이트
+
+8. 안전퀴즈 출입 필수조건
+9. 허가 제출과 최종 승인 분리
+10. 허가 전 ILS 완료 확인
+11. 밀폐공간 모든 측정행 저장·검증
+12. 작업 종료 및 ILS 해제 완료 확인
+13. 고위험 판정과 사전승인
+
+### P2: 위험성평가 고도화
+
+14. 위험요인 선택·추가
+15. 복수 JSA 참조
+16. 위험요인과 대책 연결
+17. 최초·잔여 위험도
+18. 통제 적정성 추천
+19. 맞춤 체크리스트 생성
+20. 재평가 이력
+
+### P3: TBM·작업중지·점검
+
+21. TBM과 작업중지권 파일 분리
+22. 위험·대책·조치자 자동 반영
+23. TBM 참석자 안전퀴즈 검증
+24. 작업중지권 고지
+25. 조건부 별지
+26. 재TBM
+27. 작업 중 주기점검
+28. 작업중지·개선조치·재개
+
+### P4: 운영
+
+29. 통합 리포트
+30. Firestore 보안규칙
+31. 기준·마스터 이관
+32. 업무 데이터 이관
+33. 권한·보존·개인정보 정책
+34. 운영 통합테스트
+
+---
+
+## 66. 완료 기준
+
+프로젝트 공통 규약 개정은 다음 조건을 충족할 때 완료로 판단한다.
+
+- 정식 파일명이 통일됨
+- 자연키와 localStorage 키가 통일됨
+- 날짜·시간과 감사 필드가 통일됨
+- 작업유형과 고위험작업 여부가 분리됨
+- 안전정보제공서 도급·수급 흐름이 연결됨
+- 안전퀴즈 합격이 작업 참여조건으로 적용됨
+- JSA_DB와 실제 위험성평가가 구분됨
+- 위험요인과 안전대책이 구조화됨
+- 복수 JSA 참조가 가능함
+- 위험별 최초·잔여 위험도를 관리함
+- 작업자 제출과 허가자 승인이 분리됨
+- 허가 전 ILS 완료상태가 확인됨
+- 밀폐공간 측정이 위치·시간별로 기록됨
+- 고위험작업 사전승인이 관리됨
+- TBM에 위험·대책·조치자가 연결됨
+- TBM과 실제 작업중지 요청이 분리됨
+- 작업중지 후 재개 절차가 기록됨
+- 작업 중 주기점검과 미흡조치가 관리됨
+- 작업 종료 시 철수·복구가 확인됨
+- ILS 해제 완료 전 작업완료가 제한됨
+- permitNo 중심 통합 리포트가 가능함
+- 개인정보와 내부정보가 공개 저장소에 노출되지 않음
+- Firestore 이관 전후의 하위 호환이 유지됨
+
+---
+
+## 67. 관련 문서
 
 | 문서 | 역할 |
 |---|---|
-| **PROJECT_CONVENTIONS.md** (이 문서) | ⭐ 최우선 규약 |
-| PROJECT_HANDOVER.md | 프로젝트 인수인계 (진행 상황) |
-| IMPROVEMENT_PLAN.md | 전체 개선 계획 |
-| DB_SCHEMA.md | 컬렉션 상세 필드 명세 |
-| FIRESTORE_SECURITY_RULES.md | 보안 규칙 코드 |
-| DATA_MIGRATION_GUIDE.md | 마이그레이션 절차 |
-| JSA_DB_STRUCTURE.md | JSA_DB 상세 구조 |
-| docs/attachments/README.md | TBM 별첨 자료 안내 |
----
-
-## 21. 리포트 템플릿 규약
-
-### 21.1 오늘 작업 리포트 템플릿 (`daily_today`)
-
-**발송 시점**: 매일 오전 (관리자가 대시보드에서 클릭)  
-**발송 대상**: 안전관리자, 팀장, 오늘 작업 있는 협력사
-
-**EmailJS 파라미터**:
-```javascript
-{
-  to_email: '수신자 이메일',
-  to_name: '수신자 이름',
-  date: '2026-08-24',                    // YYYY-MM-DD
-  day_of_week: '월요일',
-  total_works: 12,
-  high_risk_count: 3,
-  normal_count: 9,
-  high_risk_list: '[HTML 형식 목록]',    // 고위험 작업 상세
-  normal_list: '[HTML 형식 목록]',       // 일반 작업 상세
-  safety_focus: '[HTML 형식 안전 포커스]',
-  weekly_summary: '[HTML 형식 지난주 실적]',
-  contact_phone: '054-240-5131',
-  emergency_phone: '054-240-5191'
-}
-```
-
-**표준 제목**:
-```
-[POSCO FM] {date} 오늘 작업 리포트
-```
-
-**표준 본문 구조**:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 날짜: {date} ({day_of_week})
-📋 총 작업: {total_works}건
-🔴 고위험: {high_risk_count}건 ⚠️
-🟢 일반: {normal_count}건
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ 고위험 작업 (특별 관리 필요)
-
-{high_risk_list}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 일반 작업
-
-{normal_list}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 오늘의 안전 포커스
-
-{safety_focus}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 지난 주 실적
-
-{weekly_summary}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📱 문의 사항
-안전관리자: {contact_phone}
-통합운전실: {emergency_phone}
-
-포스코퓨처엠 안전관리팀
-```
+| PROJECT_CONVENTIONS.md | 프로젝트 최상위 공통 규약 |
+| PROJECT_HANDOVER.md | 프로젝트 진행 현황 |
+| PAPER_FORM_DIGITAL_MAPPING.md | 종이 서식과 전자 시스템 매핑 |
+| HIGH_RISK_WORK_POLICY.md | 고위험작업 정책 |
+| JSA_DB_PROMPT.md | 원문에서 TSV 생성 규칙 |
+| JSA_DB_STRUCTURE.md | JSA_DB 구조 및 운영 |
+| DB_SCHEMA.md | 전체 데이터 스키마 |
+| AI_REVIEW_POLICY.md | AI 검토 정책 |
+| TBM_ATTACHMENT_POLICY.md | TBM 조건부 별지 정책 |
+| FIRESTORE_SECURITY_RULES.md | Firestore 보안규칙 |
+| DATA_MIGRATION_GUIDE.md | 데이터 이관 절차 |
+| FILE_STORAGE_GUIDE.md | 파일·첨부자료 저장 규칙 |
 
 ---
 
-### 21.2 내일 작업 리스트 템플릿 (`daily_tomorrow`)
+## 68. 변경 이력
 
-**발송 시점**: 매일 오후 (관리자가 퇴근 전 클릭)  
-**발송 대상**: 안전관리자, 내일 작업 있는 협력사
-
-**EmailJS 파라미터**:
-```javascript
-{
-  to_email: '수신자 이메일',
-  to_name: '수신자 이름',
-  target_date: '2026-08-25',              // 내일 날짜
-  target_day: '화요일',
-  total_works: 8,
-  contractor_lists: '[HTML 형식 협력사별]',  // 협력사별 준비 사항
-  employer_todo: '[HTML 형식 도급인 TODO]',   // 도급인 준비 사항
-  contact_phone: '054-240-5131'
-}
-```
-
-**표준 제목**:
-```
-[POSCO FM] {target_date} 내일 작업 준비 안내
-```
-
-**표준 본문 구조**:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 예정일: {target_date} ({target_day})
-📋 예정 작업: {total_works}건
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🏢 협력사별 준비 사항
-
-{contractor_lists}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 도급인 준비 사항
-
-{employer_todo}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📱 문의: {contact_phone}
-
-포스코퓨처엠 안전관리팀
-```
-
----
-
-### 21.3 긴급 알림 템플릿 (`urgent_alert`)
-
-**발송 시점**: 사고/작업중지 발생 시 즉시  
-**발송 대상**: 전체 관리자 + 팀장
-
-**EmailJS 파라미터**:
-```javascript
-{
-  to_email: '수신자 이메일',
-  to_name: '수신자 이름',
-  alert_type: 'accident' | 'work_stop' | 'other',
-  title: '작업중지 발생',
-  occurred_at: '2026-08-24 14:30',
-  location: '2공장 3라인',
-  description: '가스 누출 감지',
-  reporter_name: '홍길동',
-  reporter_phone: '010-1234-5678',
-  action_required: '즉시 현장 확인 필요',
-  dashboard_url: 'https://safety-management-platfo-5f413.web.app/...'
-}
-```
-
-**표준 제목**:
-```
-🚨 [POSCO FM] 긴급 알림 - {title}
-```
-
-**표준 본문 구조**:
-```
-🚨🚨🚨 긴급 알림 🚨🚨🚨
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ 발생 상황
-{title}
-
-📅 발생 시각: {occurred_at}
-📍 발생 위치: {location}
-
-📝 상세 내용
-{description}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-👤 신고자
-- 이름: {reporter_name}
-- 연락처: {reporter_phone}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 즉시 조치 필요
-{action_required}
-
-🔗 대시보드 확인:
-{dashboard_url}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📱 긴급 연락처
-- 통합운전실: 054-240-5191
-- 안전관리자: 054-240-5131
-- 119 (화재/응급)
-
-포스코퓨처엠 안전관리팀
-```
-
----
-
-### 21.4 리포트 생성 규약
-
-**리포트 생성 함수는 반드시 이 형식으로**:
-
-```javascript
-async function generateDailyTodayReport(targetDate) {
-  // 1. 오늘 작업 조회
-  const works = await getWorksByDate(targetDate);
- 
-  // 2. 고위험/일반 분리
-  const highRisk = works.filter(w => w.risk === '고위험');
-  const normal = works.filter(w => w.risk !== '고위험');
- 
-  // 3. HTML 리스트 생성
-  const highRiskList = generateWorkListHtml(highRisk, 'high');
-  const normalList = generateWorkListHtml(normal, 'normal');
- 
-  // 4. 안전 포커스 생성 (선택 사항)
-  const safetyFocus = generateSafetyFocus(works);
- 
-  // 5. 지난 주 실적
-  const weeklySummary = await generateWeeklySummary();
- 
-  return {
-    date: targetDate,
-    day_of_week: getDayOfWeek(targetDate),
-    total_works: works.length,
-    high_risk_count: highRisk.length,
-    normal_count: normal.length,
-    high_risk_list: highRiskList,
-    normal_list: normalList,
-    safety_focus: safetyFocus,
-    weekly_summary: weeklySummary,
-    contact_phone: '054-240-5131',
-    emergency_phone: '054-240-5191'
-  };
-}
-```
-
-### 21.5 리포트 표준 규약
-
-**모든 리포트 공통**:
-- ✅ 발신자 명확 표시 (`포스코퓨처엠 안전관리팀`)
-- ✅ 문의 연락처 포함
-- ✅ 데이터 근거 표시 (총 작업 수, 통계)
-- ✅ 스팸 방지 (자연스러운 제목/본문)
-- ✅ 모바일 친화적 (짧은 줄바꿈)
-
-**금지 사항**:
-- ❌ 개인정보 과다 노출 (전화번호는 담당자만)
-- ❌ 첨부파일 대량 발송
-- ❌ 발송자 위장
-
----
-
-## 22. 수신자 관리 규약
-
-### 22.1 users 컬렉션 확장
-
-기존 `users` 컬렉션에 **수신 설정** 필드 추가:
-
-```javascript
-{
-  uid: 'xxx',
-  email: 'user@posco.com',
-  role: 'manager',
-  displayName: '홍길동',
-  department: '안전환경그룹',
- 
-  // ⭐ 신규: 리포트 수신 설정
-  receiveReports: {
-    dailyToday: true,       // 오늘 리포트 수신 여부
-    dailyTomorrow: true,    // 내일 리스트 수신 여부
-    urgent: true,           // 긴급 알림 수신 여부
-    weekly: false,          // 주간 리포트 수신 여부
-    lastUpdated: Timestamp  // 설정 마지막 변경
-  },
- 
-  // 감사 필드 (기존)
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
-
-### 22.2 협력사관리 컬렉션 확장
-
-기존 `협력사관리` 컬렉션에 **담당자 정보** 필드 추가:
-
-```javascript
-{
-  contractorId: 'wonjun',
-  contractorName: '원준',
-  contractorNameFull: '원준산업',
-  contractorType: 'contract',
-  status: 'active',
- 
-  // ⭐ 신규/확장: 담당자 정보
-  contactInfo: {
-    email: 'wonjun@example.com',
-    manager: '홍길동',
-    phone: '010-1234-5678',
-    receiveDailyReport: true,      // 오늘/내일 리포트 수신
-    receiveUrgent: true,            // 긴급 알림 수신
-    lastVerified: Timestamp        // 정보 검증 시각
-  },
- 
-  // 통계 (기존)
-  statistics: {
-    totalWorks: 0,
-    violations: 0,
-    accidents: 0,
-    tbmRate: 0
-  }
-}
-```
-
-### 22.3 수신자 조회 표준 로직
-
-**오늘 리포트 수신자 조회**:
-```javascript
-async function getRecipientsForDailyToday() {
-  const recipients = [];
- 
-  // 1. 활성 users 조회 (dailyToday=true)
-  const usersSnap = await db.collection('users')
-    .where('receiveReports.dailyToday', '==', true)
-    .where('status', '==', '활성')
-    .get();
- 
-  usersSnap.forEach(doc => {
-    const user = doc.data();
-    recipients.push({
-      email: user.email,
-      name: user.displayName,
-      role: user.role,
-      source: 'users'
-    });
-  });
- 
-  // 2. 오늘 작업 있는 협력사 담당자
-  const todayWorks = await getWorksByDate(fmtDate(new Date()));
-  const contractorIds = [...new Set(todayWorks.map(w => w.company))];
- 
-  for (const cid of contractorIds) {
-    const contractorDoc = await db.collection('협력사관리').doc(cid).get();
-    if (contractorDoc.exists) {
-      const c = contractorDoc.data();
-      if (c.contactInfo?.receiveDailyReport && c.contactInfo?.email) {
-        recipients.push({
-          email: c.contactInfo.email,
-          name: c.contactInfo.manager,
-          role: 'contractor',
-          contractorName: c.contractorName,
-          source: 'contractor'
-        });
-      }
-    }
-  }
- 
-  // 3. 중복 제거 (이메일 기준)
-  const uniqueRecipients = [];
-  const seenEmails = new Set();
-  for (const r of recipients) {
-    if (!seenEmails.has(r.email)) {
-      seenEmails.add(r.email);
-      uniqueRecipients.push(r);
-    }
-  }
- 
-  return uniqueRecipients;
-}
-```
-
-### 22.4 수신 동의 관리
-
-**옵트인 원칙**:
-- ✅ 기본값: 모든 알림 **비활성** (`false`)
-- ✅ 사용자가 명시적으로 활성화
-- ✅ 언제든 옵트아웃 가능
-
-**동의 기록**:
-```javascript
-{
-  uid: 'xxx',
-  receiveReports: {
-    dailyToday: true,
-    dailyToday_consentedAt: Timestamp,  // 동의 시각
-    dailyToday_consentedBy: 'self',      // 'self' | 'admin'
-    // ...
-  }
-}
-```
-
-### 22.5 발송 전 검증
-
-**모든 발송 전 필수 검증**:
-```javascript
-async function validateRecipient(recipient, type) {
-  // 1. 이메일 형식
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.email)) {
-    return { valid: false, reason: 'invalid_email' };
-  }
- 
-  // 2. 수신 동의
-  if (recipient.source === 'users') {
-    const user = await getUser(recipient.uid);
-    if (!user.receiveReports?.[type]) {
-      return { valid: false, reason: 'no_consent' };
-    }
-  }
- 
-  // 3. 발송 이력 (스팸 방지)
-  const recentLogs = await getRecentLogs(recipient.email, type, 60); // 60분 이내
-  if (recentLogs.length > 0) {
-    return { valid: false, reason: 'too_frequent' };
-  }
- 
-  return { valid: true };
-}
-```
-
----
-
-## 23. 자동화 컬렉션 규약
-
-### 23.1 이메일로그 컬렉션
-
-**용도**: 모든 이메일 발송 이력 기록
-
-**컬렉션명**: `이메일로그`  
-**문서 ID**: `LOG-{YYYYMMDD}-{SEQ4}` (예: `LOG-20260824-0001`)
-
-**스키마**:
-```javascript
-{
-  logId: 'LOG-20260824-0001',
-  type: 'daily_today',              // 발송 종류
-  templateId: 'template_xxx',        // EmailJS 템플릿 ID
- 
-  // 발송 정보
-  sentAt: Timestamp,
-  sentBy: 'admin_uid',              // 발송자 (관리자)
-  sentByName: '홍길동',
- 
-  // 수신자 (배열)
-  recipients: [
-    {
-      email: 'user1@posco.com',
-      name: '김철수',
-      status: 'sent',                // 'sent' | 'failed' | 'pending'
-      sentAt: Timestamp,
-      error: null                    // 실패 시 에러 메시지
-    },
-    {
-      email: 'wonjun@example.com',
-      name: '박영희',
-      status: 'failed',
-      error: 'Invalid email format'
-    }
-  ],
- 
-  // 통계
-  totalRecipients: 15,
-  totalSent: 14,
-  totalFailed: 1,
- 
-  // 리포트 메타데이터
-  reportSummary: {
-    targetDate: '2026-08-24',
-    totalWorks: 12,
-    highRiskWorks: 3,
-    contractorCount: 5
-  },
- 
-  // 감사 필드
-  createdAt: Timestamp,
-  schemaVersion: 1
-}
-```
-
-### 23.2 발송 상태 코드
-
-| 코드 | 의미 |
-|---|---|
-| `sent` | 발송 성공 |
-| `failed` | 발송 실패 (최대 재시도 초과) |
-| `pending` | 발송 대기 중 |
-| `retry` | 재시도 대기 |
-| `cancelled` | 취소됨 (사용자가 중단) |
-
-### 23.3 데이터 보존 기간
-
-**정책**:
-- ✅ **이메일로그**: 6개월 보관 후 자동 삭제
-- ✅ **감사용 요약**: 별도 컬렉션에 통계만 영구 보관
-- ✅ **긴급 알림 로그**: 1년 보관 (사고 대응 감사)
-
-**자동 삭제 로직** (관리자가 수동 실행 or 스크립트):
-```javascript
-async function cleanupOldLogs() {
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
- 
-  const oldLogs = await db.collection('이메일로그')
-    .where('sentAt', '<', sixMonthsAgo)
-    .where('type', '!=', 'urgent_alert')  // 긴급은 1년 보관
-    .get();
- 
-  const batch = db.batch();
-  oldLogs.forEach(doc => batch.delete(doc.ref));
-  await batch.commit();
- 
-  console.log(`✅ ${oldLogs.size}건의 오래된 로그 삭제됨`);
-}
-```
-
-### 23.4 리포트 통계 컬렉션 (선택)
-
-**컬렉션명**: `리포트통계`  
-**문서 ID**: `{YYYY-MM}` (예: `2026-08`)
-
-**스키마**:
-```javascript
-{
-  month: '2026-08',
-  totalReports: {
-    dailyToday: 30,        // 이번 달 발송 횟수
-    dailyTomorrow: 30,
-    urgent: 5
-  },
-  totalRecipients: 1250,   // 총 수신자 (중복 포함)
-  uniqueRecipients: 45,    // 고유 수신자
-  successRate: 0.98,       // 성공률
-  avgResponseTime: 3.2,    // 평균 응답 시간 (초)
- 
-  updatedAt: Timestamp
-}
-```
-
----
-
-
-
-## 📅 변경 이력
-
-| 버전 | 날짜 | 변경 사항 |
+| 버전 | 날짜 | 변경내용 |
 |---|---|---|
-| 1.0 | 2025-11-24 | 초기 규약 확정 |
-| **2.0** | **2026-08-24** | **5개 앱 개선 완료 반영 (MSDS 34종, 공장 2개, 도급/수급 페어링)** |
+| 1.0 | 2025-11-24 | 초기 규약 |
+| 2.0 | 2026-08-24 | 5개 앱 개선사항 반영 |
+| 3.0 | 2026-08-27 | JSA_DB v3, 고위험작업, 안전퀴즈 출입 게이트, ILS 확인, TBM·작업중지 분리, 작업 중 점검 및 작업 종료 반영 |
 
 ---
 
-## 🔗 프로젝트 정보
+## 69. 최종 원칙
 
-| 항목 | 값 |
-|---|---|
-| **프로젝트 ID** | `safety-management-platfo-5f413` |
-| **배포 URL** | https://safety-management-platfo-5f413.web.app |
-| **GitHub** | https://github.com/safety99999/safety-management-platform |
-| **Firebase Console** | https://console.firebase.google.com/project/safety-management-platfo-5f413 |
+플랫폼은 다음 전체 안전관리 흐름을 연결한다.
 
----
+> 안전정보 제공 → 안전퀴즈 합격 → 위험성평가 → 고위험작업 사전승인 → 안전작업허가 → 허가 전 ILS 완료 확인 → TBM → 작업 중 점검 → 위험 발견 시 작업중지 → 개선조치·재평가·재허가·재TBM → 작업 종료 → ILS 해제 완료 확인 → 설비 인계 → 통합 보관
 
-**⚠️ 이 문서와 상충하는 모든 코드·문서는 이 문서에 맞춰 수정해야 합니다.**
+JSA_DB와 AI는 위험요인과 안전대책을 제안하고 누락을 점검하는 보조수단이다.
 
-**끝.**
+별도 ILS 시스템은 상세 잠금·해제 기록의 원본 시스템으로 유지한다.
+
+안전관리 플랫폼은 ILS 실시 완료와 해제 완료를 각각 작업허가와 작업완료의 필수 확인조건으로 사용한다.
+
+안전퀴즈 합격은 사내기준상 출입·작업 참여 대상자의 필수조건으로 사용하되, 위험 신고와 작업중지권 행사는 제한하지 않는다.
+
+최종 위험성평가, 고위험작업 승인, 안전작업허가, 작업중지 후 재개 및 작업완료는 권한 있는 사람이 실제 현장조건을 확인한 후 결정한다.
