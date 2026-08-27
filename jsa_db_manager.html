@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSA DB 관리자</title>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f9fc;
+      color: #222;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .box {
+      background: #fff;
+      border: 1px solid #d9e1ea;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .hint {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.6;
+    }
+    textarea {
+      width: 100%;
+      height: 220px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      padding: 10px;
+      border: 1px solid #c9d4df;
+      border-radius: 8px;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    button {
+      padding: 10px 16px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-primary {
+      background: #0067b1;
+      color: white;
+    }
+    .btn-secondary {
+      background: #e9eef5;
+      color: #222;
+    }
+    .btn-success {
+      background: #0e8a6b;
+      color: white;
+    }
+    .btn-danger {
+      background: #d6273d;
+      color: white;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .ok { color: #0e8a6b; }
+    .warn { color: #b45309; }
+    .err { color: #d6273d; }
+    .summary {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f3f6fa;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    .preview-table th,
+    .preview-table td {
+      border: 1px solid #d9e1ea;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .preview-table th {
+      background: #eef3f8;
+    }
+    .mono {
+      font-family: Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSA DB 관리자</h1>
+
+  <div class="box">
+    <div class="hint">
+      - 템플릿 다운로드 / 전체 DB 다운로드 / 업로드 양식은 모두 <strong>동일한 16열 구조</strong>입니다.<br>
+      - 업로드는 <strong>엑셀 파일 선택</strong> 또는 <strong>엑셀 복사 후 붙여넣기</strong> 둘 다 가능합니다.<br>
+      - Firestore 저장 시 필요한 관리값(<strong>jsaId, rowNo, version, 상태값</strong>)은 내부에서 자동 생성됩니다.<br>
+      - 컬렉션명은 <strong>jsaDatabase</strong>입니다.
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>다운로드</h3>
+    <button class="btn-success" onclick="downloadTemplateXLSX()">엑셀 템플릿 다운로드</button>
+    <button class="btn-secondary" onclick="downloadAllXLSX()">전체 DB 엑셀 다운로드</button>
+  </div>
+
+  <div class="box">
+    <h3>업로드 - 엑셀 파일</h3>
+    <input type="file" id="excelFile" accept=".xlsx,.xls" />
+    <div style="margin-top:10px;">
+      <button class="btn-secondary" onclick="previewExcelFile()">파일 미리보기</button>
+      <button class="btn-primary" onclick="uploadFromExcelFile()">파일 업로드</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>업로드 - 엑셀 복사 붙여넣기</h3>
+    <textarea id="pasteInput" placeholder="엑셀에서 표를 복사한 후 여기에 붙여넣으세요."></textarea>
+    <div style="margin-top:10px;">
+      <button class="btn-secondary" onclick="previewPastedData()">붙여넣기 미리보기</button>
+      <button class="btn-primary" onclick="uploadFromPastedData()">붙여넣기 업로드</button>
+      <button class="btn-danger" onclick="clearAll()">초기화</button>
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="box">
+    <h3>미리보기</h3>
+    <div id="previewSummary" class="summary">아직 데이터가 없습니다.</div>
+    <div id="previewArea" style="margin-top:10px;">-</div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+      authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+      projectId: "safety-management-platfo-5f413",
+      storageBucket: "safety-management-platfo-5f413.firebasestorage.app",
+      messagingSenderId: "96226952530",
+      appId: "1:96226952530:web:07e7cb286dc4e120cea68b",
+      measurementId: "G-KNK5ECRCX5"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    const db = firebase.firestore();
+    const COLLECTION_NAME = "jsaDatabase";
+    const PREVIEW_LIMIT = 20;
+
+    let parsedRowsCache = [];
+
+    const TEMPLATE_HEADERS = [
+      "No",
+      "분류코드",
+      "관리시트",
+      "작업유형",
+      "세부작업유형",
+      "작업명",
+      "작업단계",
+      "사용장비·공구",
+      "사용물질·에너지",
+      "원문 위험요인",
+      "사고유형",
+      "사고시나리오",
+      "안전대책",
+      "표준 안전대책명",
+      "통제 적정성",
+      "비고"
+    ];
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById("status");
+      el.className = "status " + (cls || "");
+      el.textContent = msg;
+    }
+
+    function clearAll() {
+      document.getElementById("excelFile").value = "";
+      document.getElementById("pasteInput").value = "";
+      document.getElementById("previewSummary").innerHTML = "아직 데이터가 없습니다.";
+      document.getElementById("previewArea").innerHTML = "-";
+      setStatus("", "");
+      parsedRowsCache = [];
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function getToday() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function getDateStamp() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${yyyy}${mm}${dd}_${hh}${mi}${ss}`;
+    }
+
+    function normalizeClassCode(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function buildJsaId(no, classCode) {
+      return `JSA-${classCode}-${String(no).padStart(6, "0")}`;
+    }
+
+    function buildDocId(jsaId, rowNo) {
+      return `${jsaId}_${String(rowNo).padStart(3, "0")}`;
+    }
+
+    function validateAndMapRows(rawRows) {
+      if (!rawRows || rawRows.length === 0) {
+        throw new Error("데이터가 없습니다.");
+      }
+
+      const headers = Object.keys(rawRows[0]).map(h => String(h).trim());
+      const missingHeaders = TEMPLATE_HEADERS.filter(h => !headers.includes(h));
+
+      if (missingHeaders.length > 0) {
+        throw new Error("필수 헤더 누락: " + missingHeaders.join(", "));
+      }
+
+      const allowedClassCodes = ["WRK", "INT", "NMS", "ACC"];
+      const allowedControlAdequacy = ["○", "△", "X"];
+
+      const parsedRows = rawRows.map((obj, idx) => {
+        const lineNo = idx + 2;
+
+        const no = Number(obj["No"]);
+        const classCode = normalizeClassCode(obj["분류코드"]);
+
+        if (!Number.isFinite(no) || no <= 0) {
+          throw new Error(`${lineNo}행: No 값이 올바르지 않습니다.`);
+        }
+
+        if (!allowedClassCodes.includes(classCode)) {
+          throw new Error(`${lineNo}행: 분류코드 값이 올바르지 않습니다. (${classCode})`);
+        }
+
+        const requiredFields = [
+          "관리시트",
+          "작업유형",
+          "세부작업유형",
+          "작업명",
+          "작업단계",
+          "원문 위험요인",
+          "사고유형",
+          "사고시나리오",
+          "안전대책",
+          "표준 안전대책명",
+          "통제 적정성"
+        ];
+
+        for (const field of requiredFields) {
+          if (!String(obj[field] || "").trim()) {
+            throw new Error(`${lineNo}행: 필수값 누락 - ${field}`);
+          }
+        }
+
+        const controlAdequacy = String(obj["통제 적정성"] || "").trim();
+        if (!allowedControlAdequacy.includes(controlAdequacy)) {
+          throw new Error(`${lineNo}행: 통제 적정성 값이 올바르지 않습니다. (${controlAdequacy})`);
+        }
+
+        const jsaId = buildJsaId(no, classCode);
+        const rowNo = 1;
+        const version = 1;
+        const status = "active";
+        const changeReason = "최초등록";
+        const effectiveDate = getToday();
+        const docId = buildDocId(jsaId, rowNo);
+
+        return {
+          docId: docId,
+          jsaId: jsaId,
+          rowNo: rowNo,
+          version: version,
+          status: status,
+          changeReason: changeReason,
+          effectiveDate: effectiveDate,
+          no: no,
+          classCode: classCode,
+          sheet: String(obj["관리시트"] || "").trim(),
+          workType: String(obj["작업유형"] || "").trim(),
+          workSubType: String(obj["세부작업유형"] || "").trim(),
+          workName: String(obj["작업명"] || "").trim(),
+          workStage: String(obj["작업단계"] || "").trim(),
+          equipment: String(obj["사용장비·공구"] || "").trim(),
+          materials: String(obj["사용물질·에너지"] || "").trim(),
+          originalHazard: String(obj["원문 위험요인"] || "").trim(),
+          accidentType: String(obj["사고유형"] || "").trim(),
+          scenario: String(obj["사고시나리오"] || "").trim(),
+          detailedMeasures: String(obj["안전대책"] || "").trim(),
+          standardMeasures: String(obj["표준 안전대책명"] || "").trim(),
+          controlAdequacy: controlAdequacy,
+          remark: String(obj["비고"] || "").trim(),
+          sourceType: "excel-import",
+          sourceFile: "jsa_upload.xlsx",
+          isProduction: true
+        };
+      });
+
+      const docIdSet = new Set();
+      for (const row of parsedRows) {
+        if (docIdSet.has(row.docId)) {
+          throw new Error("업로드 데이터 내부 중복 docId 발견: " + row.docId);
+        }
+        docIdSet.add(row.docId);
+      }
+
+      return parsedRows;
+    }
+
+    function renderPreview(rows) {
+      const previewRows = rows.slice(0, PREVIEW_LIMIT);
+
+      document.getElementById("previewSummary").innerHTML = `
+        <strong>파싱 결과</strong><br>
+        - 총 행 수: <span class="mono">${rows.length}</span>건<br>
+        - 미리보기 표시: 상위 <span class="mono">${previewRows.length}</span>건<br>
+        - 내부 자동 생성: <span class="mono">jsaId / rowNo / version / 상태값</span>
+      `;
+
+      let html = `
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>분류코드</th>
+              <th>작업명</th>
+              <th>작업단계</th>
+              <th>원문 위험요인</th>
+              <th>통제 적정성</th>
+              <th>자동생성 jsaId</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      previewRows.forEach(row => {
+        html += `
+          <tr>
+            <td>${escapeHtml(row.no)}</td>
+            <td>${escapeHtml(row.classCode)}</td>
+            <td>${escapeHtml(row.workName)}</td>
+            <td>${escapeHtml(row.workStage)}</td>
+            <td>${escapeHtml(row.originalHazard)}</td>
+            <td>${escapeHtml(row.controlAdequacy)}</td>
+            <td>${escapeHtml(row.jsaId)}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById("previewArea").innerHTML = html;
+    }
+
+    async function readExcelFileRows() {
+      const input = document.getElementById("excelFile");
+      const file = input.files[0];
+
+      if (!file) {
+        throw new Error("엑셀 파일을 선택하세요.");
+      }
+
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[firstSheetName];
+
+      const rows = XLSX.utils.sheet_to_json(sheet, {
+        defval: "",
+        raw: false
+      });
+
+      return rows;
+    }
+
+    function readPastedRows() {
+      const text = document.getElementById("pasteInput").value.trim();
+
+      if (!text) {
+        throw new Error("붙여넣은 데이터가 없습니다.");
+      }
+
+      const lines = text
+        .split(/\r?\n/)
+        .map(line => line.trimEnd())
+        .filter(line => line !== "");
+
+      if (lines.length < 2) {
+        throw new Error("헤더 포함 2줄 이상 필요합니다.");
+      }
+
+      const headers = lines[0].split("\t").map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const values = line.split("\t");
+        const obj = {};
+        headers.forEach((header, i) => {
+          obj[header] = values[i] !== undefined ? values[i] : "";
+        });
+        return obj;
+      });
+
+      return rows;
+    }
+
+    async function previewExcelFile() {
+      try {
+        setStatus("엑셀 파일 읽는 중...", "warn");
+        const rawRows = await readExcelFileRows();
+        const parsedRows = validateAndMapRows(rawRows);
+        parsedRowsCache = parsedRows;
+        renderPreview(parsedRows);
+        setStatus(`파일 미리보기 완료: ${parsedRows.length}건`, "ok");
+      } catch (e) {
+        console.error(e);
+        setStatus("파일 미리보기 실패: " + e.message, "err");
+      }
+    }
+
+    async function previewPastedData() {
+      try {
+        setStatus("붙여넣기 데이터 읽는 중...", "warn");
+        const rawRows = readPastedRows();
+        const parsedRows = validateAndMapRows(rawRows);
+        parsedRowsCache = parsedRows;
+        renderPreview(parsedRows);
+        setStatus(`붙여넣기 미리보기 완료: ${parsedRows.length}건`, "ok");
+      } catch (e) {
+        console.error(e);
+        setStatus("붙여넣기 미리보기 실패: " + e.message, "err");
+      }
+    }
+
+    async function uploadRows(rows) {
+      if (!rows || !rows.length) {
+        throw new Error("업로드 대상 데이터가 없습니다.");
+      }
+
+      if (!confirm(`총 ${rows.length}건을 Firestore에 업로드하시겠습니까?\n기존 docId는 스킵됩니다.`)) {
+        return;
+      }
+
+      setStatus("업로드 중...", "warn");
+
+      let insertedCount = 0;
+      let skippedCount = 0;
+      let failedCount = 0;
+
+      for (const row of rows) {
+        try {
+          const docRef = db.collection(COLLECTION_NAME).doc(row.docId);
+          const docSnap = await docRef.get();
+
+          if (docSnap.exists) {
+            skippedCount++;
+            continue;
+          }
+
+          await docRef.set({
+            ...row,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          insertedCount++;
+        } catch (rowError) {
+          console.error("행 업로드 실패:", row.docId, rowError);
+          failedCount++;
+        }
+      }
+
+      setStatus(
+        `업로드 완료: 신규 ${insertedCount}건 / 중복 스킵 ${skippedCount}건 / 실패 ${failedCount}건`,
+        failedCount > 0 ? "warn" : "ok"
+      );
+    }
+
+    async function uploadFromExcelFile() {
+      try {
+        const rawRows = await readExcelFileRows();
+        const rows = validateAndMapRows(rawRows);
+        parsedRowsCache = rows;
+        renderPreview(rows);
+        await uploadRows(rows);
+      } catch (e) {
+        console.error(e);
+        setStatus("파일 업로드 실패: " + e.message, "err");
+      }
+    }
+
+    async function uploadFromPastedData() {
+      try {
+        const rawRows = readPastedRows();
+        const rows = validateAndMapRows(rawRows);
+        parsedRowsCache = rows;
+        renderPreview(rows);
+        await uploadRows(rows);
+      } catch (e) {
+        console.error(e);
+        setStatus("붙여넣기 업로드 실패: " + e.message, "err");
+      }
+    }
+
+    function mapRowToTemplateObject(row) {
+      return {
+        "No": row.no ?? "",
+        "분류코드": row.classCode ?? "",
+        "관리시트": row.sheet ?? "",
+        "작업유형": row.workType ?? "",
+        "세부작업유형": row.workSubType ?? "",
+        "작업명": row.workName ?? "",
+        "작업단계": row.workStage ?? "",
+        "사용장비·공구": row.equipment ?? "",
+        "사용물질·에너지": row.materials ?? "",
+        "원문 위험요인": row.originalHazard ?? "",
+        "사고유형": row.accidentType ?? "",
+        "사고시나리오": row.scenario ?? "",
+        "안전대책": row.detailedMeasures ?? "",
+        "표준 안전대책명": row.standardMeasures ?? "",
+        "통제 적정성": row.controlAdequacy ?? "",
+        "비고": row.remark ?? ""
+      };
+    }
+
+    function downloadWorkbook(filename, dataRows) {
+      const worksheet = XLSX.utils.json_to_sheet(dataRows, { header: TEMPLATE_HEADERS });
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "JSA");
+      XLSX.writeFile(workbook, filename);
+    }
+
+    function downloadTemplateXLSX() {
+      const emptyRow = [{
+        "No": "",
+        "분류코드": "",
+        "관리시트": "",
+        "작업유형": "",
+        "세부작업유형": "",
+        "작업명": "",
+        "작업단계": "",
+        "사용장비·공구": "",
+        "사용물질·에너지": "",
+        "원문 위험요인": "",
+        "사고유형": "",
+        "사고시나리오": "",
+        "안전대책": "",
+        "표준 안전대책명": "",
+        "통제 적정성": "",
+        "비고": ""
+      }];
+
+      downloadWorkbook(`jsa_template_${getDateStamp()}.xlsx`, emptyRow);
+      setStatus("엑셀 템플릿 다운로드 완료", "ok");
+    }
+
+    async function downloadAllXLSX() {
+      try {
+        setStatus("전체 DB 엑셀 다운로드 중...", "warn");
+
+        const snap = await db.collection(COLLECTION_NAME).get();
+        const rows = snap.docs.map(doc => doc.data());
+
+        rows.sort((a, b) => {
+          const aNo = Number(a.no || 0);
+          const bNo = Number(b.no || 0);
+          return aNo - bNo;
+        });
+
+        const mappedRows = rows.map(row => mapRowToTemplateObject(row));
+        downloadWorkbook(`jsa_all_${getDateStamp()}.xlsx`, mappedRows);
+
+        setStatus(`전체 DB 엑셀 다운로드 완료: ${mappedRows.length}건`, "ok");
+      } catch (e) {
+        console.error(e);
+        setStatus("전체 DB 엑셀 다운로드 실패: " + e.message, "err");
+      }
+    }
+  </script>
+</body>
+</html>
