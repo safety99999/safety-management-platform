@@ -1392,7 +1392,7 @@ async function loadJSADatabase(){
     var db = firebase.firestore();
 
     // 3) Firestore 테스트 컬렉션 읽기
-    var snapshot = await db.collection('jsa_test_v3_rows').get();
+    var snapshot = await db.collection('jsaDatabase').get();
 
     if (!snapshot.empty) {
       var rows = [];
