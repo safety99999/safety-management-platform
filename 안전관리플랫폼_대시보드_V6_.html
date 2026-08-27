@@ -2536,11 +2536,17 @@ function parseExcel(text){
     /*
       원본 작업명에 명시된 고위험 여부
     */
-    var sourceHighRiskFromName =
-      /
-\[\s*고위험\s*작업\s*\]
-/i.test(workNameFull) ||
-      /고위험\s*작업/i.test(workNameFull);
+    var normalizedWorkNameForRisk = String(
+  workNameFull || ''
+)
+  .split(' ').join('')
+  .split('\n').join('')
+  .split('\r').join('')
+  .split('\t').join('');
+
+var sourceHighRiskFromName =
+  normalizedWorkNameForRisk.indexOf('[고위험작업]') >= 0 ||
+  normalizedWorkNameForRisk.indexOf('고위험작업') >= 0;
 
     /*
       관리대장 고위험 항목에서 하나라도 O 또는 ○이면
