@@ -2033,5 +2033,2131 @@ window.addEventListener('app-data-changed',function(e){
 init();
 
 </script>
+<script>
+/* =========================================================
+   작업관리대장 데이터 구조 및 상태 연동 통합 패치
+   적용 대상: 안전관리플랫폼_대시보드_V6_.html
+   버전: 7.1
+   작성일: 2026-08-27
+
+   주요 변경사항
+   1. 엑셀 셀 내부 줄바꿈 대응 TSV 파싱
+   2. workId를 저장 시점에 명시적으로 생성
+   3. 작업관리대장 원본 필드 보존
+   4. 원본 작업장소 우선 표시
+   5. 계약사와 수행사 구분 저장
+   6. permit.workId 및 과거 sourceWorkId 호환
+   7. permitStatus 및 과거 status 호환
+   8. TBM이 작업완료·작업중지 상태를 덮지 않도록 수정
+   9. emergencies 작업중지 상태 반영
+   10. 동일 일자 + NO 데이터 갱신 처리
+   ========================================================= */
+
+
+/* =========================================================
+   1. 공통 데이터 정리 함수
+   ========================================================= */
+
+function cleanCell(value){
+  return String(value == null ? '' : value)
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+}
+
+function normalizeOriginalNo(value){
+  return cleanCell(value).replace(/\s/g, '');
+}
+
+function makeWorkId(date, originalNo){
+  var normalizedDate = cleanCell(date);
+  var normalizedNo = normalizeOriginalNo(originalNo);
+
+  if(!normalizedDate || !normalizedNo){
+    return null;
+  }
+
+  return normalizedDate + '_' + normalizedNo;
+}
+
+function parseWorkerCount(value){
+  var raw = cleanCell(value);
+  var match = raw.match(/\d+/);
+
+  if(!match){
+    return null;
+  }
+
+  var count = parseInt(match[0], 10);
+
+  return isNaN(count) ? null : count;
+}
+
+function parseWorkTime(value){
+  var raw = cleanCell(value);
+
+  var match = raw.match(
+    /(\d{1,2}:\d{2})\s*[~～\-]\s*(\d{1,2}:\d{2})/
+  );
+
+  return {
+    raw: raw,
+    start: match ? match[1] : '',
+    end: match ? match[2] : ''
+  };
+}
+
+function normalizeMark(value){
+  var normalized = cleanCell(value).toUpperCase();
+
+  var trueValues = [
+    'O',
+    '○',
+    '●',
+    'Y',
+    'YES',
+    'TRUE',
+    '실시',
+    '해당',
+    '있음',
+    '유'
+  ];
+
+  var falseValues = [
+    'X',
+    'N',
+    'NO',
+    'FALSE',
+    '미실시',
+    '미해당',
+    '없음',
+    '무'
+  ];
+
+  if(trueValues.indexOf(normalized) >= 0){
+    return true;
+  }
+
+  if(falseValues.indexOf(normalized) >= 0){
+    return false;
+  }
+
+  return null;
+}
+
+function normalizeIlsExecution(value){
+  var mark = normalizeMark(value);
+
+  if(mark === true){
+    return 'Y';
+  }
+
+  if(mark === false){
+    return 'N';
+  }
+
+  return null;
+}
+
+function extractUrl(value){
+  var text = cleanCell(value);
+  var match = text.match(/https?:\/\/[^\s]+/i);
+
+  return match ? match[0] : null;
+}
+
+function toSafeNumber(value){
+  if(
+    value === null ||
+    value === undefined ||
+    value === ''
+  ){
+    return null;
+  }
+
+  var number = Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : null;
+}
+
+function parseDateTime(value){
+  if(!value){
+    return 0;
+  }
+
+  if(
+    typeof value === 'object' &&
+    typeof value.toDate === 'function'
+  ){
+    try{
+      return value.toDate().getTime();
+    }catch(error){
+      return 0;
+    }
+  }
+
+  var timestamp = new Date(value).getTime();
+
+  return Number.isFinite(timestamp)
+    ? timestamp
+    : 0;
+}
+
+
+/* =========================================================
+   2. 엑셀 복사 데이터 TSV 파서
+
+   엑셀 셀 안에 줄바꿈이 포함되어도 하나의 셀로 인식한다.
+   ========================================================= */
+
+function parseTSV(text){
+  var rows = [];
+  var row = [];
+  var cell = '';
+  var inQuotes = false;
+
+  var normalizedText = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
+
+  for(var index = 0; index < normalizedText.length; index++){
+    var character = normalizedText[index];
+    var nextCharacter = normalizedText[index + 1];
+
+    if(character === '"'){
+      if(inQuotes && nextCharacter === '"'){
+        cell += '"';
+        index++;
+      }else{
+        inQuotes = !inQuotes;
+      }
+
+      continue;
+    }
+
+    if(character === '\t' && !inQuotes){
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if(character === '\n' && !inQuotes){
+      row.push(cell);
+
+      var hasValue = row.some(function(value){
+        return cleanCell(value) !== '';
+      });
+
+      if(hasValue){
+        rows.push(row);
+      }
+
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += character;
+  }
+
+  row.push(cell);
+
+  var lastRowHasValue = row.some(function(value){
+    return cleanCell(value) !== '';
+  });
+
+  if(lastRowHasValue){
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+
+/* =========================================================
+   3. 관리대장 열 정의
+
+   현재 공유된 작업관리대장 기준 열 위치다.
+   원본의 전체 열은 rawColumns에도 보존한다.
+   ========================================================= */
+
+var WORK_LEDGER_COLUMNS = {
+  DATE: 0,
+  ORIGINAL_NO: 1,
+  OPERATING_DEPARTMENT: 2,
+  REQUESTING_DEPARTMENT: 3,
+  LOCATION: 4,
+  WORK_ORDER_NO: 5,
+  WORK_NAME: 6,
+  WORKER_COUNT: 7,
+  WORK_TIME: 8,
+  CONTRACT_COMPANY: 9,
+  EXECUTING_COMPANY: 10,
+  WORK_MANAGER: 11,
+  CONTRACTOR_MANAGER: 12,
+  PERMIT_LOCATION: 13,
+  PERMIT_APPROVER: 14,
+  ILS_EXECUTION: 15,
+  ILS_SYSTEM_APPROVER: 16,
+  ILS_SYSTEM_LOCKER: 17,
+  EMAIL: 18,
+  REQUIRED_WORK_PLAN: 19,
+  SAFETY_ORIGINAL: 20,
+  RISK_ASSESSMENT_REFERENCE: 21,
+
+  OPERATING_EQUIPMENT: 22,
+  REPAIR_MANAGER_APPROVAL: 23,
+  INSPECTION_PLANT_MANAGER_APPROVAL: 24,
+
+  HIGH_RISK_FIRE: 25,
+  HIGH_RISK_EXPLOSION: 26,
+  HIGH_RISK_SUFFOCATION: 27,
+  HIGH_RISK_LEAKAGE: 28,
+  HIGH_RISK_OTHER: 29,
+  HIGH_RISK_MANAGER_APPROVAL: 30,
+
+  CORROSION_AREA_ENTRY: 31,
+  CORROSION_DEPARTMENT_APPROVAL: 32,
+
+  SAFETY_MONITOR_ORGANIZATION: 33,
+  SAFETY_MONITOR_NAME: 34,
+
+  CCTV_AVAILABLE: 35
+};
+
+
+/* =========================================================
+   4. 작업관리대장 파싱 함수 전체 교체
+   ========================================================= */
+
+function parseExcel(text){
+  var results = [];
+  var rows = parseTSV(text);
+  var C = WORK_LEDGER_COLUMNS;
+
+  rows.forEach(function(cols, rowIndex){
+    var date = exDate(
+      cleanCell(cols[C.DATE])
+    );
+
+    /*
+      제목, 다중 헤더, 빈 행은 일자 형식이 아니므로 제외한다.
+    */
+    if(!date){
+      return;
+    }
+
+    var originalNo = normalizeOriginalNo(
+      cols[C.ORIGINAL_NO]
+    );
+
+    if(!originalNo){
+      console.warn(
+        'NO가 없어 제외된 관리대장 행:',
+        rowIndex + 1
+      );
+      return;
+    }
+
+    var workId = makeWorkId(
+      date,
+      originalNo
+    );
+
+    var workNameFull = cleanCell(
+      cols[C.WORK_NAME]
+    );
+
+    if(!workNameFull){
+      console.warn(
+        '작업명이 없어 제외된 관리대장 행:',
+        rowIndex + 1
+      );
+      return;
+    }
+
+    var operatingDepartment = cleanCell(
+      cols[C.OPERATING_DEPARTMENT]
+    );
+
+    var requestingDepartment = cleanCell(
+      cols[C.REQUESTING_DEPARTMENT]
+    );
+
+    var locationRaw = cleanCell(
+      cols[C.LOCATION]
+    );
+
+    var workOrderNo = cleanCell(
+      cols[C.WORK_ORDER_NO]
+    );
+
+    var workerCountRaw = cleanCell(
+      cols[C.WORKER_COUNT]
+    );
+
+    var workerCount = parseWorkerCount(
+      workerCountRaw
+    );
+
+    var workTime = parseWorkTime(
+      cols[C.WORK_TIME]
+    );
+
+    var contractCompany = cleanCell(
+      cols[C.CONTRACT_COMPANY]
+    );
+
+    var executingCompany = cleanCell(
+      cols[C.EXECUTING_COMPANY]
+    );
+
+    /*
+      대시보드 표시용 대표 회사:
+      수행사 → 계약사 → 미지정 순서
+    */
+    var company =
+      executingCompany ||
+      contractCompany ||
+      '미지정';
+
+    var workManager = cleanCell(
+      cols[C.WORK_MANAGER]
+    );
+
+    var contractorManager = cleanCell(
+      cols[C.CONTRACTOR_MANAGER]
+    );
+
+    var permitLocation = cleanCell(
+      cols[C.PERMIT_LOCATION]
+    );
+
+    var permitApprover = cleanCell(
+      cols[C.PERMIT_APPROVER]
+    );
+
+    var ilsExecutionRaw = cleanCell(
+      cols[C.ILS_EXECUTION]
+    );
+
+    var ilsExecution = normalizeIlsExecution(
+      ilsExecutionRaw
+    );
+
+    var ilsSystemApprover = cleanCell(
+      cols[C.ILS_SYSTEM_APPROVER]
+    );
+
+    var ilsSystemLocker = cleanCell(
+      cols[C.ILS_SYSTEM_LOCKER]
+    );
+
+    var email = cleanCell(
+      cols[C.EMAIL]
+    );
+
+    var requiredWorkPlan = cleanCell(
+      cols[C.REQUIRED_WORK_PLAN]
+    );
+
+    var safetyOriginal = cleanCell(
+      cols[C.SAFETY_ORIGINAL]
+    );
+
+    var riskAssessmentReferenceRaw = cleanCell(
+      cols[C.RISK_ASSESSMENT_REFERENCE]
+    );
+
+    /*
+      원본 고위험 및 확인항목을 파생값과 구분해 저장한다.
+    */
+    var sourceRiskFlags = {
+      operatingEquipment: normalizeMark(
+        cols[C.OPERATING_EQUIPMENT]
+      ),
+
+      repairManagerApproval: normalizeMark(
+        cols[C.REPAIR_MANAGER_APPROVAL]
+      ),
+
+      inspectionPlantManagerApproval: normalizeMark(
+        cols[C.INSPECTION_PLANT_MANAGER_APPROVAL]
+      ),
+
+      fire: normalizeMark(
+        cols[C.HIGH_RISK_FIRE]
+      ),
+
+      explosion: normalizeMark(
+        cols[C.HIGH_RISK_EXPLOSION]
+      ),
+
+      suffocation: normalizeMark(
+        cols[C.HIGH_RISK_SUFFOCATION]
+      ),
+
+      leakage: normalizeMark(
+        cols[C.HIGH_RISK_LEAKAGE]
+      ),
+
+      other: normalizeMark(
+        cols[C.HIGH_RISK_OTHER]
+      ),
+
+      highRiskManagerApproval: normalizeMark(
+        cols[C.HIGH_RISK_MANAGER_APPROVAL]
+      ),
+
+      corrosionAreaEntry: normalizeMark(
+        cols[C.CORROSION_AREA_ENTRY]
+      ),
+
+      corrosionDepartmentApproval: normalizeMark(
+        cols[C.CORROSION_DEPARTMENT_APPROVAL]
+      )
+    };
+
+    var safetyMonitorOrganization = cleanCell(
+      cols[C.SAFETY_MONITOR_ORGANIZATION]
+    );
+
+    var safetyMonitorName = cleanCell(
+      cols[C.SAFETY_MONITOR_NAME]
+    );
+
+    var cctvAvailable = normalizeMark(
+      cols[C.CCTV_AVAILABLE]
+    );
+
+    /*
+      원본 작업명에 명시된 고위험 여부
+    */
+    var sourceHighRiskFromName =
+      /
+\[\s*고위험\s*작업\s*\]
+/i.test(workNameFull) ||
+      /고위험\s*작업/i.test(workNameFull);
+
+    /*
+      관리대장 고위험 항목에서 하나라도 O 또는 ○이면
+      원본 고위험 표시가 있는 것으로 본다.
+    */
+    var sourceHighRiskFromFlags = [
+      sourceRiskFlags.fire,
+      sourceRiskFlags.explosion,
+      sourceRiskFlags.suffocation,
+      sourceRiskFlags.leakage,
+      sourceRiskFlags.other
+    ].some(function(value){
+      return value === true;
+    });
+
+    var combinedText = [
+      workNameFull,
+      safetyOriginal,
+      requiredWorkPlan
+    ].join(' ').toLowerCase();
+
+    /*
+      보조 키워드 기반 고위험 판정
+    */
+    var highRiskKeywords = [
+      '밀폐',
+      '질식',
+      '산소부족',
+      '산소결핍',
+      '유해가스',
+      '추락',
+      '폭발',
+      '감전',
+      '누출',
+      '특고압',
+      '고압',
+      'vcb',
+      '화기작업'
+    ];
+
+    var keywordHighRisk = highRiskKeywords.some(
+      function(keyword){
+        return combinedText.indexOf(
+          keyword.toLowerCase()
+        ) >= 0;
+      }
+    );
+
+    var derivedHighRiskCategories = dHR(
+      workNameFull,
+      safetyOriginal,
+      sourceHighRiskFromName ||
+      sourceHighRiskFromFlags
+    );
+
+    var risk = (
+      sourceHighRiskFromName ||
+      sourceHighRiskFromFlags ||
+      keywordHighRisk ||
+      derivedHighRiskCategories.length > 0
+    ) ? '고위험' : '일반';
+
+    var hazardSafety = pHS(
+      safetyOriginal
+    );
+
+    var parsedLocation = pLoc(
+      workNameFull
+    );
+
+    var displayWorkName = sWN(
+      workNameFull
+    );
+
+    var ilsRequired = dILS(
+      workNameFull,
+      [
+        safetyOriginal,
+        requiredWorkPlan
+      ].join(' ')
+    );
+
+    /*
+      원본 전체 열도 보존한다.
+      열 위치가 변경되거나 향후 새로운 필드를 매핑할 때 사용한다.
+    */
+    var rawColumns = cols.map(function(value){
+      return cleanCell(value);
+    });
+
+    results.push({
+      /*
+        식별 정보
+      */
+      workId: workId,
+      originalNo: originalNo,
+      date: date,
+
+      /*
+        입력 출처
+      */
+      sourceType: 'excel-paste',
+      sourceRowIndex: rowIndex + 1,
+
+      /*
+        부서 정보
+      */
+      operatingDepartment: operatingDepartment,
+      requestingDepartment: requestingDepartment,
+
+      /*
+        위치 정보
+      */
+      locationRaw: locationRaw,
+
+      location: {
+        raw: locationRaw,
+        factory: parsedLocation.factory || '',
+        line: parsedLocation.line == null
+          ? null
+          : parsedLocation.line
+      },
+
+      /*
+        작업 기본정보
+      */
+      workOrderNo: workOrderNo,
+      workName: displayWorkName,
+      workNameFull: workNameFull,
+
+      workerCountRaw: workerCountRaw,
+      workerCount: workerCount,
+
+      workTimeRaw: workTime.raw,
+      workStartTime: workTime.start,
+      workEndTime: workTime.end,
+
+      /*
+        회사 정보
+      */
+      contractCompany: contractCompany,
+      executingCompany: executingCompany,
+      company: company,
+
+      /*
+        담당자 정보
+      */
+      manager: workManager || '미지정',
+      workManager: workManager,
+      contractorManager: contractorManager,
+
+      /*
+        작업허가 원본 정보
+      */
+      permitLocation: permitLocation,
+      permitApprover: permitApprover,
+
+      /*
+        ILS 정보
+      */
+      ilsExecutionRaw: ilsExecutionRaw,
+      ilsExecution: ilsExecution,
+      ilsRequired: ilsRequired,
+      ilsSystemApprover: ilsSystemApprover,
+      ilsSystemLocker: ilsSystemLocker,
+
+      /*
+        연락처 및 작업계획서
+      */
+      email: email,
+      requiredWorkPlan: requiredWorkPlan,
+
+      /*
+        안전 원문
+      */
+      safety: safetyOriginal,
+      safetyOriginal: safetyOriginal,
+
+      /*
+        안전정보 분석 결과
+      */
+      hazards: hazardSafety.hazards,
+      safetyMeasures: hazardSafety.safetyMeasures,
+
+      /*
+        고위험 정보
+      */
+      risk: risk,
+      highRiskCategories: derivedHighRiskCategories,
+      sourceRiskFlags: sourceRiskFlags,
+
+      isHighRiskFromSource:
+        sourceHighRiskFromName ||
+        sourceHighRiskFromFlags,
+
+      /*
+        위험성평가 원본 참조
+      */
+      riskAssessmentReference: {
+        raw: riskAssessmentReferenceRaw,
+        url: extractUrl(
+          riskAssessmentReferenceRaw
+        )
+      },
+
+      /*
+        안전 모니터 정보
+      */
+      safetyMonitor: {
+        organization: safetyMonitorOrganization,
+        name: safetyMonitorName,
+        assigned: Boolean(
+          safetyMonitorOrganization ||
+          safetyMonitorName
+        )
+      },
+
+      /*
+        CCTV
+      */
+      cctvAvailable: cctvAvailable,
+
+      /*
+        작업 원본 상태
+      */
+      workStatus: '등록',
+
+      /*
+        스키마
+      */
+      schemaVersion: 1,
+
+      /*
+        이관 검증용 원본 열
+        Firestore 운영 적용 시 보존 여부를 별도 결정한다.
+      */
+      rawColumns: rawColumns
+    });
+  });
+
+  return results;
+}
+
+
+/* =========================================================
+   5. 작업관리대장 저장 함수 전체 교체
+   ========================================================= */
+
+function parseAndSave(){
+  var pasteElement = document.getElementById(
+    'dbPaste'
+  );
+
+  var text = pasteElement
+    ? pasteElement.value
+    : '';
+
+  if(!text || text.trim().length < 10){
+    showToast(
+      '작업관리대장 데이터를 붙여넣으세요.',
+      'info'
+    );
+    return;
+  }
+
+  try{
+    var newData = parseExcel(text);
+
+    if(!newData.length){
+      showToast(
+        '파싱된 데이터가 없습니다. 일자, NO, 작업명을 확인하세요.',
+        'error'
+      );
+      return;
+    }
+
+    var existingData = [];
+
+    try{
+      var existingRaw = localStorage.getItem(
+        'safetyDatabase'
+      );
+
+      if(existingRaw){
+        var existingDatabase = JSON.parse(
+          existingRaw
+        );
+
+        existingData = Array.isArray(
+          existingDatabase.workHistory
+        )
+          ? existingDatabase.workHistory
+          : [];
+      }
+    }catch(readError){
+      console.error(
+        '기존 작업DB 읽기 실패:',
+        readError
+      );
+
+      existingData = [];
+    }
+
+    var now = new Date().toISOString();
+    var workMap = {};
+
+    var addedCount = 0;
+    var updatedCount = 0;
+    var skippedCount = 0;
+
+    /*
+      기존 데이터 등록 및 이전 구조 workId 보강
+    */
+    existingData.forEach(function(work){
+      var existingWorkId =
+        work.workId ||
+        makeWorkId(
+          work.date,
+          work.originalNo
+        );
+
+      if(!existingWorkId){
+        skippedCount++;
+        return;
+      }
+
+      workMap[existingWorkId] = Object.assign(
+        {},
+        work,
+        {
+          workId: existingWorkId
+        }
+      );
+    });
+
+    /*
+      신규 데이터 병합
+    */
+    newData.forEach(function(work){
+      if(!work.workId){
+        skippedCount++;
+        return;
+      }
+
+      var oldWork = workMap[work.workId];
+
+      if(oldWork){
+        updatedCount++;
+
+        workMap[work.workId] = Object.assign(
+          {},
+          oldWork,
+          work,
+          {
+            workId: work.workId,
+            createdAt:
+              oldWork.createdAt ||
+              now,
+            updatedAt: now
+          }
+        );
+      }else{
+        addedCount++;
+
+        workMap[work.workId] = Object.assign(
+          {},
+          work,
+          {
+            createdAt: now,
+            updatedAt: now
+          }
+        );
+      }
+    });
+
+    /*
+      일자 내림차순, NO 오름차순 정렬
+    */
+    var merged = Object.values(
+      workMap
+    ).sort(function(first, second){
+      var dateCompare = String(
+        second.date || ''
+      ).localeCompare(
+        String(first.date || '')
+      );
+
+      if(dateCompare !== 0){
+        return dateCompare;
+      }
+
+      return String(
+        first.originalNo || ''
+      ).localeCompare(
+        String(second.originalNo || ''),
+        undefined,
+        {
+          numeric: true,
+          sensitivity: 'base'
+        }
+      );
+    });
+
+    var database = {
+      metadata: {
+        version: '7.1',
+        schemaVersion: 1,
+        sourceType: 'excel-paste',
+        lastUpdate: now,
+        totalCount: merged.length
+      },
+
+      workHistory: merged
+    };
+
+    localStorage.setItem(
+      'safetyDatabase',
+      JSON.stringify(database)
+    );
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail: {
+              key: 'safetyDatabase',
+              timestamp: Date.now()
+            }
+          }
+        )
+      );
+    }catch(eventError){
+      console.warn(
+        '데이터 변경 이벤트 전송 실패:',
+        eventError
+      );
+    }
+
+    if(pasteElement){
+      pasteElement.value = '';
+    }
+
+    loadDB();
+
+    var message =
+      '✅ 신규 ' + addedCount +
+      '건 / 갱신 ' + updatedCount +
+      '건';
+
+    if(skippedCount > 0){
+      message +=
+        ' / 제외 ' + skippedCount +
+        '건';
+    }
+
+    message +=
+      ' / 총 ' + merged.length +
+      '건 저장';
+
+    showToast(
+      message,
+      'success'
+    );
+  }catch(error){
+    console.error(
+      '작업관리대장 저장 오류:',
+      error
+    );
+
+    showToast(
+      '저장 오류: ' + error.message,
+      'error'
+    );
+  }
+}
+
+
+/* =========================================================
+   6. 작업DB 로드 함수 전체 교체
+   ========================================================= */
+
+function loadDB(){
+  try{
+    var raw = localStorage.getItem(
+      'safetyDatabase'
+    );
+
+    var database = raw
+      ? JSON.parse(raw)
+      : {};
+
+    var workHistory = Array.isArray(
+      database.workHistory
+    )
+      ? database.workHistory
+      : [];
+
+    allWorks = workHistory.map(function(work){
+      var workId =
+        work.workId ||
+        makeWorkId(
+          work.date,
+          work.originalNo
+        );
+
+      if(!workId){
+        console.warn(
+          'workId를 생성할 수 없어 제외된 작업:',
+          work
+        );
+
+        return null;
+      }
+
+      var riskLevel =
+        work.risk ||
+        work.riskLevel ||
+        '일반';
+
+      if(riskLevel === '중위험'){
+        riskLevel = '일반';
+      }
+
+      var locationObject = (
+        work.location &&
+        typeof work.location === 'object'
+      )
+        ? work.location
+        : {};
+
+      var locationDisplay =
+        work.locationRaw ||
+        locationObject.raw ||
+        locStr(locationObject) ||
+        (
+          typeof work.location === 'string'
+            ? work.location
+            : ''
+        ) ||
+        '미지정';
+
+      var highRiskCategories = Array.isArray(
+        work.highRiskCategories
+      )
+        ? work.highRiskCategories
+        : [];
+
+      var hazards = Array.isArray(
+        work.hazards
+      )
+        ? work.hazards
+        : [];
+
+      var safetyMeasures = Array.isArray(
+        work.safetyMeasures
+      )
+        ? work.safetyMeasures
+        : [];
+
+      return Object.assign(
+        {},
+        work,
+        {
+          /*
+            기존 화면 호환용 id
+          */
+          id: workId,
+
+          /*
+            정식 식별자
+          */
+          workId: workId,
+
+          date: work.date || '',
+          originalNo:
+            work.originalNo || '',
+
+          workName:
+            work.workName ||
+            '작업',
+
+          workNameFull:
+            work.workNameFull ||
+            work.workName ||
+            '',
+
+          locationObj:
+            locationObject,
+
+          locationRaw:
+            work.locationRaw ||
+            locationObject.raw ||
+            '',
+
+          location:
+            locationDisplay,
+
+          riskLevel:
+            riskLevel,
+
+          company:
+            work.company ||
+            work.executingCompany ||
+            work.contractCompany ||
+            '미지정',
+
+          manager:
+            work.manager ||
+            work.workManager ||
+            '미지정',
+
+          ilsRequired:
+            work.ilsRequired ||
+            'N',
+
+          hrCategoryNames:
+            highRiskCategories
+              .map(function(category){
+                if(typeof category === 'string'){
+                  return category;
+                }
+
+                return (
+                  category.category ||
+                  category.name ||
+                  ''
+                );
+              })
+              .filter(Boolean),
+
+          hazards:
+            hazards,
+
+          aiAnalysis: {
+            riskScore: rscore(
+              riskLevel,
+              highRiskCategories
+            ),
+
+            safetyMeasures:
+              safetyMeasures
+          }
+        }
+      );
+    }).filter(function(work){
+      return work !== null;
+    });
+  }catch(error){
+    console.error(
+      '작업DB 로드 실패:',
+      error
+    );
+
+    allWorks = [];
+  }
+
+  updateDBUI();
+  applyFilter();
+}
+
+
+/* =========================================================
+   7. localStorage 배열 공통 로드
+   ========================================================= */
+
+function loadLocalArray(key){
+  try{
+    var parsed = JSON.parse(
+      localStorage.getItem(key) || '[]'
+    );
+
+    if(Array.isArray(parsed)){
+      return parsed;
+    }
+
+    if(
+      parsed &&
+      typeof parsed === 'object'
+    ){
+      return Object.values(
+        parsed
+      ).filter(function(item){
+        return (
+          item &&
+          typeof item === 'object'
+        );
+      });
+    }
+
+    return [];
+  }catch(error){
+    console.error(
+      key + ' 로드 실패:',
+      error
+    );
+
+    return [];
+  }
+}
+
+
+/* =========================================================
+   8. permit 연결 및 상태 호환 함수
+   ========================================================= */
+
+function getPermitWorkId(permit){
+  if(!permit){
+    return null;
+  }
+
+  /*
+    신규 정식 필드 workId 우선,
+    과거 sourceWorkId는 호환용으로 읽는다.
+  */
+  return (
+    permit.workId ||
+    permit.sourceWorkId ||
+    null
+  );
+}
+
+function getPermitStatus(permit){
+  if(!permit){
+    return '대기중';
+  }
+
+  /*
+    신규 정식 필드 permitStatus 우선,
+    과거 status는 호환용으로 읽는다.
+  */
+  return (
+    permit.permitStatus ||
+    permit.status ||
+    '허가진행중'
+  );
+}
+
+function isPermitCompleted(
+  permit,
+  status
+){
+  if(
+    status === '작업완료' ||
+    status === '완료'
+  ){
+    return true;
+  }
+
+  if(
+    permit &&
+    permit.closeout &&
+    permit.closeout.completed === true
+  ){
+    return true;
+  }
+
+  return false;
+}
+
+function isEmergencyActive(emergency){
+  if(!emergency){
+    return false;
+  }
+
+  var status =
+    emergency.emergencyStatus ||
+    emergency.status ||
+    '';
+
+  var inactiveStatuses = [
+    '종료',
+    '취소',
+    '해제승인',
+    '해제',
+    '완료'
+  ];
+
+  if(
+    inactiveStatuses.indexOf(status) >= 0
+  ){
+    return false;
+  }
+
+  /*
+    과거 데이터에 상태가 없으면
+    실제 작업중지 이력으로 간주한다.
+  */
+  return true;
+}
+
+
+/* =========================================================
+   9. permit, TBM, 긴급조치 인덱스 생성
+   ========================================================= */
+
+function buildExecutionMaps(){
+  var permitList = loadLocalArray(
+    'safetyPermits'
+  );
+
+  var tbmList = loadLocalArray(
+    'safetyTBM'
+  );
+
+  var emergencyList = loadLocalArray(
+    'emergencies'
+  );
+
+  var permitMap = {};
+  var tbmMap = {};
+  var emergencyMap = {};
+
+  /*
+    workId별 최신 permit를 선택한다.
+  */
+  permitList.forEach(function(permit){
+    var workId = getPermitWorkId(
+      permit
+    );
+
+    if(!workId){
+      return;
+    }
+
+    var previous = permitMap[workId];
+
+    if(!previous){
+      permitMap[workId] = permit;
+      return;
+    }
+
+    var previousTime = parseDateTime(
+      previous.updatedAt ||
+      previous.createdAt
+    );
+
+    var currentTime = parseDateTime(
+      permit.updatedAt ||
+      permit.createdAt
+    );
+
+    if(currentTime >= previousTime){
+      permitMap[workId] = permit;
+    }
+  });
+
+  /*
+    permitNo별 최신 TBM을 선택한다.
+  */
+  tbmList.forEach(function(tbm){
+    if(!tbm || !tbm.permitNo){
+      return;
+    }
+
+    var previous = tbmMap[
+      tbm.permitNo
+    ];
+
+    if(!previous){
+      tbmMap[tbm.permitNo] = tbm;
+      return;
+    }
+
+    var previousTime = parseDateTime(
+      previous.updatedAt ||
+      previous.createdAt ||
+      previous.tbmDate
+    );
+
+    var currentTime = parseDateTime(
+      tbm.updatedAt ||
+      tbm.createdAt ||
+      tbm.tbmDate
+    );
+
+    if(currentTime >= previousTime){
+      tbmMap[tbm.permitNo] = tbm;
+    }
+  });
+
+  /*
+    permitNo별 활성 긴급조치를 등록한다.
+  */
+  emergencyList.forEach(function(emergency){
+    if(
+      !emergency ||
+      !emergency.permitNo ||
+      !isEmergencyActive(emergency)
+    ){
+      return;
+    }
+
+    var previous = emergencyMap[
+      emergency.permitNo
+    ];
+
+    if(!previous){
+      emergencyMap[
+        emergency.permitNo
+      ] = emergency;
+
+      return;
+    }
+
+    var previousTime = parseDateTime(
+      previous.updatedAt ||
+      previous.createdAt ||
+      previous.emergencyDate
+    );
+
+    var currentTime = parseDateTime(
+      emergency.updatedAt ||
+      emergency.createdAt ||
+      emergency.emergencyDate
+    );
+
+    if(currentTime >= previousTime){
+      emergencyMap[
+        emergency.permitNo
+      ] = emergency;
+    }
+  });
+
+  return {
+    permitMap: permitMap,
+    tbmMap: tbmMap,
+    emergencyMap: emergencyMap
+  };
+}
+
+
+/* =========================================================
+   10. 작업 실행상태 판정
+
+   상태 우선순위:
+   1. 작업완료
+   2. 작업중지
+   3. 작업중
+   4. 허가완료
+   5. 허가진행중
+   6. 대기중
+   ========================================================= */
+
+function resolveWorkExecution(
+  work,
+  maps
+){
+  var workId =
+    work.workId ||
+    work.id;
+
+  var permit =
+    maps.permitMap[workId] ||
+    null;
+
+  var permitNo =
+    permit &&
+    permit.permitNo
+      ? permit.permitNo
+      : null;
+
+  var tbm = permitNo
+    ? maps.tbmMap[permitNo] || null
+    : null;
+
+  var emergency = permitNo
+    ? maps.emergencyMap[permitNo] || null
+    : null;
+
+  var status = getPermitStatus(
+    permit
+  );
+
+  if(
+    isPermitCompleted(
+      permit,
+      status
+    )
+  ){
+    status = '작업완료';
+  }else if(
+    emergency ||
+    status === '작업중지'
+  ){
+    status = '작업중지';
+  }else if(
+    status === '작업중'
+  ){
+    status = '작업중';
+  }else if(tbm){
+    /*
+      완료 또는 중지 상태를 확인한 뒤에만
+      과거 TBM 데이터로 작업중 상태를 보정한다.
+    */
+    status = '작업중';
+  }else if(
+    status === '허가완료'
+  ){
+    status = '허가완료';
+  }else if(
+    status === '허가진행중'
+  ){
+    status = '허가진행중';
+  }else if(!permit){
+    status = '대기중';
+  }
+
+  return {
+    workId: workId,
+    permit: permit,
+    permitNo: permitNo,
+    tbm: tbm,
+    emergency: emergency,
+    status: status
+  };
+}
+
+
+/* =========================================================
+   11. 작업 현황 카운트 함수 전체 교체
+   ========================================================= */
+
+function updateWorkStatus(){
+  var maps = buildExecutionMaps();
+
+  var cntWait = 0;
+  var cntRun = 0;
+  var cntStop = 0;
+  var cntDone = 0;
+  var cntDanger = 0;
+
+  dispWorks.forEach(function(work){
+    if(work.riskLevel === '고위험'){
+      cntDanger++;
+    }
+
+    var execution = resolveWorkExecution(
+      work,
+      maps
+    );
+
+    var status = execution.status;
+
+    if(
+      status === '작업완료' ||
+      status === '완료'
+    ){
+      cntDone++;
+    }else if(
+      status === '작업중지'
+    ){
+      cntStop++;
+    }else if(
+      status === '허가완료' ||
+      status === '작업중'
+    ){
+      cntRun++;
+    }else{
+      cntWait++;
+    }
+  });
+
+  setTxt(
+    'cntTotal',
+    dispWorks.length
+  );
+
+  setTxt(
+    'cntDanger',
+    cntDanger
+  );
+
+  setTxt(
+    'cntWait',
+    cntWait
+  );
+
+  setTxt(
+    'cntRun',
+    cntRun
+  );
+
+  setTxt(
+    'cntStop',
+    cntStop
+  );
+
+  setTxt(
+    'cntDone',
+    cntDone
+  );
+
+  [
+    'cntWait',
+    'cntRun',
+    'cntStop',
+    'cntDone'
+  ].forEach(function(id){
+    var element = document.getElementById(
+      id
+    );
+
+    if(!element){
+      return;
+    }
+
+    var value = parseInt(
+      element.textContent,
+      10
+    ) || 0;
+
+    if(value === 0){
+      element.classList.add(
+        'zero'
+      );
+    }else{
+      element.classList.remove(
+        'zero'
+      );
+    }
+  });
+}
+
+
+/* =========================================================
+   12. 상태별 작업 목록 함수 전체 교체
+   ========================================================= */
+
+function openStatusSheet(filter){
+  var maps = buildExecutionMaps();
+
+  var enriched = dispWorks.map(
+    function(work){
+      var execution = resolveWorkExecution(
+        work,
+        maps
+      );
+
+      return {
+        workId:
+          work.workId ||
+          work.id,
+
+        workName:
+          work.workName ||
+          '미지정',
+
+        company:
+          work.company ||
+          '미지정',
+
+        location:
+          work.location ||
+          work.locationRaw ||
+          '미지정',
+
+        riskLevel:
+          work.riskLevel ||
+          '일반',
+
+        status:
+          execution.status,
+
+        permit:
+          execution.permit,
+
+        permitNo:
+          execution.permitNo,
+
+        tbm:
+          execution.tbm,
+
+        emergency:
+          execution.emergency
+      };
+    }
+  );
+
+  var filtered = [];
+  var title = '작업 목록';
+
+  if(filter === 'wait'){
+    filtered = enriched.filter(
+      function(work){
+        return (
+          work.status === '대기중' ||
+          work.status === '허가진행중'
+        );
+      }
+    );
+
+    title = '🟡 허가전 작업';
+  }else if(filter === 'run'){
+    filtered = enriched.filter(
+      function(work){
+        return (
+          work.status === '허가완료' ||
+          work.status === '작업중'
+        );
+      }
+    );
+
+    title = '🟠 작업중';
+  }else if(filter === 'stop'){
+    filtered = enriched.filter(
+      function(work){
+        return (
+          work.status === '작업중지'
+        );
+      }
+    );
+
+    title = '🔴 작업중지';
+  }else if(filter === 'done'){
+    filtered = enriched.filter(
+      function(work){
+        return (
+          work.status === '작업완료' ||
+          work.status === '완료'
+        );
+      }
+    );
+
+    title = '🟢 작업완료';
+  }else if(filter === 'danger'){
+    filtered = enriched.filter(
+      function(work){
+        return (
+          work.riskLevel === '고위험'
+        );
+      }
+    );
+
+    title = '🚨 고위험 작업';
+  }else{
+    filtered = enriched;
+    title = '📋 전체 작업';
+  }
+
+  var titleElement = document.getElementById(
+    'wsSheetTitle'
+  );
+
+  if(titleElement){
+    titleElement.innerHTML =
+      title +
+      ' <span style="' +
+      'background:var(--tint);' +
+      'color:var(--posco);' +
+      'font-size:12px;' +
+      'font-weight:800;' +
+      'padding:2px 8px;' +
+      'border-radius:5px;' +
+      'margin-left:6px;' +
+      '">' +
+      filtered.length +
+      '건</span>';
+  }
+
+  renderStatusSheet(
+    filtered,
+    filter
+  );
+
+  openSheet('ws');
+}
+
+
+/* =========================================================
+   13. 설정 화면 안내 문구 자동 변경
+
+   기존 HTML을 별도로 수정하지 않아도 패치 실행 시 변경한다.
+   ========================================================= */
+
+function updateWorkLedgerGuide(){
+  var infoElement = document.querySelector(
+    '.db-info-txt'
+  );
+
+  if(infoElement){
+    infoElement.innerHTML =
+      '<strong>📌 작업관리대장 가져오기</strong><br>' +
+      '① 긴급조치 작업관리대장 엑셀 열기<br>' +
+      '② 헤더와 작업 데이터를 전체 선택 후 <strong>Ctrl+C</strong><br>' +
+      '③ 아래 입력창에 <strong>Ctrl+V</strong><br>' +
+      '④ 변환 및 저장 → 기존 데이터와 병합<br>' +
+      '※ 동일한 일자와 NO는 신규 추가가 아닌 갱신 처리됩니다.';
+  }
+
+  var titleElement = document.querySelector(
+    '.db-area-title'
+  );
+
+  if(titleElement){
+    titleElement.textContent =
+      '📊 작업관리대장 복사·붙여넣기';
+  }
+
+  var pasteElement = document.getElementById(
+    'dbPaste'
+  );
+
+  if(pasteElement){
+    pasteElement.placeholder =
+      '작업관리대장 엑셀 범위를 복사하여 붙여넣기(Ctrl+V)...';
+  }
+}
+
+
+/* =========================================================
+   14. 데이터 변경 감지 보강
+   ========================================================= */
+
+window.addEventListener(
+  'storage',
+  function(event){
+    if(
+      event.key === 'emergencies'
+    ){
+      setTimeout(
+        function(){
+          updateWorkStatus();
+        },
+        100
+      );
+    }
+  }
+);
+
+window.addEventListener(
+  'app-data-changed',
+  function(event){
+    var key =
+      event.detail &&
+      event.detail.key;
+
+    if(key === 'emergencies'){
+      setTimeout(
+        function(){
+          updateWorkStatus();
+        },
+        100
+      );
+    }
+  }
+);
+
+
+/* =========================================================
+   15. 개발자용 데이터 검사 함수
+
+   브라우저 콘솔에서 inspectSafetyDatabase() 실행 가능
+   ========================================================= */
+
+window.inspectSafetyDatabase = function(){
+  var database = {};
+
+  try{
+    database = JSON.parse(
+      localStorage.getItem(
+        'safetyDatabase'
+      ) || '{}'
+    );
+  }catch(error){
+    console.error(
+      'safetyDatabase JSON 파싱 실패:',
+      error
+    );
+
+    return null;
+  }
+
+  var workHistory = Array.isArray(
+    database.workHistory
+  )
+    ? database.workHistory
+    : [];
+
+  var workIdSet = new Set();
+  var duplicateWorkIds = [];
+  var missingWorkIds = [];
+  var missingWorkNames = [];
+  var missingLocations = [];
+
+  workHistory.forEach(function(work, index){
+    var workId =
+      work.workId ||
+      makeWorkId(
+        work.date,
+        work.originalNo
+      );
+
+    if(!workId){
+      missingWorkIds.push(index);
+    }else if(workIdSet.has(workId)){
+      duplicateWorkIds.push(workId);
+    }else{
+      workIdSet.add(workId);
+    }
+
+    if(
+      !work.workNameFull &&
+      !work.workName
+    ){
+      missingWorkNames.push(
+        workId || index
+      );
+    }
+
+    var hasLocation = Boolean(
+      work.locationRaw ||
+      (
+        work.location &&
+        (
+          work.location.raw ||
+          work.location.factory
+        )
+      )
+    );
+
+    if(!hasLocation){
+      missingLocations.push(
+        workId || index
+      );
+    }
+  });
+
+  var result = {
+    metadata:
+      database.metadata || {},
+
+    totalCount:
+      workHistory.length,
+
+    missingWorkIdCount:
+      missingWorkIds.length,
+
+    duplicateWorkIdCount:
+      duplicateWorkIds.length,
+
+    missingWorkNameCount:
+      missingWorkNames.length,
+
+    missingLocationCount:
+      missingLocations.length,
+
+    missingWorkIds:
+      missingWorkIds,
+
+    duplicateWorkIds:
+      duplicateWorkIds,
+
+    missingWorkNames:
+      missingWorkNames,
+
+    missingLocations:
+      missingLocations,
+
+    firstWork:
+      workHistory[0] || null
+  };
+
+  console.log(
+    '작업관리대장 검사 결과:',
+    result
+  );
+
+  console.table([
+    {
+      item: '전체 작업',
+      count: result.totalCount
+    },
+    {
+      item: 'workId 누락',
+      count: result.missingWorkIdCount
+    },
+    {
+      item: 'workId 중복',
+      count: result.duplicateWorkIdCount
+    },
+    {
+      item: '작업명 누락',
+      count: result.missingWorkNameCount
+    },
+    {
+      item: '작업장소 누락',
+      count: result.missingLocationCount
+    }
+  ]);
+
+  return result;
+};
+
+
+/* =========================================================
+   16. 붙여넣기 데이터 열 위치 확인 함수
+
+   설정 페이지 입력창에 데이터를 붙여넣은 상태에서
+   브라우저 콘솔에서 inspectPastedColumns() 실행 가능
+   ========================================================= */
+
+window.inspectPastedColumns = function(){
+  var pasteElement = document.getElementById(
+    'dbPaste'
+  );
+
+  if(!pasteElement){
+    console.error(
+      'dbPaste 입력창을 찾을 수 없습니다.'
+    );
+
+    return null;
+  }
+
+  var rows = parseTSV(
+    pasteElement.value
+  );
+
+  var firstDataRow = rows.find(function(row){
+    return Boolean(
+      exDate(
+        cleanCell(row[0])
+      )
+    );
+  });
+
+  if(!firstDataRow){
+    console.warn(
+      '일자로 시작하는 작업 데이터 행을 찾지 못했습니다.'
+    );
+
+    return null;
+  }
+
+  var result = firstDataRow.map(
+    function(value, index){
+      return {
+        index: index,
+        value: cleanCell(value)
+      };
+    }
+  );
+
+  console.table(result);
+
+  return result;
+};
+
+
+/* =========================================================
+   17. 기존 데이터 백업 함수
+
+   브라우저 콘솔에서 backupSafetyDatabase() 실행 가능
+   ========================================================= */
+
+window.backupSafetyDatabase = function(){
+  var raw = localStorage.getItem(
+    'safetyDatabase'
+  );
+
+  if(!raw){
+    console.warn(
+      '백업할 safetyDatabase가 없습니다.'
+    );
+
+    return null;
+  }
+
+  var now = new Date();
+
+  var backupKey =
+    'safetyDatabase_backup_' +
+    now.getFullYear() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    '_' +
+    pad(now.getHours()) +
+    pad(now.getMinutes()) +
+    pad(now.getSeconds());
+
+  localStorage.setItem(
+    backupKey,
+    raw
+  );
+
+  console.log(
+    '작업DB 백업 완료:',
+    backupKey
+  );
+
+  showToast(
+    '작업DB 백업 완료',
+    'success'
+  );
+
+  return backupKey;
+};
+
+
+/* =========================================================
+   18. 패치 적용 및 화면 갱신
+   ========================================================= */
+
+updateWorkLedgerGuide();
+
+/*
+  기존 init()은 앞의 script에서 이미 실행되었다.
+  패치 함수로 다시 읽어 화면 데이터를 갱신한다.
+*/
+loadDB();
+loadPermits();
+updateWorkStatus();
+
+console.log(
+  '[대시보드 패치] 작업관리대장 통합 패치 v7.1 적용 완료'
+);
+</script>
 </body>
 </html>
