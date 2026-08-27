@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko" data-theme="light">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>   
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1361,35 +1363,123 @@ window.addEventListener('DOMContentLoaded', function(){
 // ═══════════════════════════════
 async function loadJSADatabase(){
   try {
-    // Firestore 이관 전: localStorage 캐시 우선
+    // 1) localStorage 캐시 우선
     var cached = localStorage.getItem('jsa_database');
     var cachedAt = parseInt(localStorage.getItem('jsa_database_at') || '0');
     var CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
-    
+
     if(cached && Date.now() - cachedAt < CACHE_DURATION){
       jsaDatabase = JSON.parse(cached);
       console.log('✅ JSA_DB 캐시 로드:', jsaDatabase.length + '건');
       return;
     }
-    
-    // 별도 파일에서 로드
+
+    // 2) Firebase 설정
+    var firebaseConfig = {
+      apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+      authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+      projectId: "safety-management-platfo-5f413",
+      storageBucket: "safety-management-platfo-5f413.firebasestorage.app",
+      messagingSenderId: "96226952530",
+      appId: "1:96226952530:web:07e7cb286dc4e120cea68b",
+      measurementId: "G-KNK5ECRCX5"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    var db = firebase.firestore();
+
+    // 3) Firestore 테스트 컬렉션 읽기
+    var snapshot = await db.collection('jsa_test_v3_rows').get();
+
+    if (!snapshot.empty) {
+      var rows = [];
+
+      snapshot.forEach(function(doc){
+        var data = doc.data() || {};
+
+        rows.push({
+          id: doc.id,
+          docId: data.docId || doc.id,
+          jsaId: data.jsaId || '',
+          rowNo: Number(data.rowNo || 0),
+          no: data.no || '',
+          classCode: data.classCode || '',
+          sheet: data.sheet || '',
+          workType: data.workType || '',
+          workSubType: data.workSubType || '',
+          workName: data.workName || '',
+          workStage: data.workStage || '',
+          equipment: data.equipment || '',
+          materials: data.materials || '',
+          originalHazard: data.originalHazard || '',
+          accidentType: data.accidentType || '',
+          scenario: data.scenario || '',
+          detailedMeasures: data.detailedMeasures || '',
+          standardMeasures: data.standardMeasures || '',
+          controlAdequacy: data.controlAdequacy || '',
+          remark: data.remark || '',
+          datasetType: data.datasetType || 'test',
+          datasetVersion: data.datasetVersion || '',
+          sourceType: data.sourceType || '',
+          sourceFile: data.sourceFile || '',
+          status: data.status || 'active',
+          isProduction: data.isProduction === true
+        });
+      });
+
+      rows.sort(function(a, b){
+        var j1 = String(a.jsaId || '');
+        var j2 = String(b.jsaId || '');
+        if (j1 < j2) return -1;
+        if (j1 > j2) return 1;
+        return Number(a.rowNo || 0) - Number(b.rowNo || 0);
+      });
+
+      jsaDatabase = rows;
+
+      localStorage.setItem('jsa_database', JSON.stringify(jsaDatabase));
+      localStorage.setItem('jsa_database_at', String(Date.now()));
+
+      console.log('✅ Firestore JSA_DB 로드:', jsaDatabase.length + '건');
+      return;
+    }
+
+    console.warn('⚠️ Firestore 컬렉션이 비어 있습니다. JSON fallback 시도');
+
+    // 4) fallback: 기존 JSON
     var response = await fetch('data/jsa_database.json');
     if(response.ok){
       jsaDatabase = await response.json();
       localStorage.setItem('jsa_database', JSON.stringify(jsaDatabase));
       localStorage.setItem('jsa_database_at', String(Date.now()));
-      console.log('✅ JSA_DB 신규 로드:', jsaDatabase.length + '건');
+      console.log('✅ JSON fallback 로드:', jsaDatabase.length + '건');
     } else {
-      // 파일 없으면 빈 배열
       jsaDatabase = [];
       console.warn('⚠️ JSA_DB 파일 없음. 검색 기능 제한됨.');
     }
+
   } catch(e) {
     console.error('❌ JSA_DB 로드 실패:', e);
+
+    try {
+      var response = await fetch('data/jsa_database.json');
+      if(response.ok){
+        jsaDatabase = await response.json();
+        localStorage.setItem('jsa_database', JSON.stringify(jsaDatabase));
+        localStorage.setItem('jsa_database_at', String(Date.now()));
+        console.log('✅ 오류 후 JSON fallback 로드:', jsaDatabase.length + '건');
+        return;
+      }
+    } catch(jsonErr){
+      console.error('❌ JSON fallback도 실패:', jsonErr);
+    }
+
     jsaDatabase = [];
   }
 }
-
 // ═══════════════════════════════
 // 시간 유틸 (KST 규약 준수)
 // ═══════════════════════════════
@@ -2157,7 +2247,7 @@ function applyJSAData(idx){
   
   // riskData에 저장
   riskData.referencedJSA = {
-    jsaId: jsa.no ? 'JSA-'+jsa.no : null,
+    jsaId: jsa.jsaId || (jsa.no ? 'JSA-' + jsa.no : null),
     workName: jsa.workName,
     similarity: candidate.score,
     originalHazard: jsa.originalHazard,
