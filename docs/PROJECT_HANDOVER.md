@@ -327,3 +327,22 @@
 match /jsaDatabase/{document=**} {
   allow read, write: if true;
 }
+## 작업DB Firestore 이관 완료
+
+- 대시보드 작업관리대장 구조 보강 완료
+- localStorage `safetyDatabase.workHistory` → Firestore `작업DB` 이관 완료
+- Firestore 문서 ID는 `workId` 사용
+- `workId` 형식: `{date}_{originalNo}`
+- 작업DB 전체 703건 업로드 완료
+- localStorage 703건 / Firestore 703건 일치 확인
+- workId 오류 0건 확인
+- 기존 문서 스킵 방식 적용
+- `rawColumns`는 Firestore 업로드 대상에서 제외
+- 대시보드 설정 화면에 다음 기능 추가
+  - 작업DB 10건 확인 업로드
+  - 작업DB 건수 확인
+  - 작업DB 전체 업로드
+  - 로컬 건수 새로고침
+- Firestore 컬렉션: `작업DB`
+- 현재 Firestore Rules는 작업DB 테스트 편의를 위해 공개 상태
+- 운영 전 Firebase Authentication 기반 Rules 전환 필요
