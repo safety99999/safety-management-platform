@@ -3030,5 +3030,1543 @@ document.addEventListener('keydown', function(e){
   }
 });
 </script>
+<style>
+/* =========================================================
+   작업허가서 오늘 작업 선택 화면 패치
+   ========================================================= */
+
+.ptw-work-list-wrap{
+  padding:16px 0 30px;
+}
+
+.ptw-list-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.ptw-list-title{
+  font-size:15px;
+  font-weight:800;
+  color:var(--body);
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.ptw-list-count{
+  font-size:14px;
+  font-weight:800;
+  color:var(--posco);
+}
+
+.ptw-filter-chips{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  padding:0 0 11px;
+  scrollbar-width:none;
+}
+
+.ptw-filter-chips::-webkit-scrollbar{
+  display:none;
+}
+
+.ptw-filter-chip{
+  flex-shrink:0;
+  padding:9px 16px;
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  background:var(--card);
+  color:var(--sub);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.ptw-filter-chip.active{
+  background:var(--deep);
+  border-color:var(--deep);
+  color:#fff;
+}
+
+.ptw-filter-chip:active{
+  transform:scale(.96);
+}
+
+.ptw-company-filter{
+  width:100%;
+  margin-bottom:12px;
+  padding:13px 42px 13px 14px;
+  border:1.5px solid var(--line);
+  border-radius:12px;
+  background-color:var(--card);
+  color:var(--ink);
+  font-family:inherit;
+  font-size:14px;
+  font-weight:700;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:18px;
+}
+
+.ptw-work-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:15px 16px;
+  margin-bottom:10px;
+  box-shadow:var(--sh);
+}
+
+.ptw-work-card.high-risk{
+  border-left:5px solid var(--stop);
+}
+
+.ptw-work-card.normal-risk{
+  border-left:5px solid var(--done);
+}
+
+.ptw-work-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:9px;
+}
+
+.ptw-risk-badge,
+.ptw-permit-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:4px 9px;
+  border-radius:6px;
+  font-size:11px;
+  font-weight:800;
+}
+
+.ptw-risk-badge.high{
+  background:var(--stop);
+  color:#fff;
+}
+
+.ptw-risk-badge.normal{
+  background:var(--done);
+  color:#fff;
+}
+
+.ptw-permit-status.none{
+  background:var(--sunk);
+  color:var(--sub);
+}
+
+.ptw-permit-status.progress{
+  background:var(--warn-bg);
+  color:var(--warn);
+}
+
+.ptw-permit-status.approved{
+  background:var(--tint);
+  color:var(--posco);
+}
+
+.ptw-permit-status.running{
+  background:var(--run-bg);
+  color:var(--run);
+}
+
+.ptw-permit-status.stopped{
+  background:var(--stop-bg);
+  color:var(--stop);
+}
+
+.ptw-permit-status.completed{
+  background:var(--done-bg);
+  color:var(--done);
+}
+
+.ptw-work-name{
+  font-size:16px;
+  font-weight:800;
+  line-height:1.45;
+  letter-spacing:-.025em;
+  color:var(--ink);
+  margin-bottom:9px;
+  word-break:break-word;
+}
+
+.ptw-work-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 11px;
+  color:var(--sub);
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.5;
+  margin-bottom:12px;
+}
+
+.ptw-work-source{
+  padding-top:10px;
+  border-top:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.ptw-work-no{
+  min-width:0;
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--faint);
+  word-break:break-all;
+}
+
+.ptw-start-btn{
+  flex-shrink:0;
+  border:0;
+  border-radius:11px;
+  padding:11px 14px;
+  background:linear-gradient(135deg,var(--deep),var(--bright));
+  color:#fff;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.ptw-start-btn:active{
+  transform:scale(.96);
+}
+
+.ptw-start-btn.existing{
+  background:var(--sunk);
+  color:var(--sub);
+  border:1px solid var(--line);
+}
+
+.ptw-empty{
+  text-align:center;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:38px 20px;
+  box-shadow:var(--sh);
+}
+
+.ptw-empty-icon{
+  font-size:42px;
+  opacity:.45;
+  margin-bottom:10px;
+}
+
+.ptw-empty-title{
+  font-size:17px;
+  font-weight:800;
+  color:var(--ink);
+  margin-bottom:5px;
+}
+
+.ptw-empty-desc{
+  font-size:14px;
+  font-weight:600;
+  color:var(--sub);
+  line-height:1.55;
+}
+
+.ptw-list-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:14px;
+}
+
+.ptw-list-action{
+  padding:14px 10px;
+  border-radius:12px;
+  border:1.5px solid var(--line);
+  background:var(--card);
+  color:var(--body);
+  font-family:inherit;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.ptw-list-action.primary{
+  background:var(--deep);
+  border-color:var(--deep);
+  color:#fff;
+}
+
+.ptw-list-action:active{
+  transform:scale(.97);
+}
+</style>
+
+<script>
+/* =========================================================
+   안전작업허가서 오늘 작업 선택 통합 패치
+   버전: PTW Today Work List v1.0
+
+   기능
+   1. 대시보드에서 선택 버튼 클릭 시 오늘 작업 목록 표시
+   2. 전체 / 1공장 / 2공장 / 기타 필터
+   3. 협력사 필터
+   4. 작업허가 상태 표시
+   5. 기존 허가서가 있는 작업의 중복 생성 방지
+   6. 작업관리대장 신규 필드와 기존 필드 모두 호환
+   ========================================================= */
+
+var ptwTodayWorks = [];
+var ptwFilteredWorks = [];
+var ptwFactoryFilter = 'all';
+var ptwCompanyFilter = 'all';
+
+/* ---------------------------------------------------------
+   공통 안전 함수
+   --------------------------------------------------------- */
+
+function ptwClean(value){
+  return String(
+    value == null ? '' : value
+  ).trim();
+}
+
+function ptwEsc(value){
+  return ptwClean(value)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+function ptwMakeWorkId(work){
+  if(!work){
+    return '';
+  }
+
+  if(work.workId){
+    return ptwClean(work.workId);
+  }
+
+  var date = ptwClean(work.date);
+  var originalNo = ptwClean(
+    work.originalNo
+  ).split(' ').join('');
+
+  if(!date || !originalNo){
+    return '';
+  }
+
+  return date + '_' + originalNo;
+}
+
+function ptwGetToday(){
+  var now = new Date();
+
+  return (
+    now.getFullYear() +
+    '-' +
+    pad(now.getMonth() + 1) +
+    '-' +
+    pad(now.getDate())
+  );
+}
+
+function ptwLoadArray(key){
+  try{
+    var parsed = JSON.parse(
+      localStorage.getItem(key) || '[]'
+    );
+
+    if(Array.isArray(parsed)){
+      return parsed;
+    }
+
+    if(
+      parsed &&
+      typeof parsed === 'object'
+    ){
+      return Object.values(parsed);
+    }
+
+    return [];
+  }catch(error){
+    console.error(
+      key + ' 조회 실패:',
+      error
+    );
+
+    return [];
+  }
+}
+
+function ptwGetWorkLocation(work){
+  if(!work){
+    return '미지정';
+  }
+
+  if(work.locationRaw){
+    return ptwClean(work.locationRaw);
+  }
+
+  if(work.workPlaceRaw){
+    return ptwClean(work.workPlaceRaw);
+  }
+
+  if(
+    work.location &&
+    typeof work.location === 'string'
+  ){
+    return ptwClean(work.location);
+  }
+
+  if(
+    work.location &&
+    typeof work.location === 'object'
+  ){
+    if(work.location.raw){
+      return ptwClean(work.location.raw);
+    }
+
+    var locationParts = [];
+
+    if(work.location.factory){
+      locationParts.push(
+        ptwClean(work.location.factory)
+      );
+    }
+
+    if(work.location.line){
+      locationParts.push(
+        ptwClean(work.location.line) +
+        '라인'
+      );
+    }
+
+    if(work.location.stage){
+      locationParts.push(
+        ptwClean(work.location.stage)
+      );
+    }
+
+    if(locationParts.length){
+      return locationParts.join(' ');
+    }
+  }
+
+  return '미지정';
+}
+
+function ptwGetCompany(work){
+  return (
+    ptwClean(work.executingCompany) ||
+    ptwClean(work.subcontractCompany) ||
+    ptwClean(work.contractCompany) ||
+    ptwClean(work.company) ||
+    '미지정'
+  );
+}
+
+function ptwGetWorkName(work){
+  return (
+    ptwClean(work.workName) ||
+    ptwClean(work.workNameFull) ||
+    '작업명 미지정'
+  );
+}
+
+function ptwGetWorkDepartment(work){
+  return (
+    ptwClean(work.requestingDepartment) ||
+    ptwClean(work.instructionDept) ||
+    ptwClean(work.operatingDepartment) ||
+    ptwClean(work.operationDept) ||
+    '부서 미지정'
+  );
+}
+
+function ptwGetRiskLevel(work){
+  var risk = (
+    ptwClean(work.risk) ||
+    ptwClean(work.riskLevel) ||
+    '일반'
+  );
+
+  return risk === '고위험'
+    ? '고위험'
+    : '일반';
+}
+
+function ptwGetFactoryGroup(work){
+  var text = [
+    ptwGetWorkLocation(work),
+    ptwClean(work.workNameFull),
+    ptwClean(work.workName)
+  ].join(' ').split(' ').join('');
+
+  if(
+    text.indexOf('2-2단계') >= 0 ||
+    text.indexOf('2공장') >= 0 ||
+    text.indexOf('공장B') >= 0
+  ){
+    return 'factory2';
+  }
+
+  if(
+    text.indexOf('2-1단계') >= 0 ||
+    text.indexOf('1공장') >= 0 ||
+    text.indexOf('공장A') >= 0
+  ){
+    return 'factory1';
+  }
+
+  return 'other';
+}
+
+/* ---------------------------------------------------------
+   permit 조회 및 상태 표시
+   --------------------------------------------------------- */
+
+function ptwBuildPermitMap(){
+  var permitList = ptwLoadArray(
+    'safetyPermits'
+  );
+
+  var permitMap = {};
+
+  permitList.forEach(function(permit){
+    if(!permit){
+      return;
+    }
+
+    var linkedWorkId =
+      ptwClean(permit.workId) ||
+      ptwClean(permit.sourceWorkId);
+
+    if(!linkedWorkId){
+      return;
+    }
+
+    var previous = permitMap[linkedWorkId];
+
+    if(!previous){
+      permitMap[linkedWorkId] = permit;
+      return;
+    }
+
+    var previousTime = new Date(
+      previous.updatedAt ||
+      previous.createdAt ||
+      0
+    ).getTime();
+
+    var currentTime = new Date(
+      permit.updatedAt ||
+      permit.createdAt ||
+      0
+    ).getTime();
+
+    if(
+      !isNaN(currentTime) &&
+      (
+        isNaN(previousTime) ||
+        currentTime >= previousTime
+      )
+    ){
+      permitMap[linkedWorkId] = permit;
+    }
+  });
+
+  return permitMap;
+}
+
+function ptwGetPermitStatus(permit){
+  if(!permit){
+    return '미작성';
+  }
+
+  return (
+    ptwClean(permit.permitStatus) ||
+    ptwClean(permit.status) ||
+    '허가진행중'
+  );
+}
+
+function ptwGetStatusClass(status){
+  if(
+    status === '작업완료' ||
+    status === '완료'
+  ){
+    return 'completed';
+  }
+
+  if(status === '작업중지'){
+    return 'stopped';
+  }
+
+  if(status === '작업중'){
+    return 'running';
+  }
+
+  if(status === '허가완료'){
+    return 'approved';
+  }
+
+  if(
+    status === '허가진행중' ||
+    status === '작성중'
+  ){
+    return 'progress';
+  }
+
+  return 'none';
+}
+
+/* ---------------------------------------------------------
+   오늘 작업 목록 화면 생성
+   --------------------------------------------------------- */
+
+function ptwCreateTodayWorkScreen(){
+  if(
+    document.getElementById(
+      'screen-today-work-list'
+    )
+  ){
+    return;
+  }
+
+  var app = document.querySelector('.app');
+
+  if(!app){
+    console.error(
+      '작업허가서 app 영역을 찾지 못했습니다.'
+    );
+    return;
+  }
+
+  var screen = document.createElement('div');
+
+  screen.className = 'screen';
+  screen.id = 'screen-today-work-list';
+
+  screen.innerHTML =
+    '<div class="ptw-work-list-wrap">' +
+
+      '<div class="welcome-hero" style="padding:25px 20px;margin-bottom:16px;">' +
+        '<div class="welcome-ico" style="font-size:43px;">📋</div>' +
+        '<div class="welcome-title" style="font-size:23px;">오늘 작업 선택</div>' +
+        '<div class="welcome-sub">작업관리대장에 등록된 오늘 작업에서<br>허가 대상 작업을 선택하세요.</div>' +
+      '</div>' +
+
+      '<div class="ptw-list-header">' +
+        '<div class="ptw-list-title">📅 오늘 작업 목록</div>' +
+        '<div class="ptw-list-count" id="ptwTodayCount">0건</div>' +
+      '</div>' +
+
+      '<div class="ptw-filter-chips">' +
+        '<button class="ptw-filter-chip active" data-filter="all" onclick="ptwSetFactoryFilter(\'all\',this)">전체</button>' +
+        '<button class="ptw-filter-chip" data-filter="factory1" onclick="ptwSetFactoryFilter(\'factory1\',this)">1공장</button>' +
+        '<button class="ptw-filter-chip" data-filter="factory2" onclick="ptwSetFactoryFilter(\'factory2\',this)">2공장</button>' +
+        '<button class="ptw-filter-chip" data-filter="other" onclick="ptwSetFactoryFilter(\'other\',this)">기타</button>' +
+      '</div>' +
+
+      '<select class="ptw-company-filter" id="ptwCompanyFilter" onchange="ptwSetCompanyFilter(this.value)">' +
+        '<option value="all">🏢 전체 협력사</option>' +
+      '</select>' +
+
+      '<div id="ptwTodayWorkCards"></div>' +
+
+      '<div class="ptw-list-actions">' +
+        '<button class="ptw-list-action" onclick="ptwCloseTodayWorkList()">← 이전</button>' +
+        '<button class="ptw-list-action primary" onclick="ptwStartManualPermit()">✏️ 신규 작성</button>' +
+      '</div>' +
+
+    '</div>';
+
+  app.appendChild(screen);
+}
+
+/* ---------------------------------------------------------
+   작업관리대장 오늘 작업 조회
+   --------------------------------------------------------- */
+
+function ptwLoadTodayWorks(){
+  var workHistory = [];
+
+  try{
+    var raw = localStorage.getItem(
+      'safetyDatabase'
+    );
+
+    var database = raw
+      ? JSON.parse(raw)
+      : {};
+
+    workHistory = Array.isArray(
+      database.workHistory
+    )
+      ? database.workHistory
+      : [];
+  }catch(error){
+    console.error(
+      '작업관리대장 조회 실패:',
+      error
+    );
+
+    workHistory = [];
+  }
+
+  var today = ptwGetToday();
+  var permitMap = ptwBuildPermitMap();
+
+  ptwTodayWorks = workHistory
+    .filter(function(work){
+      return ptwClean(work.date) === today;
+    })
+    .map(function(work){
+      var workId = ptwMakeWorkId(work);
+      var permit = workId
+        ? permitMap[workId] || null
+        : null;
+
+      return {
+        raw: work,
+        workId: workId,
+        workName: ptwGetWorkName(work),
+        location: ptwGetWorkLocation(work),
+        company: ptwGetCompany(work),
+        department: ptwGetWorkDepartment(work),
+        riskLevel: ptwGetRiskLevel(work),
+        factoryGroup: ptwGetFactoryGroup(work),
+        workerCount:
+          work.workerCount ||
+          work.workerCountRaw ||
+          '',
+        workTime:
+          ptwClean(work.workTimeRaw),
+        workOrderNo:
+          ptwClean(work.workOrderNo),
+        permit: permit,
+        permitStatus:
+          ptwGetPermitStatus(permit)
+      };
+    })
+    .sort(function(first, second){
+      return String(
+        first.raw.originalNo || ''
+      ).localeCompare(
+        String(second.raw.originalNo || ''),
+        undefined,
+        {
+          numeric:true,
+          sensitivity:'base'
+        }
+      );
+    });
+
+  ptwBuildCompanyOptions();
+  ptwApplyWorkFilters();
+}
+
+function ptwBuildCompanyOptions(){
+  var select = document.getElementById(
+    'ptwCompanyFilter'
+  );
+
+  if(!select){
+    return;
+  }
+
+  var companies = [];
+
+  ptwTodayWorks.forEach(function(work){
+    if(
+      work.company &&
+      work.company !== '미지정' &&
+      companies.indexOf(work.company) < 0
+    ){
+      companies.push(work.company);
+    }
+  });
+
+  companies.sort(function(a,b){
+    return a.localeCompare(b,'ko');
+  });
+
+  var html =
+    '<option value="all">🏢 전체 협력사</option>';
+
+  companies.forEach(function(company){
+    html +=
+      '<option value="' +
+      ptwEsc(company) +
+      '">' +
+      ptwEsc(company) +
+      '</option>';
+  });
+
+  select.innerHTML = html;
+  select.value = ptwCompanyFilter;
+}
+
+/* ---------------------------------------------------------
+   필터
+   --------------------------------------------------------- */
+
+function ptwSetFactoryFilter(filter,button){
+  ptwFactoryFilter = filter;
+
+  document.querySelectorAll(
+    '.ptw-filter-chip'
+  ).forEach(function(chip){
+    chip.classList.remove('active');
+  });
+
+  if(button){
+    button.classList.add('active');
+  }
+
+  ptwApplyWorkFilters();
+}
+
+function ptwSetCompanyFilter(company){
+  ptwCompanyFilter = company || 'all';
+  ptwApplyWorkFilters();
+}
+
+function ptwApplyWorkFilters(){
+  ptwFilteredWorks = ptwTodayWorks.filter(
+    function(work){
+      var factoryMatched =
+        ptwFactoryFilter === 'all' ||
+        work.factoryGroup === ptwFactoryFilter;
+
+      var companyMatched =
+        ptwCompanyFilter === 'all' ||
+        work.company === ptwCompanyFilter;
+
+      return factoryMatched && companyMatched;
+    }
+  );
+
+  ptwRenderTodayWorks();
+}
+
+/* ---------------------------------------------------------
+   오늘 작업 카드 렌더링
+   --------------------------------------------------------- */
+
+function ptwRenderTodayWorks(){
+  var container = document.getElementById(
+    'ptwTodayWorkCards'
+  );
+
+  var countElement = document.getElementById(
+    'ptwTodayCount'
+  );
+
+  if(countElement){
+    countElement.textContent =
+      ptwFilteredWorks.length + '건';
+  }
+
+  if(!container){
+    return;
+  }
+
+  if(!ptwFilteredWorks.length){
+    container.innerHTML =
+      '<div class="ptw-empty">' +
+        '<div class="ptw-empty-icon">📭</div>' +
+        '<div class="ptw-empty-title">조건에 맞는 오늘 작업이 없습니다</div>' +
+        '<div class="ptw-empty-desc">작업관리대장의 일자 또는 필터 조건을 확인해 주세요.</div>' +
+      '</div>';
+
+    return;
+  }
+
+  var html = '';
+
+  ptwFilteredWorks.forEach(function(work){
+    var isHighRisk =
+      work.riskLevel === '고위험';
+
+    var statusClass = ptwGetStatusClass(
+      work.permitStatus
+    );
+
+    var hasPermit = Boolean(
+      work.permit
+    );
+
+    var workerText = work.workerCount
+      ? '👥 ' + ptwEsc(work.workerCount) + '명'
+      : '';
+
+    var timeText = work.workTime
+      ? '🕐 ' + ptwEsc(work.workTime)
+      : '';
+
+    var workOrderText = work.workOrderNo
+      ? ' · ' + ptwEsc(work.workOrderNo)
+      : '';
+
+    html +=
+      '<div class="ptw-work-card ' +
+      (isHighRisk ? 'high-risk' : 'normal-risk') +
+      '">' +
+
+        '<div class="ptw-work-top">' +
+          '<span class="ptw-risk-badge ' +
+          (isHighRisk ? 'high' : 'normal') +
+          '">' +
+          ptwEsc(work.riskLevel) +
+          '</span>' +
+
+          '<span class="ptw-permit-status ' +
+          statusClass +
+          '">' +
+          ptwEsc(work.permitStatus) +
+          '</span>' +
+        '</div>' +
+
+        '<div class="ptw-work-name">' +
+          ptwEsc(work.workName) +
+        '</div>' +
+
+        '<div class="ptw-work-meta">' +
+          '<span>📍 ' +
+            ptwEsc(work.location) +
+          '</span>' +
+          '<span>🏢 ' +
+            ptwEsc(work.company) +
+          '</span>' +
+          '<span>🧭 ' +
+            ptwEsc(work.department) +
+          '</span>' +
+          (workerText
+            ? '<span>' + workerText + '</span>'
+            : '') +
+          (timeText
+            ? '<span>' + timeText + '</span>'
+            : '') +
+        '</div>' +
+
+        '<div class="ptw-work-source">' +
+          '<div class="ptw-work-no">' +
+            ptwEsc(work.workId) +
+            workOrderText +
+          '</div>' +
+
+          (
+            hasPermit
+              ? '<button class="ptw-start-btn existing" onclick="ptwHandleExistingPermit(\'' +
+                ptwEsc(work.workId) +
+                '\')">허가 있음</button>'
+              : '<button class="ptw-start-btn" onclick="ptwSelectTodayWork(\'' +
+                ptwEsc(work.workId) +
+                '\')">허가 작성 →</button>'
+          ) +
+        '</div>' +
+
+      '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+/* ---------------------------------------------------------
+   목록 열기 및 닫기
+   --------------------------------------------------------- */
+
+function openTodayWorkList(){
+  ptwCreateTodayWorkScreen();
+
+  ptwFactoryFilter = 'all';
+  ptwCompanyFilter = 'all';
+
+  document.querySelectorAll(
+    '.ptw-filter-chip'
+  ).forEach(function(chip){
+    chip.classList.toggle(
+      'active',
+      chip.getAttribute('data-filter') === 'all'
+    );
+  });
+
+  document.querySelectorAll(
+    '.screen'
+  ).forEach(function(screen){
+    screen.classList.remove('active');
+  });
+
+  var listScreen = document.getElementById(
+    'screen-today-work-list'
+  );
+
+  if(listScreen){
+    listScreen.classList.add('active');
+  }
+
+  currentStep = 0;
+
+  var progress = document.getElementById(
+    'progressWrap'
+  );
+
+  if(progress){
+    progress.style.display = 'none';
+  }
+
+  setTxt(
+    'topnavTitle',
+    '오늘 작업 선택'
+  );
+
+  window.scrollTo(0,0);
+
+  ptwLoadTodayWorks();
+}
+
+function ptwCloseTodayWorkList(){
+  goToScreen('screen-welcome');
+  setTxt(
+    'topnavTitle',
+    '안전작업허가서'
+  );
+}
+
+function ptwStartManualPermit(){
+  ptwCloseTodayWorkList();
+  selectMode('new');
+}
+
+/* ---------------------------------------------------------
+   작업 선택 및 기존 permit 처리
+   --------------------------------------------------------- */
+
+function ptwSelectTodayWork(workId){
+  var selected = ptwTodayWorks.find(
+    function(work){
+      return work.workId === workId;
+    }
+  );
+
+  if(!selected){
+    showToast(
+      '선택한 작업을 찾을 수 없습니다.',
+      'danger'
+    );
+
+    return;
+  }
+
+  if(selected.permit){
+    ptwHandleExistingPermit(workId);
+    return;
+  }
+
+  startFromDB(workId);
+}
+
+function ptwHandleExistingPermit(workId){
+  var selected = ptwTodayWorks.find(
+    function(work){
+      return work.workId === workId;
+    }
+  );
+
+  if(!selected || !selected.permit){
+    return;
+  }
+
+  var permitNo =
+    selected.permit.permitNo ||
+    '번호 없음';
+
+  var status =
+    selected.permitStatus ||
+    '허가진행중';
+
+  showToast(
+    '이미 허가서가 있습니다: ' +
+    permitNo +
+    ' (' +
+    status +
+    ')',
+    'warning'
+  );
+}
+
+/* ---------------------------------------------------------
+   신규 작업관리대장 구조에 맞춘 startFromDB 교체
+   --------------------------------------------------------- */
+
+function startFromDB(wid){
+  isFromDB = true;
+
+  try{
+    var raw = localStorage.getItem(
+      'safetyDatabase'
+    );
+
+    if(!raw){
+      showToast(
+        '작업관리대장이 없습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var database = JSON.parse(raw);
+
+    var workHistory = Array.isArray(
+      database.workHistory
+    )
+      ? database.workHistory
+      : [];
+
+    var work = workHistory.find(function(item){
+      return ptwMakeWorkId(item) === wid;
+    });
+
+    if(!work){
+      showToast(
+        '선택한 작업을 찾을 수 없습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    permitData.workId = wid;
+    permitData.sourceWorkId = wid;
+    permitData.sourceType =
+      work.sourceType ||
+      'excel-paste';
+
+    permitData.sourceRecordId =
+      work.sourceRecordId ||
+      wid;
+
+    permitData.operationDept =
+      work.operatingDepartment ||
+      work.operationDept ||
+      '';
+
+    permitData.instructionDept =
+      work.requestingDepartment ||
+      work.instructionDept ||
+      '';
+
+    permitData.workPlaceRaw =
+      work.locationRaw ||
+      work.workPlaceRaw ||
+      ptwGetWorkLocation(work);
+
+    permitData.woNumber =
+      work.workOrderNo ||
+      genWO();
+
+    permitData.workName =
+      work.workName ||
+      work.workNameFull ||
+      '';
+
+    permitData.workDescription =
+      work.workNameFull ||
+      work.workDescription ||
+      work.workName ||
+      '';
+
+    permitData.companyName =
+      work.executingCompany ||
+      work.subcontractCompany ||
+      work.contractCompany ||
+      work.company ||
+      '';
+
+    permitData.subcontractCompany =
+      work.executingCompany ||
+      work.subcontractCompany ||
+      '';
+
+    permitData.supervisor =
+      work.workManager ||
+      work.workOwner ||
+      work.manager ||
+      '';
+
+    permitData.contractorManager =
+      work.contractorManager ||
+      '';
+
+    var requiredPlan =
+      work.requiredWorkPlan ||
+      work.requiredPlans ||
+      '';
+
+    if(Array.isArray(requiredPlan)){
+      permitData.requiredPlans =
+        requiredPlan;
+    }else if(requiredPlan){
+      permitData.requiredPlans = [
+        requiredPlan
+      ];
+    }else{
+      permitData.requiredPlans = [];
+    }
+
+    permitData.ilsMemoRaw =
+      work.ilsMemoRaw ||
+      work.ilsExecutionRaw ||
+      work.ilsExecution ||
+      '';
+
+    permitData.permitPlace =
+      work.permitLocation ||
+      work.permitPlace ||
+      '';
+
+    permitData.permitApprover =
+      work.permitApprover ||
+      '';
+
+    permitData.permitExecutionFlag =
+      work.permitExecutionFlag ||
+      work.ilsExecution ||
+      '';
+
+    var locationText =
+      ptwGetWorkLocation(work);
+
+    var factoryGroup =
+      ptwGetFactoryGroup(work);
+
+    if(factoryGroup === 'factory1'){
+      permitData.location =
+        '포항양극재 1공장';
+    }else if(factoryGroup === 'factory2'){
+      permitData.location =
+        '포항양극재 2공장';
+    }else{
+      permitData.location = '기타';
+    }
+
+    permitData.detailLocation =
+      locationText;
+
+    permitData.startDate =
+      work.date ||
+      ptwGetToday();
+
+    permitData.endDate =
+      work.date ||
+      ptwGetToday();
+
+    var startTime =
+      work.workStartTime ||
+      '';
+
+    var endTime =
+      work.workEndTime ||
+      '';
+
+    if(
+      (!startTime || !endTime) &&
+      work.workTimeRaw
+    ){
+      var timeParts = String(
+        work.workTimeRaw
+      ).split('~');
+
+      if(timeParts.length < 2){
+        timeParts = String(
+          work.workTimeRaw
+        ).split('～');
+      }
+
+      startTime =
+        startTime ||
+        ptwClean(timeParts[0]);
+
+      endTime =
+        endTime ||
+        ptwClean(timeParts[1]);
+    }
+
+    permitData.startTime =
+      startTime ||
+      '09:00';
+
+    permitData.endTime =
+      endTime ||
+      '18:00';
+
+    permitData.workTimeRaw =
+      work.workTimeRaw ||
+      (
+        permitData.startTime +
+        '~' +
+        permitData.endTime
+      );
+
+    permitData.workerCount =
+      work.workerCount ||
+      parseInt(work.workerCountRaw,10) ||
+      1;
+
+    permitData.workTypes = [];
+
+    setVal(
+      'work-name',
+      permitData.workName
+    );
+
+    setVal(
+      'company-name',
+      permitData.companyName
+    );
+
+    setVal(
+      'supervisor',
+      permitData.supervisor
+    );
+
+    setVal(
+      'start-date',
+      permitData.startDate
+    );
+
+    setVal(
+      'end-date',
+      permitData.endDate
+    );
+
+    setVal(
+      'start-time',
+      permitData.startTime
+    );
+
+    setVal(
+      'end-time',
+      permitData.endTime
+    );
+
+    setVal(
+      'worker-count',
+      permitData.workerCount
+    );
+
+    setVal(
+      'detail-location',
+      permitData.detailLocation
+    );
+
+    setVal(
+      'work-description',
+      permitData.workDescription
+    );
+
+    var locationSelect =
+      document.getElementById('location');
+
+    if(locationSelect){
+      locationSelect.value =
+        permitData.location;
+    }
+
+    setTxt(
+      'wo-display',
+      permitData.woNumber
+    );
+
+    var manualWo =
+      document.getElementById('manual-wo');
+
+    var manualWoInput =
+      document.getElementById(
+        'wo-manual-input'
+      );
+
+    if(manualWo){
+      manualWo.checked = false;
+    }
+
+    if(manualWoInput){
+      manualWoInput.style.display =
+        'none';
+    }
+
+    goToStep(1);
+
+    showToast(
+      '오늘 작업 정보가 자동 입력되었습니다.',
+      'success'
+    );
+  }catch(error){
+    console.error(
+      '작업 선택 오류:',
+      error
+    );
+
+    showToast(
+      '작업 정보를 불러오는 중 오류가 발생했습니다.',
+      'danger'
+    );
+  }
+}
+
+/* ---------------------------------------------------------
+   뒤로가기 보강
+   --------------------------------------------------------- */
+
+var ptwOriginalGoBack = goBack;
+
+goBack = function(){
+  var listScreen = document.getElementById(
+    'screen-today-work-list'
+  );
+
+  if(
+    listScreen &&
+    listScreen.classList.contains('active')
+  ){
+    ptwCloseTodayWorkList();
+    return;
+  }
+
+  ptwOriginalGoBack();
+};
+
+/* ---------------------------------------------------------
+   permitStatus 호환 보강
+   기존 savePermit 실행 후 정식 상태 필드를 추가한다.
+   --------------------------------------------------------- */
+
+var ptwOriginalSavePermit = savePermit;
+
+savePermit = function(){
+  ptwOriginalSavePermit();
+
+  try{
+    var permits = ptwLoadArray(
+      'safetyPermits'
+    );
+
+    var changed = false;
+
+    permits.forEach(function(permit){
+      if(
+        permit &&
+        permit.permitNo ===
+        permitData.permitNo
+      ){
+        permit.permitStatus =
+          permit.status ||
+          '허가진행중';
+
+        if(!permit.workId){
+          permit.workId =
+            permitData.workId ||
+            permitData.sourceWorkId ||
+            null;
+        }
+
+        changed = true;
+      }
+    });
+
+    if(changed){
+      localStorage.setItem(
+        'safetyPermits',
+        JSON.stringify(permits)
+      );
+    }
+  }catch(error){
+    console.error(
+      'permitStatus 보강 실패:',
+      error
+    );
+  }
+};
+
+/* ---------------------------------------------------------
+   환영 화면의 “대시보드에서 선택” 버튼 변경
+   --------------------------------------------------------- */
+
+function ptwConnectWelcomeButton(){
+  var cards = document.querySelectorAll(
+    '#screen-welcome .mode-card'
+  );
+
+  if(cards.length < 2){
+    console.warn(
+      '대시보드 작업 선택 버튼을 찾지 못했습니다.'
+    );
+
+    return;
+  }
+
+  var dashboardCard = cards[1];
+
+  dashboardCard.removeAttribute('href');
+
+  dashboardCard.setAttribute(
+    'href',
+    '#'
+  );
+
+  dashboardCard.onclick = function(event){
+    if(event){
+      event.preventDefault();
+    }
+
+    openTodayWorkList();
+
+    return false;
+  };
+
+  var description =
+    dashboardCard.querySelector(
+      '.mode-desc'
+    );
+
+  if(description){
+    description.innerHTML =
+      '오늘 작업 목록에서<br>허가 작업 선택';
+  }
+}
+
+/* ---------------------------------------------------------
+   초기 적용
+   --------------------------------------------------------- */
+
+window.addEventListener(
+  'DOMContentLoaded',
+  function(){
+    ptwCreateTodayWorkScreen();
+    ptwConnectWelcomeButton();
+
+    console.log(
+      '[작업허가서 패치] 오늘 작업 선택 기능 v1.0 적용 완료'
+    );
+  }
+);
+</script>
+
 </body>
 </html>
