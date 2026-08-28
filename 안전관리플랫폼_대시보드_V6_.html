@@ -1067,7 +1067,9 @@ body{
 var allWorks=[],dispWorks=[],violations=[],permits=[];
 var curFilter='recent';
 var ifWork=null,ifSev=null,ifItems=[],custItems=[],photoData=null;
-var noticeCollapsed=false;
+var noticeCollapsed = window.matchMedia(
+  '(max-width:767px)'
+).matches;
 
 // ═══════════════════════════════════════
 // INIT
@@ -1136,6 +1138,25 @@ function loadNotice(){
   if(!txt){if(noticeEl) noticeEl.style.display='none';return;}
   if(noticeEl) noticeEl.style.display='block';
   if(noticeTextEl) noticeTextEl.textContent=txt;
+
+  if(noticeCollapsed){
+  noticeEl.classList.add('collapsed');
+
+  var toggleElement =
+    document.getElementById('noticeToggle');
+
+  if(toggleElement){
+    toggleElement.textContent='펼치기 ▼';
+  }
+}
+
+if(newBadge){
+  newBadge.style.display =
+    (savedDate!==seenDate)
+      ? 'inline'
+      : 'none';
+}
+  
   if(newBadge) newBadge.style.display=(savedDate!==seenDate)?'inline':'none';
   localStorage.setItem('safetyNoticeSeen',savedDate);
 }
@@ -6220,6 +6241,330 @@ if(document.readyState === "loading"){
   workDbInitialize();
 }
 </script>
+<style>
+/* =========================================================
+   모바일 홈 화면 한 화면 최적화 패치 v1.0
+   - 홈 화면에만 적용
+   - 빠른 실행 외곽 카드 축소
+   - 일반적인 모바일 세로 화면에서 스크롤 최소화
+   ========================================================= */
+
+@media (max-width:767px){
+
+  /*
+    모바일 브라우저 주소창 높이 변화 대응
+  */
+  .app{
+    min-height:100vh;
+    min-height:100dvh;
+  }
+
+  /*
+    홈 화면 히어로 압축
+  */
+  #pageHome .hero{
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      13px;
+  }
+
+  #pageHome .hero-brand{
+    gap:8px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:25px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:10.5px;
+    margin-bottom:1px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:16px;
+  }
+
+  #pageHome .hero-tools{
+    gap:5px;
+  }
+
+  #pageHome .hero-date{
+    font-size:11px;
+  }
+
+  #pageHome .hero-time{
+    font-size:14px;
+  }
+
+  #pageHome .icon-btn{
+    width:36px;
+    height:36px;
+    border-radius:10px;
+    font-size:17px;
+  }
+
+  /*
+    날짜 필터 압축
+  */
+  #pageHome .chips{
+    gap:5px;
+    padding:8px 12px 0;
+  }
+
+  #pageHome .chip{
+    padding:6px 12px;
+    font-size:12.5px;
+    border-width:1px;
+  }
+
+  #pageHome .chip-calendar{
+    width:36px;
+    height:32px;
+    padding:0;
+    font-size:16px;
+  }
+
+  /*
+    홈 화면 공통 섹션 간격 축소
+  */
+  #pageHome .sec{
+    padding:0 12px;
+    margin-top:9px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:6px;
+  }
+
+  #pageHome .sec-title{
+    font-size:14px;
+  }
+
+  #pageHome .sec-more{
+    font-size:12px;
+  }
+
+  /*
+    작업 현황 강조 카드 축소
+  */
+  #pageHome .status-highlight{
+    gap:7px;
+    margin-bottom:7px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:10px 13px;
+    border-radius:14px;
+    box-shadow:0 2px 8px rgba(15,29,43,.08);
+  }
+
+  #pageHome .status-hl-label{
+    margin-bottom:3px;
+    font-size:12.5px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:34px;
+  }
+
+  #pageHome .status-hl-value small{
+    font-size:14px;
+  }
+
+  /*
+    작업 현황 세부 카드 축소
+  */
+  #pageHome .status-detail{
+    gap:5px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:8px 2px 7px;
+    border-radius:11px;
+    border-width:1px;
+    border-top-width:2px;
+    box-shadow:0 1px 6px rgba(15,29,43,.05);
+  }
+
+  #pageHome .status-dt-value{
+    margin-bottom:3px;
+    font-size:22px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:11px;
+  }
+
+  /*
+    빠른 실행 제목과 버튼 사이 간격 축소
+  */
+  #pageHome .quick-grid{
+    gap:6px;
+    padding:0 12px;
+    margin-top:4px;
+  }
+
+  /*
+    빠른 실행 바깥 카드 축소
+    - 외곽 테두리와 그림자를 약하게 처리
+    - 카드 패딩 및 둥근 모서리 축소
+  */
+  #pageHome .qbtn{
+    min-height:82px;
+    padding:8px 4px 7px;
+    gap:5px;
+    border:0.5px solid var(--line);
+    border-radius:13px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .qbtn-ico{
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    font-size:21px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:12.5px;
+    line-height:1.2;
+  }
+
+  /*
+    공지사항도 모바일에서 조금 압축
+  */
+  #pageHome .notice-banner{
+    margin:7px 12px 0;
+    padding:8px 10px;
+    border-radius:11px;
+  }
+
+  #pageHome .notice-banner-label{
+    font-size:12px;
+  }
+
+  #pageHome .notice-banner-toggle{
+    font-size:11px;
+  }
+
+  #pageHome .notice-banner-text{
+    margin-top:4px;
+    max-height:42px;
+    font-size:12px;
+    line-height:1.4;
+  }
+
+  /*
+    홈 화면 하단 여백과 네비 높이 축소
+  */
+  #pageHome .main{
+    padding-bottom:
+      calc(66px + env(safe-area-inset-bottom));
+  }
+
+  .botnav{
+    padding:
+      5px
+      0
+      max(5px, env(safe-area-inset-bottom));
+    border-radius:17px 17px 0 0;
+  }
+
+  .nav-tab{
+    gap:2px;
+    padding:4px 0;
+  }
+
+  .nav-ti{
+    font-size:21px;
+  }
+
+  .nav-tl{
+    font-size:11.5px;
+  }
+
+  .nav-badge{
+    top:0;
+    min-width:17px;
+    height:17px;
+    font-size:10px;
+  }
+}
+
+/*
+  높이가 특히 낮은 모바일 기기
+  예: 667px 이하, 모바일 브라우저 주소창이 크게 표시되는 경우
+*/
+@media (max-width:767px) and (max-height:700px){
+
+  #pageHome .hero{
+    padding-top:
+      max(8px, env(safe-area-inset-top));
+    padding-bottom:9px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:22px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:15px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .chips{
+    padding-top:6px;
+  }
+
+  #pageHome .chip{
+    padding:5px 10px;
+    font-size:12px;
+  }
+
+  #pageHome .sec{
+    margin-top:7px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:8px 11px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:30px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:6px 2px;
+  }
+
+  #pageHome .status-dt-value{
+    font-size:20px;
+  }
+
+  #pageHome .qbtn{
+    min-height:72px;
+    padding:6px 3px;
+    gap:3px;
+    border-radius:11px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:36px;
+    height:36px;
+    border-radius:10px;
+    font-size:19px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:11.5px;
+  }
+}
+</style>
 
 </body>
 </html>   
