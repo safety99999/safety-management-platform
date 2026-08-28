@@ -730,10 +730,19 @@ body{
       class="notice-banner-text"
       id="noticeText"
     ></div>
-  </div>
+ 
+   </div>
+  <!-- /공지 배너 -->
 
-    <!-- 작업 현황 (상단 배치) -->
-    <section class="sec">
+  <!-- 날짜 필터: JavaScript가 버튼을 자동 생성 -->
+  <div
+    class="chips"
+    aria-label="작업일 선택"
+  ></div>
+
+  <!-- 작업 현황 (상단 배치) -->
+  <section class="sec">
+
       <div class="sec-hdr">
         <div class="sec-title">📈 작업 현황</div>
         <div class="sec-more" onclick="refreshAll()">↻ 새로고침</div>
@@ -2034,7 +2043,6 @@ window.addEventListener('app-data-changed',function(e){
 // ═══════════════════════════════════════
 // 시작
 // ═══════════════════════════════════════
-init();
 
 </script>
 <script>
@@ -4157,14 +4165,6 @@ window.backupSafetyDatabase = function(){
 
 updateWorkLedgerGuide();
 
-/*
-  기존 init()은 앞의 script에서 이미 실행되었다.
-  패치 함수로 다시 읽어 화면 데이터를 갱신한다.
-*/
-loadDB();
-loadPermits();
-updateWorkStatus();
-
 </script>
 
 <style>
@@ -5128,15 +5128,26 @@ updateWorkStatus();
     applyFilter();
   }
 
-  if(document.readyState === 'loading'){
-    document.addEventListener(
-      'DOMContentLoaded',
-      dashboardInitializeDateFilter
-    );
-  }else{
-    dashboardInitializeDateFilter();
-  }
+function initializeDashboard(){
+  /*
+    모든 일반 함수와 날짜 필터 함수가 준비된 뒤
+    대시보드를 한 번만 초기화한다.
+  */
+  init();
+  dashboardInitializeDateFilter();
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener(
+    'DOMContentLoaded',
+    initializeDashboard
+  );
+}else{
+  initializeDashboard();
+}
+
 })();
+
 </script>
 
 <style>
@@ -6224,6 +6235,681 @@ if(document.readyState === "loading"){
   workDbInitialize();
 }
 </script>
+<style>
+/* =========================================================
+   대시보드 최종 단일 반응형 UI v2.2
+   - 기존 중복 반응형 패치 삭제 후 이것만 사용
+   - 빠른 실행 카드 과대 확대 방지
+   - 한 줄 공지와 상세 공지 중복 방지
+   - iPhone, Galaxy, 폴더블, 태블릿, PC 대응
+   ========================================================= */
+
+
+/* ─────────────────────────────────────
+   공통 화면
+   ───────────────────────────────────── */
+
+html,
+body{
+  width:100%;
+  min-height:100%;
+}
+
+body{
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.app{
+  width:100%;
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.qbtn,
+.status-hl-card,
+.status-dt-card,
+.nav-tab{
+  min-width:0;
+}
+
+
+/* ─────────────────────────────────────
+   한 줄 공지사항
+   ───────────────────────────────────── */
+
+.notice-banner{
+  overflow:hidden;
+}
+
+.notice-banner-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+  min-height:22px;
+}
+
+.notice-inline{
+  display:flex;
+  flex:1;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+}
+
+.notice-inline-icon{
+  flex:0 0 auto;
+  font-size:14px;
+  line-height:1;
+}
+
+.notice-inline-text{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  color:var(--body);
+  font-size:13px;
+  font-weight:750;
+  line-height:1.4;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.notice-banner-new{
+  flex:0 0 auto;
+}
+
+.notice-banner-toggle{
+  flex:0 0 18px;
+  width:18px;
+  color:var(--warn);
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  text-align:center;
+}
+
+/* 접힌 상태 또는 상세 내용이 없는 공지 */
+.notice-banner.collapsed .notice-banner-text,
+.notice-banner.single-line .notice-banner-text{
+  display:none;
+}
+
+/* 펼친 상태: 두 번째 줄 이후만 표시 */
+.notice-banner:not(.collapsed) .notice-banner-text{
+  display:block;
+  max-height:80px;
+  margin-top:7px;
+  padding-top:7px;
+  padding-right:5px;
+  overflow-y:auto;
+  border-top:1px solid rgba(180,83,9,.18);
+  color:var(--body);
+  font-size:12.5px;
+  font-weight:500;
+  line-height:1.5;
+  white-space:pre-wrap;
+}
+
+
+/* ─────────────────────────────────────
+   모바일 공통
+   iPhone, Galaxy 및 일반 Android
+   ───────────────────────────────────── */
+
+@media (max-width:767px){
+
+  /* 홈 상단 */
+  #pageHome .hero{
+    padding:
+      max(10px,env(safe-area-inset-top))
+      14px
+      11px;
+  }
+
+  #pageHome .hero-brand{
+    gap:8px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:23px;
+  }
+
+  #pageHome .hero-brand-en{
+    margin-bottom:1px;
+    font-size:10px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:15.5px;
+  }
+
+  #pageHome .hero-tools{
+    gap:5px;
+  }
+
+  #pageHome .hero-date{
+    font-size:10.5px;
+  }
+
+  #pageHome .hero-time{
+    font-size:13.5px;
+  }
+
+  #pageHome .icon-btn{
+    width:34px;
+    height:34px;
+    border-radius:9px;
+    font-size:16px;
+  }
+
+  /* 공지 */
+  #pageHome .notice-banner{
+    margin:6px 12px 0;
+    padding:7px 9px;
+    border-radius:11px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .notice-inline-icon{
+    font-size:13px;
+  }
+
+  #pageHome .notice-inline-text{
+    font-size:12px;
+  }
+
+  #pageHome .notice-banner-new{
+    padding:1px 4px;
+    font-size:8.5px;
+  }
+
+  /* 날짜 필터 */
+  #pageHome .chips{
+    align-items:center;
+    gap:5px;
+    padding:6px 12px 0;
+  }
+
+  #pageHome .chip{
+    padding:5px 11px;
+    border-width:1px;
+    font-size:12px;
+  }
+
+  #pageHome .chip-calendar{
+    width:34px;
+    height:30px;
+    padding:0;
+    font-size:15px;
+  }
+
+  /* 섹션 공통 */
+  #pageHome .sec{
+    margin-top:8px;
+    padding:0 12px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:5px;
+  }
+
+  #pageHome .sec-title{
+    gap:4px;
+    font-size:13.5px;
+  }
+
+  #pageHome .sec-more{
+    font-size:11.5px;
+  }
+
+  /* 전체·고위험 */
+  #pageHome .status-highlight{
+    gap:6px;
+    margin-bottom:6px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:9px 12px;
+    border-radius:13px;
+    box-shadow:0 2px 7px rgba(15,29,43,.08);
+  }
+
+  #pageHome .status-hl-label{
+    gap:4px;
+    margin-bottom:2px;
+    font-size:12px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:32px;
+  }
+
+  #pageHome .status-hl-value small{
+    margin-left:2px;
+    font-size:13px;
+  }
+
+  /* 세부 상태 */
+  #pageHome .status-detail{
+    gap:5px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:7px 2px 6px;
+    border-width:1px;
+    border-top-width:2px;
+    border-radius:10px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .status-dt-value{
+    margin-bottom:2px;
+    font-size:21px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:10.5px;
+  }
+
+  /* 빠른 실행 */
+  #pageHome .quick-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-auto-rows:90px;
+    gap:6px;
+    margin-top:2px;
+    margin-bottom:0;
+    padding:0 12px 6px;
+  }
+
+  #pageHome .qbtn{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:90px;
+    min-height:90px;
+    padding:6px 3px;
+    gap:4px;
+    overflow:hidden;
+    border:.5px solid var(--line);
+    border-radius:12px;
+    box-shadow:0 1px 4px rgba(15,29,43,.05);
+  }
+
+  #pageHome .qbtn-ico{
+    width:39px;
+    height:39px;
+    flex:0 0 39px;
+    border-radius:11px;
+    font-size:19px;
+  }
+
+  #pageHome .qbtn-lbl{
+    max-width:100%;
+    color:var(--body);
+    font-size:11.5px;
+    line-height:1.15;
+    overflow-wrap:anywhere;
+    word-break:keep-all;
+  }
+
+  /* 하단 네비게이터에 가리지 않을 최소 여백 */
+  #pageHome .main{
+    padding-bottom:
+      calc(62px + env(safe-area-inset-bottom));
+  }
+
+  /* 하단 네비게이터 */
+  .botnav{
+    padding:
+      5px
+      0
+      max(5px,env(safe-area-inset-bottom));
+    border-radius:17px 17px 0 0;
+  }
+
+  .nav-tab{
+    gap:2px;
+    padding:4px 0;
+  }
+
+  .nav-ti{
+    font-size:21px;
+  }
+
+  .nav-tl{
+    font-size:11.5px;
+  }
+
+  .nav-badge{
+    top:0;
+    min-width:17px;
+    height:17px;
+    padding:0 4px;
+    font-size:10px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   높이가 짧은 모바일
+   ───────────────────────────────────── */
+
+@media (max-width:767px) and (max-height:700px){
+
+  #pageHome .hero{
+    padding-top:max(7px,env(safe-area-inset-top));
+    padding-bottom:7px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:20px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:9px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:14px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .notice-banner{
+    margin-top:4px;
+    padding-top:5px;
+    padding-bottom:5px;
+  }
+
+  #pageHome .chips{
+    padding-top:4px;
+  }
+
+  #pageHome .chip{
+    padding:4px 9px;
+    font-size:11.5px;
+  }
+
+  #pageHome .sec{
+    margin-top:5px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:3px;
+  }
+
+  #pageHome .status-highlight{
+    margin-bottom:4px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:6px 9px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:27px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:4px 2px;
+  }
+
+  #pageHome .status-dt-value{
+    font-size:18px;
+  }
+
+  #pageHome .quick-grid{
+    grid-auto-rows:72px;
+    gap:5px;
+    padding-bottom:4px;
+  }
+
+  #pageHome .qbtn{
+    height:72px;
+    min-height:72px;
+    padding:4px 2px;
+    gap:2px;
+    border-radius:10px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:32px;
+    height:32px;
+    flex-basis:32px;
+    border-radius:9px;
+    font-size:17px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10.5px;
+  }
+
+  #pageHome .main{
+    padding-bottom:
+      calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .nav-ti{
+    font-size:19px;
+  }
+
+  .nav-tl{
+    font-size:10.5px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   긴 모바일
+   카드 크기를 94px까지만 확대
+   ───────────────────────────────────── */
+
+@media (max-width:767px) and (min-height:800px){
+
+  #pageHome .quick-grid{
+    grid-auto-rows:94px;
+  }
+
+  #pageHome .qbtn{
+    height:94px;
+    min-height:94px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:40px;
+    height:40px;
+    flex-basis:40px;
+    font-size:20px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   좁은 모바일·폴더블 커버
+   ───────────────────────────────────── */
+
+@media (max-width:360px){
+
+  #pageHome .hero{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .hero-brand{
+    gap:6px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:19px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:8.5px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:13px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .notice-banner{
+    margin-left:10px;
+    margin-right:10px;
+  }
+
+  #pageHome .chips,
+  #pageHome .sec,
+  #pageHome .quick-grid{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .chip{
+    padding-left:8px;
+    padding-right:8px;
+    font-size:11px;
+  }
+
+  #pageHome .quick-grid{
+    gap:5px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10.3px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   태블릿
+   ───────────────────────────────────── */
+
+@media (min-width:768px) and (max-width:1199px){
+
+  body{
+    padding:18px 0;
+  }
+
+  .app{
+    width:calc(100% - 32px);
+    max-width:640px;
+    min-height:calc(100dvh - 36px);
+  }
+
+  .botnav{
+    right:auto;
+    left:50%;
+    width:calc(100% - 32px);
+    max-width:640px;
+    margin:0;
+    transform:translateX(-50%);
+    border-radius:0 0 24px 24px;
+  }
+
+  .sheet{
+    max-width:640px;
+  }
+
+  #pageHome .quick-grid{
+    gap:9px;
+  }
+
+  #pageHome .qbtn{
+    min-height:100px;
+    padding:10px 5px 8px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:46px;
+    height:46px;
+    font-size:23px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   PC
+   ───────────────────────────────────── */
+
+@media (min-width:1200px){
+
+  .app{
+    max-width:680px;
+  }
+
+  .botnav{
+    right:auto;
+    left:50%;
+    width:680px;
+    max-width:680px;
+    margin:0;
+    transform:translateX(-50%);
+    border-radius:0 0 24px 24px;
+  }
+
+  .sheet{
+    max-width:680px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   모바일 가로
+   ───────────────────────────────────── */
+
+@media (max-width:767px) and (orientation:landscape){
+
+  #pageHome .hero{
+    padding-top:7px;
+    padding-bottom:7px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .quick-grid{
+    grid-auto-rows:66px;
+  }
+
+  #pageHome .qbtn{
+    height:66px;
+    min-height:66px;
+    flex-direction:row;
+    padding:4px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:32px;
+    height:32px;
+    flex-basis:32px;
+    font-size:16px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10px;
+  }
+}
+
+
+/* ─────────────────────────────────────
+   다크 모드
+   ───────────────────────────────────── */
+
+[data-theme="dark"] #pageHome .qbtn{
+  box-shadow:0 1px 4px rgba(0,0,0,.24);
+}
+</style>
 
 </body>
 </html>   
