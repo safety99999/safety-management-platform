@@ -7364,6 +7364,1173 @@ body{
     0 1px 5px rgba(0,0,0,.2);
 }
 </style>
+<!-- ========================================================
+     대시보드 반응형 UI + 한 줄 공지 통합 패치 v1.0
+     적용 위치: </body> 바로 위
+     ======================================================== -->
+
+<style>
+/* =========================================================
+   1. 공통 화면 및 긴 텍스트 대응
+   ========================================================= */
+
+html,
+body{
+  width:100%;
+  min-height:100%;
+}
+
+body{
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.app{
+  width:100%;
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.qbtn,
+.status-hl-card,
+.status-dt-card,
+.nav-tab{
+  min-width:0;
+}
+
+.qbtn-lbl{
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:keep-all;
+}
+
+
+/* =========================================================
+   2. 한 줄 공지사항
+   ========================================================= */
+
+.notice-banner{
+  overflow:hidden;
+}
+
+.notice-banner-top{
+  min-height:24px;
+}
+
+.notice-inline{
+  display:flex;
+  flex:1;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+}
+
+.notice-inline-icon{
+  flex:0 0 auto;
+  font-size:14px;
+  line-height:1;
+}
+
+.notice-inline-text{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  color:var(--body);
+  font-size:13px;
+  font-weight:750;
+  line-height:1.4;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.notice-banner-new{
+  flex:0 0 auto;
+}
+
+.notice-banner-toggle{
+  flex:0 0 20px;
+  width:20px;
+  color:var(--warn);
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  text-align:center;
+}
+
+.notice-banner.collapsed .notice-banner-text{
+  display:none;
+}
+
+.notice-banner:not(.collapsed) .notice-banner-text{
+  display:block;
+  margin-top:7px;
+  padding-top:7px;
+  border-top:1px solid rgba(180,83,9,.18);
+}
+
+.notice-banner:not(.collapsed) .notice-inline-text{
+  font-weight:800;
+}
+
+
+/* =========================================================
+   3. 일반 모바일
+   iPhone, Galaxy 및 일반 Android
+   ========================================================= */
+
+@media (max-width:767px){
+
+  #pageHome.active{
+    min-height:100vh;
+    min-height:100dvh;
+  }
+
+  /* 상단 헤더 */
+  #pageHome .hero{
+    padding:
+      max(11px, env(safe-area-inset-top))
+      14px
+      12px;
+  }
+
+  #pageHome .hero-brand{
+    gap:8px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:24px;
+  }
+
+  #pageHome .hero-brand-en{
+    margin-bottom:1px;
+    font-size:10.5px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:16px;
+  }
+
+  #pageHome .hero-tools{
+    gap:5px;
+  }
+
+  #pageHome .hero-date{
+    font-size:11px;
+  }
+
+  #pageHome .hero-time{
+    font-size:14px;
+  }
+
+  #pageHome .icon-btn{
+    width:35px;
+    height:35px;
+    border-radius:10px;
+    font-size:17px;
+  }
+
+  /* 한 줄 공지 */
+  #pageHome .notice-banner{
+    margin:7px 12px 0;
+    padding:8px 10px;
+    border-radius:11px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .notice-inline-text{
+    font-size:12px;
+  }
+
+  #pageHome .notice-inline-icon{
+    font-size:13px;
+  }
+
+  #pageHome .notice-banner-new{
+    padding:1px 5px;
+    font-size:9px;
+  }
+
+  #pageHome .notice-banner-text{
+    max-height:70px;
+    margin-top:6px;
+    padding-right:4px;
+    font-size:12px;
+    line-height:1.45;
+  }
+
+  /* 날짜 필터 */
+  #pageHome .chips{
+    align-items:center;
+    gap:5px;
+    padding:7px 12px 0;
+  }
+
+  #pageHome .chip{
+    padding:6px 12px;
+    border-width:1px;
+    font-size:12.5px;
+  }
+
+  #pageHome .chip-calendar{
+    width:36px;
+    height:32px;
+    padding:0;
+    font-size:16px;
+  }
+
+  /* 섹션 공통 */
+  #pageHome .sec{
+    margin-top:9px;
+    padding:0 12px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:6px;
+  }
+
+  #pageHome .sec-title{
+    gap:4px;
+    font-size:14px;
+  }
+
+  #pageHome .sec-more{
+    font-size:12px;
+  }
+
+  /* 전체·고위험 카드 */
+  #pageHome .status-highlight{
+    gap:7px;
+    margin-bottom:7px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:10px 13px;
+    border-radius:14px;
+    box-shadow:0 2px 8px rgba(15,29,43,.08);
+  }
+
+  #pageHome .status-hl-label{
+    gap:4px;
+    margin-bottom:3px;
+    font-size:12.5px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:34px;
+  }
+
+  #pageHome .status-hl-value small{
+    margin-left:2px;
+    font-size:14px;
+  }
+
+  /* 허가 전·작업 중·작업 중지·작업 종료 */
+  #pageHome .status-detail{
+    gap:5px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:8px 2px 7px;
+    border-width:1px;
+    border-top-width:2px;
+    border-radius:11px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .status-dt-value{
+    margin-bottom:3px;
+    font-size:22px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:11px;
+  }
+
+  /* 빠른 실행 */
+  #pageHome .quick-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-auto-rows:clamp(94px,12.5dvh,116px);
+    gap:7px;
+    margin-top:3px;
+    padding:0 12px 8px;
+  }
+
+  #pageHome .qbtn{
+    display:flex;
+    height:100%;
+    min-height:0;
+    padding:9px 4px 8px;
+    gap:5px;
+    overflow:hidden;
+    border:.5px solid var(--line);
+    border-radius:13px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .qbtn-ico{
+    width:43px;
+    height:43px;
+    border-radius:12px;
+    font-size:21px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:12.5px;
+    line-height:1.2;
+  }
+
+  /* 하단 네비게이터에 가리지 않을 만큼만 여백 확보 */
+  #pageHome .main{
+    padding-bottom:
+      calc(66px + env(safe-area-inset-bottom));
+  }
+
+  /* 하단 네비게이터 */
+  .botnav{
+    padding:
+      5px
+      0
+      max(5px, env(safe-area-inset-bottom));
+    border-radius:17px 17px 0 0;
+  }
+
+  .nav-tab{
+    gap:2px;
+    padding:4px 0;
+  }
+
+  .nav-ti{
+    font-size:21px;
+  }
+
+  .nav-tl{
+    font-size:11.5px;
+  }
+
+  .nav-badge{
+    top:0;
+    min-width:17px;
+    height:17px;
+    padding:0 4px;
+    font-size:10px;
+  }
+}
+
+
+/* =========================================================
+   4. 높이가 짧은 모바일
+   ========================================================= */
+
+@media (max-width:767px) and (max-height:700px){
+
+  #pageHome .hero{
+    padding-top:max(8px,env(safe-area-inset-top));
+    padding-bottom:8px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:21px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:9.5px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:14.5px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .icon-btn{
+    width:32px;
+    height:32px;
+  }
+
+  #pageHome .notice-banner{
+    margin-top:5px;
+    padding-top:6px;
+    padding-bottom:6px;
+  }
+
+  #pageHome .chips{
+    padding-top:5px;
+  }
+
+  #pageHome .chip{
+    padding:5px 10px;
+    font-size:12px;
+  }
+
+  #pageHome .sec{
+    margin-top:6px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:4px;
+  }
+
+  #pageHome .status-highlight{
+    gap:5px;
+    margin-bottom:5px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:7px 10px;
+  }
+
+  #pageHome .status-hl-label{
+    margin-bottom:2px;
+    font-size:11.5px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:29px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:5px 2px;
+  }
+
+  #pageHome .status-dt-value{
+    font-size:19px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:10.5px;
+  }
+
+  #pageHome .quick-grid{
+    grid-auto-rows:72px;
+    gap:5px;
+    padding-bottom:5px;
+  }
+
+  #pageHome .qbtn{
+    padding:5px 3px;
+    gap:2px;
+    border-radius:11px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:35px;
+    height:35px;
+    border-radius:10px;
+    font-size:18px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:11px;
+  }
+
+  #pageHome .main{
+    padding-bottom:
+      calc(59px + env(safe-area-inset-bottom));
+  }
+
+  .botnav{
+    padding-top:3px;
+  }
+
+  .nav-tab{
+    padding:2px 0;
+  }
+
+  .nav-ti{
+    font-size:19px;
+  }
+
+  .nav-tl{
+    font-size:10.5px;
+  }
+}
+
+
+/* =========================================================
+   5. 세로로 긴 스마트폰
+   iPhone·Galaxy 최신 기종
+   ========================================================= */
+
+@media (max-width:767px) and (min-height:800px){
+
+  #pageHome .quick-grid{
+    grid-auto-rows:clamp(104px,13dvh,120px);
+    row-gap:8px;
+  }
+
+  #pageHome .qbtn{
+    padding:10px 4px 8px;
+    gap:6px;
+    border-radius:14px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:46px;
+    height:46px;
+    border-radius:13px;
+    font-size:22px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:12.5px;
+  }
+}
+
+
+/* =========================================================
+   6. 매우 긴 스마트폰
+   Galaxy Ultra 등
+   ========================================================= */
+
+@media (max-width:767px) and (min-height:900px){
+
+  #pageHome .quick-grid{
+    grid-auto-rows:122px;
+    row-gap:9px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:49px;
+    height:49px;
+    font-size:24px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:13px;
+  }
+}
+
+
+/* =========================================================
+   7. 폭이 좁은 모바일·폴더블 커버 화면
+   ========================================================= */
+
+@media (max-width:360px){
+
+  #pageHome .hero{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .hero-brand{
+    gap:6px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:20px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:9px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:13.5px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .notice-banner{
+    margin-left:10px;
+    margin-right:10px;
+  }
+
+  #pageHome .notice-inline{
+    gap:4px;
+  }
+
+  #pageHome .notice-inline-text{
+    font-size:11.5px;
+  }
+
+  #pageHome .notice-banner-new{
+    padding:1px 4px;
+    font-size:8px;
+  }
+
+  #pageHome .chips{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .chip{
+    padding-left:9px;
+    padding-right:9px;
+    font-size:11.5px;
+  }
+
+  #pageHome .sec,
+  #pageHome .quick-grid{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .status-highlight{
+    gap:5px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:29px;
+  }
+
+  #pageHome .status-detail{
+    gap:4px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:10px;
+  }
+
+  #pageHome .quick-grid{
+    gap:5px;
+  }
+
+  #pageHome .qbtn{
+    padding-left:2px;
+    padding-right:2px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10.8px;
+  }
+
+  .nav-tl{
+    font-size:10.5px;
+  }
+}
+
+
+/* =========================================================
+   8. 태블릿
+   ========================================================= */
+
+@media (min-width:768px) and (max-width:1199px){
+
+  body{
+    padding:18px 0;
+  }
+
+  .app{
+    width:calc(100% - 32px);
+    max-width:640px;
+    min-height:calc(100vh - 36px);
+    min-height:calc(100dvh - 36px);
+  }
+
+  .botnav{
+    right:auto;
+    left:50%;
+    width:calc(100% - 32px);
+    max-width:640px;
+    margin:0;
+    transform:translateX(-50%);
+    border-radius:0 0 24px 24px;
+  }
+
+  .sheet{
+    max-width:640px;
+  }
+
+  #pageHome .quick-grid{
+    gap:12px;
+  }
+
+  #pageHome .qbtn{
+    min-height:112px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:52px;
+    height:52px;
+    font-size:25px;
+  }
+}
+
+
+/* =========================================================
+   9. PC
+   ========================================================= */
+
+@media (min-width:1200px){
+
+  .app{
+    max-width:680px;
+  }
+
+  .botnav{
+    right:auto;
+    left:50%;
+    width:680px;
+    max-width:680px;
+    margin:0;
+    transform:translateX(-50%);
+    border-radius:0 0 24px 24px;
+  }
+
+  .sheet{
+    max-width:680px;
+  }
+
+  #pageHome .quick-grid{
+    gap:12px;
+  }
+
+  #pageHome .qbtn{
+    min-height:114px;
+  }
+}
+
+
+/* =========================================================
+   10. 모바일 가로 화면
+   ========================================================= */
+
+@media (max-width:767px) and (orientation:landscape){
+
+  #pageHome .hero{
+    padding-top:7px;
+    padding-bottom:7px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .notice-banner{
+    display:none !important;
+  }
+
+  #pageHome .quick-grid{
+    grid-auto-rows:68px;
+  }
+
+  #pageHome .qbtn{
+    flex-direction:row;
+    justify-content:center;
+    padding:5px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:34px;
+    height:34px;
+    font-size:17px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10.5px;
+  }
+}
+
+
+/* =========================================================
+   11. 다크 모드 보정
+   ========================================================= */
+
+[data-theme="dark"] #pageHome .qbtn{
+  box-shadow:0 1px 5px rgba(0,0,0,.24);
+}
+
+[data-theme="dark"] #pageHome .status-dt-card{
+  box-shadow:0 1px 5px rgba(0,0,0,.2);
+}
+</style>
+
+<script>
+/* =========================================================
+   한 줄 공지 통합 제어
+   - 공지 HTML이 없어도 자동 생성
+   - 기존 loadNotice 및 toggleNotice 교체
+   - 모바일 기본 접힘
+   ========================================================= */
+
+(function(){
+
+  /*
+    공지 HTML 생성
+    기존 공지 HTML을 삭제한 상태에서 사용한다.
+  */
+  function ensureInlineNoticeBanner(){
+    var existingBanner =
+      document.getElementById('noticeBanner');
+
+    if(existingBanner){
+      return existingBanner;
+    }
+
+    var homeMain =
+      document.querySelector('#pageHome .main');
+
+    if(!homeMain){
+      return null;
+    }
+
+    var banner =
+      document.createElement('div');
+
+    banner.id = 'noticeBanner';
+    banner.className =
+      'notice-banner collapsed';
+
+    banner.style.display = 'none';
+
+    banner.setAttribute(
+      'role',
+      'button'
+    );
+
+    banner.setAttribute(
+      'tabindex',
+      '0'
+    );
+
+    banner.setAttribute(
+      'aria-expanded',
+      'false'
+    );
+
+    banner.innerHTML =
+      '<div class="notice-banner-top">' +
+
+        '<div class="notice-inline">' +
+
+          '<span class="notice-inline-icon">' +
+            '📢' +
+          '</span>' +
+
+          '<span ' +
+            'class="notice-inline-text" ' +
+            'id="noticeInlineText">' +
+          '</span>' +
+
+          '<span ' +
+            'class="notice-banner-new" ' +
+            'id="noticeNewBadge" ' +
+            'style="display:none;">' +
+            'NEW' +
+          '</span>' +
+
+        '</div>' +
+
+        '<div ' +
+          'class="notice-banner-toggle" ' +
+          'id="noticeToggle" ' +
+          'aria-hidden="true">' +
+          '▼' +
+        '</div>' +
+
+      '</div>' +
+
+      '<div ' +
+        'class="notice-banner-text" ' +
+        'id="noticeText">' +
+      '</div>';
+
+    var chips =
+      homeMain.querySelector('.chips');
+
+    if(chips){
+      homeMain.insertBefore(
+        banner,
+        chips
+      );
+    }else{
+      homeMain.insertBefore(
+        banner,
+        homeMain.firstChild
+      );
+    }
+
+    banner.addEventListener(
+      'click',
+      function(){
+        window.toggleNotice();
+      }
+    );
+
+    banner.addEventListener(
+      'keydown',
+      function(event){
+        if(
+          event.key === 'Enter' ||
+          event.key === ' '
+        ){
+          event.preventDefault();
+          window.toggleNotice();
+        }
+      }
+    );
+
+    return banner;
+  }
+
+
+  /*
+    공지의 첫 번째 유효한 줄을
+    홈 화면 한 줄 미리보기로 사용한다.
+  */
+  function getNoticeFirstLine(text){
+    var lines = String(text || '')
+      .split(/\r?\n/)
+      .map(function(line){
+        return line.trim();
+      })
+      .filter(function(line){
+        return Boolean(line);
+      });
+
+    return lines.length
+      ? lines[0]
+      : '';
+  }
+
+
+  /*
+    기존 loadNotice() 교체
+  */
+  window.loadNotice = function(){
+    var noticeEl =
+      ensureInlineNoticeBanner();
+
+    var text =
+      localStorage.getItem(
+        'safetyNotice'
+      ) || '';
+
+    var savedDate =
+      localStorage.getItem(
+        'safetyNoticeDate'
+      ) || '';
+
+    var seenDate =
+      localStorage.getItem(
+        'safetyNoticeSeen'
+      ) || '';
+
+    var noticeTextEl =
+      document.getElementById(
+        'noticeText'
+      );
+
+    var inlineTextEl =
+      document.getElementById(
+        'noticeInlineText'
+      );
+
+    var newBadge =
+      document.getElementById(
+        'noticeNewBadge'
+      );
+
+    var toggleEl =
+      document.getElementById(
+        'noticeToggle'
+      );
+
+    var inputEl =
+      document.getElementById(
+        'noticeInput'
+      );
+
+    if(inputEl){
+      inputEl.value = text;
+    }
+
+    if(!noticeEl){
+      return;
+    }
+
+    if(!text.trim()){
+      noticeEl.style.display = 'none';
+      return;
+    }
+
+    var firstLine =
+      getNoticeFirstLine(text);
+
+    noticeEl.style.display = 'block';
+
+    /*
+      처음 로드할 때 기본 접힘
+    */
+    noticeEl.classList.add(
+      'collapsed'
+    );
+
+    noticeEl.setAttribute(
+      'aria-expanded',
+      'false'
+    );
+
+    if(inlineTextEl){
+      inlineTextEl.textContent =
+        firstLine;
+    }
+
+    if(noticeTextEl){
+      noticeTextEl.textContent =
+        text;
+    }
+
+    if(toggleEl){
+      toggleEl.textContent = '▼';
+    }
+
+    if(newBadge){
+      newBadge.style.display =
+        savedDate !== seenDate
+          ? 'inline-flex'
+          : 'none';
+    }
+
+    /*
+      기존 전역 상태와 호환
+    */
+    if(
+      typeof window.noticeCollapsed !==
+      'undefined'
+    ){
+      window.noticeCollapsed = true;
+    }
+
+    localStorage.setItem(
+      'safetyNoticeSeen',
+      savedDate
+    );
+  };
+
+
+  /*
+    기존 toggleNotice() 교체
+  */
+  window.toggleNotice = function(){
+    var banner =
+      document.getElementById(
+        'noticeBanner'
+      );
+
+    var toggle =
+      document.getElementById(
+        'noticeToggle'
+      );
+
+    if(!banner){
+      return;
+    }
+
+    var willCollapse =
+      !banner.classList.contains(
+        'collapsed'
+      );
+
+    banner.classList.toggle(
+      'collapsed',
+      willCollapse
+    );
+
+    banner.setAttribute(
+      'aria-expanded',
+      willCollapse
+        ? 'false'
+        : 'true'
+    );
+
+    if(toggle){
+      toggle.textContent =
+        willCollapse
+          ? '▼'
+          : '▲';
+    }
+
+    if(
+      typeof window.noticeCollapsed !==
+      'undefined'
+    ){
+      window.noticeCollapsed =
+        willCollapse;
+    }
+  };
+
+
+  /*
+    공지 저장 함수도 일관되게 교체한다.
+  */
+  window.saveNotice = function(){
+    var input =
+      document.getElementById(
+        'noticeInput'
+      );
+
+    var text = input
+      ? String(input.value || '').trim()
+      : '';
+
+    if(text){
+      localStorage.setItem(
+        'safetyNotice',
+        text
+      );
+
+      localStorage.setItem(
+        'safetyNoticeDate',
+        new Date().toISOString()
+      );
+
+      localStorage.removeItem(
+        'safetyNoticeSeen'
+      );
+    }else{
+      localStorage.removeItem(
+        'safetyNotice'
+      );
+
+      localStorage.removeItem(
+        'safetyNoticeDate'
+      );
+
+      localStorage.removeItem(
+        'safetyNoticeSeen'
+      );
+    }
+
+    window.loadNotice();
+
+    if(
+      typeof window.showToast ===
+      'function'
+    ){
+      window.showToast(
+        text
+          ? '공지사항이 등록되었습니다.'
+          : '공지사항이 삭제되었습니다.',
+        'success'
+      );
+    }
+  };
+
+
+  /*
+    초기 적용
+  */
+  function initializeIntegratedNotice(){
+    ensureInlineNoticeBanner();
+    window.loadNotice();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      initializeIntegratedNotice
+    );
+  }else{
+    initializeIntegratedNotice();
+  }
+
+})();
+</script>
 
 </body>
 </html>   
