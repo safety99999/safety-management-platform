@@ -690,25 +690,47 @@ body{
 
   <div class="main">
 
-    <!-- 공지 배너 (있을 때만) -->
-    <div id="noticeBanner" class="notice-banner" onclick="toggleNotice()" style="display:none;">
-      <div class="notice-banner-top">
-        <div class="notice-banner-label">
-          📢 안전 공지사항
-          <span class="notice-banner-new" id="noticeNewBadge" style="display:none;">NEW</span>
-        </div>
-        <div class="notice-banner-toggle" id="noticeToggle">접기 ▲</div>
+  <!-- 공지 배너: 한 줄 표시, 터치 시 전체 내용 펼침 -->
+  <div
+    id="noticeBanner"
+    class="notice-banner collapsed"
+    onclick="toggleNotice()"
+    style="display:none;"
+    role="button"
+    aria-expanded="false"
+  >
+    <div class="notice-banner-top">
+      <div class="notice-inline">
+        <span class="notice-inline-icon">📢</span>
+
+        <span
+          class="notice-inline-text"
+          id="noticeInlineText"
+        ></span>
+
+        <span
+          class="notice-banner-new"
+          id="noticeNewBadge"
+          style="display:none;"
+        >
+          NEW
+        </span>
       </div>
-      <div class="notice-banner-text" id="noticeText"></div>
+
+      <div
+        class="notice-banner-toggle"
+        id="noticeToggle"
+        aria-hidden="true"
+      >
+        ▼
+      </div>
     </div>
 
-    <!-- 필터 칩 -->
-    <div class="chips">
-      <button class="chip active" onclick="setFilter('recent',this)">최근</button>
-      <button class="chip" onclick="setFilter('today',this)">오늘</button>
-      <button class="chip" onclick="setFilter('week',this)">이번 주</button>
-      <button class="chip" onclick="setFilter('all',this)">전체</button>
-    </div>
+    <div
+      class="notice-banner-text"
+      id="noticeText"
+    ></div>
+  </div>
 
     <!-- 작업 현황 (상단 배치) -->
     <section class="sec">
@@ -6563,6 +6585,783 @@ if(document.readyState === "loading"){
   #pageHome .qbtn-lbl{
     font-size:11.5px;
   }
+}
+</style>
+<style>
+/* =========================================================
+   대시보드 통합 반응형 최적화 패치 v1.0
+
+   적용 대상
+   - iPhone
+   - 삼성 갤럭시 및 일반 Android
+   - 폴더블 좁은 화면
+   - 태블릿
+   - PC
+
+   주요 목적
+   - 모바일 첫 화면 스크롤 최소화
+   - 빠른 실행과 하단 네비 사이 공백 완화
+   - 빠른 실행 외곽 카드 경량화
+   - 하단 안전영역 대응
+   ========================================================= */
+
+
+/* =========================================================
+   1. 공통 화면 높이 및 긴 텍스트 대응
+   ========================================================= */
+
+html,
+body{
+  width:100%;
+  min-height:100%;
+}
+
+body{
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.app{
+  width:100%;
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.qbtn,
+.status-hl-card,
+.status-dt-card,
+.nav-tab{
+  min-width:0;
+}
+
+.qbtn-lbl{
+  max-width:100%;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+
+/* =========================================================
+   2. 일반 모바일
+   iPhone 및 일반 Android 스마트폰
+   ========================================================= */
+
+@media (max-width:767px){
+
+  /*
+    홈 화면만 압축한다.
+    점검현황·설정·바텀시트 크기는 가급적 유지한다.
+  */
+
+  #pageHome.active{
+    min-height:100vh;
+    min-height:100dvh;
+  }
+
+
+  /* ─────────────────────────────────────
+     히어로
+     ───────────────────────────────────── */
+
+  #pageHome .hero{
+    padding:
+      max(11px, env(safe-area-inset-top))
+      14px
+      12px;
+  }
+
+  #pageHome .hero-brand{
+    gap:8px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:24px;
+  }
+
+  #pageHome .hero-brand-en{
+    margin-bottom:1px;
+    font-size:10.5px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:16px;
+  }
+
+  #pageHome .hero-tools{
+    gap:5px;
+  }
+
+  #pageHome .hero-date{
+    font-size:11px;
+  }
+
+  #pageHome .hero-time{
+    font-size:14px;
+  }
+
+  #pageHome .icon-btn{
+    width:35px;
+    height:35px;
+    border-radius:10px;
+    font-size:17px;
+  }
+
+
+  /* ─────────────────────────────────────
+     공지사항
+     ───────────────────────────────────── */
+
+  #pageHome .notice-banner{
+    margin:7px 12px 0;
+    padding:8px 10px;
+    border-radius:11px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .notice-banner-label{
+    font-size:12px;
+  }
+
+  #pageHome .notice-banner-new{
+    padding:1px 5px;
+    font-size:9px;
+  }
+
+  #pageHome .notice-banner-toggle{
+    font-size:11px;
+  }
+
+  #pageHome .notice-banner-text{
+    max-height:45px;
+    margin-top:4px;
+    padding-right:4px;
+    font-size:12px;
+    line-height:1.4;
+  }
+
+
+  /* ─────────────────────────────────────
+     날짜 필터
+     ───────────────────────────────────── */
+
+  #pageHome .chips{
+    align-items:center;
+    gap:5px;
+    padding:7px 12px 0;
+  }
+
+  #pageHome .chip{
+    padding:6px 12px;
+    border-width:1px;
+    font-size:12.5px;
+  }
+
+  #pageHome .chip-calendar{
+    width:36px;
+    height:32px;
+    padding:0;
+    font-size:16px;
+  }
+
+
+  /* ─────────────────────────────────────
+     홈 섹션 공통
+     ───────────────────────────────────── */
+
+  #pageHome .sec{
+    margin-top:9px;
+    padding:0 12px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:6px;
+  }
+
+  #pageHome .sec-title{
+    gap:4px;
+    font-size:14px;
+  }
+
+  #pageHome .sec-more{
+    font-size:12px;
+  }
+
+
+  /* ─────────────────────────────────────
+     전체·고위험 강조 카드
+     ───────────────────────────────────── */
+
+  #pageHome .status-highlight{
+    gap:7px;
+    margin-bottom:7px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:10px 13px;
+    border-radius:14px;
+    box-shadow:0 2px 8px rgba(15,29,43,.08);
+  }
+
+  #pageHome .status-hl-label{
+    gap:4px;
+    margin-bottom:3px;
+    font-size:12.5px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:34px;
+  }
+
+  #pageHome .status-hl-value small{
+    margin-left:2px;
+    font-size:14px;
+  }
+
+
+  /* ─────────────────────────────────────
+     상태 세부 카드
+     ───────────────────────────────────── */
+
+  #pageHome .status-detail{
+    gap:5px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:8px 2px 7px;
+    border-width:1px;
+    border-top-width:2px;
+    border-radius:11px;
+    box-shadow:0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .status-dt-value{
+    margin-bottom:3px;
+    font-size:22px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:11px;
+  }
+
+
+  /* ─────────────────────────────────────
+     빠른 실행 제목
+     두 번째 .sec가 빠른 실행 제목 영역이다.
+     ───────────────────────────────────── */
+
+  #pageHome .status-detail + *{
+    min-width:0;
+  }
+
+
+  /* ─────────────────────────────────────
+     빠른 실행 그리드
+
+     화면 높이에 따라 버튼 높이를 자동 조절한다.
+     긴 화면에서는 조금 커지고, 일반 화면에서는
+     과도하게 커지지 않는다.
+     ───────────────────────────────────── */
+
+  #pageHome .quick-grid{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    grid-auto-rows:
+      clamp(84px, 11.2dvh, 106px);
+
+    gap:7px;
+    margin-top:3px;
+    padding:0 12px 8px;
+  }
+
+  #pageHome .qbtn{
+    min-height:0;
+    height:100%;
+    padding:8px 4px 7px;
+    gap:5px;
+
+    border:0.5px solid var(--line);
+    border-radius:13px;
+
+    box-shadow:
+      0 1px 5px rgba(15,29,43,.05);
+  }
+
+  #pageHome .qbtn-ico{
+    width:42px;
+    height:42px;
+
+    border-radius:12px;
+    font-size:21px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:12.5px;
+    line-height:1.2;
+  }
+
+
+  /* ─────────────────────────────────────
+     홈 본문 하단 여백
+
+     하단 네비게이터가 내용을 가리지 않을 정도만 확보한다.
+     기존 88px보다 축소한다.
+     ───────────────────────────────────── */
+
+  #pageHome .main{
+    padding-bottom:
+      calc(66px + env(safe-area-inset-bottom));
+  }
+
+
+  /* ─────────────────────────────────────
+     하단 네비게이터
+     ───────────────────────────────────── */
+
+  .botnav{
+    padding:
+      5px
+      0
+      max(5px, env(safe-area-inset-bottom));
+
+    border-radius:17px 17px 0 0;
+  }
+
+  .nav-tab{
+    gap:2px;
+    padding:4px 0;
+  }
+
+  .nav-ti{
+    font-size:21px;
+  }
+
+  .nav-tl{
+    font-size:11.5px;
+  }
+
+  .nav-badge{
+    top:0;
+    min-width:17px;
+    height:17px;
+    padding:0 4px;
+    font-size:10px;
+  }
+}
+
+
+/* =========================================================
+   3. 높이가 짧은 모바일
+   구형 스마트폰·가로 분할 화면 등
+   ========================================================= */
+
+@media (max-width:767px) and (max-height:700px){
+
+  #pageHome .hero{
+    padding-top:
+      max(8px, env(safe-area-inset-top));
+    padding-bottom:8px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:21px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:9.5px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:14.5px;
+  }
+
+  /*
+    화면이 짧을 때 날짜·시간 영역을 숨겨 공간 확보
+  */
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .icon-btn{
+    width:32px;
+    height:32px;
+  }
+
+  #pageHome .notice-banner{
+    margin-top:5px;
+    padding-top:6px;
+    padding-bottom:6px;
+  }
+
+  #pageHome .chips{
+    padding-top:5px;
+  }
+
+  #pageHome .chip{
+    padding:5px 10px;
+    font-size:12px;
+  }
+
+  #pageHome .sec{
+    margin-top:6px;
+  }
+
+  #pageHome .sec-hdr{
+    margin-bottom:4px;
+  }
+
+  #pageHome .status-highlight{
+    gap:5px;
+    margin-bottom:5px;
+  }
+
+  #pageHome .status-hl-card{
+    padding:7px 10px;
+  }
+
+  #pageHome .status-hl-label{
+    margin-bottom:2px;
+    font-size:11.5px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:29px;
+  }
+
+  #pageHome .status-dt-card{
+    padding:5px 2px;
+  }
+
+  #pageHome .status-dt-value{
+    font-size:19px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:10.5px;
+  }
+
+  #pageHome .quick-grid{
+    grid-auto-rows:72px;
+    gap:5px;
+    padding-bottom:5px;
+  }
+
+  #pageHome .qbtn{
+    padding:5px 3px;
+    gap:2px;
+    border-radius:11px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:35px;
+    height:35px;
+    border-radius:10px;
+    font-size:18px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:11px;
+  }
+
+  #pageHome .main{
+    padding-bottom:
+      calc(59px + env(safe-area-inset-bottom));
+  }
+
+  .botnav{
+    padding-top:3px;
+  }
+
+  .nav-tab{
+    padding:2px 0;
+  }
+
+  .nav-ti{
+    font-size:19px;
+  }
+
+  .nav-tl{
+    font-size:10.5px;
+  }
+}
+
+
+/* =========================================================
+   4. 세로로 긴 스마트폰
+   최신 iPhone·Galaxy 등
+
+   빠른 실행 카드가 지나치게 작아 보이지 않도록 확대해
+   하단 네비게이터와의 빈 공간을 일부 완화한다.
+   ========================================================= */
+
+@media (max-width:767px) and (min-height:800px){
+
+  #pageHome .quick-grid{
+    grid-auto-rows:
+      clamp(96px, 11.5dvh, 110px);
+
+    row-gap:8px;
+  }
+
+  #pageHome .qbtn{
+    padding:10px 4px 8px;
+    gap:6px;
+    border-radius:14px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:45px;
+    height:45px;
+    border-radius:13px;
+    font-size:22px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:12.5px;
+  }
+}
+
+
+/* =========================================================
+   5. 매우 긴 스마트폰
+   Galaxy Ultra·일부 최신 Android 등
+   ========================================================= */
+
+@media (max-width:767px) and (min-height:900px){
+
+  #pageHome .quick-grid{
+    grid-auto-rows:110px;
+    row-gap:9px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:48px;
+    height:48px;
+    font-size:23px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:13px;
+  }
+}
+
+
+/* =========================================================
+   6. 폭이 매우 좁은 화면
+   소형 스마트폰·폴더블 커버 화면
+   ========================================================= */
+
+@media (max-width:360px){
+
+  #pageHome .hero{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .hero-brand{
+    gap:6px;
+  }
+
+  #pageHome .hero-logo{
+    font-size:20px;
+  }
+
+  #pageHome .hero-brand-en{
+    font-size:9px;
+  }
+
+  #pageHome .hero-brand-ko{
+    font-size:13.5px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .chips{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .chip{
+    padding-left:9px;
+    padding-right:9px;
+    font-size:11.5px;
+  }
+
+  #pageHome .sec,
+  #pageHome .quick-grid{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  #pageHome .status-highlight{
+    gap:5px;
+  }
+
+  #pageHome .status-hl-card{
+    padding-left:9px;
+    padding-right:9px;
+  }
+
+  #pageHome .status-hl-value{
+    font-size:29px;
+  }
+
+  #pageHome .status-detail{
+    gap:4px;
+  }
+
+  #pageHome .status-dt-label{
+    font-size:10px;
+  }
+
+  #pageHome .quick-grid{
+    gap:5px;
+  }
+
+  #pageHome .qbtn{
+    padding-left:2px;
+    padding-right:2px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10.8px;
+  }
+
+  .nav-tl{
+    font-size:10.5px;
+  }
+}
+
+
+/* =========================================================
+   7. 태블릿
+   세로·가로 모두 모바일 앱 형태를 유지하되
+   최대 폭을 640px까지 확장한다.
+   ========================================================= */
+
+@media (min-width:768px) and (max-width:1199px){
+
+  body{
+    padding:18px 0;
+  }
+
+  .app{
+    width:calc(100% - 32px);
+    max-width:640px;
+    min-height:calc(100vh - 36px);
+    min-height:calc(100dvh - 36px);
+  }
+
+  .botnav,
+  .sheet{
+    width:calc(100% - 32px);
+    max-width:640px;
+  }
+
+  .app .botnav{
+    border-radius:0 0 24px 24px;
+  }
+
+  #pageHome .quick-grid{
+    gap:12px;
+  }
+
+  #pageHome .qbtn{
+    min-height:112px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:52px;
+    height:52px;
+    font-size:25px;
+  }
+}
+
+
+/* =========================================================
+   8. PC
+   모바일 대시보드 구조는 유지하고 중앙 카드 폭만 확장
+   ========================================================= */
+
+@media (min-width:1200px){
+
+  .app{
+    max-width:680px;
+  }
+
+  .botnav,
+  .sheet{
+    max-width:680px;
+  }
+
+  .app .botnav{
+    border-radius:0 0 24px 24px;
+  }
+
+  #pageHome .quick-grid{
+    gap:12px;
+  }
+
+  #pageHome .qbtn{
+    min-height:114px;
+  }
+}
+
+
+/* =========================================================
+   9. 가로 모드
+   높이가 부족한 모바일 가로 화면에서 과도한 확대 방지
+   ========================================================= */
+
+@media (max-width:767px) and (orientation:landscape){
+
+  #pageHome .hero{
+    padding-top:7px;
+    padding-bottom:7px;
+  }
+
+  #pageHome .hero-clock{
+    display:none;
+  }
+
+  #pageHome .notice-banner{
+    display:none !important;
+  }
+
+  #pageHome .quick-grid{
+    grid-auto-rows:68px;
+  }
+
+  #pageHome .qbtn{
+    flex-direction:row;
+    justify-content:center;
+    padding:5px;
+  }
+
+  #pageHome .qbtn-ico{
+    width:34px;
+    height:34px;
+    font-size:17px;
+  }
+
+  #pageHome .qbtn-lbl{
+    font-size:10.5px;
+  }
+}
+
+
+/* =========================================================
+   10. 다크 모드 빠른 실행 카드 보정
+   ========================================================= */
+
+[data-theme="dark"] #pageHome .qbtn{
+  box-shadow:
+    0 1px 5px rgba(0,0,0,.24);
+}
+
+[data-theme="dark"] #pageHome .status-dt-card{
+  box-shadow:
+    0 1px 5px rgba(0,0,0,.2);
 }
 </style>
 
