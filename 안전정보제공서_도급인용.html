@@ -33,6 +33,13 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .nav-btn:active{background:rgba(255,255,255,.28);}
 .topnav-title{color:#fff;font-size:16px;font-weight:800;}
 
+/* WorkID 배지 (신규 v2.1) */
+.workid-badge{background:rgba(255,255,255,.18);color:#fff;
+  font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
+  letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  display:none;}
+.workid-badge.show{display:inline-block;}
+
 /* PROGRESS */
 .prog-wrap{background:var(--card);padding:12px 14px;
   border-bottom:1.5px solid var(--border);position:sticky;top:56px;z-index:190;}
@@ -69,7 +76,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .f-textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
-/* 자동 채움 필드 (읽기 전용 스타일) */
+/* 자동 채움 필드 (신규 v2.1) */
 .f-input.auto-filled,.f-textarea.auto-filled{
   background:#F5F9FF;border-color:rgba(13,71,161,.25);
   color:var(--navy);font-weight:700;}
@@ -78,6 +85,28 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .auto-fill-badge{display:inline-block;font-size:10px;font-weight:800;
   color:var(--navy2);background:#EEF2FF;padding:2px 6px;border-radius:4px;
   margin-left:6px;letter-spacing:.5px;}
+
+/* WorkID 정보 배너 (신규 v2.1) */
+.workid-info-banner{
+  background:linear-gradient(135deg,#EEF2FF 0%,#F5F9FF 100%);
+  border:1.5px solid rgba(21,101,192,.25);
+  border-radius:12px;padding:14px 16px;margin-bottom:14px;
+  animation:slideDown .35s cubic-bezier(.32,.72,0,1);
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.wib-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.wib-badge{background:var(--navy2);color:#fff;
+  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
+  letter-spacing:.5px;}
+.wib-workid{font-size:12px;font-weight:800;color:var(--navy2);
+  font-family:'Courier New',monospace;letter-spacing:.5px;}
+.wib-name{font-size:15px;font-weight:800;color:var(--text);
+  line-height:1.4;margin-bottom:4px;}
+.wib-meta{font-size:12px;color:var(--sub);font-weight:600;
+  display:flex;gap:12px;flex-wrap:wrap;}
 
 /* INFO BOXES */
 .info-box{background:#EEF2FF;border-left:4px solid var(--navy2);
@@ -124,6 +153,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .sig-clear{width:100%;padding:10px;margin-top:8px;background:var(--bg);
   border:1.5px solid var(--border);border-radius:9px;
   font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;}
+
 /* BUTTONS */
 .btn-row{display:flex;gap:10px;margin-top:16px;}
 .btn-primary{flex:2;padding:16px;
@@ -142,7 +172,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   box-shadow:0 4px 14px rgba(27,94,32,.28);margin-bottom:10px;}
 .btn-success-full:active{transform:scale(.98);}
 
-/* MSDS 카테고리 필터 - 신규 */
+/* MSDS 카테고리 필터 */
 .msds-filter-wrap{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
   margin-bottom:10px;padding-bottom:4px;}
 .msds-filter-wrap::-webkit-scrollbar{display:none;}
@@ -231,6 +261,77 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .toast.danger{background:linear-gradient(135deg,#8B0000,var(--red2));}
 .toast.info{background:linear-gradient(135deg,var(--navy),var(--blue));}
 @keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+
+/* ═══════════════════════════════════════
+   커스텀 확인 다이얼로그 (v2.1 신규)
+   브라우저 기본 alert/confirm 대체
+   ═══════════════════════════════════════ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:9999;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:340px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--text);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{
+  background:var(--bg);color:var(--sub);
+  border:1.5px solid var(--border);
+}
+.custom-confirm-btn-confirm{
+  background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+  box-shadow:0 4px 12px rgba(13,71,161,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:linear-gradient(135deg,#8B0000,var(--red2));
+  box-shadow:0 4px 12px rgba(198,40,40,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:linear-gradient(135deg,#B45309,var(--orange2));
+  box-shadow:0 4px 12px rgba(230,81,0,.25);
+}
+.custom-confirm-btn-confirm.success{
+  background:linear-gradient(135deg,var(--green),var(--green2));
+  box-shadow:0 4px 12px rgba(27,94,32,.25);
+}
+/* 하나만 있을 때 (알림 전용) */
+.custom-confirm-buttons.single{
+  justify-content:center;
+}
+.custom-confirm-buttons.single .custom-confirm-btn-cancel{
+  display:none;
+}
 </style>
 </head>
 <body>
@@ -242,7 +343,8 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <button class="nav-btn" onclick="goBack()">←</button>
     <div class="topnav-title">안전정보제공서 (도급인)</div>
   </div>
-  <div class="topnav-r">
+  <div class="topnav-r" style="display:flex;align-items:center;gap:6px;">
+    <div class="workid-badge" id="workidBadge"></div>
     <button class="nav-btn" onclick="goHome()">🏠</button>
   </div>
 </nav>
@@ -282,6 +384,9 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <div class="api-dot loading" id="apiDot"></div>
     <span id="apiStatusTxt">서버 연결 확인 중...</span>
   </div>
+
+  <!-- 자동 채움 안내 배너 (workId 있을 때만 표시) -->
+  <div id="workidInfoBanner" style="display:none;"></div>
 
   <div class="info-box">
     <div class="info-box-t">📌 작성 순서</div>
@@ -413,6 +518,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <button class="btn-primary" onclick="validateStep(2)">다음 →</button>
   </div>
 </div>
+
 <!-- ══ STEP 3: 관련 서류 ══ -->
 <div class="screen" id="screen-step3">
   <div class="info-box">
@@ -637,12 +743,29 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 </div>
 
 </div><!-- /.app -->
+
+<!-- 커스텀 확인 다이얼로그 (v2.1 신규) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons" id="customConfirmButtons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════
 // API 설정 (개발 단계: mailto 폴백 사용)
 // ═══════════════════════════════════════════════
 var API_BASE_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-var API_ENABLED = false;  // Apps Script URL 설정 시 true로 변경
+var API_ENABLED = false;
 
 function apiPost(body){
   if(!API_ENABLED){
@@ -658,9 +781,10 @@ function apiPost(body){
 }
 
 // ═══════════════════════════════════════════════
-// DATA (대시보드 매칭 필드 포함)
+// DATA (v2.1: workId 필드 추가)
 // ═══════════════════════════════════════════════
 var data = {
+  workId: '',                    // ⭐ v2.1 신규: 작업DB 연결 키
   safeinfoNo:'',
   subcontractor:'', workName:'', location:'', detailLocation:'',
   startDate:'', endDate:'',
@@ -672,7 +796,6 @@ var data = {
   safetyItems:[], safetyOther:'', ppeItems:[],
   emergencyProc:'', safetyManagerPhone:'',
   contractorSignature:null, signUrl:'',
-  // 대시보드 매칭 필드
   submittedCompany:'', submittedBy:'',
   status:'발행완료', date:'',
   createdAt:'', createdBy:'', updatedAt:'', updatedBy:'',
@@ -685,9 +808,6 @@ var noChemChecked = false;
 
 // ═══════════════════════════════════════════════════════════
 // MSDS 데이터베이스 (포스코퓨처엠 실사용 34종)
-// - 카테고리: product(완제품)/precursor(전구체)/material(원료)/utility(유틸리티)
-// - 상세 유해성/보호구는 안전보건공단 원본 MSDS 참조 (msdsNo)
-// - 향후 Firestore MSDS 컬렉션으로 이관 예정
 // ═══════════════════════════════════════════════════════════
 var MSDS_LIST = [
   // ─── 완제품 (4) ───
@@ -747,8 +867,6 @@ var currentMsdsSearch = '';
 
 // ═══════════════════════════════════════════════════════════
 // 공장별 비상정보 (포항양극재 사업장 - 2개)
-// - 통합운전실 054-240-5191 / 119
-// - 향후 Firestore 공장안전정보 컬렉션으로 이관 예정
 // ═══════════════════════════════════════════════════════════
 var FACTORY_SAFETY_INFO = {
   '포항양극재 1공장': {
@@ -836,6 +954,85 @@ var STEP_LABELS = ['','기본정보','화학물질','관련서류','공장안전
 </script>
 <script>
 // ═══════════════════════════════════════════════
+// 커스텀 확인 다이얼로그 (v2.1 신규)
+// 브라우저 기본 alert/confirm 대체
+// ═══════════════════════════════════════════════
+var customConfirmCallback = null;
+
+/**
+ * 커스텀 확인 다이얼로그
+ * @param {Object|String} options - 옵션 객체 또는 메시지
+ *   { icon, title, message, okText, cancelText, okType, alertOnly }
+ * @param {function} callback - 결과 콜백 (true=확인, false=취소)
+ */
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  
+  var iconEl = document.getElementById('customConfirmIcon');
+  var titleEl = document.getElementById('customConfirmTitle');
+  var messageEl = document.getElementById('customConfirmMessage');
+  var okBtn = document.getElementById('customConfirmOk');
+  var overlay = document.getElementById('customConfirmOverlay');
+  var buttonsEl = document.getElementById('customConfirmButtons');
+  
+  if(!overlay){
+    console.warn('[showCustomConfirm] 다이얼로그 요소 없음. 기본 confirm 사용');
+    var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+    if(callback) callback(result);
+    return;
+  }
+  
+  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+  if(titleEl) titleEl.textContent = opts.title || '확인';
+  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+  
+  if(okBtn){
+    okBtn.textContent = opts.okText || '확인';
+    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+    if(opts.okType === 'danger') okBtn.classList.add('danger');
+    else if(opts.okType === 'warn') okBtn.classList.add('warn');
+    else if(opts.okType === 'success') okBtn.classList.add('success');
+  }
+  
+  // 알림 전용 (버튼 하나만)
+  if(buttonsEl){
+    if(opts.alertOnly){
+      buttonsEl.classList.add('single');
+    } else {
+      buttonsEl.classList.remove('single');
+    }
+  }
+  
+  customConfirmCallback = callback || function(){};
+  overlay.classList.add('active');
+}
+
+function customConfirmClose(result){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay) overlay.classList.remove('active');
+  
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function'){
+    setTimeout(function(){ cb(result); }, 150);
+  }
+}
+
+/**
+ * 커스텀 알림 (버튼 1개)
+ */
+function showCustomAlert(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  opts.alertOnly = true;
+  opts.okText = opts.okText || '확인';
+  showCustomConfirm(opts, callback);
+}
+
+// ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function(){
@@ -852,7 +1049,7 @@ window.addEventListener('DOMContentLoaded', function(){
   renderSafety();
   renderPPE();
  
-  // 폐기 키 마이그레이션 (한 번만)
+  // 폐기 키 마이그레이션
   migrateLegacyKeys();
  
   // API 상태 확인
@@ -861,9 +1058,35 @@ window.addEventListener('DOMContentLoaded', function(){
   } else {
     setApiStatus('local', '로컬 저장 모드 (개발 단계)');
   }
+
+  // ⭐ v2.1 신규: URL에서 workId 감지
+  var params = new URLSearchParams(window.location.search);
+  var workIdFromUrl = params.get('workId');
+  if(workIdFromUrl){
+    console.log('[v2.1] URL에서 workId 감지:', workIdFromUrl);
+    loadWorkFromDb(workIdFromUrl);
+  }
+
+  // ESC로 다이얼로그 닫기
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var overlay = document.getElementById('customConfirmOverlay');
+      if(overlay && overlay.classList.contains('active')){
+        customConfirmClose(false);
+      }
+    }
+  });
+  
+  // 오버레이 클릭으로 닫기
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) customConfirmClose(false);
+    });
+  }
 });
 
-// KST 기준 날짜 (규약 준수)
+// KST 기준 날짜
 function fmtDate(d){
   d = d || new Date();
   var y = d.getFullYear();
@@ -872,7 +1095,6 @@ function fmtDate(d){
   return y + '-' + m + '-' + day;
 }
 
-// 다크모드 상속
 function initTheme(){
   var t = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', t);
@@ -901,6 +1123,190 @@ function checkApiStatus(){
       setApiStatus('err', '서버 미연결 — 로컬 저장만 가능');
     });
 }
+
+// ═══════════════════════════════════════════════
+// ⭐ v2.1 신규: 작업DB에서 workId로 정보 자동 채움
+// ═══════════════════════════════════════════════
+function loadWorkFromDb(workId){
+  try{
+    var raw = localStorage.getItem('safetyDatabase');
+    if(!raw){
+      console.warn('[loadWorkFromDb] safetyDatabase 없음');
+      showToast('⚠️ 작업DB가 비어있습니다', 'info');
+      return;
+    }
+    
+    var db = JSON.parse(raw);
+    var works = db.workHistory || [];
+    var work = works.find(function(w){ 
+      var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
+      return wid === workId; 
+    });
+    
+    if(!work){
+      console.warn('[loadWorkFromDb] 작업 찾을 수 없음:', workId);
+      showCustomAlert({
+        icon: '⚠️',
+        title: '작업 정보 없음',
+        message: '선택하신 작업의 정보를 찾을 수 없습니다.\n빈 양식으로 진행됩니다.',
+        okType: 'warn'
+      });
+      return;
+    }
+    
+    // 전역 data에 workId 저장
+    data.workId = workId;
+    
+    // 상단 배지에 workId 표시
+    var badge = document.getElementById('workidBadge');
+    if(badge){
+      badge.textContent = workId;
+      badge.classList.add('show');
+    }
+    
+    // 시작 화면 상단에 작업 정보 배너 표시
+    showWorkInfoBanner(work);
+    
+    // 자동으로 Step 1로 이동 + 필드 채움
+    setTimeout(function(){
+      goToStep(1);
+      autoFillFields(work);
+    }, 400);
+    
+    console.log('[loadWorkFromDb] 작업 정보 로드 성공:', work);
+    
+  }catch(e){
+    console.error('[loadWorkFromDb] 오류:', e);
+    showCustomAlert({
+      icon: '❌',
+      title: '작업 조회 실패',
+      message: '작업 정보를 불러오는 중 오류가 발생했습니다.\n' + e.message,
+      okType: 'danger'
+    });
+  }
+}
+
+/**
+ * 작업 정보 배너 표시 (시작 화면 상단)
+ */
+function showWorkInfoBanner(work){
+  var banner = document.getElementById('workidInfoBanner');
+  if(!banner) return;
+  
+  var company = work.company || work.executingCompany || work.contractCompany || '미지정';
+  var workName = work.workName || work.workNameFull || '작업명 미지정';
+  var manager = work.workManager || work.manager || work.contractorManager || '';
+  var workDate = work.date || fmtDate(new Date());
+  
+  banner.innerHTML = 
+    '<div class="workid-info-banner">' +
+      '<div class="wib-top">' +
+        '<span class="wib-badge">📋 자동 채움</span>' +
+        '<span class="wib-workid">' + escHtml(data.workId) + '</span>' +
+      '</div>' +
+      '<div class="wib-name">' + escHtml(workName) + '</div>' +
+      '<div class="wib-meta">' +
+        '<span>📅 ' + escHtml(workDate) + '</span>' +
+        '<span>🏢 ' + escHtml(company) + '</span>' +
+        (manager ? '<span>👤 ' + escHtml(manager) + '</span>' : '') +
+      '</div>' +
+    '</div>';
+  banner.style.display = 'block';
+}
+
+/**
+ * 폼 필드 자동 채움
+ */
+function autoFillFields(work){
+  var filledCount = 0;
+  
+  // 수급인(협력사)명
+  var company = work.company || work.executingCompany || work.contractCompany || '';
+  if(company){
+    setValAuto('subcontractor', company);
+    filledCount++;
+  }
+  
+  // 작업명
+  var workName = work.workName || work.workNameFull || '';
+  if(workName){
+    setValAuto('work-name', workName);
+    filledCount++;
+  }
+  
+  // 세부 위치
+  var detailLoc = work.locationRaw || work.workPlaceRaw || '';
+  if(work.location && typeof work.location === 'object'){
+    detailLoc = work.location.raw || detailLoc;
+  }
+  if(detailLoc){
+    setValAuto('detail-location', detailLoc);
+    filledCount++;
+  }
+  
+  // 작업일 (시작/종료 동일)
+  var workDate = work.date || fmtDate(new Date());
+  if(workDate){
+    setVal('start-date', workDate);
+    setVal('end-date', workDate);
+    filledCount++;
+  }
+  
+  // 작업장소 자동 선택 (1공장/2공장 판별)
+  var factory = '';
+  if(work.location && typeof work.location === 'object'){
+    factory = work.location.factory || '';
+  }
+  var combinedText = (factory + ' ' + detailLoc + ' ' + (work.workNameFull || '')).toLowerCase();
+  
+  var selectedLocation = '';
+  if(combinedText.indexOf('2-2') >= 0 || combinedText.indexOf('2공장') >= 0){
+    selectedLocation = '포항양극재 2공장';
+  } else if(combinedText.indexOf('1공장') >= 0 || combinedText.indexOf('2-1') >= 0){
+    selectedLocation = '포항양극재 1공장';
+  }
+  
+  if(selectedLocation){
+    var locSelect = document.getElementById('location');
+    if(locSelect){
+      locSelect.value = selectedLocation;
+      locSelect.classList.add('auto-filled');
+      onLocationChange(selectedLocation);
+      filledCount++;
+    }
+  }
+  
+  // 담당자명 자동 채움
+  var manager = work.workManager || work.manager || work.contractorManager || '';
+  if(manager){
+    setValAuto('contractor-manager', manager);
+    filledCount++;
+  }
+  
+  // 안내 토스트
+  if(filledCount > 0){
+    showToast('✨ ' + filledCount + '개 항목이 자동 입력되었습니다', 'success');
+  }
+}
+
+/**
+ * 자동 채움 필드 설정 (시각적 표시 포함)
+ */
+function setValAuto(id, val){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.value = val || '';
+  if(val) el.classList.add('auto-filled');
+}
+
+// 자동 채움 필드를 사용자가 수정하면 시각 표시 해제
+document.addEventListener('DOMContentLoaded', function(){
+  document.body.addEventListener('input', function(e){
+    if(e.target.classList && e.target.classList.contains('auto-filled')){
+      e.target.classList.remove('auto-filled');
+    }
+  });
+});
 
 // ═══════════════════════════════════════════════
 // MSDS 카테고리 필터
@@ -937,9 +1343,7 @@ function renderMSDS(){
   if(!grid) return;
  
   var filtered = MSDS_LIST.filter(function(m){
-    // 카테고리 필터
     if(currentMsdsCategory !== 'all' && m.category !== currentMsdsCategory) return false;
-    // 검색 필터
     if(currentMsdsSearch){
       var q = currentMsdsSearch;
       return (m.name && m.name.toLowerCase().indexOf(q) >= 0) ||
@@ -950,10 +1354,8 @@ function renderMSDS(){
     return true;
   });
  
-  // 카운트 정보
   setTxt('msdsShowCount', filtered.length);
  
-  // 결과 없음
   if(filtered.length === 0){
     grid.innerHTML = '<div class="msds-empty">'+
       '<div class="msds-empty-ico">🔍</div>'+
@@ -962,7 +1364,6 @@ function renderMSDS(){
     return;
   }
  
-  // 렌더링
   grid.innerHTML = filtered.map(function(m){
     var isChecked = data.msdsIds.indexOf(m.id) >= 0;
     return '<div class="check-item msds-item'+(isChecked?' checked':'')+
@@ -983,12 +1384,10 @@ function togMSDS(el, id){
   var isChecked = el.classList.contains('checked');
   ico.textContent = isChecked ? '✓' : '';
  
-  // data.msdsIds 업데이트
   var idx = data.msdsIds.indexOf(id);
   if(isChecked && idx < 0) data.msdsIds.push(id);
   else if(!isChecked && idx >= 0) data.msdsIds.splice(idx, 1);
  
-  // 선택 개수 표시
   updateMsdsSelectedCount();
 }
 
@@ -1043,7 +1442,6 @@ function renderPPE(){
   }).join('');
 }
 
-// 일반 체크박스 토글
 function togCheck(el, type){
   el.classList.toggle('checked');
   el.querySelector('.check-ico').textContent = el.classList.contains('checked') ? '✓' : '';
@@ -1077,24 +1475,19 @@ function togAck(el){
 }
 
 // ═══════════════════════════════════════════════
-// 작업장소 선택 시 비상정보 자동 채움
+// 작업장소 변경 시 비상정보 자동 채움
 // ═══════════════════════════════════════════════
 function onLocationChange(location){
   if(!location) return;
  
   var info = getFactoryInfo(location);
  
-  // STEP 4 자동 채움
   setVal('emergency-contact', info.emergencyContact);
   setVal('emergency-exit', info.emergencyExit);
   setVal('first-aid', info.firstAid);
   setVal('aed-locations', info.aedLocations);
- 
-  // STEP 6 자동 채움
   setVal('emergency-proc', info.emergencyProcedure);
   setVal('safety-manager-phone', info.safetyManagerPhone);
- 
-  // STEP 4 화면에 공장 이름 표시
   setTxt('factoryDisplayName', location);
 }
 
@@ -1123,8 +1516,6 @@ function validateStep(step){
     data.startDate=sd; data.endDate=ed;
     data.contractorManager=cm; data.contractorDept=cd;
     data.contractorPhone=cp; data.contractorEmail=ce;
-   
-    // 비상정보 자동 채움 (한번 더 확실히)
     onLocationChange(loc);
   }
   else if(step===2){
@@ -1149,7 +1540,6 @@ function validateStep(step){
     if(!raNo){showToast('위험성평가 문서번호를 입력해주세요','danger'); return;}
     data.riskAssessmentNo = raNo;
     data.permitNo = getVal('permit-no');
-    // 선택 서류 수집
     var docs = [];
     document.querySelectorAll('#screen-step3 .check-item.checked').forEach(function(el){
       var name = el.getAttribute('data-name');
@@ -1163,7 +1553,6 @@ function validateStep(step){
       fac.push(el.getAttribute('data-name'));
     });
     data.facilityItems = fac;
-    // 비상정보는 자동 채움된 상태 유지
     data.emergencyContact = getVal('emergency-contact');
     data.emergencyExit = getVal('emergency-exit');
     data.firstAid = getVal('first-aid');
@@ -1184,7 +1573,6 @@ function validateStep(step){
       ppe.push(el.getAttribute('data-name'));
     });
     data.ppeItems = ppe;
-    // 비상정보는 자동 채움된 상태 유지
     data.emergencyProc = getVal('emergency-proc');
     data.safetyManagerPhone = getVal('safety-manager-phone');
   }
@@ -1218,14 +1606,13 @@ function goToScreen(id){
 function startForm(){ goToStep(1); }
 
 // ═══════════════════════════════════════════════
-// RISK ASSESSMENT LOAD (규약 준수 키)
+// RISK ASSESSMENT LOAD
 // ═══════════════════════════════════════════════
 function loadRiskAssessment(){
   var no = getVal('risk-assess-no');
   if(!no){ showToast('문서번호를 입력해주세요','info'); return; }
  
   try{
-    // 규약 준수: 'riskAssessments' 우선
     var list = JSON.parse(localStorage.getItem('riskAssessments') || '[]');
     if(list.length === 0){
       var legacy1 = JSON.parse(localStorage.getItem('riskDatabase') || '[]');
@@ -1256,7 +1643,7 @@ function loadRiskAssessment(){
 }
 
 // ═══════════════════════════════════════════════
-// 문서번호 시퀀스 (규약: SIP-YYYYMMDD-SEQ3)
+// 문서번호 시퀀스
 // ═══════════════════════════════════════════════
 function getNextSafeinfoNo(){
   var today = fmtDate(new Date()).replace(/-/g, '');
@@ -1273,7 +1660,7 @@ function getNextSafeinfoNo(){
 }
 
 // ═══════════════════════════════════════════════
-// 유틸리티
+// UTIL
 // ═══════════════════════════════════════════════
 function getVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
 function setVal(id,v){var el=document.getElementById(id);if(el) el.value=v;}
@@ -1325,11 +1712,20 @@ function hasSig(id){
 }
 
 // ═══════════════════════════════════════════════
-// NAV
+// NAV (v2.1: 커스텀 다이얼로그 사용)
 // ═══════════════════════════════════════════════
 function goHome(){
   if(currentStep>0 && currentStep<8){
-    if(!confirm('작성 중인 내용이 있습니다.\n대시보드로 이동하시겠습니까?')) return;
+    showCustomConfirm({
+      icon: '🏠',
+      title: '대시보드로 이동',
+      message: '작성 중인 내용이 사라집니다.\n계속하시겠습니까?',
+      okText: '이동',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+    });
+    return;
   }
   window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
@@ -1356,6 +1752,7 @@ function copyLink(){
   }
 }
 </script>
+
 <script>
 // ═══════════════════════════════════════════════════════════
 // 폐기 키 마이그레이션 (safetyInfoDocs → safetyProvisions)
@@ -1378,69 +1775,45 @@ function migrateLegacyKeys(){
         });
         if(exists) return;
        
-        // 폐기 스키마 → 신규 스키마 변환
         var converted = {
+          workId: item.workId || '',
           safeinfoNo: existingNo,
-          docId: item.docId,  // 호환성 유지
-         
-          // 기본정보
+          docId: item.docId,
           subcontractor: item.subcontractor || '',
           workName: item.workName || '',
           location: item.location || '',
           detailLocation: item.detailLocation || '',
           startDate: item.startDate || '',
           endDate: item.endDate || '',
-         
-          // 도급인
           contractorManager: item.contractorManager || '',
           contractorDept: item.contractorDept || '',
           contractorPhone: item.contractorPhone || '',
           contractorEmail: item.contractorEmail || '',
-         
-          // 수급인
           subcontractorEmail: item.subcontractorEmail || '',
           subcontractorPhone: item.subcontractorPhone || '',
-         
-          // 화학물질
           noChemical: item.noChemical || false,
           msdsItems: item.msdsItems || [],
           msdsIds: item.msdsIds || [],
           chemicalOther: item.chemicalOther || '',
-         
-          // 서류
           riskAssessmentNo: item.riskAssessmentNo || '',
           permitNo: item.permitNo || '',
           selectedDocs: item.selectedDocs || [],
-         
-          // 공장 안전
           facilityItems: item.facilityItems || [],
           emergencyExit: item.emergencyExit || '',
           emergencyContact: item.emergencyContact || '',
           firstAid: item.firstAid || '',
           aedLocations: item.aedLocations || '',
-         
-          // 안전수칙 & 보호구
           safetyItems: item.safetyItems || [],
           safetyOther: item.safetyOther || '',
           ppeItems: item.ppeItems || [],
-         
-          // 비상대응
           emergencyProc: item.emergencyProc || '',
           safetyManagerPhone: item.safetyManagerPhone || '',
-         
-          // 서명
           contractorSignature: item.contractorSignature || null,
-         
-          // 링크
           signUrl: item.signUrl || '',
-         
-          // 대시보드 매칭 필드
           submittedCompany: item.subcontractor || '',
           submittedBy: item.contractorManager || '',
           status: item.status || '발행완료',
           date: item.startDate || (item.createdAt || '').substring(0, 10),
-         
-          // 감사 필드
           createdAt: item.createdAt || new Date().toISOString(),
           createdBy: item.contractorManager || 'legacy',
           updatedAt: item.createdAt || new Date().toISOString(),
@@ -1465,7 +1838,7 @@ function migrateLegacyKeys(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// SUBMIT (규약 완전 준수)
+// SUBMIT (v2.1: workId 포함)
 // ═══════════════════════════════════════════════════════════
 function submitDoc(){
   var se = getVal('sub-email');
@@ -1491,10 +1864,8 @@ function submitDoc(){
   showToast('저장 중...', 'info');
  
   try{
-    // 문서번호 생성
     data.safeinfoNo = getNextSafeinfoNo();
    
-    // 감사 필드 & 대시보드 매칭
     var now = new Date();
     var userName = sessionStorage.getItem('userName') || data.contractorManager || 'anonymous';
    
@@ -1507,72 +1878,51 @@ function submitDoc(){
     data.updatedAt = now.toISOString();
     data.updatedBy = userName;
    
-    // 수급인 링크 (규약: ?safeinfoNo=)
+    // ⭐ v2.1: 수급인 링크에 workId도 함께 전달
     var baseUrl = window.location.origin + window.location.pathname.replace('안전정보제공서_도급인용.html', '');
-    data.signUrl = baseUrl + '안전정보제공서_수급인용.html?safeinfoNo=' + encodeURIComponent(data.safeinfoNo);
+    data.signUrl = baseUrl + '안전정보제공서_수급인용.html' +
+      '?safeinfoNo=' + encodeURIComponent(data.safeinfoNo) +
+      (data.workId ? '&workId=' + encodeURIComponent(data.workId) : '');
    
-    // 저장 데이터 구조 (Firestore 호환)
+    // 저장 데이터 구조 (workId 포함)
     var saveData = {
+      workId: data.workId || '',        // ⭐ v2.1 신규
       safeinfoNo: data.safeinfoNo,
-     
-      // 기본정보
       subcontractor: data.subcontractor,
       workName: data.workName,
       location: data.location,
       detailLocation: data.detailLocation,
       startDate: data.startDate,
       endDate: data.endDate,
-     
-      // 도급인
       contractorManager: data.contractorManager,
       contractorDept: data.contractorDept,
       contractorPhone: data.contractorPhone,
       contractorEmail: data.contractorEmail,
-     
-      // 수급인
       subcontractorEmail: data.subcontractorEmail,
       subcontractorPhone: data.subcontractorPhone,
-     
-      // 화학물질
       noChemical: data.noChemical,
       msdsItems: data.msdsItems,
       msdsIds: data.msdsIds,
       chemicalOther: data.chemicalOther,
-     
-      // 관련 서류
       riskAssessmentNo: data.riskAssessmentNo,
       permitNo: data.permitNo,
       selectedDocs: data.selectedDocs,
-     
-      // 공장 안전정보 (자동 채움)
       facilityItems: data.facilityItems,
       emergencyExit: data.emergencyExit,
       emergencyContact: data.emergencyContact,
       firstAid: data.firstAid,
       aedLocations: data.aedLocations,
-     
-      // 안전수칙 & 보호구
       safetyItems: data.safetyItems,
       safetyOther: data.safetyOther,
       ppeItems: data.ppeItems,
-     
-      // 비상대응
       emergencyProc: data.emergencyProc,
       safetyManagerPhone: data.safetyManagerPhone,
-     
-      // 서명
       contractorSignature: data.contractorSignature,
-     
-      // 링크
       signUrl: data.signUrl,
-     
-      // 대시보드 매칭 필드
       submittedCompany: data.submittedCompany,
       submittedBy: data.submittedBy,
       status: data.status,
       date: data.date,
-     
-      // 감사 필드
       createdAt: data.createdAt,
       createdBy: data.createdBy,
       updatedAt: data.updatedAt,
@@ -1580,7 +1930,7 @@ function submitDoc(){
       schemaVersion: 1
     };
    
-    // localStorage 저장 (규약 준수 키: safetyProvisions)
+    // localStorage 저장
     var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
     docs.push(saveData);
     localStorage.setItem('safetyProvisions', JSON.stringify(docs));
@@ -1588,11 +1938,12 @@ function submitDoc(){
     // 실시간 동기화 이벤트
     try{
       window.dispatchEvent(new CustomEvent('app-data-changed', {
-        detail: { key: 'safetyProvisions', timestamp: Date.now() }
+        detail: { key: 'safetyProvisions', workId: data.workId, timestamp: Date.now() }
       }));
     }catch(e){ console.warn('이벤트 발생 실패:', e); }
    
     console.log('✅ 안전정보제공서 저장 완료:', data.safeinfoNo);
+    console.log('workId:', data.workId);
     console.log('저장된 데이터:', saveData);
    
     // API 저장 (활성화 시)
@@ -1637,7 +1988,12 @@ function submitDoc(){
    
   }catch(error){
     console.error('❌ 저장 실패:', error);
-    alert('저장 중 오류가 발생했습니다.\n\n' + error.message);
+    showCustomAlert({
+      icon: '❌',
+      title: '저장 실패',
+      message: '저장 중 오류가 발생했습니다.\n\n' + error.message,
+      okType: 'danger'
+    });
   }
 }
 
