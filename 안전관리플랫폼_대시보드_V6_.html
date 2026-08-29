@@ -1337,35 +1337,23 @@ var HR_CATS={HR01:{name:"화재폭발",kw:["인화성","가스","용접","그라
 var STD_HAZ={'감전':['감전','누전','통전'],'화재':['화재','불꽃','인화성','가연물','화기'],'폭발':['폭발','가스누출'],'추락':['추락','떨어짐','고소'],'질식':['질식','산소부족','유해가스'],'화상':['화상','고온'],'끼임':['끼임','협착','회전체'],'낙하':['낙하','비래'],'충돌':['충돌','부딪힘'],'절단':['절단','베임']};
 var SP=[{p:['안전모','헬멧'],s:'안전모 착용'},{p:['안전화'],s:'안전화 착용'},{p:['안전대','안전벨트'],s:'안전대 착용'},{p:['방독마스크'],s:'방독마스크 착용'},{p:['보안경','고글'],s:'보안경 착용'},{p:['LOTO','loto'],s:'LOTO 실시'},{p:['작업허가서'],s:'작업허가서 발급'},{p:['화기허가서'],s:'화기허가서 발급'},{p:['소화기'],s:'소화기 배치'},{p:['화기감시자'],s:'화기감시자 배치'},{p:['환기'],s:'환기 실시'},{p:['산소농도'],s:'산소농도 측정'},{p:['신호수','유도자'],s:'신호수 배치'},{p:['접지'],s:'접지 실시'},{p:['TBM'],s:'TBM 실시'},{p:['추락방지'],s:'추락방지 조치'},{p:['정리정돈'],s:'작업장 정리정돈'},{p:['2인1조'],s:'2인1조 작업'}];
 
+// ═══════════════════════════════════════
+// loadDB STUB (Step 6-3 리팩토링)
+// ─────────────────────────────────────────
+// loadDB의 실제 정의는 v7.1 패치에 있음.
+// v7.1은 이 stub을 완전히 덮어쓰므로 실제 동작하지 않음.
+// 이 stub은 v7.1 패치 로드 전 (init 실행 시점)의 안전장치.
+// 실제 정의: v7.1 패치의 loadDB() 
+//           (workId 정식 생성 + locationDisplay 처리 등)
+// ═══════════════════════════════════════
 function loadDB(){
-  try{
-    var raw=localStorage.getItem('safetyDatabase');
-    allWorks = raw ? (JSON.parse(raw).workHistory||[]).map(function(w){
-      if(!w.originalNo) return null;
-      var rl=w.risk||'일반';if(rl==='중위험') rl='일반';
-      return{
-        id:w.date+'_'+w.originalNo,
-        date:w.date||'',
-        workName:w.workName||'',
-        workNameFull:w.workNameFull||'',
-        locationObj:w.location||{},
-        location:locStr(w.location),
-        riskLevel:rl,
-        company:w.company||'미지정',
-        manager:w.manager||'미지정',
-        ilsRequired:w.ilsRequired||'N',
-        hrCategoryNames:(w.highRiskCategories||[]).map(function(c){return c.category;}),
-        hazards:w.hazards||[],
-        aiAnalysis:{
-          riskScore:rscore(rl,w.highRiskCategories),
-          safetyMeasures:w.safetyMeasures||[]
-        }
-      };
-    }).filter(function(w){return w!==null;}) : [];
-  }catch(e){
-    console.error('DB 로드 실패:',e);
-    allWorks=[];
-  }
+  // v7.1 로드 전 임시 동작: 빈 배열로 초기화
+  console.warn('[Step 6-3 stub] loadDB 호출됨 - v7.1 미로드 상태');
+  allWorks = [];
+  updateDBUI();
+  applyFilter();
+}
+
   updateDBUI();
   applyFilter();
 }
@@ -2377,8 +2365,22 @@ function parseAndSave(){
 }
 
 /* =========================================================
-   6. 작업DB 로드 함수 전체 교체
+   6. loadDB 정본 (Step 6-3 리팩토링에서 확정)
+   ─────────────────────────────────────────
+   이 함수가 실제 동작하는 유일한 정의입니다.
+   - 본체 script의 loadDB()는 v7.1 로드 전 안전 stub
+   - Step 6-3에서 확정
+   
+   ─────────────────────────────────────────
+   기능:
+   - localStorage safetyDatabase 읽기
+   - workId 정식 생성 (workId || makeWorkId(date, originalNo))
+   - locationDisplay 우선순위 처리
+   - allWorks 배열 재구성
+   
+   호출 순서: init() → loadDB() → applyFilter() → updateWorkStatus()
    ========================================================= */
+
 
 function loadDB(){
   try{
