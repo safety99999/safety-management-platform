@@ -836,6 +836,69 @@ body{
   font-size:12px;
   font-weight:700;
 }
+/* ═══════════════════════════════════════
+   커스텀 확인 다이얼로그 (v7.3 신규)
+   브라우저 기본 confirm() 대체
+   ═══════════════════════════════════════ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:500;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:340px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--ink);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{
+  background:var(--sunk);color:var(--sub);
+  border:1.5px solid var(--line);
+}
+.custom-confirm-btn-confirm{
+  background:var(--deep);color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:var(--stop);
+  box-shadow:0 4px 12px rgba(214,39,61,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:var(--warn);
+  box-shadow:0 4px 12px rgba(180,83,9,.25);
+}
+.custom-confirm-btn-confirm.success{
+  background:var(--done);
+  box-shadow:0 4px 12px rgba(14,138,107,.25);
+}
 
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
@@ -1171,6 +1234,21 @@ body{
   </button>
 </nav>
 </div><!-- /.app -->
+<!-- 커스텀 확인 다이얼로그 (v7.3) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════
      작업 상태별 목록 시트
@@ -4015,16 +4093,17 @@ if(document.readyState === "loading"){
     
     console.log('[qbClick] 앱:', appType, '오늘 작업:', todayWorks.length + '건');
     
-    // 케이스 1: 오늘 작업 0건
+       // 케이스 1: 오늘 작업 0건
     if(todayWorks.length === 0){
-      if(confirm(
-        appLabel + '(으)로 이동합니다.\n\n' +
-        '⚠️ 오늘 확정된 작업이 없습니다.\n' +
-        '작업 선택 없이 진행하시겠습니까?\n\n' +
-        '(빈 양식으로 열립니다)'
-      )){
-        window.location.href = targetUrl;
-      }
+      showCustomConfirm({
+        icon: '⚠️',
+        title: '오늘 확정 작업 없음',
+        message: appLabel + '(으)로 이동합니다.\n오늘 확정된 작업이 없어\n빈 양식으로 열립니다.',
+        okText: '이동',
+        okType: 'warn'
+      }, function(ok){
+        if(ok) window.location.href = targetUrl;
+      });
       return;
     }
     
@@ -4165,6 +4244,79 @@ if(document.readyState === "loading"){
       .replace(/\n/g, '\\n')
       .replace(/\r/g, '\\r');
   }
+  // ═══════════════════════════════════════
+  // 커스텀 확인 다이얼로그 (브라우저 confirm 대체)
+  // ═══════════════════════════════════════
+  var customConfirmCallback = null;
+  
+  /**
+   * 커스텀 확인 다이얼로그 표시
+   * @param {Object} options - { icon, title, message, okText, cancelText, okType }
+   * @param {function} callback - 결과 콜백 (true=확인, false=취소)
+   */
+  window.showCustomConfirm = function(options, callback){
+    var opts = typeof options === 'string' 
+      ? { message: options } 
+      : (options || {});
+    
+    var iconEl = document.getElementById('customConfirmIcon');
+    var titleEl = document.getElementById('customConfirmTitle');
+    var messageEl = document.getElementById('customConfirmMessage');
+    var okBtn = document.getElementById('customConfirmOk');
+    var overlay = document.getElementById('customConfirmOverlay');
+    
+    if(!overlay){
+      console.warn('[showCustomConfirm] 다이얼로그 요소 없음. 기본 confirm 사용');
+      var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+      if(callback) callback(result);
+      return;
+    }
+    
+    if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+    if(titleEl) titleEl.textContent = opts.title || '확인';
+    if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+    
+    if(okBtn){
+      okBtn.textContent = opts.okText || '확인';
+      okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+      if(opts.okType === 'danger') okBtn.classList.add('danger');
+      else if(opts.okType === 'warn') okBtn.classList.add('warn');
+      else if(opts.okType === 'success') okBtn.classList.add('success');
+    }
+    
+    customConfirmCallback = callback || function(){};
+    overlay.classList.add('active');
+  };
+  
+  window.customConfirmClose = function(result){
+    var overlay = document.getElementById('customConfirmOverlay');
+    if(overlay) overlay.classList.remove('active');
+    
+    var cb = customConfirmCallback;
+    customConfirmCallback = null;
+    if(typeof cb === 'function'){
+      setTimeout(function(){ cb(result); }, 150);
+    }
+  };
+  
+  // ESC로 취소, 오버레이 클릭으로 취소
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var overlay = document.getElementById('customConfirmOverlay');
+      if(overlay && overlay.classList.contains('active')){
+        customConfirmClose(false);
+      }
+    }
+  });
+  
+  document.addEventListener('DOMContentLoaded', function(){
+    var overlay = document.getElementById('customConfirmOverlay');
+    if(overlay){
+      overlay.addEventListener('click', function(e){
+        if(e.target === overlay) customConfirmClose(false);
+      });
+    }
+  });
   
   console.log('[v7.3] 빠른실행 workId 전달 패치 로드 완료');
 })();
