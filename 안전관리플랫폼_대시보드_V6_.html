@@ -10,12 +10,12 @@
 <style>
 /* ═══════════════════════════════════════
    POSCO FUTURE M 안전관리 대시보드
-   Phase 1 수정본 (2026-08-26)
-   수정사항:
-   1) 다크모드 텍스트 변수 추가
-   2) 공지사항 max-height + 스크롤
-   3) CSS 중복 정의 제거
-   4) 반응형 방안 A (그라디언트 + 그림자)
+   Phase 1 (2026-08-26)
+   Step 2 리팩토링 (2026-08-28)
+   
+   Step 2 변경사항:
+   - 필터 UI 통합 (setFilter/curFilter 죽은 코드 제거)
+   - chip UI를 HTML 정적으로 작성 (플리커링 해소)
    ═══════════════════════════════════════ */
 :root{
   --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
@@ -34,7 +34,6 @@
   --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
   --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
   --faint:#5A7288; --line:#1E3145;
-  /* 🆕 Phase 1 수정: 텍스트 색상 추가 */
   --ink:#F7FAFC;
   --body:#E2E8F0;
   --sub:#A0AEC0;
@@ -47,7 +46,6 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 
-/* 🆕 Phase 1 수정: 반응형 방안 A (브랜드 그라디언트 배경) */
 body{
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   color:var(--ink);line-height:1.5;font-size:15px;
@@ -75,7 +73,6 @@ body{
   position:relative;background:var(--bg);
 }
 
-/* 🆕 Phase 1 수정: PC/태블릿에서 앱 컨테이너 카드 느낌 */
 @media(min-width:768px){
   body{padding:24px 0}
   .app{
@@ -96,7 +93,7 @@ body{
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .main{padding:0 0 88px}
 
-/* ═══ 히어로 (최소화, 브랜드 전용) ═══ */
+/* ═══ 히어로 ═══ */
 .hero{
   background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
   color:#fff;padding:22px 20px 26px;position:relative;overflow:hidden;
@@ -136,7 +133,8 @@ body{
 /* ═══ 필터 칩 ═══ */
 .chips{
   display:flex;gap:6px;padding:12px 16px 0;
-  overflow-x:auto;scrollbar-width:none
+  overflow-x:auto;scrollbar-width:none;
+  align-items:center;
 }
 .chips::-webkit-scrollbar{display:none}
 .chip{
@@ -151,8 +149,32 @@ body{
   color:#fff;box-shadow:0 2px 6px rgba(0,60,126,.2)
 }
 .chip:active{transform:scale(.95)}
+.chip-date{
+  padding-left:14px;
+  padding-right:14px;
+}
+.chip-calendar{
+  width:40px;
+  height:38px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  font-size:18px;
+}
+.chip:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+.dashboard-date-picker{
+  position:fixed;
+  left:-9999px;
+  width:1px;
+  height:1px;
+  opacity:0;
+  pointer-events:none;
+}
 
-/* ═══ 공지 배너 (🆕 Phase 1 수정: max-height + 스크롤) ═══ */
+/* ═══ 공지 배너 ═══ */
 .notice-banner{
   margin:10px 16px 0;padding:10px 12px;background:var(--warn-bg);
   border-radius:var(--r-s);border-left:3px solid var(--warn);
@@ -173,7 +195,6 @@ body{
   font-size:12px;font-weight:700;color:var(--warn);
   opacity:.75;flex-shrink:0
 }
-/* 🆕 Phase 1 수정: 오버플로우 방지 */
 .notice-banner-text{
   font-size:13px;color:var(--body);margin-top:5px;
   line-height:1.5;white-space:pre-wrap;font-weight:500;
@@ -210,9 +231,8 @@ body{
   letter-spacing:-.01em
 }
 .sec-more:active{opacity:.6}
-/* ═══════════════════════════════════════
-   작업 현황 - 강조 카드 (전체 + 고위험)
-   ═══════════════════════════════════════ */
+
+/* ═══ 작업 현황 카드 ═══ */
 .status-highlight{
   display:grid;grid-template-columns:1fr 1fr;
   gap:8px;margin-bottom:8px
@@ -257,7 +277,6 @@ body{
   50%{opacity:.4}
 }
 
-/* ═══ 작업 현황 - 세부 4개 카드 ═══ */
 .status-detail{
   display:grid;grid-template-columns:repeat(4,1fr);
   gap:6px
@@ -293,10 +312,7 @@ body{
   letter-spacing:-.01em
 }
 
-/* ═══════════════════════════════════════
-   빠른 실행 그리드 (3x2)
-   🆕 Phase 1 수정: 중복 정의 제거, 단일 정의만 유지
-   ═══════════════════════════════════════ */
+/* ═══ 빠른 실행 그리드 ═══ */
 .quick-grid{
   display:grid;grid-template-columns:repeat(3,1fr);
   gap:10px;padding:0 16px;margin-top:10px
@@ -317,7 +333,6 @@ body{
   background:var(--tint);
   display:grid;place-items:center;font-size:26px
 }
-/* 🆕 Phase 1 수정: 다크모드에서 아이콘 배경 개선 */
 [data-theme="dark"] .qbtn-ico{
   background:rgba(63,169,245,.15);
 }
@@ -326,9 +341,7 @@ body{
   line-height:1.3;letter-spacing:-.02em
 }
 
-/* ═══════════════════════════════════════
-   점검현황 페이지
-   ═══════════════════════════════════════ */
+/* ═══ 점검현황 페이지 ═══ */
 .page-header{
   background:var(--card);padding:16px;
   border-bottom:1px solid var(--line)
@@ -407,9 +420,7 @@ body{
   font-size:11px;font-weight:700;color:var(--faint);margin-left:auto
 }
 
-/* ═══════════════════════════════════════
-   설정 페이지
-   ═══════════════════════════════════════ */
+/* ═══ 설정 페이지 ═══ */
 .sec-lbl{
   font-size:11px;font-weight:800;color:var(--sub);
   letter-spacing:.05em;padding:0 18px;
@@ -480,9 +491,7 @@ body{
   color:var(--sub);flex-shrink:0
 }
 
-/* ═══════════════════════════════════════
-   하단 네비
-   ═══════════════════════════════════════ */
+/* ═══ 하단 네비 ═══ */
 .botnav{
   position:fixed;bottom:0;left:0;right:0;z-index:60;
   max-width:480px;margin:0 auto;background:var(--card);
@@ -513,9 +522,7 @@ body{
   font-variant-numeric:tabular-nums
 }
 
-/* ═══════════════════════════════════════
-   바텀시트
-   ═══════════════════════════════════════ */
+/* ═══ 바텀시트 ═══ */
 .overlay{
   position:fixed;inset:0;
   background:rgba(6,17,28,.55);backdrop-filter:blur(3px);
@@ -569,6 +576,13 @@ body{
 .work-item.wait{border-left-color:var(--warn)}
 .work-item.run{border-left-color:var(--run)}
 .work-item.done{border-left-color:var(--done)}
+.work-item.scheduled{
+  border-left-color:var(--posco);
+}
+.work-item.ended{
+  border-left-color:var(--done);
+  opacity:.9;
+}
 .wi-top{display:flex;gap:6px;margin-bottom:6px;align-items:center}
 .wi-badge{
   font-size:10.5px;font-weight:800;
@@ -584,6 +598,14 @@ body{
 .wi-status.run{background:var(--run-bg);color:var(--run)}
 .wi-status.stop{background:var(--stop-bg);color:var(--stop)}
 .wi-status.done{background:var(--done-bg);color:var(--done)}
+.wi-status.scheduled{
+  background:var(--tint);
+  color:var(--posco);
+}
+.wi-status.ended{
+  background:var(--done-bg);
+  color:var(--done);
+}
 .wi-name{
   font-size:14px;font-weight:800;color:var(--ink);
   margin-bottom:5px;letter-spacing:-.02em;line-height:1.3
@@ -605,9 +627,7 @@ body{
   border:1px solid var(--line)
 }
 
-/* ═══════════════════════════════════════
-   빈 상태
-   ═══════════════════════════════════════ */
+/* ═══ 빈 상태 ═══ */
 .empty{text-align:center;padding:32px 20px}
 .empty-ico{font-size:40px;margin-bottom:8px;opacity:.35}
 .empty-txt{
@@ -615,9 +635,7 @@ body{
   font-weight:700;line-height:1.5
 }
 
-/* ═══════════════════════════════════════
-   토스트
-   ═══════════════════════════════════════ */
+/* ═══ 토스트 ═══ */
 .toast-wrap{
   position:fixed;top:12px;left:50%;transform:translateX(-50%);
   z-index:200;display:flex;flex-direction:column;gap:6px;
@@ -653,6 +671,142 @@ body{
 .cust-txt{font-size:13.5px;font-weight:700;color:var(--ink)}
 .cust-del{background:none;border:0;color:var(--stop);font-size:20px;cursor:pointer;font-family:inherit;line-height:1;}
 
+/* ═══ Firestore 작업DB 관리 패널 ═══ */
+.workdb-firestore-panel{
+  margin:10px 16px 0;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+.workdb-firestore-title{
+  margin-bottom:6px;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+.workdb-firestore-desc{
+  margin-bottom:12px;
+  color:var(--sub);
+  font-size:12.5px;
+  font-weight:600;
+  line-height:1.55;
+}
+.workdb-count-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:10px;
+}
+.workdb-count-card{
+  padding:11px 8px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--sunk);
+  text-align:center;
+}
+.workdb-count-label{
+  margin-bottom:4px;
+  color:var(--sub);
+  font-size:11px;
+  font-weight:700;
+}
+.workdb-count-value{
+  color:var(--posco);
+  font-size:19px;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.workdb-button-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.workdb-action-btn{
+  min-height:46px;
+  padding:10px 8px;
+  border:0;
+  border-radius:11px;
+  color:#fff;
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:800;
+  line-height:1.35;
+  cursor:pointer;
+  transition:.15s;
+}
+.workdb-action-btn.sync{background:var(--done);}
+.workdb-action-btn.count{background:var(--posco);}
+.workdb-action-btn.refresh{
+  grid-column:1 / -1;
+  background:var(--sub);
+}
+.workdb-action-btn:active{transform:scale(.97);}
+.workdb-action-btn:disabled{
+  cursor:not-allowed;
+  opacity:.5;
+  transform:none;
+}
+.workdb-progress{display:none;margin-top:11px;}
+.workdb-progress.active{display:block;}
+.workdb-progress-track{
+  height:8px;
+  overflow:hidden;
+  border-radius:999px;
+  background:var(--line);
+}
+.workdb-progress-bar{
+  width:0;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--deep),var(--bright));
+  transition:width .2s ease;
+}
+.workdb-progress-text{
+  margin-top:5px;
+  color:var(--sub);
+  font-size:11.5px;
+  font-weight:700;
+  text-align:right;
+}
+.workdb-result{
+  display:none;
+  margin-top:11px;
+  padding:11px 12px;
+  border-radius:10px;
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.6;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.workdb-result.info{
+  display:block;
+  border-left:3px solid var(--posco);
+  background:var(--tint);
+  color:var(--posco);
+}
+.workdb-result.success{
+  display:block;
+  border-left:3px solid var(--done);
+  background:var(--done-bg);
+  color:var(--done);
+}
+.workdb-result.error{
+  display:block;
+  border-left:3px solid var(--stop);
+  background:var(--stop-bg);
+  color:var(--stop);
+}
+
+.selected-date-info{
+  color:var(--sub);
+  font-size:12px;
+  font-weight:700;
+}
+
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
@@ -668,7 +822,7 @@ body{
      ══════════════════════════════════════ -->
 <div class="page active" id="pageHome">
   
-  <!-- 히어로 (최소화, 브랜드 전용) -->
+  <!-- 히어로 -->
   <header class="hero">
     <div class="hero-top">
       <div class="hero-brand">
@@ -690,7 +844,7 @@ body{
 
   <div class="main">
 
-    <!-- 공지 배너 (있을 때만) -->
+    <!-- 공지 배너 -->
     <div id="noticeBanner" class="notice-banner" onclick="toggleNotice()" style="display:none;">
       <div class="notice-banner-top">
         <div class="notice-banner-label">
@@ -702,42 +856,56 @@ body{
       <div class="notice-banner-text" id="noticeText"></div>
     </div>
 
-    <!-- 필터 칩 -->
-    <div class="chips">
-      <button class="chip active" onclick="setFilter('recent',this)">최근</button>
-      <button class="chip" onclick="setFilter('today',this)">오늘</button>
-      <button class="chip" onclick="setFilter('week',this)">이번 주</button>
-      <button class="chip" onclick="setFilter('all',this)">전체</button>
+    <!-- ⭐ Step 2 리팩토링: 필터 칩 (날짜 기반, HTML 정적 작성) -->
+    <div class="chips" id="dashboardChips">
+      <button class="chip chip-date" 
+              data-date-mode="yesterday" 
+              onclick="dashboardSetDateFilter('yesterday',this)">
+        어제
+      </button>
+      <button class="chip chip-date active" 
+              data-date-mode="today" 
+              onclick="dashboardSetDateFilter('today',this)">
+        오늘
+      </button>
+      <button class="chip chip-date" 
+              id="dashboardUpcomingButton" 
+              data-date-mode="upcoming" 
+              onclick="dashboardSetDateFilter('upcoming',this)" 
+              disabled>
+        예정 없음
+      </button>
+      <button class="chip chip-calendar" 
+              id="dashboardCalendarButton" 
+              onclick="dashboardOpenCalendar()" 
+              aria-label="날짜 선택" 
+              title="날짜 선택">
+        📅
+      </button>
     </div>
 
-    <!-- 작업 현황 (상단 배치) -->
+    <!-- 작업 현황 -->
     <section class="sec">
       <div class="sec-hdr">
         <div class="sec-title">📈 작업 현황</div>
         <div class="sec-more" onclick="refreshAll()">↻ 새로고침</div>
       </div>
       
-      <!-- 강조 카드: 전체 + 고위험 -->
       <div class="status-highlight">
         <div class="status-hl-card" onclick="openStatusSheet('all')">
-          <div class="status-hl-label">
-            <i></i>전체
-          </div>
+          <div class="status-hl-label"><i></i>전체</div>
           <div class="status-hl-value">
             <span id="cntTotal">0</span><small>건</small>
           </div>
         </div>
         <div class="status-hl-card danger" onclick="openStatusSheet('danger')">
-          <div class="status-hl-label">
-            <i></i>고위험
-          </div>
+          <div class="status-hl-label"><i></i>고위험</div>
           <div class="status-hl-value">
             <span id="cntDanger">0</span><small>건</small>
           </div>
         </div>
       </div>
       
-      <!-- 세부 4개 카드 -->
       <div class="status-detail">
         <div class="status-dt-card wait" onclick="openStatusSheet('wait')">
           <div class="status-dt-value" id="cntWait">0</div>
@@ -758,7 +926,7 @@ body{
       </div>
     </section>
 
-    <!-- 빠른 실행 (3x2 그리드) -->
+    <!-- 빠른 실행 -->
     <section class="sec">
       <div class="sec-hdr">
         <div class="sec-title">⚡ 빠른 실행</div>
@@ -865,8 +1033,8 @@ body{
       </div>
       <div class="hero-tools">
         <div class="hero-clock">
-          <div class="hero-date">v7.0</div>
-          <div class="hero-time">최신</div>
+          <div class="hero-date">v7.1</div>
+          <div class="hero-time">Step 2</div>
         </div>
       </div>
     </div>
@@ -943,14 +1111,14 @@ body{
           <span class="sets-ico">📱</span>
           <span class="sets-name">버전</span>
         </div>
-        <span class="sets-r">v7.0</span>
+        <span class="sets-r">v7.1 (Step2)</span>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════
-     하단 네비 (4개 탭)
+     하단 네비
      ══════════════════════════════════════ -->
 <nav class="botnav">
   <button class="nav-tab active" id="tabHome" onclick="goTab('home')">
@@ -974,7 +1142,7 @@ body{
 </div><!-- /.app -->
 
 <!-- ══════════════════════════════════════
-     작업 상태별 목록 시트 (핵심!)
+     작업 상태별 목록 시트
      ══════════════════════════════════════ -->
 <div class="overlay" id="wsOv" onclick="closeSheet('ws')"></div>
 <div class="sheet" id="wsSheet">
@@ -1062,10 +1230,9 @@ body{
 </div>
 <script>
 // ═══════════════════════════════════════
-// STATE
+// STATE (Step 2: curFilter 삭제됨)
 // ═══════════════════════════════════════
 var allWorks=[],dispWorks=[],violations=[],permits=[];
-var curFilter='recent';
 var ifWork=null,ifSev=null,ifItems=[],custItems=[],photoData=null;
 var noticeCollapsed=false;
 
@@ -1163,7 +1330,7 @@ function toggleNotice(){
 }
 
 // ═══════════════════════════════════════
-// DB (작업 데이터베이스)
+// DB (기본 정의 - v7.1 패치가 덮어씀)
 // ═══════════════════════════════════════
 var companies=['원준','유공엔지니어링','직영','세광','에이스테크','안전공사','남양이엔에스','태정종합건설','서원종합건설','예준산업','파즈코리아','운강건설','금강건설','포스코PR테크','PR테크','위드테크','NCH','우진환경','다산','엠엔케이','KRST대한동방','GAFF','KRST','대한동방','포스코건설','현대건설','정비섹션'];
 var HR_CATS={HR01:{name:"화재폭발",kw:["인화성","가스","용접","그라인더","화기","폭발","보일러"]},HR02:{name:"밀폐공간",kw:["밀폐","질식","산소결핍","유해가스","송기마스크"]},HR03:{name:"유해화학물질",kw:["화학","강산","강염기","부식","황산","염산"]},HR04:{name:"고소작업",kw:["고소","추락","5m","높이","사다리","비계"]},HR05:{name:"중량물",kw:["크레인","양중","인양","중량물","지게차","호이스트"]},HR06:{name:"전기작업",kw:["고압","특고압","1000v","1500v","구역정전","복전"]}};
@@ -1174,7 +1341,6 @@ function loadDB(){
   try{
     var raw=localStorage.getItem('safetyDatabase');
     allWorks = raw ? (JSON.parse(raw).workHistory||[]).map(function(w){
-      // CONVENTIONS §3.4: originalNo 없으면 skip
       if(!w.originalNo) return null;
       var rl=w.risk||'일반';if(rl==='중위험') rl='일반';
       return{
@@ -1239,7 +1405,7 @@ function clearDB(){
 }
 
 // ═══════════════════════════════════════
-// EXCEL PARSE
+// EXCEL PARSE (기본 정의 - v7.1 패치가 덮어씀)
 // ═══════════════════════════════════════
 function exDate(t){
   if(!t) return '';
@@ -1353,333 +1519,38 @@ function sWN(wn){
   return s||'작업';
 }
 
-function parseExcel(text){
-  var results=[],rows=[],cur='',lines=text.split(/\r?\n/);
-  lines.forEach(function(line){
-    if(line.match(/^\d{4}[-.]?\d{2}[-.]?\d{2}\t/)){
-      if(cur) rows.push(cur);
-      cur=line;
-    }else if(cur) cur+=' '+line.trim();
-  });
-  if(cur) rows.push(cur);
-  rows.forEach(function(row){
-    var cols=row.split(/\t/),date=exDate(cols[0]);
-    if(!date) return;
-    var origNo=(cols[1]||'').replace(/\s/g,''),wf=(cols[6]||'').trim();
-    if(!wf||wf.length<10) return;
-    var isH=cols.some(function(c){
-      var v=(c||'').trim().toLowerCase();
-      return v==='고위험'||v==='고위험작업';
-    });
-    var wn=sWN(wf),loc=pLoc(wf),co=exCo(cols[9]||'')||exCo(cols[10]||'');
-    var mgr='',m=(cols[11]||'').trim();
-    if(m.match(/^[가-힣]{2,4}$/)) mgr=m;
-    var safety='';
-    if(cols.length>20) safety=(cols[20]||'').trim();
-    if(!safety||safety.length<30){
-      for(var s=cols.length-1;s>=15;s--){
-        var cv=(cols[s]||'').trim();
-        if(cv.length>100&&cv!==wf){safety=cv;break;}
-      }
-    }
-    var combined=(wf+' '+safety).toLowerCase();
-    var risk=['밀폐','질식','산소부족','유해가스','추락','폭발','감전','누출'].some(function(k){return combined.indexOf(k)>=0;})?'고위험':'일반';
-    if(isH) risk='고위험';
-    var hrCats=dHR(wf,safety,isH);
-    if(hrCats.length>0) risk='고위험';
-    var hs=pHS(safety);
-    results.push({
-      originalNo:origNo||(results.length+1),
-      date:date,workName:wn,workNameFull:wf,
-      location:loc,risk:risk,company:co,manager:mgr,
-      safety:safety,hazards:hs.hazards,
-      safetyMeasures:hs.safetyMeasures,
-      highRiskCategories:hrCats,
-      ilsRequired:dILS(wf,safety),
-      isHighRiskFromSource:isH
-    });
-  });
-  return results;
-}
-
-function parseAndSave(){
-  var txt=document.getElementById('dbPaste').value;
-  if(!txt||txt.trim().length<10){
-    showToast('데이터를 붙여넣기 하세요','info');
-    return;
-  }
-  try{
-    var nd=parseExcel(txt);
-    if(!nd.length){showToast('파싱된 데이터가 없습니다','error');return;}
-    var ex=[];
-    try{
-      var raw=localStorage.getItem('safetyDatabase');
-      if(raw) ex=(JSON.parse(raw).workHistory)||[];
-    }catch(e){}
-    var map={};
-    ex.forEach(function(w){if(w.originalNo) map[w.date+'_'+w.originalNo]=w;});
-    nd.forEach(function(w){if(w.originalNo) map[w.date+'_'+w.originalNo]=w;});
-    var merged=Object.values(map).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
-    localStorage.setItem('safetyDatabase',JSON.stringify({
-      metadata:{version:'7.0',lastUpdate:new Date().toISOString()},
-      workHistory:merged
-    }));
-    try{
-      window.dispatchEvent(new CustomEvent('app-data-changed',{
-        detail:{key:'safetyDatabase',timestamp:Date.now()}
-      }));
-    }catch(e){}
-    document.getElementById('dbPaste').value='';
-    loadDB();
-    showToast('✅ '+nd.length+'건 추가 / 총 '+merged.length+'건 저장','success');
-  }catch(e){
-    showToast('오류: '+e.message,'error');
-  }
-}
-
 // ═══════════════════════════════════════
-// FILTER (필터 연동)
+// FILTER (기본 정의 - v7.2 패치가 덮어씀)
+// Step 2 리팩토링: setFilter/curFilter 삭제됨
+// applyFilter는 v7.2 패치에서 정본 사용
 // ═══════════════════════════════════════
-function setFilter(f,el){
-  curFilter=f;
-  document.querySelectorAll('.chip').forEach(function(b){b.classList.remove('active');});
-  if(el) el.classList.add('active');
-  applyFilter();
-}
-
 function applyFilter(){
-  var now=new Date(),today=fmtDate(now);
-  if(curFilter==='today'){
-    dispWorks=allWorks.filter(function(w){return w.date===today;});
-  }else if(curFilter==='week'){
-    var wa=new Date(now);wa.setDate(wa.getDate()-7);
-    var ws=fmtDate(wa);
-    dispWorks=allWorks.filter(function(w){return w.date>=ws&&w.date<=today;});
-  }else if(curFilter==='all'){
-    dispWorks=allWorks.slice();
-  }else{
-    var ra=new Date(now);ra.setDate(ra.getDate()-3);
-    var rs=fmtDate(ra);
-    dispWorks=allWorks.filter(function(w){return w.date>=rs;});
-    if(!dispWorks.length) dispWorks=allWorks.slice();
-  }
+  // 초기 정의: v7.2 패치 로드 전까지 임시 동작
+  // v7.2 패치가 window.applyFilter로 덮어씀
+  dispWorks = allWorks.slice();
   updateWorkStatus();
   renderInspPage();
 }
 
 // ═══════════════════════════════════════
-// 작업 현황 카운트 (필터 연동)
+// 작업 현황 카운트 (기본 정의 - v7.1/v7.2가 덮어씀)
 // ═══════════════════════════════════════
 function updateWorkStatus(){
-  var permitList = [];
-  try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
-  var permitMap = {};
-  permitList.forEach(function(p){
-    if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
-  });
-  
-  var tbmList = [];
-  try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
-  var tbmMap = {};
-  tbmList.forEach(function(t){
-    if(t.permitNo) tbmMap[t.permitNo] = t;
-  });
-  
-  var cntWait=0, cntRun=0, cntStop=0, cntDone=0, cntDanger=0;
-  
-  dispWorks.forEach(function(w){
-    if(w.riskLevel === '고위험') cntDanger++;
-    
-    var permit = permitMap[w.id];
-    var status = permit ? permit.status : '대기중';
-    
-    if(permit && permit.permitNo && tbmMap[permit.permitNo]){
-      status = '작업중';
-    }
-    
-    if(status === '작업완료' || status === '완료'){
-      cntDone++;
-    } else if(status === '작업중지'){
-      cntStop++;
-    } else if(status === '허가완료' || status === '작업중'){
-      cntRun++;
-    } else {
-      cntWait++;
-    }
-  });
-  
+  // v7.1/v7.2 패치가 덮어씀
   var total = dispWorks.length;
-  
   setTxt('cntTotal', total);
-  setTxt('cntDanger', cntDanger);
-  setTxt('cntWait', cntWait);
-  setTxt('cntRun', cntRun);
-  setTxt('cntStop', cntStop);
-  setTxt('cntDone', cntDone);
-  
-  ['cntWait','cntRun','cntStop','cntDone'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(!el) return;
-    var val = parseInt(el.textContent,10) || 0;
-    if(val === 0) el.classList.add('zero');
-    else el.classList.remove('zero');
-  });
+  setTxt('cntDanger', 0);
+  setTxt('cntWait', 0);
+  setTxt('cntRun', 0);
+  setTxt('cntStop', 0);
+  setTxt('cntDone', 0);
 }
 
 // ═══════════════════════════════════════
-// 상태별 작업 목록 시트 (카드 클릭 → 목록)
+// 상태별 시트 (기본 정의 - v7.2가 덮어씀)
 // ═══════════════════════════════════════
 function openStatusSheet(filter){
-  var permitList = [];
-  try{permitList = JSON.parse(localStorage.getItem('safetyPermits')||'[]');}catch(e){}
-  var permitMap = {};
-  permitList.forEach(function(p){
-    if(p.sourceWorkId) permitMap[p.sourceWorkId] = p;
-  });
-  
-  var tbmList = [];
-  try{tbmList = JSON.parse(localStorage.getItem('safetyTBM')||'[]');}catch(e){}
-  var tbmMap = {};
-  tbmList.forEach(function(t){
-    if(t.permitNo) tbmMap[t.permitNo] = t;
-  });
-  
-  var enriched = dispWorks.map(function(w){
-    var permit = permitMap[w.id];
-    var status = permit ? permit.status : '대기중';
-    if(permit && permit.permitNo && tbmMap[permit.permitNo]){
-      status = '작업중';
-    }
-    return {
-      workId: w.id,
-      workName: w.workName || '미지정',
-      company: w.company || '-',
-      location: w.location || '미지정',
-      riskLevel: w.riskLevel || '일반',
-      status: status,
-      permit: permit,
-      permitNo: permit ? permit.permitNo : null,
-      tbm: permit && permit.permitNo ? tbmMap[permit.permitNo] : null
-    };
-  });
-  
-  var filtered = [];
-  var title = '작업 목록';
-  
-  if(filter === 'wait'){
-    filtered = enriched.filter(function(w){
-      return w.status !== '허가완료' && w.status !== '작업중' && 
-             w.status !== '작업중지' && w.status !== '작업완료' && w.status !== '완료';
-    });
-    title = '🟡 허가전 작업';
-  } else if(filter === 'run'){
-    filtered = enriched.filter(function(w){
-      return w.status === '허가완료' || w.status === '작업중';
-    });
-    title = '🟠 작업중';
-  } else if(filter === 'stop'){
-    filtered = enriched.filter(function(w){
-      return w.status === '작업중지';
-    });
-    title = '🔴 작업중지';
-  } else if(filter === 'done'){
-    filtered = enriched.filter(function(w){
-      return w.status === '작업완료' || w.status === '완료';
-    });
-    title = '🟢 작업완료';
-  } else if(filter === 'danger'){
-    filtered = enriched.filter(function(w){
-      return w.riskLevel === '고위험';
-    });
-    title = '🚨 고위험 작업';
-  } else {
-    filtered = enriched;
-    title = '📋 전체 작업';
-  }
-  
-  var titleEl = document.getElementById('wsSheetTitle');
-  if(titleEl){
-    titleEl.innerHTML = title + ' <span style="background:var(--tint);color:var(--posco);font-size:12px;font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' + filtered.length + '건</span>';
-  }
-  
-  renderStatusSheet(filtered, filter);
-  openSheet('ws');
-}
-
-function renderStatusSheet(works, filter){
-  var body = document.getElementById('wsBody');
-  if(!body) return;
-  
-  if(!works.length){
-    var messages = {
-      'wait': '허가전 작업이 없습니다',
-      'run': '작업중인 작업이 없습니다',
-      'stop': '작업중지된 작업이 없습니다',
-      'done': '완료된 작업이 없습니다',
-      'danger': '고위험 작업이 없습니다',
-      'all': '작업이 없습니다'
-    };
-    body.innerHTML = '<div class="empty">' +
-      '<div class="empty-ico">📭</div>' +
-      '<div class="empty-txt">' + (messages[filter] || '작업이 없습니다') + '</div>' +
-    '</div>';
-    return;
-  }
-  
-  var html = '';
-  works.forEach(function(w){
-    var isDanger = w.riskLevel === '고위험';
-    var itemClass = 'work-item';
-    var statusClass = 'wait';
-    
-    if(isDanger) itemClass += ' danger';
-    
-    if(w.status === '작업완료' || w.status === '완료'){
-      statusClass = 'done';
-    } else if(w.status === '작업중지'){
-      statusClass = 'stop';
-    } else if(w.status === '허가완료' || w.status === '작업중'){
-      statusClass = 'run';
-    } else {
-      statusClass = 'wait';
-    }
-    itemClass += ' ' + statusClass;
-    
-    var statusEmoji = '⏳';
-    if(w.status === '작업중') statusEmoji = '🔄';
-    else if(w.status === '허가완료') statusEmoji = '✅';
-    else if(w.status === '작업중지') statusEmoji = '🛑';
-    else if(w.status === '작업완료' || w.status === '완료') statusEmoji = '✔️';
-    
-    html += '<div class="' + itemClass + '">';
-    html += '<div class="wi-top">';
-    html += '<span class="wi-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
-    html += '<span class="wi-status ' + statusClass + '">' + statusEmoji + ' ' + w.status + '</span>';
-    html += '</div>';
-    html += '<div class="wi-name">' + escHtml(w.workName) + '</div>';
-    html += '<div class="wi-meta">';
-    html += '<span>📍 ' + escHtml(w.location) + '</span>';
-    html += '<span>🏢 ' + escHtml(w.company) + '</span>';
-    html += '</div>';
-    
-    if(w.status === '대기중' || w.status === '허가진행중'){
-      html += '<a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(w.workId) + '" class="wi-btn">🔐 허가서 신청 →</a>';
-    } else if(w.status === '허가완료'){
-      html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(w.permitNo) + '" class="wi-btn">📝 TBM 작성 →</a>';
-    } else if(w.status === '작업중'){
-      html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(w.permitNo) + '" class="wi-btn secondary">📝 TBM 보기 →</a>';
-    } else if(w.status === '작업중지'){
-      html += '<div class="wi-btn secondary" style="cursor:default;">🛑 작업중지 상태</div>';
-    } else if(w.status === '작업완료' || w.status === '완료'){
-      html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 완료됨</div>';
-    } else {
-      html += '<a href="안전작업허가서_v2.html?workId=' + encodeURIComponent(w.workId) + '" class="wi-btn">🔐 허가서 신청 →</a>';
-    }
-    
-    html += '</div>';
-  });
-  
-  body.innerHTML = html;
+  // v7.2 패치가 덮어씀
 }
 
 // ═══════════════════════════════════════
@@ -2031,28 +1902,13 @@ window.addEventListener('app-data-changed',function(e){
 // 시작
 // ═══════════════════════════════════════
 init();
-
 </script>
+
 <script>
 /* =========================================================
-   작업관리대장 데이터 구조 및 상태 연동 통합 패치
-   적용 대상: 안전관리플랫폼_대시보드_V6_.html
-   버전: 7.1
-   작성일: 2026-08-27
-
-   주요 변경사항
-   1. 엑셀 셀 내부 줄바꿈 대응 TSV 파싱
-   2. workId를 저장 시점에 명시적으로 생성
-   3. 작업관리대장 원본 필드 보존
-   4. 원본 작업장소 우선 표시
-   5. 계약사와 수행사 구분 저장
-   6. permit.workId 및 과거 sourceWorkId 호환
-   7. permitStatus 및 과거 status 호환
-   8. TBM이 작업완료·작업중지 상태를 덮지 않도록 수정
-   9. emergencies 작업중지 상태 반영
-   10. 동일 일자 + NO 데이터 갱신 처리
+   v7.1 작업관리대장 데이터 구조 및 상태 연동 통합 패치
+   (Step 2에서는 이 부분 변경 없음 — Step 6에서 통합 예정)
    ========================================================= */
-
 
 /* =========================================================
    1. 공통 데이터 정리 함수
@@ -2073,34 +1929,21 @@ function normalizeOriginalNo(value){
 function makeWorkId(date, originalNo){
   var normalizedDate = cleanCell(date);
   var normalizedNo = normalizeOriginalNo(originalNo);
-
-  if(!normalizedDate || !normalizedNo){
-    return null;
-  }
-
+  if(!normalizedDate || !normalizedNo){ return null; }
   return normalizedDate + '_' + normalizedNo;
 }
 
 function parseWorkerCount(value){
   var raw = cleanCell(value);
   var match = raw.match(/\d+/);
-
-  if(!match){
-    return null;
-  }
-
+  if(!match){ return null; }
   var count = parseInt(match[0], 10);
-
   return isNaN(count) ? null : count;
 }
 
 function parseWorkTime(value){
   var raw = cleanCell(value);
-
-  var match = raw.match(
-    /(\d{1,2}:\d{2})\s*[~～\-]\s*(\d{1,2}:\d{2})/
-  );
-
+  var match = raw.match(/(\d{1,2}:\d{2})\s*[~～\-]\s*(\d{1,2}:\d{2})/);
   return {
     raw: raw,
     start: match ? match[1] : '',
@@ -2110,107 +1953,44 @@ function parseWorkTime(value){
 
 function normalizeMark(value){
   var normalized = cleanCell(value).toUpperCase();
-
-  var trueValues = [
-    'O',
-    '○',
-    '●',
-    'Y',
-    'YES',
-    'TRUE',
-    '실시',
-    '해당',
-    '있음',
-    '유'
-  ];
-
-  var falseValues = [
-    'X',
-    'N',
-    'NO',
-    'FALSE',
-    '미실시',
-    '미해당',
-    '없음',
-    '무'
-  ];
-
-  if(trueValues.indexOf(normalized) >= 0){
-    return true;
-  }
-
-  if(falseValues.indexOf(normalized) >= 0){
-    return false;
-  }
-
+  var trueValues = ['O','○','●','Y','YES','TRUE','실시','해당','있음','유'];
+  var falseValues = ['X','N','NO','FALSE','미실시','미해당','없음','무'];
+  if(trueValues.indexOf(normalized) >= 0){ return true; }
+  if(falseValues.indexOf(normalized) >= 0){ return false; }
   return null;
 }
 
 function normalizeIlsExecution(value){
   var mark = normalizeMark(value);
-
-  if(mark === true){
-    return 'Y';
-  }
-
-  if(mark === false){
-    return 'N';
-  }
-
+  if(mark === true){ return 'Y'; }
+  if(mark === false){ return 'N'; }
   return null;
 }
 
 function extractUrl(value){
   var text = cleanCell(value);
   var match = text.match(/https?:\/\/[^\s]+/i);
-
   return match ? match[0] : null;
 }
 
 function toSafeNumber(value){
-  if(
-    value === null ||
-    value === undefined ||
-    value === ''
-  ){
-    return null;
-  }
-
+  if(value === null || value === undefined || value === ''){ return null; }
   var number = Number(value);
-
-  return Number.isFinite(number)
-    ? number
-    : null;
+  return Number.isFinite(number) ? number : null;
 }
 
 function parseDateTime(value){
-  if(!value){
-    return 0;
+  if(!value){ return 0; }
+  if(typeof value === 'object' && typeof value.toDate === 'function'){
+    try{ return value.toDate().getTime(); }
+    catch(error){ return 0; }
   }
-
-  if(
-    typeof value === 'object' &&
-    typeof value.toDate === 'function'
-  ){
-    try{
-      return value.toDate().getTime();
-    }catch(error){
-      return 0;
-    }
-  }
-
   var timestamp = new Date(value).getTime();
-
-  return Number.isFinite(timestamp)
-    ? timestamp
-    : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
-
 
 /* =========================================================
    2. 엑셀 복사 데이터 TSV 파서
-
-   엑셀 셀 안에 줄바꿈이 포함되어도 하나의 셀로 인식한다.
    ========================================================= */
 
 function parseTSV(text){
@@ -2218,10 +1998,7 @@ function parseTSV(text){
   var row = [];
   var cell = '';
   var inQuotes = false;
-
-  var normalizedText = String(text || '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n');
+  var normalizedText = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   for(var index = 0; index < normalizedText.length; index++){
     var character = normalizedText[index];
@@ -2234,7 +2011,6 @@ function parseTSV(text){
       }else{
         inQuotes = !inQuotes;
       }
-
       continue;
     }
 
@@ -2246,15 +2022,8 @@ function parseTSV(text){
 
     if(character === '\n' && !inQuotes){
       row.push(cell);
-
-      var hasValue = row.some(function(value){
-        return cleanCell(value) !== '';
-      });
-
-      if(hasValue){
-        rows.push(row);
-      }
-
+      var hasValue = row.some(function(value){ return cleanCell(value) !== ''; });
+      if(hasValue){ rows.push(row); }
       row = [];
       cell = '';
       continue;
@@ -2264,24 +2033,13 @@ function parseTSV(text){
   }
 
   row.push(cell);
-
-  var lastRowHasValue = row.some(function(value){
-    return cleanCell(value) !== '';
-  });
-
-  if(lastRowHasValue){
-    rows.push(row);
-  }
-
+  var lastRowHasValue = row.some(function(value){ return cleanCell(value) !== ''; });
+  if(lastRowHasValue){ rows.push(row); }
   return rows;
 }
 
-
 /* =========================================================
    3. 관리대장 열 정의
-
-   현재 공유된 작업관리대장 기준 열 위치다.
-   원본의 전체 열은 rawColumns에도 보존한다.
    ========================================================= */
 
 var WORK_LEDGER_COLUMNS = {
@@ -2307,27 +2065,21 @@ var WORK_LEDGER_COLUMNS = {
   REQUIRED_WORK_PLAN: 19,
   SAFETY_ORIGINAL: 20,
   RISK_ASSESSMENT_REFERENCE: 21,
-
   OPERATING_EQUIPMENT: 22,
   REPAIR_MANAGER_APPROVAL: 23,
   INSPECTION_PLANT_MANAGER_APPROVAL: 24,
-
   HIGH_RISK_FIRE: 25,
   HIGH_RISK_EXPLOSION: 26,
   HIGH_RISK_SUFFOCATION: 27,
   HIGH_RISK_LEAKAGE: 28,
   HIGH_RISK_OTHER: 29,
   HIGH_RISK_MANAGER_APPROVAL: 30,
-
   CORROSION_AREA_ENTRY: 31,
   CORROSION_DEPARTMENT_APPROVAL: 32,
-
   SAFETY_MONITOR_ORGANIZATION: 33,
   SAFETY_MONITOR_NAME: 34,
-
   CCTV_AVAILABLE: 35
 };
-
 
 /* =========================================================
    4. 작업관리대장 파싱 함수 전체 교체
@@ -2339,267 +2091,91 @@ function parseExcel(text){
   var C = WORK_LEDGER_COLUMNS;
 
   rows.forEach(function(cols, rowIndex){
-    var date = exDate(
-      cleanCell(cols[C.DATE])
-    );
+    var date = exDate(cleanCell(cols[C.DATE]));
+    if(!date){ return; }
 
-    /*
-      제목, 다중 헤더, 빈 행은 일자 형식이 아니므로 제외한다.
-    */
-    if(!date){
-      return;
-    }
-
-    var originalNo = normalizeOriginalNo(
-      cols[C.ORIGINAL_NO]
-    );
-
+    var originalNo = normalizeOriginalNo(cols[C.ORIGINAL_NO]);
     if(!originalNo){
-      console.warn(
-        'NO가 없어 제외된 관리대장 행:',
-        rowIndex + 1
-      );
+      console.warn('NO가 없어 제외된 관리대장 행:', rowIndex + 1);
       return;
     }
 
-    var workId = makeWorkId(
-      date,
-      originalNo
-    );
-
-    var workNameFull = cleanCell(
-      cols[C.WORK_NAME]
-    );
-
+    var workId = makeWorkId(date, originalNo);
+    var workNameFull = cleanCell(cols[C.WORK_NAME]);
     if(!workNameFull){
-      console.warn(
-        '작업명이 없어 제외된 관리대장 행:',
-        rowIndex + 1
-      );
+      console.warn('작업명이 없어 제외된 관리대장 행:', rowIndex + 1);
       return;
     }
 
-    var operatingDepartment = cleanCell(
-      cols[C.OPERATING_DEPARTMENT]
-    );
+    var operatingDepartment = cleanCell(cols[C.OPERATING_DEPARTMENT]);
+    var requestingDepartment = cleanCell(cols[C.REQUESTING_DEPARTMENT]);
+    var locationRaw = cleanCell(cols[C.LOCATION]);
+    var workOrderNo = cleanCell(cols[C.WORK_ORDER_NO]);
+    var workerCountRaw = cleanCell(cols[C.WORKER_COUNT]);
+    var workerCount = parseWorkerCount(workerCountRaw);
+    var workTime = parseWorkTime(cols[C.WORK_TIME]);
+    var contractCompany = cleanCell(cols[C.CONTRACT_COMPANY]);
+    var executingCompany = cleanCell(cols[C.EXECUTING_COMPANY]);
+    var company = executingCompany || contractCompany || '미지정';
+    var workManager = cleanCell(cols[C.WORK_MANAGER]);
+    var contractorManager = cleanCell(cols[C.CONTRACTOR_MANAGER]);
+    var permitLocation = cleanCell(cols[C.PERMIT_LOCATION]);
+    var permitApprover = cleanCell(cols[C.PERMIT_APPROVER]);
+    var ilsExecutionRaw = cleanCell(cols[C.ILS_EXECUTION]);
+    var ilsExecution = normalizeIlsExecution(ilsExecutionRaw);
+    var ilsSystemApprover = cleanCell(cols[C.ILS_SYSTEM_APPROVER]);
+    var ilsSystemLocker = cleanCell(cols[C.ILS_SYSTEM_LOCKER]);
+    var email = cleanCell(cols[C.EMAIL]);
+    var requiredWorkPlan = cleanCell(cols[C.REQUIRED_WORK_PLAN]);
+    var safetyOriginal = cleanCell(cols[C.SAFETY_ORIGINAL]);
+    var riskAssessmentReferenceRaw = cleanCell(cols[C.RISK_ASSESSMENT_REFERENCE]);
 
-    var requestingDepartment = cleanCell(
-      cols[C.REQUESTING_DEPARTMENT]
-    );
-
-    var locationRaw = cleanCell(
-      cols[C.LOCATION]
-    );
-
-    var workOrderNo = cleanCell(
-      cols[C.WORK_ORDER_NO]
-    );
-
-    var workerCountRaw = cleanCell(
-      cols[C.WORKER_COUNT]
-    );
-
-    var workerCount = parseWorkerCount(
-      workerCountRaw
-    );
-
-    var workTime = parseWorkTime(
-      cols[C.WORK_TIME]
-    );
-
-    var contractCompany = cleanCell(
-      cols[C.CONTRACT_COMPANY]
-    );
-
-    var executingCompany = cleanCell(
-      cols[C.EXECUTING_COMPANY]
-    );
-
-    /*
-      대시보드 표시용 대표 회사:
-      수행사 → 계약사 → 미지정 순서
-    */
-    var company =
-      executingCompany ||
-      contractCompany ||
-      '미지정';
-
-    var workManager = cleanCell(
-      cols[C.WORK_MANAGER]
-    );
-
-    var contractorManager = cleanCell(
-      cols[C.CONTRACTOR_MANAGER]
-    );
-
-    var permitLocation = cleanCell(
-      cols[C.PERMIT_LOCATION]
-    );
-
-    var permitApprover = cleanCell(
-      cols[C.PERMIT_APPROVER]
-    );
-
-    var ilsExecutionRaw = cleanCell(
-      cols[C.ILS_EXECUTION]
-    );
-
-    var ilsExecution = normalizeIlsExecution(
-      ilsExecutionRaw
-    );
-
-    var ilsSystemApprover = cleanCell(
-      cols[C.ILS_SYSTEM_APPROVER]
-    );
-
-    var ilsSystemLocker = cleanCell(
-      cols[C.ILS_SYSTEM_LOCKER]
-    );
-
-    var email = cleanCell(
-      cols[C.EMAIL]
-    );
-
-    var requiredWorkPlan = cleanCell(
-      cols[C.REQUIRED_WORK_PLAN]
-    );
-
-    var safetyOriginal = cleanCell(
-      cols[C.SAFETY_ORIGINAL]
-    );
-
-    var riskAssessmentReferenceRaw = cleanCell(
-      cols[C.RISK_ASSESSMENT_REFERENCE]
-    );
-
-    /*
-      원본 고위험 및 확인항목을 파생값과 구분해 저장한다.
-    */
     var sourceRiskFlags = {
-      operatingEquipment: normalizeMark(
-        cols[C.OPERATING_EQUIPMENT]
-      ),
-
-      repairManagerApproval: normalizeMark(
-        cols[C.REPAIR_MANAGER_APPROVAL]
-      ),
-
-      inspectionPlantManagerApproval: normalizeMark(
-        cols[C.INSPECTION_PLANT_MANAGER_APPROVAL]
-      ),
-
-      fire: normalizeMark(
-        cols[C.HIGH_RISK_FIRE]
-      ),
-
-      explosion: normalizeMark(
-        cols[C.HIGH_RISK_EXPLOSION]
-      ),
-
-      suffocation: normalizeMark(
-        cols[C.HIGH_RISK_SUFFOCATION]
-      ),
-
-      leakage: normalizeMark(
-        cols[C.HIGH_RISK_LEAKAGE]
-      ),
-
-      other: normalizeMark(
-        cols[C.HIGH_RISK_OTHER]
-      ),
-
-      highRiskManagerApproval: normalizeMark(
-        cols[C.HIGH_RISK_MANAGER_APPROVAL]
-      ),
-
-      corrosionAreaEntry: normalizeMark(
-        cols[C.CORROSION_AREA_ENTRY]
-      ),
-
-      corrosionDepartmentApproval: normalizeMark(
-        cols[C.CORROSION_DEPARTMENT_APPROVAL]
-      )
+      operatingEquipment: normalizeMark(cols[C.OPERATING_EQUIPMENT]),
+      repairManagerApproval: normalizeMark(cols[C.REPAIR_MANAGER_APPROVAL]),
+      inspectionPlantManagerApproval: normalizeMark(cols[C.INSPECTION_PLANT_MANAGER_APPROVAL]),
+      fire: normalizeMark(cols[C.HIGH_RISK_FIRE]),
+      explosion: normalizeMark(cols[C.HIGH_RISK_EXPLOSION]),
+      suffocation: normalizeMark(cols[C.HIGH_RISK_SUFFOCATION]),
+      leakage: normalizeMark(cols[C.HIGH_RISK_LEAKAGE]),
+      other: normalizeMark(cols[C.HIGH_RISK_OTHER]),
+      highRiskManagerApproval: normalizeMark(cols[C.HIGH_RISK_MANAGER_APPROVAL]),
+      corrosionAreaEntry: normalizeMark(cols[C.CORROSION_AREA_ENTRY]),
+      corrosionDepartmentApproval: normalizeMark(cols[C.CORROSION_DEPARTMENT_APPROVAL])
     };
 
-    var safetyMonitorOrganization = cleanCell(
-      cols[C.SAFETY_MONITOR_ORGANIZATION]
-    );
+    var safetyMonitorOrganization = cleanCell(cols[C.SAFETY_MONITOR_ORGANIZATION]);
+    var safetyMonitorName = cleanCell(cols[C.SAFETY_MONITOR_NAME]);
+    var cctvAvailable = normalizeMark(cols[C.CCTV_AVAILABLE]);
 
-    var safetyMonitorName = cleanCell(
-      cols[C.SAFETY_MONITOR_NAME]
-    );
+    var normalizedWorkNameForRisk = String(workNameFull || '')
+      .split(' ').join('')
+      .split('\n').join('')
+      .split('\r').join('')
+      .split('\t').join('');
 
-    var cctvAvailable = normalizeMark(
-      cols[C.CCTV_AVAILABLE]
-    );
+    var sourceHighRiskFromName =
+      normalizedWorkNameForRisk.indexOf('[고위험작업]') >= 0 ||
+      normalizedWorkNameForRisk.indexOf('고위험작업') >= 0;
 
-    /*
-      원본 작업명에 명시된 고위험 여부
-    */
-    var normalizedWorkNameForRisk = String(
-  workNameFull || ''
-)
-  .split(' ').join('')
-  .split('\n').join('')
-  .split('\r').join('')
-  .split('\t').join('');
-
-var sourceHighRiskFromName =
-  normalizedWorkNameForRisk.indexOf('[고위험작업]') >= 0 ||
-  normalizedWorkNameForRisk.indexOf('고위험작업') >= 0;
-
-    /*
-      관리대장 고위험 항목에서 하나라도 O 또는 ○이면
-      원본 고위험 표시가 있는 것으로 본다.
-    */
     var sourceHighRiskFromFlags = [
       sourceRiskFlags.fire,
       sourceRiskFlags.explosion,
       sourceRiskFlags.suffocation,
       sourceRiskFlags.leakage,
       sourceRiskFlags.other
-    ].some(function(value){
-      return value === true;
+    ].some(function(value){ return value === true; });
+
+    var combinedText = [workNameFull, safetyOriginal, requiredWorkPlan].join(' ').toLowerCase();
+    var highRiskKeywords = ['밀폐','질식','산소부족','산소결핍','유해가스','추락','폭발','감전','누출','특고압','고압','vcb','화기작업'];
+    var keywordHighRisk = highRiskKeywords.some(function(keyword){
+      return combinedText.indexOf(keyword.toLowerCase()) >= 0;
     });
-
-    var combinedText = [
-      workNameFull,
-      safetyOriginal,
-      requiredWorkPlan
-    ].join(' ').toLowerCase();
-
-    /*
-      보조 키워드 기반 고위험 판정
-    */
-    var highRiskKeywords = [
-      '밀폐',
-      '질식',
-      '산소부족',
-      '산소결핍',
-      '유해가스',
-      '추락',
-      '폭발',
-      '감전',
-      '누출',
-      '특고압',
-      '고압',
-      'vcb',
-      '화기작업'
-    ];
-
-    var keywordHighRisk = highRiskKeywords.some(
-      function(keyword){
-        return combinedText.indexOf(
-          keyword.toLowerCase()
-        ) >= 0;
-      }
-    );
 
     var derivedHighRiskCategories = dHR(
       workNameFull,
       safetyOriginal,
-      sourceHighRiskFromName ||
-      sourceHighRiskFromFlags
+      sourceHighRiskFromName || sourceHighRiskFromFlags
     );
 
     var risk = (
@@ -2609,180 +2185,69 @@ var sourceHighRiskFromName =
       derivedHighRiskCategories.length > 0
     ) ? '고위험' : '일반';
 
-    var hazardSafety = pHS(
-      safetyOriginal
-    );
-
-    var parsedLocation = pLoc(
-      workNameFull
-    );
-
-    var displayWorkName = sWN(
-      workNameFull
-    );
-
-    var ilsRequired = dILS(
-      workNameFull,
-      [
-        safetyOriginal,
-        requiredWorkPlan
-      ].join(' ')
-    );
-
-    /*
-      원본 전체 열도 보존한다.
-      열 위치가 변경되거나 향후 새로운 필드를 매핑할 때 사용한다.
-    */
-    var rawColumns = cols.map(function(value){
-      return cleanCell(value);
-    });
+    var hazardSafety = pHS(safetyOriginal);
+    var parsedLocation = pLoc(workNameFull);
+    var displayWorkName = sWN(workNameFull);
+    var ilsRequired = dILS(workNameFull, [safetyOriginal, requiredWorkPlan].join(' '));
+    var rawColumns = cols.map(function(value){ return cleanCell(value); });
 
     results.push({
-      /*
-        식별 정보
-      */
       workId: workId,
       originalNo: originalNo,
       date: date,
-
-      /*
-        입력 출처
-      */
       sourceType: 'excel-paste',
       sourceRowIndex: rowIndex + 1,
-
-      /*
-        부서 정보
-      */
       operatingDepartment: operatingDepartment,
       requestingDepartment: requestingDepartment,
-
-      /*
-        위치 정보
-      */
       locationRaw: locationRaw,
-
       location: {
         raw: locationRaw,
         factory: parsedLocation.factory || '',
-        line: parsedLocation.line == null
-          ? null
-          : parsedLocation.line
+        line: parsedLocation.line == null ? null : parsedLocation.line
       },
-
-      /*
-        작업 기본정보
-      */
       workOrderNo: workOrderNo,
       workName: displayWorkName,
       workNameFull: workNameFull,
-
       workerCountRaw: workerCountRaw,
       workerCount: workerCount,
-
       workTimeRaw: workTime.raw,
       workStartTime: workTime.start,
       workEndTime: workTime.end,
-
-      /*
-        회사 정보
-      */
       contractCompany: contractCompany,
       executingCompany: executingCompany,
       company: company,
-
-      /*
-        담당자 정보
-      */
       manager: workManager || '미지정',
       workManager: workManager,
       contractorManager: contractorManager,
-
-      /*
-        작업허가 원본 정보
-      */
       permitLocation: permitLocation,
       permitApprover: permitApprover,
-
-      /*
-        ILS 정보
-      */
       ilsExecutionRaw: ilsExecutionRaw,
       ilsExecution: ilsExecution,
       ilsRequired: ilsRequired,
       ilsSystemApprover: ilsSystemApprover,
       ilsSystemLocker: ilsSystemLocker,
-
-      /*
-        연락처 및 작업계획서
-      */
       email: email,
       requiredWorkPlan: requiredWorkPlan,
-
-      /*
-        안전 원문
-      */
       safety: safetyOriginal,
       safetyOriginal: safetyOriginal,
-
-      /*
-        안전정보 분석 결과
-      */
       hazards: hazardSafety.hazards,
       safetyMeasures: hazardSafety.safetyMeasures,
-
-      /*
-        고위험 정보
-      */
       risk: risk,
       highRiskCategories: derivedHighRiskCategories,
       sourceRiskFlags: sourceRiskFlags,
-
-      isHighRiskFromSource:
-        sourceHighRiskFromName ||
-        sourceHighRiskFromFlags,
-
-      /*
-        위험성평가 원본 참조
-      */
+      isHighRiskFromSource: sourceHighRiskFromName || sourceHighRiskFromFlags,
       riskAssessmentReference: {
         raw: riskAssessmentReferenceRaw,
-        url: extractUrl(
-          riskAssessmentReferenceRaw
-        )
+        url: extractUrl(riskAssessmentReferenceRaw)
       },
-
-      /*
-        안전 모니터 정보
-      */
       safetyMonitor: {
         organization: safetyMonitorOrganization,
         name: safetyMonitorName,
-        assigned: Boolean(
-          safetyMonitorOrganization ||
-          safetyMonitorName
-        )
+        assigned: Boolean(safetyMonitorOrganization || safetyMonitorName)
       },
-
-      /*
-        CCTV
-      */
       cctvAvailable: cctvAvailable,
-
-      /*
-        작업 원본 상태
-      */
       workStatus: '등록',
-
-      /*
-        스키마
-      */
       schemaVersion: 1,
-
-      /*
-        이관 검증용 원본 열
-        Firestore 운영 적용 시 보존 여부를 별도 결정한다.
-      */
       rawColumns: rawColumns
     });
   });
@@ -2790,163 +2255,76 @@ var sourceHighRiskFromName =
   return results;
 }
 
-
 /* =========================================================
    5. 작업관리대장 저장 함수 전체 교체
    ========================================================= */
 
 function parseAndSave(){
-  var pasteElement = document.getElementById(
-    'dbPaste'
-  );
-
-  var text = pasteElement
-    ? pasteElement.value
-    : '';
+  var pasteElement = document.getElementById('dbPaste');
+  var text = pasteElement ? pasteElement.value : '';
 
   if(!text || text.trim().length < 10){
-    showToast(
-      '작업관리대장 데이터를 붙여넣으세요.',
-      'info'
-    );
+    showToast('작업관리대장 데이터를 붙여넣으세요.', 'info');
     return;
   }
 
   try{
     var newData = parseExcel(text);
-
     if(!newData.length){
-      showToast(
-        '파싱된 데이터가 없습니다. 일자, NO, 작업명을 확인하세요.',
-        'error'
-      );
+      showToast('파싱된 데이터가 없습니다. 일자, NO, 작업명을 확인하세요.', 'error');
       return;
     }
 
     var existingData = [];
-
     try{
-      var existingRaw = localStorage.getItem(
-        'safetyDatabase'
-      );
-
+      var existingRaw = localStorage.getItem('safetyDatabase');
       if(existingRaw){
-        var existingDatabase = JSON.parse(
-          existingRaw
-        );
-
-        existingData = Array.isArray(
-          existingDatabase.workHistory
-        )
-          ? existingDatabase.workHistory
-          : [];
+        var existingDatabase = JSON.parse(existingRaw);
+        existingData = Array.isArray(existingDatabase.workHistory) ? existingDatabase.workHistory : [];
       }
     }catch(readError){
-      console.error(
-        '기존 작업DB 읽기 실패:',
-        readError
-      );
-
+      console.error('기존 작업DB 읽기 실패:', readError);
       existingData = [];
     }
 
     var now = new Date().toISOString();
     var workMap = {};
-
     var addedCount = 0;
     var updatedCount = 0;
     var skippedCount = 0;
 
-    /*
-      기존 데이터 등록 및 이전 구조 workId 보강
-    */
     existingData.forEach(function(work){
-      var existingWorkId =
-        work.workId ||
-        makeWorkId(
-          work.date,
-          work.originalNo
-        );
-
-      if(!existingWorkId){
-        skippedCount++;
-        return;
-      }
-
-      workMap[existingWorkId] = Object.assign(
-        {},
-        work,
-        {
-          workId: existingWorkId
-        }
-      );
+      var existingWorkId = work.workId || makeWorkId(work.date, work.originalNo);
+      if(!existingWorkId){ skippedCount++; return; }
+      workMap[existingWorkId] = Object.assign({}, work, { workId: existingWorkId });
     });
 
-    /*
-      신규 데이터 병합
-    */
     newData.forEach(function(work){
-      if(!work.workId){
-        skippedCount++;
-        return;
-      }
-
+      if(!work.workId){ skippedCount++; return; }
       var oldWork = workMap[work.workId];
-
       if(oldWork){
         updatedCount++;
-
-        workMap[work.workId] = Object.assign(
-          {},
-          oldWork,
-          work,
-          {
-            workId: work.workId,
-            createdAt:
-              oldWork.createdAt ||
-              now,
-            updatedAt: now
-          }
-        );
+        workMap[work.workId] = Object.assign({}, oldWork, work, {
+          workId: work.workId,
+          createdAt: oldWork.createdAt || now,
+          updatedAt: now
+        });
       }else{
         addedCount++;
-
-        workMap[work.workId] = Object.assign(
-          {},
-          work,
-          {
-            createdAt: now,
-            updatedAt: now
-          }
-        );
+        workMap[work.workId] = Object.assign({}, work, {
+          createdAt: now,
+          updatedAt: now
+        });
       }
     });
 
-    /*
-      일자 내림차순, NO 오름차순 정렬
-    */
-    var merged = Object.values(
-      workMap
-    ).sort(function(first, second){
-      var dateCompare = String(
-        second.date || ''
-      ).localeCompare(
-        String(first.date || '')
-      );
-
-      if(dateCompare !== 0){
-        return dateCompare;
-      }
-
-      return String(
-        first.originalNo || ''
-      ).localeCompare(
+    var merged = Object.values(workMap).sort(function(first, second){
+      var dateCompare = String(second.date || '').localeCompare(String(first.date || ''));
+      if(dateCompare !== 0){ return dateCompare; }
+      return String(first.originalNo || '').localeCompare(
         String(second.originalNo || ''),
         undefined,
-        {
-          numeric: true,
-          sensitivity: 'base'
-        }
+        { numeric: true, sensitivity: 'base' }
       );
     });
 
@@ -2958,72 +2336,31 @@ function parseAndSave(){
         lastUpdate: now,
         totalCount: merged.length
       },
-
       workHistory: merged
     };
 
-    localStorage.setItem(
-      'safetyDatabase',
-      JSON.stringify(database)
-    );
+    localStorage.setItem('safetyDatabase', JSON.stringify(database));
 
     try{
-      window.dispatchEvent(
-        new CustomEvent(
-          'app-data-changed',
-          {
-            detail: {
-              key: 'safetyDatabase',
-              timestamp: Date.now()
-            }
-          }
-        )
-      );
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: { key: 'safetyDatabase', timestamp: Date.now() }
+      }));
     }catch(eventError){
-      console.warn(
-        '데이터 변경 이벤트 전송 실패:',
-        eventError
-      );
+      console.warn('데이터 변경 이벤트 전송 실패:', eventError);
     }
 
-    if(pasteElement){
-      pasteElement.value = '';
-    }
-
+    if(pasteElement){ pasteElement.value = ''; }
     loadDB();
 
-    var message =
-      '✅ 신규 ' + addedCount +
-      '건 / 갱신 ' + updatedCount +
-      '건';
-
-    if(skippedCount > 0){
-      message +=
-        ' / 제외 ' + skippedCount +
-        '건';
-    }
-
-    message +=
-      ' / 총 ' + merged.length +
-      '건 저장';
-
-    showToast(
-      message,
-      'success'
-    );
+    var message = '✅ 신규 ' + addedCount + '건 / 갱신 ' + updatedCount + '건';
+    if(skippedCount > 0){ message += ' / 제외 ' + skippedCount + '건'; }
+    message += ' / 총 ' + merged.length + '건 저장';
+    showToast(message, 'success');
   }catch(error){
-    console.error(
-      '작업관리대장 저장 오류:',
-      error
-    );
-
-    showToast(
-      '저장 오류: ' + error.message,
-      'error'
-    );
+    console.error('작업관리대장 저장 오류:', error);
+    showToast('저장 오류: ' + error.message, 'error');
   }
 }
-
 
 /* =========================================================
    6. 작업DB 로드 함수 전체 교체
@@ -3031,176 +2368,59 @@ function parseAndSave(){
 
 function loadDB(){
   try{
-    var raw = localStorage.getItem(
-      'safetyDatabase'
-    );
-
-    var database = raw
-      ? JSON.parse(raw)
-      : {};
-
-    var workHistory = Array.isArray(
-      database.workHistory
-    )
-      ? database.workHistory
-      : [];
+    var raw = localStorage.getItem('safetyDatabase');
+    var database = raw ? JSON.parse(raw) : {};
+    var workHistory = Array.isArray(database.workHistory) ? database.workHistory : [];
 
     allWorks = workHistory.map(function(work){
-      var workId =
-        work.workId ||
-        makeWorkId(
-          work.date,
-          work.originalNo
-        );
-
+      var workId = work.workId || makeWorkId(work.date, work.originalNo);
       if(!workId){
-        console.warn(
-          'workId를 생성할 수 없어 제외된 작업:',
-          work
-        );
-
+        console.warn('workId를 생성할 수 없어 제외된 작업:', work);
         return null;
       }
 
-      var riskLevel =
-        work.risk ||
-        work.riskLevel ||
-        '일반';
+      var riskLevel = work.risk || work.riskLevel || '일반';
+      if(riskLevel === '중위험'){ riskLevel = '일반'; }
 
-      if(riskLevel === '중위험'){
-        riskLevel = '일반';
-      }
-
-      var locationObject = (
-        work.location &&
-        typeof work.location === 'object'
-      )
-        ? work.location
-        : {};
-
+      var locationObject = (work.location && typeof work.location === 'object') ? work.location : {};
       var locationDisplay =
         work.locationRaw ||
         locationObject.raw ||
         locStr(locationObject) ||
-        (
-          typeof work.location === 'string'
-            ? work.location
-            : ''
-        ) ||
+        (typeof work.location === 'string' ? work.location : '') ||
         '미지정';
 
-      var highRiskCategories = Array.isArray(
-        work.highRiskCategories
-      )
-        ? work.highRiskCategories
-        : [];
+      var highRiskCategories = Array.isArray(work.highRiskCategories) ? work.highRiskCategories : [];
+      var hazards = Array.isArray(work.hazards) ? work.hazards : [];
+      var safetyMeasures = Array.isArray(work.safetyMeasures) ? work.safetyMeasures : [];
 
-      var hazards = Array.isArray(
-        work.hazards
-      )
-        ? work.hazards
-        : [];
-
-      var safetyMeasures = Array.isArray(
-        work.safetyMeasures
-      )
-        ? work.safetyMeasures
-        : [];
-
-      return Object.assign(
-        {},
-        work,
-        {
-          /*
-            기존 화면 호환용 id
-          */
-          id: workId,
-
-          /*
-            정식 식별자
-          */
-          workId: workId,
-
-          date: work.date || '',
-          originalNo:
-            work.originalNo || '',
-
-          workName:
-            work.workName ||
-            '작업',
-
-          workNameFull:
-            work.workNameFull ||
-            work.workName ||
-            '',
-
-          locationObj:
-            locationObject,
-
-          locationRaw:
-            work.locationRaw ||
-            locationObject.raw ||
-            '',
-
-          location:
-            locationDisplay,
-
-          riskLevel:
-            riskLevel,
-
-          company:
-            work.company ||
-            work.executingCompany ||
-            work.contractCompany ||
-            '미지정',
-
-          manager:
-            work.manager ||
-            work.workManager ||
-            '미지정',
-
-          ilsRequired:
-            work.ilsRequired ||
-            'N',
-
-          hrCategoryNames:
-            highRiskCategories
-              .map(function(category){
-                if(typeof category === 'string'){
-                  return category;
-                }
-
-                return (
-                  category.category ||
-                  category.name ||
-                  ''
-                );
-              })
-              .filter(Boolean),
-
-          hazards:
-            hazards,
-
-          aiAnalysis: {
-            riskScore: rscore(
-              riskLevel,
-              highRiskCategories
-            ),
-
-            safetyMeasures:
-              safetyMeasures
-          }
+      return Object.assign({}, work, {
+        id: workId,
+        workId: workId,
+        date: work.date || '',
+        originalNo: work.originalNo || '',
+        workName: work.workName || '작업',
+        workNameFull: work.workNameFull || work.workName || '',
+        locationObj: locationObject,
+        locationRaw: work.locationRaw || locationObject.raw || '',
+        location: locationDisplay,
+        riskLevel: riskLevel,
+        company: work.company || work.executingCompany || work.contractCompany || '미지정',
+        manager: work.manager || work.workManager || '미지정',
+        ilsRequired: work.ilsRequired || 'N',
+        hrCategoryNames: highRiskCategories.map(function(category){
+          if(typeof category === 'string'){ return category; }
+          return (category.category || category.name || '');
+        }).filter(Boolean),
+        hazards: hazards,
+        aiAnalysis: {
+          riskScore: rscore(riskLevel, highRiskCategories),
+          safetyMeasures: safetyMeasures
         }
-      );
-    }).filter(function(work){
-      return work !== null;
-    });
+      });
+    }).filter(function(work){ return work !== null; });
   }catch(error){
-    console.error(
-      '작업DB 로드 실패:',
-      error
-    );
-
+    console.error('작업DB 로드 실패:', error);
     allWorks = [];
   }
 
@@ -3208,348 +2428,121 @@ function loadDB(){
   applyFilter();
 }
 
-
 /* =========================================================
    7. localStorage 배열 공통 로드
    ========================================================= */
 
 function loadLocalArray(key){
   try{
-    var parsed = JSON.parse(
-      localStorage.getItem(key) || '[]'
-    );
-
-    if(Array.isArray(parsed)){
-      return parsed;
-    }
-
-    if(
-      parsed &&
-      typeof parsed === 'object'
-    ){
-      return Object.values(
-        parsed
-      ).filter(function(item){
-        return (
-          item &&
-          typeof item === 'object'
-        );
+    var parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    if(Array.isArray(parsed)){ return parsed; }
+    if(parsed && typeof parsed === 'object'){
+      return Object.values(parsed).filter(function(item){
+        return (item && typeof item === 'object');
       });
     }
-
     return [];
   }catch(error){
-    console.error(
-      key + ' 로드 실패:',
-      error
-    );
-
+    console.error(key + ' 로드 실패:', error);
     return [];
   }
 }
-
 
 /* =========================================================
    8. permit 연결 및 상태 호환 함수
    ========================================================= */
 
 function getPermitWorkId(permit){
-  if(!permit){
-    return null;
-  }
-
-  /*
-    신규 정식 필드 workId 우선,
-    과거 sourceWorkId는 호환용으로 읽는다.
-  */
-  return (
-    permit.workId ||
-    permit.sourceWorkId ||
-    null
-  );
+  if(!permit){ return null; }
+  return permit.workId || permit.sourceWorkId || null;
 }
 
 function getPermitStatus(permit){
-  if(!permit){
-    return '대기중';
-  }
-
-  /*
-    신규 정식 필드 permitStatus 우선,
-    과거 status는 호환용으로 읽는다.
-  */
-  return (
-    permit.permitStatus ||
-    permit.status ||
-    '허가진행중'
-  );
+  if(!permit){ return '대기중'; }
+  return permit.permitStatus || permit.status || '허가진행중';
 }
 
-function isPermitCompleted(
-  permit,
-  status
-){
-  if(
-    status === '작업완료' ||
-    status === '완료'
-  ){
-    return true;
-  }
-
-  if(
-    permit &&
-    permit.closeout &&
-    permit.closeout.completed === true
-  ){
-    return true;
-  }
-
+function isPermitCompleted(permit, status){
+  if(status === '작업완료' || status === '완료'){ return true; }
+  if(permit && permit.closeout && permit.closeout.completed === true){ return true; }
   return false;
 }
 
 function isEmergencyActive(emergency){
-  if(!emergency){
-    return false;
-  }
-
-  var status =
-    emergency.emergencyStatus ||
-    emergency.status ||
-    '';
-
-  var inactiveStatuses = [
-    '종료',
-    '취소',
-    '해제승인',
-    '해제',
-    '완료'
-  ];
-
-  if(
-    inactiveStatuses.indexOf(status) >= 0
-  ){
-    return false;
-  }
-
-  /*
-    과거 데이터에 상태가 없으면
-    실제 작업중지 이력으로 간주한다.
-  */
+  if(!emergency){ return false; }
+  var status = emergency.emergencyStatus || emergency.status || '';
+  var inactiveStatuses = ['종료','취소','해제승인','해제','완료'];
+  if(inactiveStatuses.indexOf(status) >= 0){ return false; }
   return true;
 }
-
 
 /* =========================================================
    9. permit, TBM, 긴급조치 인덱스 생성
    ========================================================= */
 
 function buildExecutionMaps(){
-  var permitList = loadLocalArray(
-    'safetyPermits'
-  );
-
-  var tbmList = loadLocalArray(
-    'safetyTBM'
-  );
-
-  var emergencyList = loadLocalArray(
-    'emergencies'
-  );
+  var permitList = loadLocalArray('safetyPermits');
+  var tbmList = loadLocalArray('safetyTBM');
+  var emergencyList = loadLocalArray('emergencies');
 
   var permitMap = {};
   var tbmMap = {};
   var emergencyMap = {};
 
-  /*
-    workId별 최신 permit를 선택한다.
-  */
   permitList.forEach(function(permit){
-    var workId = getPermitWorkId(
-      permit
-    );
-
-    if(!workId){
-      return;
-    }
-
+    var workId = getPermitWorkId(permit);
+    if(!workId){ return; }
     var previous = permitMap[workId];
-
-    if(!previous){
-      permitMap[workId] = permit;
-      return;
-    }
-
-    var previousTime = parseDateTime(
-      previous.updatedAt ||
-      previous.createdAt
-    );
-
-    var currentTime = parseDateTime(
-      permit.updatedAt ||
-      permit.createdAt
-    );
-
-    if(currentTime >= previousTime){
-      permitMap[workId] = permit;
-    }
+    if(!previous){ permitMap[workId] = permit; return; }
+    var previousTime = parseDateTime(previous.updatedAt || previous.createdAt);
+    var currentTime = parseDateTime(permit.updatedAt || permit.createdAt);
+    if(currentTime >= previousTime){ permitMap[workId] = permit; }
   });
 
-  /*
-    permitNo별 최신 TBM을 선택한다.
-  */
   tbmList.forEach(function(tbm){
-    if(!tbm || !tbm.permitNo){
-      return;
-    }
-
-    var previous = tbmMap[
-      tbm.permitNo
-    ];
-
-    if(!previous){
-      tbmMap[tbm.permitNo] = tbm;
-      return;
-    }
-
-    var previousTime = parseDateTime(
-      previous.updatedAt ||
-      previous.createdAt ||
-      previous.tbmDate
-    );
-
-    var currentTime = parseDateTime(
-      tbm.updatedAt ||
-      tbm.createdAt ||
-      tbm.tbmDate
-    );
-
-    if(currentTime >= previousTime){
-      tbmMap[tbm.permitNo] = tbm;
-    }
+    if(!tbm || !tbm.permitNo){ return; }
+    var previous = tbmMap[tbm.permitNo];
+    if(!previous){ tbmMap[tbm.permitNo] = tbm; return; }
+    var previousTime = parseDateTime(previous.updatedAt || previous.createdAt || previous.tbmDate);
+    var currentTime = parseDateTime(tbm.updatedAt || tbm.createdAt || tbm.tbmDate);
+    if(currentTime >= previousTime){ tbmMap[tbm.permitNo] = tbm; }
   });
 
-  /*
-    permitNo별 활성 긴급조치를 등록한다.
-  */
   emergencyList.forEach(function(emergency){
-    if(
-      !emergency ||
-      !emergency.permitNo ||
-      !isEmergencyActive(emergency)
-    ){
-      return;
-    }
-
-    var previous = emergencyMap[
-      emergency.permitNo
-    ];
-
-    if(!previous){
-      emergencyMap[
-        emergency.permitNo
-      ] = emergency;
-
-      return;
-    }
-
-    var previousTime = parseDateTime(
-      previous.updatedAt ||
-      previous.createdAt ||
-      previous.emergencyDate
-    );
-
-    var currentTime = parseDateTime(
-      emergency.updatedAt ||
-      emergency.createdAt ||
-      emergency.emergencyDate
-    );
-
-    if(currentTime >= previousTime){
-      emergencyMap[
-        emergency.permitNo
-      ] = emergency;
-    }
+    if(!emergency || !emergency.permitNo || !isEmergencyActive(emergency)){ return; }
+    var previous = emergencyMap[emergency.permitNo];
+    if(!previous){ emergencyMap[emergency.permitNo] = emergency; return; }
+    var previousTime = parseDateTime(previous.updatedAt || previous.createdAt || previous.emergencyDate);
+    var currentTime = parseDateTime(emergency.updatedAt || emergency.createdAt || emergency.emergencyDate);
+    if(currentTime >= previousTime){ emergencyMap[emergency.permitNo] = emergency; }
   });
 
-  return {
-    permitMap: permitMap,
-    tbmMap: tbmMap,
-    emergencyMap: emergencyMap
-  };
+  return { permitMap: permitMap, tbmMap: tbmMap, emergencyMap: emergencyMap };
 }
-
 
 /* =========================================================
    10. 작업 실행상태 판정
-
-   상태 우선순위:
-   1. 작업완료
-   2. 작업중지
-   3. 작업중
-   4. 허가완료
-   5. 허가진행중
-   6. 대기중
    ========================================================= */
 
-function resolveWorkExecution(
-  work,
-  maps
-){
-  var workId =
-    work.workId ||
-    work.id;
+function resolveWorkExecution(work, maps){
+  var workId = work.workId || work.id;
+  var permit = maps.permitMap[workId] || null;
+  var permitNo = permit && permit.permitNo ? permit.permitNo : null;
+  var tbm = permitNo ? maps.tbmMap[permitNo] || null : null;
+  var emergency = permitNo ? maps.emergencyMap[permitNo] || null : null;
+  var status = getPermitStatus(permit);
 
-  var permit =
-    maps.permitMap[workId] ||
-    null;
-
-  var permitNo =
-    permit &&
-    permit.permitNo
-      ? permit.permitNo
-      : null;
-
-  var tbm = permitNo
-    ? maps.tbmMap[permitNo] || null
-    : null;
-
-  var emergency = permitNo
-    ? maps.emergencyMap[permitNo] || null
-    : null;
-
-  var status = getPermitStatus(
-    permit
-  );
-
-  if(
-    isPermitCompleted(
-      permit,
-      status
-    )
-  ){
+  if(isPermitCompleted(permit, status)){
     status = '작업완료';
-  }else if(
-    emergency ||
-    status === '작업중지'
-  ){
+  }else if(emergency || status === '작업중지'){
     status = '작업중지';
-  }else if(
-    status === '작업중'
-  ){
+  }else if(status === '작업중'){
     status = '작업중';
   }else if(tbm){
-    /*
-      완료 또는 중지 상태를 확인한 뒤에만
-      과거 TBM 데이터로 작업중 상태를 보정한다.
-    */
     status = '작업중';
-  }else if(
-    status === '허가완료'
-  ){
+  }else if(status === '허가완료'){
     status = '허가완료';
-  }else if(
-    status === '허가진행중'
-  ){
+  }else if(status === '허가진행중'){
     status = '허가진행중';
   }else if(!permit){
     status = '대기중';
@@ -3565,268 +2558,117 @@ function resolveWorkExecution(
   };
 }
 
-
 /* =========================================================
-   11. 작업 현황 카운트 함수 전체 교체
+   11. 작업 현황 카운트 함수 (v7.2가 덮어씀)
    ========================================================= */
 
 function updateWorkStatus(){
   var maps = buildExecutionMaps();
-
-  var cntWait = 0;
-  var cntRun = 0;
-  var cntStop = 0;
-  var cntDone = 0;
-  var cntDanger = 0;
+  var cntWait = 0, cntRun = 0, cntStop = 0, cntDone = 0, cntDanger = 0;
 
   dispWorks.forEach(function(work){
-    if(work.riskLevel === '고위험'){
-      cntDanger++;
-    }
-
-    var execution = resolveWorkExecution(
-      work,
-      maps
-    );
-
+    if(work.riskLevel === '고위험'){ cntDanger++; }
+    var execution = resolveWorkExecution(work, maps);
     var status = execution.status;
 
-    if(
-      status === '작업완료' ||
-      status === '완료'
-    ){
-      cntDone++;
-    }else if(
-      status === '작업중지'
-    ){
-      cntStop++;
-    }else if(
-      status === '허가완료' ||
-      status === '작업중'
-    ){
-      cntRun++;
-    }else{
-      cntWait++;
-    }
+    if(status === '작업완료' || status === '완료'){ cntDone++; }
+    else if(status === '작업중지'){ cntStop++; }
+    else if(status === '허가완료' || status === '작업중'){ cntRun++; }
+    else{ cntWait++; }
   });
 
-  setTxt(
-    'cntTotal',
-    dispWorks.length
-  );
+  setTxt('cntTotal', dispWorks.length);
+  setTxt('cntDanger', cntDanger);
+  setTxt('cntWait', cntWait);
+  setTxt('cntRun', cntRun);
+  setTxt('cntStop', cntStop);
+  setTxt('cntDone', cntDone);
 
-  setTxt(
-    'cntDanger',
-    cntDanger
-  );
-
-  setTxt(
-    'cntWait',
-    cntWait
-  );
-
-  setTxt(
-    'cntRun',
-    cntRun
-  );
-
-  setTxt(
-    'cntStop',
-    cntStop
-  );
-
-  setTxt(
-    'cntDone',
-    cntDone
-  );
-
-  [
-    'cntWait',
-    'cntRun',
-    'cntStop',
-    'cntDone'
-  ].forEach(function(id){
-    var element = document.getElementById(
-      id
-    );
-
-    if(!element){
-      return;
-    }
-
-    var value = parseInt(
-      element.textContent,
-      10
-    ) || 0;
-
-    if(value === 0){
-      element.classList.add(
-        'zero'
-      );
-    }else{
-      element.classList.remove(
-        'zero'
-      );
-    }
+  ['cntWait','cntRun','cntStop','cntDone'].forEach(function(id){
+    var element = document.getElementById(id);
+    if(!element){ return; }
+    var value = parseInt(element.textContent, 10) || 0;
+    if(value === 0){ element.classList.add('zero'); }
+    else{ element.classList.remove('zero'); }
   });
 }
 
-
 /* =========================================================
-   12. 상태별 작업 목록 함수 전체 교체
+   12. 상태별 작업 목록 (v7.2가 덮어씀)
    ========================================================= */
 
 function openStatusSheet(filter){
   var maps = buildExecutionMaps();
 
-  var enriched = dispWorks.map(
-    function(work){
-      var execution = resolveWorkExecution(
-        work,
-        maps
-      );
-
-      return {
-        workId:
-          work.workId ||
-          work.id,
-
-        workName:
-          work.workName ||
-          '미지정',
-
-        company:
-          work.company ||
-          '미지정',
-
-        location:
-          work.location ||
-          work.locationRaw ||
-          '미지정',
-
-        riskLevel:
-          work.riskLevel ||
-          '일반',
-
-        status:
-          execution.status,
-
-        permit:
-          execution.permit,
-
-        permitNo:
-          execution.permitNo,
-
-        tbm:
-          execution.tbm,
-
-        emergency:
-          execution.emergency
-      };
-    }
-  );
+  var enriched = dispWorks.map(function(work){
+    var execution = resolveWorkExecution(work, maps);
+    return {
+      workId: work.workId || work.id,
+      workName: work.workName || '미지정',
+      company: work.company || '미지정',
+      location: work.location || work.locationRaw || '미지정',
+      riskLevel: work.riskLevel || '일반',
+      status: execution.status,
+      permit: execution.permit,
+      permitNo: execution.permitNo,
+      tbm: execution.tbm,
+      emergency: execution.emergency
+    };
+  });
 
   var filtered = [];
   var title = '작업 목록';
 
   if(filter === 'wait'){
-    filtered = enriched.filter(
-      function(work){
-        return (
-          work.status === '대기중' ||
-          work.status === '허가진행중'
-        );
-      }
-    );
-
+    filtered = enriched.filter(function(work){
+      return work.status === '대기중' || work.status === '허가진행중';
+    });
     title = '🟡 허가전 작업';
   }else if(filter === 'run'){
-    filtered = enriched.filter(
-      function(work){
-        return (
-          work.status === '허가완료' ||
-          work.status === '작업중'
-        );
-      }
-    );
-
+    filtered = enriched.filter(function(work){
+      return work.status === '허가완료' || work.status === '작업중';
+    });
     title = '🟠 작업중';
   }else if(filter === 'stop'){
-    filtered = enriched.filter(
-      function(work){
-        return (
-          work.status === '작업중지'
-        );
-      }
-    );
-
+    filtered = enriched.filter(function(work){ return work.status === '작업중지'; });
     title = '🔴 작업중지';
   }else if(filter === 'done'){
-    filtered = enriched.filter(
-      function(work){
-        return (
-          work.status === '작업완료' ||
-          work.status === '완료'
-        );
-      }
-    );
-
+    filtered = enriched.filter(function(work){
+      return work.status === '작업완료' || work.status === '완료';
+    });
     title = '🟢 작업완료';
   }else if(filter === 'danger'){
-    filtered = enriched.filter(
-      function(work){
-        return (
-          work.riskLevel === '고위험'
-        );
-      }
-    );
-
+    filtered = enriched.filter(function(work){ return work.riskLevel === '고위험'; });
     title = '🚨 고위험 작업';
   }else{
     filtered = enriched;
     title = '📋 전체 작업';
   }
 
-  var titleElement = document.getElementById(
-    'wsSheetTitle'
-  );
-
+  var titleElement = document.getElementById('wsSheetTitle');
   if(titleElement){
-    titleElement.innerHTML =
-      title +
-      ' <span style="' +
-      'background:var(--tint);' +
-      'color:var(--posco);' +
-      'font-size:12px;' +
-      'font-weight:800;' +
-      'padding:2px 8px;' +
-      'border-radius:5px;' +
-      'margin-left:6px;' +
-      '">' +
-      filtered.length +
-      '건</span>';
+    titleElement.innerHTML = title +
+      ' <span style="background:var(--tint);color:var(--posco);font-size:12px;font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
+      filtered.length + '건</span>';
   }
 
-  renderStatusSheet(
-    filtered,
-    filter
-  );
-
+  renderStatusSheet(filtered, filter);
   openSheet('ws');
 }
 
+// renderStatusSheet는 v7.2가 정본으로 정의함
+function renderStatusSheet(works, filter){
+  var body = document.getElementById('wsBody');
+  if(!body) return;
+  body.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><div class="empty-txt">v7.2 패치가 로드되지 않았습니다</div></div>';
+}
 
 /* =========================================================
    13. 설정 화면 안내 문구 자동 변경
-
-   기존 HTML을 별도로 수정하지 않아도 패치 실행 시 변경한다.
    ========================================================= */
 
 function updateWorkLedgerGuide(){
-  var infoElement = document.querySelector(
-    '.db-info-txt'
-  );
-
+  var infoElement = document.querySelector('.db-info-txt');
   if(infoElement){
     infoElement.innerHTML =
       '<strong>📌 작업관리대장 가져오기</strong><br>' +
@@ -3837,95 +2679,42 @@ function updateWorkLedgerGuide(){
       '※ 동일한 일자와 NO는 신규 추가가 아닌 갱신 처리됩니다.';
   }
 
-  var titleElement = document.querySelector(
-    '.db-area-title'
-  );
+  var titleElement = document.querySelector('.db-area-title');
+  if(titleElement){ titleElement.textContent = '📊 작업관리대장 복사·붙여넣기'; }
 
-  if(titleElement){
-    titleElement.textContent =
-      '📊 작업관리대장 복사·붙여넣기';
-  }
-
-  var pasteElement = document.getElementById(
-    'dbPaste'
-  );
-
+  var pasteElement = document.getElementById('dbPaste');
   if(pasteElement){
-    pasteElement.placeholder =
-      '작업관리대장 엑셀 범위를 복사하여 붙여넣기(Ctrl+V)...';
+    pasteElement.placeholder = '작업관리대장 엑셀 범위를 복사하여 붙여넣기(Ctrl+V)...';
   }
 }
-
 
 /* =========================================================
    14. 데이터 변경 감지 보강
    ========================================================= */
 
-window.addEventListener(
-  'storage',
-  function(event){
-    if(
-      event.key === 'emergencies'
-    ){
-      setTimeout(
-        function(){
-          updateWorkStatus();
-        },
-        100
-      );
-    }
+window.addEventListener('storage', function(event){
+  if(event.key === 'emergencies'){
+    setTimeout(function(){ updateWorkStatus(); }, 100);
   }
-);
+});
 
-window.addEventListener(
-  'app-data-changed',
-  function(event){
-    var key =
-      event.detail &&
-      event.detail.key;
-
-    if(key === 'emergencies'){
-      setTimeout(
-        function(){
-          updateWorkStatus();
-        },
-        100
-      );
-    }
+window.addEventListener('app-data-changed', function(event){
+  var key = event.detail && event.detail.key;
+  if(key === 'emergencies'){
+    setTimeout(function(){ updateWorkStatus(); }, 100);
   }
-);
-
+});
 
 /* =========================================================
-   15. 개발자용 데이터 검사 함수
-
-   브라우저 콘솔에서 inspectSafetyDatabase() 실행 가능
+   15~17. 개발자 유틸 함수 (콘솔 실행용)
    ========================================================= */
 
 window.inspectSafetyDatabase = function(){
   var database = {};
+  try{ database = JSON.parse(localStorage.getItem('safetyDatabase') || '{}'); }
+  catch(error){ console.error('safetyDatabase JSON 파싱 실패:', error); return null; }
 
-  try{
-    database = JSON.parse(
-      localStorage.getItem(
-        'safetyDatabase'
-      ) || '{}'
-    );
-  }catch(error){
-    console.error(
-      'safetyDatabase JSON 파싱 실패:',
-      error
-    );
-
-    return null;
-  }
-
-  var workHistory = Array.isArray(
-    database.workHistory
-  )
-    ? database.workHistory
-    : [];
-
+  var workHistory = Array.isArray(database.workHistory) ? database.workHistory : [];
   var workIdSet = new Set();
   var duplicateWorkIds = [];
   var missingWorkIds = [];
@@ -3933,317 +2722,98 @@ window.inspectSafetyDatabase = function(){
   var missingLocations = [];
 
   workHistory.forEach(function(work, index){
-    var workId =
-      work.workId ||
-      makeWorkId(
-        work.date,
-        work.originalNo
-      );
-
-    if(!workId){
-      missingWorkIds.push(index);
-    }else if(workIdSet.has(workId)){
-      duplicateWorkIds.push(workId);
-    }else{
-      workIdSet.add(workId);
-    }
-
-    if(
-      !work.workNameFull &&
-      !work.workName
-    ){
-      missingWorkNames.push(
-        workId || index
-      );
-    }
-
+    var workId = work.workId || makeWorkId(work.date, work.originalNo);
+    if(!workId){ missingWorkIds.push(index); }
+    else if(workIdSet.has(workId)){ duplicateWorkIds.push(workId); }
+    else{ workIdSet.add(workId); }
+    if(!work.workNameFull && !work.workName){ missingWorkNames.push(workId || index); }
     var hasLocation = Boolean(
-      work.locationRaw ||
-      (
-        work.location &&
-        (
-          work.location.raw ||
-          work.location.factory
-        )
-      )
+      work.locationRaw || (work.location && (work.location.raw || work.location.factory))
     );
-
-    if(!hasLocation){
-      missingLocations.push(
-        workId || index
-      );
-    }
+    if(!hasLocation){ missingLocations.push(workId || index); }
   });
 
   var result = {
-    metadata:
-      database.metadata || {},
-
-    totalCount:
-      workHistory.length,
-
-    missingWorkIdCount:
-      missingWorkIds.length,
-
-    duplicateWorkIdCount:
-      duplicateWorkIds.length,
-
-    missingWorkNameCount:
-      missingWorkNames.length,
-
-    missingLocationCount:
-      missingLocations.length,
-
-    missingWorkIds:
-      missingWorkIds,
-
-    duplicateWorkIds:
-      duplicateWorkIds,
-
-    missingWorkNames:
-      missingWorkNames,
-
-    missingLocations:
-      missingLocations,
-
-    firstWork:
-      workHistory[0] || null
+    metadata: database.metadata || {},
+    totalCount: workHistory.length,
+    missingWorkIdCount: missingWorkIds.length,
+    duplicateWorkIdCount: duplicateWorkIds.length,
+    missingWorkNameCount: missingWorkNames.length,
+    missingLocationCount: missingLocations.length,
+    missingWorkIds: missingWorkIds,
+    duplicateWorkIds: duplicateWorkIds,
+    missingWorkNames: missingWorkNames,
+    missingLocations: missingLocations,
+    firstWork: workHistory[0] || null
   };
 
-  console.log(
-    '작업관리대장 검사 결과:',
-    result
-  );
-
+  console.log('작업관리대장 검사 결과:', result);
   console.table([
-    {
-      item: '전체 작업',
-      count: result.totalCount
-    },
-    {
-      item: 'workId 누락',
-      count: result.missingWorkIdCount
-    },
-    {
-      item: 'workId 중복',
-      count: result.duplicateWorkIdCount
-    },
-    {
-      item: '작업명 누락',
-      count: result.missingWorkNameCount
-    },
-    {
-      item: '작업장소 누락',
-      count: result.missingLocationCount
-    }
+    { item: '전체 작업', count: result.totalCount },
+    { item: 'workId 누락', count: result.missingWorkIdCount },
+    { item: 'workId 중복', count: result.duplicateWorkIdCount },
+    { item: '작업명 누락', count: result.missingWorkNameCount },
+    { item: '작업장소 누락', count: result.missingLocationCount }
   ]);
-
   return result;
 };
-
-
-/* =========================================================
-   16. 붙여넣기 데이터 열 위치 확인 함수
-
-   설정 페이지 입력창에 데이터를 붙여넣은 상태에서
-   브라우저 콘솔에서 inspectPastedColumns() 실행 가능
-   ========================================================= */
 
 window.inspectPastedColumns = function(){
-  var pasteElement = document.getElementById(
-    'dbPaste'
-  );
-
-  if(!pasteElement){
-    console.error(
-      'dbPaste 입력창을 찾을 수 없습니다.'
-    );
-
-    return null;
-  }
-
-  var rows = parseTSV(
-    pasteElement.value
-  );
-
+  var pasteElement = document.getElementById('dbPaste');
+  if(!pasteElement){ console.error('dbPaste 입력창을 찾을 수 없습니다.'); return null; }
+  var rows = parseTSV(pasteElement.value);
   var firstDataRow = rows.find(function(row){
-    return Boolean(
-      exDate(
-        cleanCell(row[0])
-      )
-    );
+    return Boolean(exDate(cleanCell(row[0])));
   });
-
-  if(!firstDataRow){
-    console.warn(
-      '일자로 시작하는 작업 데이터 행을 찾지 못했습니다.'
-    );
-
-    return null;
-  }
-
-  var result = firstDataRow.map(
-    function(value, index){
-      return {
-        index: index,
-        value: cleanCell(value)
-      };
-    }
-  );
-
+  if(!firstDataRow){ console.warn('일자로 시작하는 작업 데이터 행을 찾지 못했습니다.'); return null; }
+  var result = firstDataRow.map(function(value, index){
+    return { index: index, value: cleanCell(value) };
+  });
   console.table(result);
-
   return result;
 };
 
-
-/* =========================================================
-   17. 기존 데이터 백업 함수
-
-   브라우저 콘솔에서 backupSafetyDatabase() 실행 가능
-   ========================================================= */
-
 window.backupSafetyDatabase = function(){
-  var raw = localStorage.getItem(
-    'safetyDatabase'
-  );
-
-  if(!raw){
-    console.warn(
-      '백업할 safetyDatabase가 없습니다.'
-    );
-
-    return null;
-  }
-
+  var raw = localStorage.getItem('safetyDatabase');
+  if(!raw){ console.warn('백업할 safetyDatabase가 없습니다.'); return null; }
   var now = new Date();
-
-  var backupKey =
-    'safetyDatabase_backup_' +
-    now.getFullYear() +
-    pad(now.getMonth() + 1) +
-    pad(now.getDate()) +
-    '_' +
-    pad(now.getHours()) +
-    pad(now.getMinutes()) +
-    pad(now.getSeconds());
-
-  localStorage.setItem(
-    backupKey,
-    raw
-  );
-
-  console.log(
-    '작업DB 백업 완료:',
-    backupKey
-  );
-
-  showToast(
-    '작업DB 백업 완료',
-    'success'
-  );
-
+  var backupKey = 'safetyDatabase_backup_' +
+    now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '_' +
+    pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+  localStorage.setItem(backupKey, raw);
+  console.log('작업DB 백업 완료:', backupKey);
+  showToast('작업DB 백업 완료', 'success');
   return backupKey;
 };
-
 
 /* =========================================================
    18. 패치 적용 및 화면 갱신
    ========================================================= */
 
 updateWorkLedgerGuide();
-
-/*
-  기존 init()은 앞의 script에서 이미 실행되었다.
-  패치 함수로 다시 읽어 화면 데이터를 갱신한다.
-*/
 loadDB();
 loadPermits();
 updateWorkStatus();
 
 </script>
-
-<style>
-/* =========================================================
-   대시보드 날짜 필터 및 작업상태 표시 최종 패치 v7.2
-   ========================================================= */
-
-.chips{
-  align-items:center;
-}
-
-.chip-date{
-  padding-left:14px;
-  padding-right:14px;
-}
-
-.chip-calendar{
-  width:40px;
-  height:38px;
-  padding:0;
-  display:grid;
-  place-items:center;
-  font-size:18px;
-}
-
-.chip:disabled{
-  opacity:.45;
-  cursor:not-allowed;
-}
-
-.dashboard-date-picker{
-  position:fixed;
-  left:-9999px;
-  width:1px;
-  height:1px;
-  opacity:0;
-  pointer-events:none;
-}
-
-.work-item.scheduled{
-  border-left-color:var(--posco);
-}
-
-.work-item.ended{
-  border-left-color:var(--done);
-  opacity:.9;
-}
-
-.wi-status.scheduled{
-  background:var(--tint);
-  color:var(--posco);
-}
-
-.wi-status.ended{
-  background:var(--done-bg);
-  color:var(--done);
-}
-
-.selected-date-info{
-  color:var(--sub);
-  font-size:12px;
-  font-weight:700;
-}
-</style>
-
 <script>
 /* =========================================================
    대시보드 날짜 필터 및 작업상태 표시 최종 패치 v7.2
+   
+   ⭐ Step 2 리팩토링 (2026-08-28)
+   변경사항:
+   - chip UI는 HTML 정적으로 이동 (플리커링 해소)
+   - dashboardCreateDateControls()가 picker 생성만 수행
+   - dashboardUpdateUpcomingButton() 헬퍼 신설
+   - applyFilter() 내부의 예정 버튼 갱신 로직 헬퍼로 위임
 
    필터:
-   - 어제
-   - 오늘
-   - 예정: 오늘 이후 가장 가까운 작업일
-   - 캘린더: 임의 날짜 조회
+   - 어제 / 오늘 / 예정: 오늘 이후 가장 가까운 작업일 / 캘린더
 
    표시 상태:
    - 과거 작업: 작업종료
    - 오늘 작업: 실제 permit/TBM/긴급조치 상태
    - 미래 작업: 예정
-
-   주의:
-   - Firestore 및 localStorage의 원본 상태는 변경하지 않음
-   - 화면 표시 상태만 날짜에 따라 계산
    ========================================================= */
 
 (function(){
@@ -4251,134 +2821,55 @@ updateWorkStatus();
   var dashboardSelectedDate = '';
   var dashboardUpcomingDate = '';
 
-  var DAY_NAMES = [
-    '일',
-    '월',
-    '화',
-    '수',
-    '목',
-    '금',
-    '토'
-  ];
+  var DAY_NAMES = ['일','월','화','수','목','금','토'];
 
   function dashboardDateText(dateString){
-    if(!dateString){
-      return '';
-    }
-
+    if(!dateString){ return ''; }
     var parts = dateString.split('-');
-
-    if(parts.length !== 3){
-      return dateString;
-    }
-
-    var date = new Date(
-      Number(parts[0]),
-      Number(parts[1]) - 1,
-      Number(parts[2])
-    );
-
-    if(isNaN(date.getTime())){
-      return dateString;
-    }
-
-    return (
-      Number(parts[1]) +
-      '/' +
-      Number(parts[2]) +
-      '(' +
-      DAY_NAMES[date.getDay()] +
-      ')'
-    );
+    if(parts.length !== 3){ return dateString; }
+    var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if(isNaN(date.getTime())){ return dateString; }
+    return Number(parts[1]) + '/' + Number(parts[2]) + '(' + DAY_NAMES[date.getDay()] + ')';
   }
 
   function dashboardDateLongText(dateString){
-    if(!dateString){
-      return '';
-    }
-
+    if(!dateString){ return ''; }
     var parts = dateString.split('-');
-
-    if(parts.length !== 3){
-      return dateString;
-    }
-
-    var date = new Date(
-      Number(parts[0]),
-      Number(parts[1]) - 1,
-      Number(parts[2])
-    );
-
-    if(isNaN(date.getTime())){
-      return dateString;
-    }
-
-    return (
-      Number(parts[1]) +
-      '월 ' +
-      Number(parts[2]) +
-      '일(' +
-      DAY_NAMES[date.getDay()] +
-      ')'
-    );
+    if(parts.length !== 3){ return dateString; }
+    var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if(isNaN(date.getTime())){ return dateString; }
+    return Number(parts[1]) + '월 ' + Number(parts[2]) + '일(' + DAY_NAMES[date.getDay()] + ')';
   }
 
   function dashboardYesterday(){
     var date = new Date();
-
-    date.setDate(
-      date.getDate() - 1
-    );
-
+    date.setDate(date.getDate() - 1);
     return fmtDate(date);
   }
 
   function dashboardFindUpcomingDate(){
     var today = fmtDate(new Date());
     var dates = [];
-
     (allWorks || []).forEach(function(work){
       var workDate = work.date || '';
-
-      if(
-        workDate > today &&
-        dates.indexOf(workDate) < 0
-      ){
+      if(workDate > today && dates.indexOf(workDate) < 0){
         dates.push(workDate);
       }
     });
-
     dates.sort();
-
-    return dates.length
-      ? dates[0]
-      : '';
+    return dates.length ? dates[0] : '';
   }
 
   function dashboardGetTargetDate(){
-    if(dashboardDateMode === 'yesterday'){
-      return dashboardYesterday();
-    }
-
-    if(dashboardDateMode === 'upcoming'){
-      return dashboardUpcomingDate;
-    }
-
-    if(dashboardDateMode === 'custom'){
-      return dashboardSelectedDate;
-    }
-
+    if(dashboardDateMode === 'yesterday'){ return dashboardYesterday(); }
+    if(dashboardDateMode === 'upcoming'){ return dashboardUpcomingDate; }
+    if(dashboardDateMode === 'custom'){ return dashboardSelectedDate; }
     return fmtDate(new Date());
   }
 
   function dashboardUpdateSectionTitle(){
-    var title = document.querySelector(
-      '#pageHome .sec .sec-title'
-    );
-
-    if(!title){
-      return;
-    }
+    var title = document.querySelector('#pageHome .sec .sec-title');
+    if(!title){ return; }
 
     var targetDate = dashboardGetTargetDate();
     var today = fmtDate(new Date());
@@ -4387,54 +2878,34 @@ updateWorkStatus();
       title.textContent = '📈 어제 작업 결과';
       return;
     }
-
     if(dashboardDateMode === 'today'){
       title.textContent = '📈 오늘 작업 현황';
       return;
     }
-
     if(dashboardDateMode === 'upcoming'){
       title.textContent = dashboardUpcomingDate
-        ? '📅 ' +
-          dashboardDateLongText(dashboardUpcomingDate) +
-          ' 예정 작업'
+        ? '📅 ' + dashboardDateLongText(dashboardUpcomingDate) + ' 예정 작업'
         : '📅 예정 작업 없음';
-
       return;
     }
-
     if(targetDate < today){
-      title.textContent =
-        '📅 ' +
-        dashboardDateLongText(targetDate) +
-        ' 종료 작업';
+      title.textContent = '📅 ' + dashboardDateLongText(targetDate) + ' 종료 작업';
     }else if(targetDate > today){
-      title.textContent =
-        '📅 ' +
-        dashboardDateLongText(targetDate) +
-        ' 예정 작업';
+      title.textContent = '📅 ' + dashboardDateLongText(targetDate) + ' 예정 작업';
     }else{
-      title.textContent =
-        '📈 오늘 작업 현황';
+      title.textContent = '📈 오늘 작업 현황';
     }
   }
 
   function dashboardUpdateStatusLabels(){
-    var labels = document.querySelectorAll(
-      '.status-dt-label'
-    );
-
-    if(labels.length < 4){
-      return;
-    }
-
+    var labels = document.querySelectorAll('.status-dt-label');
+    if(labels.length < 4){ return; }
     labels[0].textContent = '허가전';
     labels[1].textContent = '작업중';
     labels[2].textContent = '작업중지';
 
     var targetDate = dashboardGetTargetDate();
     var today = fmtDate(new Date());
-
     if(targetDate > today){
       labels[3].textContent = '예정';
     }else{
@@ -4442,250 +2913,124 @@ updateWorkStatus();
     }
   }
 
+  /* ═══════════════════════════════════════════════════════
+     ⭐ Step 2 리팩토링: 예정 버튼 라벨 업데이트 헬퍼
+     (기존 applyFilter 내부에 인라인으로 있던 로직을 분리)
+     ═══════════════════════════════════════════════════════ */
+  function dashboardUpdateUpcomingButton(){
+    var upcomingButton = document.getElementById('dashboardUpcomingButton');
+    if(!upcomingButton){ return; }
+    
+    if(dashboardUpcomingDate){
+      upcomingButton.disabled = false;
+      upcomingButton.textContent = '예정 · ' + dashboardDateText(dashboardUpcomingDate);
+    }else{
+      upcomingButton.disabled = true;
+      upcomingButton.textContent = '예정 없음';
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     ⭐ Step 2 리팩토링: chip UI는 HTML에 정적 작성됨
+     여기서는 예정 버튼 라벨 초기화 + date picker만 생성
+     (기존: chips.innerHTML = '...' 통째 교체 → 플리커링 원인)
+     ═══════════════════════════════════════════════════════ */
   function dashboardCreateDateControls(){
-    var chips = document.querySelector(
-      '#pageHome .chips'
-    );
+    // 예정 버튼 라벨 초기화
+    dashboardUpcomingDate = dashboardFindUpcomingDate();
+    dashboardUpdateUpcomingButton();
 
-    if(!chips){
-      return;
-    }
-
-    dashboardUpcomingDate =
-      dashboardFindUpcomingDate();
-
-    var upcomingLabel = dashboardUpcomingDate
-      ? '예정 · ' +
-        dashboardDateText(dashboardUpcomingDate)
-      : '예정 없음';
-
-    chips.innerHTML =
-      '<button class="chip chip-date" ' +
-        'data-date-mode="yesterday" ' +
-        'onclick="dashboardSetDateFilter(\'yesterday\',this)">' +
-        '어제' +
-      '</button>' +
-
-      '<button class="chip chip-date active" ' +
-        'data-date-mode="today" ' +
-        'onclick="dashboardSetDateFilter(\'today\',this)">' +
-        '오늘' +
-      '</button>' +
-
-      '<button class="chip chip-date" ' +
-        'id="dashboardUpcomingButton" ' +
-        'data-date-mode="upcoming" ' +
-        'onclick="dashboardSetDateFilter(\'upcoming\',this)" ' +
-        (dashboardUpcomingDate ? '' : 'disabled') +
-        '>' +
-        upcomingLabel +
-      '</button>' +
-
-      '<button class="chip chip-calendar" ' +
-        'id="dashboardCalendarButton" ' +
-        'onclick="dashboardOpenCalendar()" ' +
-        'aria-label="날짜 선택" ' +
-        'title="날짜 선택">' +
-        '📅' +
-      '</button>';
-
-    var oldPicker = document.getElementById(
-      'dashboardDatePicker'
-    );
-
-    if(oldPicker){
-      oldPicker.remove();
-    }
+    // 기존 picker 제거 후 새로 생성
+    var oldPicker = document.getElementById('dashboardDatePicker');
+    if(oldPicker){ oldPicker.remove(); }
 
     var picker = document.createElement('input');
-
     picker.type = 'date';
     picker.id = 'dashboardDatePicker';
     picker.className = 'dashboard-date-picker';
     picker.value = fmtDate(new Date());
 
-    picker.addEventListener(
-      'change',
-      function(){
-        if(!picker.value){
-          return;
-        }
+    picker.addEventListener('change', function(){
+      if(!picker.value){ return; }
+      dashboardSelectedDate = picker.value;
+      dashboardDateMode = 'custom';
 
-        dashboardSelectedDate =
-          picker.value;
+      document.querySelectorAll('#pageHome .chip').forEach(function(chip){
+        chip.classList.remove('active');
+      });
 
-        dashboardDateMode =
-          'custom';
-
-        document.querySelectorAll(
-          '#pageHome .chip'
-        ).forEach(function(chip){
-          chip.classList.remove('active');
-        });
-
-        var calendarButton =
-          document.getElementById(
-            'dashboardCalendarButton'
-          );
-
-        if(calendarButton){
-          calendarButton.classList.add(
-            'active'
-          );
-
-          calendarButton.textContent =
-            '📅 ' +
-            dashboardDateText(
-              dashboardSelectedDate
-            );
-        }
-
-        applyFilter();
+      var calendarButton = document.getElementById('dashboardCalendarButton');
+      if(calendarButton){
+        calendarButton.classList.add('active');
+        calendarButton.textContent = '📅 ' + dashboardDateText(dashboardSelectedDate);
       }
-    );
+
+      applyFilter();
+    });
 
     document.body.appendChild(picker);
   }
 
-  window.dashboardSetDateFilter = function(
-    mode,
-    button
-  ){
-    if(
-      mode === 'upcoming' &&
-      !dashboardUpcomingDate
-    ){
-      showToast(
-        '등록된 예정 작업이 없습니다.',
-        'info'
-      );
-
+  window.dashboardSetDateFilter = function(mode, button){
+    if(mode === 'upcoming' && !dashboardUpcomingDate){
+      showToast('등록된 예정 작업이 없습니다.', 'info');
       return;
     }
 
     dashboardDateMode = mode;
+    if(mode !== 'custom'){ dashboardSelectedDate = ''; }
 
-    if(mode !== 'custom'){
-      dashboardSelectedDate = '';
-    }
-
-    document.querySelectorAll(
-      '#pageHome .chip'
-    ).forEach(function(chip){
+    document.querySelectorAll('#pageHome .chip').forEach(function(chip){
       chip.classList.remove('active');
     });
+    if(button){ button.classList.add('active'); }
 
-    if(button){
-      button.classList.add('active');
-    }
-
-    var calendarButton =
-      document.getElementById(
-        'dashboardCalendarButton'
-      );
-
-    if(calendarButton){
-      calendarButton.textContent = '📅';
-    }
+    var calendarButton = document.getElementById('dashboardCalendarButton');
+    if(calendarButton){ calendarButton.textContent = '📅'; }
 
     applyFilter();
   };
 
   window.dashboardOpenCalendar = function(){
-    var picker = document.getElementById(
-      'dashboardDatePicker'
-    );
-
-    if(!picker){
-      return;
-    }
-
-    if(
-      typeof picker.showPicker ===
-      'function'
-    ){
+    var picker = document.getElementById('dashboardDatePicker');
+    if(!picker){ return; }
+    if(typeof picker.showPicker === 'function'){
       picker.showPicker();
     }else{
       picker.click();
     }
   };
 
-  window.dashboardGetDisplayStatus = function(
-    work,
-    execution
-  ){
+  window.dashboardGetDisplayStatus = function(work, execution){
     var today = fmtDate(new Date());
     var workDate = work.date || '';
 
-    if(workDate < today){
-      return '작업종료';
-    }
+    if(workDate < today){ return '작업종료'; }
+    if(workDate > today){ return '예정'; }
 
-    if(workDate > today){
-      return '예정';
-    }
-
-    var status = execution
-      ? execution.status
-      : '대기중';
-
-    if(
-      status === '작업완료' ||
-      status === '완료'
-    ){
-      return '작업종료';
-    }
-
-    if(status === '작업중지'){
-      return '작업중지';
-    }
-
-    if(status === '작업중'){
-      return '작업중';
-    }
-
-    if(status === '허가완료'){
-      return '허가완료';
-    }
-
+    var status = execution ? execution.status : '대기중';
+    if(status === '작업완료' || status === '완료'){ return '작업종료'; }
+    if(status === '작업중지'){ return '작업중지'; }
+    if(status === '작업중'){ return '작업중'; }
+    if(status === '허가완료'){ return '허가완료'; }
     return '허가전';
   };
-
+  /* ═══════════════════════════════════════════════════════
+     ⭐ Step 2 리팩토링: applyFilter 내부의 예정 버튼 갱신을
+     헬퍼 함수 호출로 대체 (중복 코드 제거)
+     ═══════════════════════════════════════════════════════ */
   window.applyFilter = function(){
-    dashboardUpcomingDate =
-      dashboardFindUpcomingDate();
+    dashboardUpcomingDate = dashboardFindUpcomingDate();
+    dashboardUpdateUpcomingButton();  // ⭐ 헬퍼 호출 (기존: 인라인 if/else)
 
-    var upcomingButton =
-      document.getElementById(
-        'dashboardUpcomingButton'
-      );
-
-    if(upcomingButton){
-      if(dashboardUpcomingDate){
-        upcomingButton.disabled = false;
-        upcomingButton.textContent =
-          '예정 · ' +
-          dashboardDateText(
-            dashboardUpcomingDate
-          );
-      }else{
-        upcomingButton.disabled = true;
-        upcomingButton.textContent =
-          '예정 없음';
-      }
-    }
-
-    var targetDate =
-      dashboardGetTargetDate();
+    var targetDate = dashboardGetTargetDate();
 
     if(!targetDate){
       dispWorks = [];
     }else{
-      dispWorks = allWorks.filter(
-        function(work){
-          return work.date === targetDate;
-        }
-      );
+      dispWorks = allWorks.filter(function(work){
+        return work.date === targetDate;
+      });
     }
 
     dashboardUpdateSectionTitle();
@@ -4696,288 +3041,116 @@ updateWorkStatus();
 
   window.updateWorkStatus = function(){
     var maps = buildExecutionMaps();
-
-    var countWait = 0;
-    var countRun = 0;
-    var countStop = 0;
-    var countEnded = 0;
-    var countDanger = 0;
+    var countWait = 0, countRun = 0, countStop = 0, countEnded = 0, countDanger = 0;
 
     dispWorks.forEach(function(work){
-      if(work.riskLevel === '고위험'){
-        countDanger++;
-      }
+      if(work.riskLevel === '고위험'){ countDanger++; }
+      var execution = resolveWorkExecution(work, maps);
+      var displayStatus = dashboardGetDisplayStatus(work, execution);
 
-      var execution =
-        resolveWorkExecution(
-          work,
-          maps
-        );
-
-      var displayStatus =
-        dashboardGetDisplayStatus(
-          work,
-          execution
-        );
-
-      if(displayStatus === '작업종료'){
-        countEnded++;
-      }else if(displayStatus === '예정'){
-        countEnded++;
-      }else if(displayStatus === '작업중지'){
-        countStop++;
-      }else if(
-        displayStatus === '작업중' ||
-        displayStatus === '허가완료'
-      ){
-        countRun++;
-      }else{
-        countWait++;
-      }
+      if(displayStatus === '작업종료'){ countEnded++; }
+      else if(displayStatus === '예정'){ countEnded++; }
+      else if(displayStatus === '작업중지'){ countStop++; }
+      else if(displayStatus === '작업중' || displayStatus === '허가완료'){ countRun++; }
+      else{ countWait++; }
     });
 
-    setTxt(
-      'cntTotal',
-      dispWorks.length
-    );
+    setTxt('cntTotal', dispWorks.length);
+    setTxt('cntDanger', countDanger);
+    setTxt('cntWait', countWait);
+    setTxt('cntRun', countRun);
+    setTxt('cntStop', countStop);
+    setTxt('cntDone', countEnded);
 
-    setTxt(
-      'cntDanger',
-      countDanger
-    );
-
-    setTxt(
-      'cntWait',
-      countWait
-    );
-
-    setTxt(
-      'cntRun',
-      countRun
-    );
-
-    setTxt(
-      'cntStop',
-      countStop
-    );
-
-    setTxt(
-      'cntDone',
-      countEnded
-    );
-
-    [
-      'cntWait',
-      'cntRun',
-      'cntStop',
-      'cntDone'
-    ].forEach(function(id){
-      var element =
-        document.getElementById(id);
-
-      if(!element){
-        return;
-      }
-
-      var value =
-        parseInt(
-          element.textContent,
-          10
-        ) || 0;
-
-      element.classList.toggle(
-        'zero',
-        value === 0
-      );
+    ['cntWait','cntRun','cntStop','cntDone'].forEach(function(id){
+      var element = document.getElementById(id);
+      if(!element){ return; }
+      var value = parseInt(element.textContent, 10) || 0;
+      element.classList.toggle('zero', value === 0);
     });
   };
 
   window.openStatusSheet = function(filter){
     var maps = buildExecutionMaps();
 
-    var enriched = dispWorks.map(
-      function(work){
-        var execution =
-          resolveWorkExecution(
-            work,
-            maps
-          );
-
-        return {
-          workId:
-            work.workId ||
-            work.id,
-
-          workDate:
-            work.date ||
-            '',
-
-          workName:
-            work.workName ||
-            '미지정',
-
-          company:
-            work.company ||
-            '미지정',
-
-          location:
-            work.location ||
-            work.locationRaw ||
-            '미지정',
-
-          riskLevel:
-            work.riskLevel ||
-            '일반',
-
-          status:
-            dashboardGetDisplayStatus(
-              work,
-              execution
-            ),
-
-          permit:
-            execution.permit,
-
-          permitNo:
-            execution.permitNo,
-
-          tbm:
-            execution.tbm,
-
-          emergency:
-            execution.emergency
-        };
-      }
-    );
+    var enriched = dispWorks.map(function(work){
+      var execution = resolveWorkExecution(work, maps);
+      return {
+        workId: work.workId || work.id,
+        workDate: work.date || '',
+        workName: work.workName || '미지정',
+        company: work.company || '미지정',
+        location: work.location || work.locationRaw || '미지정',
+        riskLevel: work.riskLevel || '일반',
+        status: dashboardGetDisplayStatus(work, execution),
+        permit: execution.permit,
+        permitNo: execution.permitNo,
+        tbm: execution.tbm,
+        emergency: execution.emergency
+      };
+    });
 
     var filtered = [];
     var title = '작업 목록';
 
     if(filter === 'wait'){
-      filtered = enriched.filter(
-        function(work){
-          return work.status === '허가전';
-        }
-      );
-
+      filtered = enriched.filter(function(work){ return work.status === '허가전'; });
       title = '🟡 허가전 작업';
     }else if(filter === 'run'){
-      filtered = enriched.filter(
-        function(work){
-          return (
-            work.status === '허가완료' ||
-            work.status === '작업중'
-          );
-        }
-      );
-
+      filtered = enriched.filter(function(work){
+        return work.status === '허가완료' || work.status === '작업중';
+      });
       title = '🟠 작업중';
     }else if(filter === 'stop'){
-      filtered = enriched.filter(
-        function(work){
-          return work.status === '작업중지';
-        }
-      );
-
+      filtered = enriched.filter(function(work){ return work.status === '작업중지'; });
       title = '🔴 작업중지';
     }else if(filter === 'done'){
-      filtered = enriched.filter(
-        function(work){
-          return (
-            work.status === '작업종료' ||
-            work.status === '예정'
-          );
-        }
-      );
-
-      title = dashboardGetTargetDate() >
-        fmtDate(new Date())
-          ? '📅 예정 작업'
-          : '🟢 작업종료';
+      filtered = enriched.filter(function(work){
+        return work.status === '작업종료' || work.status === '예정';
+      });
+      title = dashboardGetTargetDate() > fmtDate(new Date())
+        ? '📅 예정 작업'
+        : '🟢 작업종료';
     }else if(filter === 'danger'){
-      filtered = enriched.filter(
-        function(work){
-          return work.riskLevel === '고위험';
-        }
-      );
-
+      filtered = enriched.filter(function(work){ return work.riskLevel === '고위험'; });
       title = '🚨 고위험 작업';
     }else{
       filtered = enriched;
       title = '📋 전체 작업';
     }
 
-    var titleElement =
-      document.getElementById(
-        'wsSheetTitle'
-      );
-
+    var titleElement = document.getElementById('wsSheetTitle');
     if(titleElement){
-      titleElement.innerHTML =
-        title +
-        ' <span style="' +
-        'background:var(--tint);' +
-        'color:var(--posco);' +
-        'font-size:12px;' +
-        'font-weight:800;' +
-        'padding:2px 8px;' +
-        'border-radius:5px;' +
-        'margin-left:6px;' +
-        '">' +
-        filtered.length +
-        '건</span>';
+      titleElement.innerHTML = title +
+        ' <span style="background:var(--tint);color:var(--posco);font-size:12px;font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
+        filtered.length + '건</span>';
     }
 
-    dashboardRenderStatusSheet(
-      filtered,
-      filter
-    );
-
+    dashboardRenderStatusSheet(filtered, filter);
     openSheet('ws');
   };
 
-  window.dashboardRenderStatusSheet = function(
-    works,
-    filter
-  ){
-    var body =
-      document.getElementById(
-        'wsBody'
-      );
-
-    if(!body){
-      return;
-    }
+  window.dashboardRenderStatusSheet = function(works, filter){
+    var body = document.getElementById('wsBody');
+    if(!body){ return; }
 
     if(!works.length){
       body.innerHTML =
         '<div class="empty">' +
           '<div class="empty-ico">📭</div>' +
-          '<div class="empty-txt">' +
-            '해당 작업이 없습니다.' +
-          '</div>' +
+          '<div class="empty-txt">해당 작업이 없습니다.</div>' +
         '</div>';
-
       return;
     }
 
-    var today =
-      fmtDate(new Date());
-
+    var today = fmtDate(new Date());
     var html = '';
 
     works.forEach(function(work){
-      var isDanger =
-        work.riskLevel === '고위험';
-
-      var itemClass =
-        'work-item';
-
-      var statusClass =
-        'wait';
-
-      var statusEmoji =
-        '⏳';
+      var isDanger = work.riskLevel === '고위험';
+      var itemClass = 'work-item';
+      var statusClass = 'wait';
+      var statusEmoji = '⏳';
 
       if(work.status === '예정'){
         itemClass += ' scheduled';
@@ -4991,121 +3164,46 @@ updateWorkStatus();
         itemClass += ' stop';
         statusClass = 'stop';
         statusEmoji = '🛑';
-      }else if(
-        work.status === '작업중' ||
-        work.status === '허가완료'
-      ){
+      }else if(work.status === '작업중' || work.status === '허가완료'){
         itemClass += ' run';
         statusClass = 'run';
-        statusEmoji =
-          work.status === '작업중'
-            ? '🔄'
-            : '✅';
+        statusEmoji = work.status === '작업중' ? '🔄' : '✅';
       }else{
         itemClass += ' wait';
       }
 
-      html +=
-        '<div class="' +
-        itemClass +
-        '">';
-
-      html +=
-        '<div class="wi-top">';
-
-      html +=
-        '<span class="wi-badge ' +
-        (isDanger ? 'r' : 'g') +
-        '">' +
-        (isDanger ? '고위험' : '일반') +
-        '</span>';
-
-      html +=
-        '<span class="wi-status ' +
-        statusClass +
-        '">' +
-        statusEmoji +
-        ' ' +
-        escHtml(work.status) +
-        '</span>';
-
+      html += '<div class="' + itemClass + '">';
+      html += '<div class="wi-top">';
+      html += '<span class="wi-badge ' + (isDanger ? 'r' : 'g') + '">' +
+              (isDanger ? '고위험' : '일반') + '</span>';
+      html += '<span class="wi-status ' + statusClass + '">' +
+              statusEmoji + ' ' + escHtml(work.status) + '</span>';
       html += '</div>';
+      html += '<div class="wi-name">' + escHtml(work.workName) + '</div>';
+      html += '<div class="wi-meta">' +
+              '<span>📅 ' + escHtml(dashboardDateText(work.workDate)) + '</span>' +
+              '<span>📍 ' + escHtml(work.location) + '</span>' +
+              '<span>🏢 ' + escHtml(work.company) + '</span>' +
+              '</div>';
 
-      html +=
-        '<div class="wi-name">' +
-        escHtml(work.workName) +
-        '</div>';
-
-      html +=
-        '<div class="wi-meta">' +
-          '<span>📅 ' +
-          escHtml(
-            dashboardDateText(
-              work.workDate
-            )
-          ) +
-          '</span>' +
-          '<span>📍 ' +
-          escHtml(work.location) +
-          '</span>' +
-          '<span>🏢 ' +
-          escHtml(work.company) +
-          '</span>' +
-        '</div>';
-
-      if(
-        work.workDate === today &&
-        work.status === '허가전'
-      ){
-        html +=
-          '<a href="안전작업허가서_v2.html?workId=' +
-          encodeURIComponent(work.workId) +
-          '" class="wi-btn">' +
-          '🔐 허가서 신청 →' +
-          '</a>';
-      }else if(
-        work.workDate === today &&
-        work.status === '허가완료'
-      ){
-        html +=
-          '<a href="TBM_및_작업중지권_v2.html?permitNo=' +
-          encodeURIComponent(
-            work.permitNo || ''
-          ) +
-          '" class="wi-btn">' +
-          '📝 TBM 작성 →' +
-          '</a>';
-      }else if(
-        work.workDate === today &&
-        work.status === '작업중'
-      ){
-        html +=
-          '<a href="TBM_및_작업중지권_v2.html?permitNo=' +
-          encodeURIComponent(
-            work.permitNo || ''
-          ) +
-          '" class="wi-btn secondary">' +
-          '📝 TBM 보기 →' +
-          '</a>';
-      }else if(
-        work.status === '작업중지'
-      ){
-        html +=
-          '<div class="wi-btn secondary" style="cursor:default;">' +
-          '🛑 작업중지 상태' +
-          '</div>';
-      }else if(
-        work.status === '예정'
-      ){
-        html +=
-          '<div class="wi-btn secondary" style="cursor:default;">' +
-          '📅 예정 작업 · 당일 허가 가능' +
-          '</div>';
+      if(work.workDate === today && work.status === '허가전'){
+        html += '<a href="안전작업허가서_v2.html?workId=' +
+                encodeURIComponent(work.workId) +
+                '" class="wi-btn">🔐 허가서 신청 →</a>';
+      }else if(work.workDate === today && work.status === '허가완료'){
+        html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' +
+                encodeURIComponent(work.permitNo || '') +
+                '" class="wi-btn">📝 TBM 작성 →</a>';
+      }else if(work.workDate === today && work.status === '작업중'){
+        html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' +
+                encodeURIComponent(work.permitNo || '') +
+                '" class="wi-btn secondary">📝 TBM 보기 →</a>';
+      }else if(work.status === '작업중지'){
+        html += '<div class="wi-btn secondary" style="cursor:default;">🛑 작업중지 상태</div>';
+      }else if(work.status === '예정'){
+        html += '<div class="wi-btn secondary" style="cursor:default;">📅 예정 작업 · 당일 허가 가능</div>';
       }else{
-        html +=
-          '<div class="wi-btn secondary" style="cursor:default;">' +
-          '✔️ 작업종료' +
-          '</div>';
+        html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 작업종료</div>';
       }
 
       html += '</div>';
@@ -5117,209 +3215,23 @@ updateWorkStatus();
   function dashboardInitializeDateFilter(){
     dashboardDateMode = 'today';
     dashboardSelectedDate = '';
-    dashboardUpcomingDate =
-      dashboardFindUpcomingDate();
+    dashboardUpcomingDate = dashboardFindUpcomingDate();
 
     dashboardCreateDateControls();
     applyFilter();
   }
 
   if(document.readyState === 'loading'){
-    document.addEventListener(
-      'DOMContentLoaded',
-      dashboardInitializeDateFilter
-    );
+    document.addEventListener('DOMContentLoaded', dashboardInitializeDateFilter);
   }else{
     dashboardInitializeDateFilter();
   }
 })();
 </script>
-
-<style>
-/* =========================================================
-   Firestore 작업DB 최종 관리 패널 v1.2
-   ========================================================= */
-
-.workdb-firestore-panel{
-  margin:10px 16px 0;
-  padding:14px;
-  border:1px solid var(--line);
-  border-radius:var(--r);
-  background:var(--card);
-  box-shadow:var(--sh);
-}
-
-.workdb-firestore-title{
-  margin-bottom:6px;
-  color:var(--ink);
-  font-size:14px;
-  font-weight:800;
-  letter-spacing:-.02em;
-}
-
-.workdb-firestore-desc{
-  margin-bottom:12px;
-  color:var(--sub);
-  font-size:12.5px;
-  font-weight:600;
-  line-height:1.55;
-}
-
-.workdb-count-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin-bottom:10px;
-}
-
-.workdb-count-card{
-  padding:11px 8px;
-  border:1px solid var(--line);
-  border-radius:11px;
-  background:var(--sunk);
-  text-align:center;
-}
-
-.workdb-count-label{
-  margin-bottom:4px;
-  color:var(--sub);
-  font-size:11px;
-  font-weight:700;
-}
-
-.workdb-count-value{
-  color:var(--posco);
-  font-size:19px;
-  font-weight:800;
-  font-variant-numeric:tabular-nums;
-}
-
-.workdb-button-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-
-.workdb-action-btn{
-  min-height:46px;
-  padding:10px 8px;
-  border:0;
-  border-radius:11px;
-  color:#fff;
-  font-family:inherit;
-  font-size:12.5px;
-  font-weight:800;
-  line-height:1.35;
-  cursor:pointer;
-  transition:.15s;
-}
-
-.workdb-action-btn.sync{
-  background:var(--done);
-}
-
-.workdb-action-btn.count{
-  background:var(--posco);
-}
-
-.workdb-action-btn.refresh{
-  grid-column:1 / -1;
-  background:var(--sub);
-}
-
-.workdb-action-btn:active{
-  transform:scale(.97);
-}
-
-.workdb-action-btn:disabled{
-  cursor:not-allowed;
-  opacity:.5;
-  transform:none;
-}
-
-.workdb-progress{
-  display:none;
-  margin-top:11px;
-}
-
-.workdb-progress.active{
-  display:block;
-}
-
-.workdb-progress-track{
-  height:8px;
-  overflow:hidden;
-  border-radius:999px;
-  background:var(--line);
-}
-
-.workdb-progress-bar{
-  width:0;
-  height:100%;
-  border-radius:999px;
-  background:linear-gradient(
-    90deg,
-    var(--deep),
-    var(--bright)
-  );
-  transition:width .2s ease;
-}
-
-.workdb-progress-text{
-  margin-top:5px;
-  color:var(--sub);
-  font-size:11.5px;
-  font-weight:700;
-  text-align:right;
-}
-
-.workdb-result{
-  display:none;
-  margin-top:11px;
-  padding:11px 12px;
-  border-radius:10px;
-  font-size:12.5px;
-  font-weight:650;
-  line-height:1.6;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.workdb-result.info{
-  display:block;
-  border-left:3px solid var(--posco);
-  background:var(--tint);
-  color:var(--posco);
-}
-
-.workdb-result.success{
-  display:block;
-  border-left:3px solid var(--done);
-  background:var(--done-bg);
-  color:var(--done);
-}
-
-.workdb-result.error{
-  display:block;
-  border-left:3px solid var(--stop);
-  background:var(--stop-bg);
-  color:var(--stop);
-}
-</style>
-
 <script type="module">
 /* =========================================================
    대시보드 Firestore 작업DB 최종 관리 패치 v1.2
-
-   저장 경로:
-   작업DB/{workId}
-
-   동기화 정책:
-   - localStorage safetyDatabase.workHistory 읽기
-   - Firestore에 없는 신규 workId만 저장
-   - 기존 Firestore 문서는 유지
-   - rawColumns와 화면용 id는 저장하지 않음
-   - 로컬 DB 초기화 기능 비활성화
+   (Step 2에서는 변경 없음)
    ========================================================= */
 
 import {
@@ -5338,11 +3250,6 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-
-/* =========================================================
-   1. Firebase 연결
-   ========================================================= */
-
 const WORKDB_COLLECTION = "작업DB";
 
 const workDbFirebaseConfig = {
@@ -5354,68 +3261,32 @@ const workDbFirebaseConfig = {
   appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
 };
 
-const workDbFirebaseApp = getApps().length
-  ? getApp()
-  : initializeApp(workDbFirebaseConfig);
-
-const workDbFirestore = getFirestore(
-  workDbFirebaseApp
-);
-
+const workDbFirebaseApp = getApps().length ? getApp() : initializeApp(workDbFirebaseConfig);
+const workDbFirestore = getFirestore(workDbFirebaseApp);
 let workDbBusy = false;
 
-
-/* =========================================================
-   2. 공통 함수
-   ========================================================= */
-
 function workDbClean(value){
-  return String(
-    value == null ? "" : value
-  ).trim();
+  return String(value == null ? "" : value).trim();
 }
 
 function workDbMakeId(work){
-  if(!work){
-    return "";
-  }
-
-  if(work.workId){
-    return workDbClean(work.workId);
-  }
-
+  if(!work){ return ""; }
+  if(work.workId){ return workDbClean(work.workId); }
   const date = workDbClean(work.date);
-
-  const originalNo = workDbClean(
-    work.originalNo
-  )
-    .split(" ")
-    .join("");
-
-  if(!date || !originalNo){
-    return "";
-  }
-
+  const originalNo = workDbClean(work.originalNo).split(" ").join("");
+  if(!date || !originalNo){ return ""; }
   return date + "_" + originalNo;
 }
 
 function workDbIsValidId(workId){
   const value = workDbClean(workId);
-
-  if(!value){
-    return false;
-  }
-
-  if(value.indexOf("/") >= 0){
-    return false;
-  }
-
+  if(!value){ return false; }
+  if(value.indexOf("/") >= 0){ return false; }
   return true;
 }
 
 function workDbCreateMigrationId(){
   const now = new Date();
-
   return [
     "WORKDB",
     now.getFullYear(),
@@ -5428,588 +3299,238 @@ function workDbCreateMigrationId(){
 }
 
 function workDbClone(value){
-  return JSON.parse(
-    JSON.stringify(value)
-  );
+  return JSON.parse(JSON.stringify(value));
 }
 
-
-/* =========================================================
-   3. localStorage 작업관리대장 조회
-   ========================================================= */
-
 function workDbGetLocalHistory(){
-  const raw = localStorage.getItem(
-    "safetyDatabase"
-  );
-
-  if(!raw){
-    return [];
-  }
-
+  const raw = localStorage.getItem("safetyDatabase");
+  if(!raw){ return []; }
   let database;
-
-  try{
-    database = JSON.parse(raw);
-  }catch(error){
-    throw new Error(
-      "safetyDatabase JSON을 읽을 수 없습니다."
-    );
-  }
-
-  return Array.isArray(
-    database.workHistory
-  )
-    ? database.workHistory
-    : [];
+  try{ database = JSON.parse(raw); }
+  catch(error){ throw new Error("safetyDatabase JSON을 읽을 수 없습니다."); }
+  return Array.isArray(database.workHistory) ? database.workHistory : [];
 }
 
 function workDbGetUniqueWorks(){
   const sourceWorks = workDbGetLocalHistory();
-
   const workMap = new Map();
   const errors = [];
 
   sourceWorks.forEach(function(work, index){
     const workId = workDbMakeId(work);
-
     if(!workDbIsValidId(workId)){
-      errors.push({
-        index:index,
-        workId:workId,
-        errorCode:"WORK_ID_INVALID"
-      });
-
+      errors.push({ index: index, workId: workId, errorCode: "WORK_ID_INVALID" });
       return;
     }
-
-    workMap.set(
-      workId,
-      Object.assign(
-        {},
-        work,
-        {
-          workId:workId
-        }
-      )
-    );
+    workMap.set(workId, Object.assign({}, work, { workId: workId }));
   });
 
   return {
-    sourceCount:sourceWorks.length,
-    works:Array.from(
-      workMap.values()
-    ),
-    errors:errors
+    sourceCount: sourceWorks.length,
+    works: Array.from(workMap.values()),
+    errors: errors
   };
 }
 
+function workDbNormalizeForFirestore(sourceWork, migrationId){
+  const workId = workDbMakeId(sourceWork);
+  if(!workDbIsValidId(workId)){ throw new Error("WORK_ID_INVALID"); }
 
-/* =========================================================
-   4. Firestore 저장 데이터 정규화
-   ========================================================= */
-
-function workDbNormalizeForFirestore(
-  sourceWork,
-  migrationId
-){
-  const workId = workDbMakeId(
-    sourceWork
-  );
-
-  if(!workDbIsValidId(workId)){
-    throw new Error(
-      "WORK_ID_INVALID"
-    );
-  }
-
-  const normalized = workDbClone(
-    sourceWork
-  );
-
+  const normalized = workDbClone(sourceWork);
   normalized.workId = workId;
-
-  normalized.sourceType =
-    normalized.sourceType ||
-    "excel-paste";
-
-  normalized.workStatus =
-    normalized.workStatus ||
-    normalized.status ||
-    "등록";
-
-  normalized.schemaVersion = Number(
-    normalized.schemaVersion || 1
-  );
-
+  normalized.sourceType = normalized.sourceType || "excel-paste";
+  normalized.workStatus = normalized.workStatus || normalized.status || "등록";
+  normalized.schemaVersion = Number(normalized.schemaVersion || 1);
   normalized.migrationId = migrationId;
+  normalized.migrationSource = "legacy-localstorage";
+  normalized.legacyKey = "safetyDatabase.workHistory";
+  normalized.migratedAt = serverTimestamp();
 
-  normalized.migrationSource =
-    "legacy-localstorage";
-
-  normalized.legacyKey =
-    "safetyDatabase.workHistory";
-
-  normalized.migratedAt =
-    serverTimestamp();
-
-  /*
-    원본 전체 열은 중복 저장 및 문서 크기 증가를
-    방지하기 위해 Firestore에서 제외한다.
-  */
   delete normalized.rawColumns;
-
-  /*
-    화면 호환용 id는 정식 workId와 중복되므로 제외한다.
-  */
   delete normalized.id;
 
   return normalized;
 }
 
-
-/* =========================================================
-   5. Firestore 관리 패널 생성
-   ========================================================= */
-
 function workDbCreatePanel(){
-  const oldPanel = document.getElementById(
-    "workDbFirestorePanel"
-  );
+  const oldPanel = document.getElementById("workDbFirestorePanel");
+  if(oldPanel){ oldPanel.remove(); }
 
-  if(oldPanel){
-    oldPanel.remove();
-  }
-
-  const dbArea = document.querySelector(
-    ".db-area"
-  );
-
+  const dbArea = document.querySelector(".db-area");
   if(!dbArea){
-    console.warn(
-      "[작업DB] 대시보드 DB 관리 영역을 찾지 못했습니다."
-    );
-
+    console.warn("[작업DB] 대시보드 DB 관리 영역을 찾지 못했습니다.");
     return;
   }
 
-  const panel = document.createElement(
-    "div"
-  );
-
+  const panel = document.createElement("div");
   panel.id = "workDbFirestorePanel";
-  panel.className =
-    "workdb-firestore-panel";
+  panel.className = "workdb-firestore-panel";
 
   panel.innerHTML =
-    '<div class="workdb-firestore-title">' +
-      '☁️ Firestore 작업DB 관리' +
-    '</div>' +
-
-    '<div class="workdb-firestore-desc">' +
-      '작업관리대장의 로컬 데이터와 Firestore 작업DB를 확인하고, Firestore에 없는 신규 작업을 동기화합니다.' +
-    '</div>' +
-
+    '<div class="workdb-firestore-title">☁️ Firestore 작업DB 관리</div>' +
+    '<div class="workdb-firestore-desc">작업관리대장의 로컬 데이터와 Firestore 작업DB를 확인하고, Firestore에 없는 신규 작업을 동기화합니다.</div>' +
     '<div class="workdb-count-grid">' +
       '<div class="workdb-count-card">' +
-        '<div class="workdb-count-label">' +
-          'localStorage' +
-        '</div>' +
-        '<div class="workdb-count-value" id="workDbLocalCount">' +
-          '-' +
-        '</div>' +
+        '<div class="workdb-count-label">localStorage</div>' +
+        '<div class="workdb-count-value" id="workDbLocalCount">-</div>' +
       '</div>' +
-
       '<div class="workdb-count-card">' +
-        '<div class="workdb-count-label">' +
-          'Firestore 작업DB' +
-        '</div>' +
-        '<div class="workdb-count-value" id="workDbRemoteCount">' +
-          '-' +
-        '</div>' +
+        '<div class="workdb-count-label">Firestore 작업DB</div>' +
+        '<div class="workdb-count-value" id="workDbRemoteCount">-</div>' +
       '</div>' +
     '</div>' +
-
     '<div class="workdb-button-grid">' +
-      '<button class="workdb-action-btn sync" id="workDbSyncButton">' +
-        '☁️ 작업DB 신규 동기화' +
-      '</button>' +
-
-      '<button class="workdb-action-btn count" id="workDbCountButton">' +
-        '🔎 작업DB 건수 확인' +
-      '</button>' +
-
-      '<button class="workdb-action-btn refresh" id="workDbRefreshButton">' +
-        '↻ 로컬 건수 새로고침' +
-      '</button>' +
+      '<button class="workdb-action-btn sync" id="workDbSyncButton">☁️ 작업DB 신규 동기화</button>' +
+      '<button class="workdb-action-btn count" id="workDbCountButton">🔎 작업DB 건수 확인</button>' +
+      '<button class="workdb-action-btn refresh" id="workDbRefreshButton">↻ 로컬 건수 새로고침</button>' +
     '</div>' +
-
     '<div class="workdb-progress" id="workDbProgress">' +
       '<div class="workdb-progress-track">' +
-        '<div class="workdb-progress-bar" id="workDbProgressBar">' +
-        '</div>' +
+        '<div class="workdb-progress-bar" id="workDbProgressBar"></div>' +
       '</div>' +
-
-      '<div class="workdb-progress-text" id="workDbProgressText">' +
-        '0%' +
-      '</div>' +
+      '<div class="workdb-progress-text" id="workDbProgressText">0%</div>' +
     '</div>' +
+    '<div class="workdb-result" id="workDbResult"></div>';
 
-    '<div class="workdb-result" id="workDbResult">' +
-    '</div>';
+  dbArea.insertAdjacentElement("afterend", panel);
 
-  dbArea.insertAdjacentElement(
-    "afterend",
-    panel
-  );
-
-  document.getElementById(
-    "workDbSyncButton"
-  ).addEventListener(
-    "click",
-    workDbSynchronize
-  );
-
-  document.getElementById(
-    "workDbCountButton"
-  ).addEventListener(
-    "click",
-    workDbCheckCount
-  );
-
-  document.getElementById(
-    "workDbRefreshButton"
-  ).addEventListener(
-    "click",
-    workDbRefreshLocalCount
-  );
+  document.getElementById("workDbSyncButton").addEventListener("click", workDbSynchronize);
+  document.getElementById("workDbCountButton").addEventListener("click", workDbCheckCount);
+  document.getElementById("workDbRefreshButton").addEventListener("click", workDbRefreshLocalCount);
 
   workDbRefreshLocalCount();
 }
 
-
-/* =========================================================
-   6. 화면 표시 함수
-   ========================================================= */
-
 function workDbSetText(id, value){
-  const element =
-    document.getElementById(id);
-
-  if(element){
-    element.textContent = value;
-  }
+  const element = document.getElementById(id);
+  if(element){ element.textContent = value; }
 }
 
 function workDbShowResult(message, type){
-  const result =
-    document.getElementById(
-      "workDbResult"
-    );
-
-  if(!result){
-    return;
-  }
-
-  result.className =
-    "workdb-result " +
-    (type || "info");
-
+  const result = document.getElementById("workDbResult");
+  if(!result){ return; }
+  result.className = "workdb-result " + (type || "info");
   result.textContent = message;
 }
 
-function workDbSetProgress(
-  current,
-  total
-){
-  const wrapper =
-    document.getElementById(
-      "workDbProgress"
-    );
-
-  const bar =
-    document.getElementById(
-      "workDbProgressBar"
-    );
-
-  const text =
-    document.getElementById(
-      "workDbProgressText"
-    );
-
-  if(!wrapper || !bar || !text){
-    return;
-  }
+function workDbSetProgress(current, total){
+  const wrapper = document.getElementById("workDbProgress");
+  const bar = document.getElementById("workDbProgressBar");
+  const text = document.getElementById("workDbProgressText");
+  if(!wrapper || !bar || !text){ return; }
 
   if(total <= 0){
-    wrapper.classList.remove(
-      "active"
-    );
-
+    wrapper.classList.remove("active");
     bar.style.width = "0%";
     text.textContent = "0%";
     return;
   }
 
-  const percentage = Math.min(
-    100,
-    Math.round(
-      current / total * 100
-    )
-  );
-
-  wrapper.classList.add(
-    "active"
-  );
-
-  bar.style.width =
-    percentage + "%";
-
-  text.textContent =
-    current +
-    " / " +
-    total +
-    " (" +
-    percentage +
-    "%)";
+  const percentage = Math.min(100, Math.round(current / total * 100));
+  wrapper.classList.add("active");
+  bar.style.width = percentage + "%";
+  text.textContent = current + " / " + total + " (" + percentage + "%)";
 }
 
 function workDbSetBusy(busy){
   workDbBusy = busy;
-
-  [
-    "workDbSyncButton",
-    "workDbCountButton",
-    "workDbRefreshButton"
-  ].forEach(function(id){
-    const button =
-      document.getElementById(id);
-
-    if(button){
-      button.disabled = busy;
-    }
+  ["workDbSyncButton", "workDbCountButton", "workDbRefreshButton"].forEach(function(id){
+    const button = document.getElementById(id);
+    if(button){ button.disabled = busy; }
   });
 }
 
 function workDbRefreshLocalCount(){
   try{
-    const localResult =
-      workDbGetUniqueWorks();
-
-    workDbSetText(
-      "workDbLocalCount",
-      localResult.works.length + "건"
-    );
-
+    const localResult = workDbGetUniqueWorks();
+    workDbSetText("workDbLocalCount", localResult.works.length + "건");
     workDbShowResult(
-      "로컬 원본: " +
-      localResult.sourceCount +
-      "건\n" +
-      "유효 workId: " +
-      localResult.works.length +
-      "건\n" +
-      "workId 오류: " +
-      localResult.errors.length +
-      "건",
-      localResult.errors.length
-        ? "error"
-        : "info"
+      "로컬 원본: " + localResult.sourceCount + "건\n" +
+      "유효 workId: " + localResult.works.length + "건\n" +
+      "workId 오류: " + localResult.errors.length + "건",
+      localResult.errors.length ? "error" : "info"
     );
   }catch(error){
-    workDbShowResult(
-      error.message,
-      "error"
-    );
+    workDbShowResult(error.message, "error");
   }
 }
 
-
-/* =========================================================
-   7. Firestore 기존 문서 ID 조회
-   ========================================================= */
-
 async function workDbGetExistingIds(){
-  const snapshot = await getDocs(
-    collection(
-      workDbFirestore,
-      WORKDB_COLLECTION
-    )
-  );
-
+  const snapshot = await getDocs(collection(workDbFirestore, WORKDB_COLLECTION));
   const existingIds = new Set();
-
-  snapshot.forEach(
-    function(documentSnapshot){
-      existingIds.add(
-        documentSnapshot.id
-      );
-    }
-  );
-
+  snapshot.forEach(function(documentSnapshot){
+    existingIds.add(documentSnapshot.id);
+  });
   return existingIds;
 }
 
-
-/* =========================================================
-   8. Firestore 작업DB 신규 동기화
-   ========================================================= */
-
 async function workDbSynchronize(){
-  if(workDbBusy){
-    return;
-  }
+  if(workDbBusy){ return; }
 
   let localResult;
-
-  try{
-    localResult =
-      workDbGetUniqueWorks();
-  }catch(error){
-    workDbShowResult(
-      error.message,
-      "error"
-    );
-
-    return;
-  }
+  try{ localResult = workDbGetUniqueWorks(); }
+  catch(error){ workDbShowResult(error.message, "error"); return; }
 
   if(!localResult.works.length){
-    workDbShowResult(
-      "동기화할 작업관리대장 데이터가 없습니다.",
-      "error"
-    );
-
+    workDbShowResult("동기화할 작업관리대장 데이터가 없습니다.", "error");
     return;
   }
 
   const confirmed = confirm(
     "로컬 작업관리대장을 Firestore 작업DB와 동기화합니다.\n\n" +
-    "로컬 데이터: " +
-    localResult.works.length +
-    "건\n" +
-    "workId 오류: " +
-    localResult.errors.length +
-    "건\n\n" +
+    "로컬 데이터: " + localResult.works.length + "건\n" +
+    "workId 오류: " + localResult.errors.length + "건\n\n" +
     "기존 workId 문서는 유지하고 신규 문서만 저장합니다.\n" +
     "계속하시겠습니까?"
   );
-
-  if(!confirmed){
-    return;
-  }
+  if(!confirmed){ return; }
 
   workDbSetBusy(true);
-
-  workDbSetProgress(
-    0,
-    localResult.works.length
-  );
-
-  const migrationId =
-    workDbCreateMigrationId();
+  workDbSetProgress(0, localResult.works.length);
+  const migrationId = workDbCreateMigrationId();
 
   let successCount = 0;
   let skipCount = 0;
   let errorCount = 0;
 
   try{
-    workDbShowResult(
-      "Firestore 작업DB의 기존 문서를 확인하고 있습니다.",
-      "info"
-    );
-
-    const existingIds =
-      await workDbGetExistingIds();
-
+    workDbShowResult("Firestore 작업DB의 기존 문서를 확인하고 있습니다.", "info");
+    const existingIds = await workDbGetExistingIds();
     const uploadTargets = [];
 
-    localResult.works.forEach(
-      function(work){
-        const workId =
-          workDbMakeId(work);
-
-        if(!workDbIsValidId(workId)){
-          errorCount++;
-          return;
-        }
-
-        if(existingIds.has(workId)){
-          skipCount++;
-          return;
-        }
-
-        uploadTargets.push(work);
-      }
-    );
+    localResult.works.forEach(function(work){
+      const workId = workDbMakeId(work);
+      if(!workDbIsValidId(workId)){ errorCount++; return; }
+      if(existingIds.has(workId)){ skipCount++; return; }
+      uploadTargets.push(work);
+    });
 
     if(!uploadTargets.length){
-      workDbSetProgress(
-        localResult.works.length,
-        localResult.works.length
-      );
-
+      workDbSetProgress(localResult.works.length, localResult.works.length);
       workDbShowResult(
         "작업DB 동기화 완료\n" +
         "신규 저장: 0건\n" +
-        "기존 문서 유지: " +
-        skipCount +
-        "건\n" +
-        "오류: " +
-        errorCount +
-        "건\n\n" +
+        "기존 문서 유지: " + skipCount + "건\n" +
+        "오류: " + errorCount + "건\n\n" +
         "추가로 반영할 신규 작업이 없습니다.",
-        errorCount
-          ? "error"
-          : "success"
+        errorCount ? "error" : "success"
       );
-
       return;
     }
 
     const batchSize = 400;
-
-    for(
-      let start = 0;
-      start < uploadTargets.length;
-      start += batchSize
-    ){
-      const chunk =
-        uploadTargets.slice(
-          start,
-          start + batchSize
-        );
-
-      const batch =
-        writeBatch(
-          workDbFirestore
-        );
-
+    for(let start = 0; start < uploadTargets.length; start += batchSize){
+      const chunk = uploadTargets.slice(start, start + batchSize);
+      const batch = writeBatch(workDbFirestore);
       let chunkCount = 0;
 
       chunk.forEach(function(work){
         try{
-          const normalized =
-            workDbNormalizeForFirestore(
-              work,
-              migrationId
-            );
-
-          const documentReference =
-            doc(
-              workDbFirestore,
-              WORKDB_COLLECTION,
-              normalized.workId
-            );
-
-          batch.set(
-            documentReference,
-            normalized
-          );
-
+          const normalized = workDbNormalizeForFirestore(work, migrationId);
+          const documentReference = doc(workDbFirestore, WORKDB_COLLECTION, normalized.workId);
+          batch.set(documentReference, normalized);
           chunkCount++;
-        }catch(error){
-          errorCount++;
-        }
+        }catch(error){ errorCount++; }
       });
 
       if(chunkCount > 0){
@@ -6018,42 +3539,23 @@ async function workDbSynchronize(){
       }
 
       workDbSetProgress(
-        Math.min(
-          localResult.works.length,
-          successCount +
-          skipCount +
-          errorCount
-        ),
+        Math.min(localResult.works.length, successCount + skipCount + errorCount),
         localResult.works.length
       );
     }
 
     workDbShowResult(
       "작업DB 동기화 완료\n" +
-      "신규 저장: " +
-      successCount +
-      "건\n" +
-      "기존 문서 유지: " +
-      skipCount +
-      "건\n" +
-      "오류: " +
-      errorCount +
-      "건\n" +
-      "migrationId: " +
-      migrationId,
-      errorCount
-        ? "error"
-        : "success"
+      "신규 저장: " + successCount + "건\n" +
+      "기존 문서 유지: " + skipCount + "건\n" +
+      "오류: " + errorCount + "건\n" +
+      "migrationId: " + migrationId,
+      errorCount ? "error" : "success"
     );
   }catch(error){
-    console.error(
-      "[작업DB] Firestore 동기화 실패:",
-      error
-    );
-
+    console.error("[작업DB] Firestore 동기화 실패:", error);
     workDbShowResult(
-      "Firestore 작업DB 동기화 실패\n" +
-      error.message +
+      "Firestore 작업DB 동기화 실패\n" + error.message +
       "\n\nFirestore Rules와 인터넷 연결을 확인하세요.",
       "error"
     );
@@ -6062,79 +3564,33 @@ async function workDbSynchronize(){
   }
 }
 
-
-/* =========================================================
-   9. Firestore 작업DB 건수 확인
-   ========================================================= */
-
 async function workDbCheckCount(){
-  if(workDbBusy){
-    return;
-  }
-
+  if(workDbBusy){ return; }
   workDbSetBusy(true);
 
   try{
-    workDbShowResult(
-      "Firestore 작업DB 건수를 확인하고 있습니다.",
-      "info"
+    workDbShowResult("Firestore 작업DB 건수를 확인하고 있습니다.", "info");
+    const countSnapshot = await getCountFromServer(
+      collection(workDbFirestore, WORKDB_COLLECTION)
     );
+    const firestoreCount = countSnapshot.data().count;
+    const localResult = workDbGetUniqueWorks();
 
-    const countSnapshot =
-      await getCountFromServer(
-        collection(
-          workDbFirestore,
-          WORKDB_COLLECTION
-        )
-      );
+    workDbSetText("workDbLocalCount", localResult.works.length + "건");
+    workDbSetText("workDbRemoteCount", firestoreCount + "건");
 
-    const firestoreCount =
-      countSnapshot.data().count;
-
-    const localResult =
-      workDbGetUniqueWorks();
-
-    workDbSetText(
-      "workDbLocalCount",
-      localResult.works.length + "건"
-    );
-
-    workDbSetText(
-      "workDbRemoteCount",
-      firestoreCount + "건"
-    );
-
-    const countMatched =
-      localResult.works.length ===
-      firestoreCount;
-
+    const countMatched = localResult.works.length === firestoreCount;
     workDbShowResult(
       "건수 확인 완료\n" +
-      "localStorage: " +
-      localResult.works.length +
-      "건\n" +
-      "Firestore 작업DB: " +
-      firestoreCount +
-      "건\n" +
-      "건수 일치: " +
-      (
-        countMatched
-          ? "예"
-          : "아니오"
-      ),
-      countMatched
-        ? "success"
-        : "info"
+      "localStorage: " + localResult.works.length + "건\n" +
+      "Firestore 작업DB: " + firestoreCount + "건\n" +
+      "건수 일치: " + (countMatched ? "예" : "아니오"),
+      countMatched ? "success" : "info"
     );
   }catch(error){
-    console.error(
-      "[작업DB] 건수 확인 실패:",
-      error
-    );
-
+    console.error("[작업DB] 건수 확인 실패:", error);
     workDbShowResult(
-      "Firestore 작업DB 건수 확인 실패\n" +
-      error.message +
+      "Firestore 작업DB 건수 확인 실패\n" + error.message +
       "\n\nFirestore Rules 게시 여부를 확인하세요.",
       "error"
     );
@@ -6143,68 +3599,31 @@ async function workDbCheckCount(){
   }
 }
 
-
-/* =========================================================
-   10. 로컬 DB 초기화 기능 비활성화
-   ========================================================= */
-
 function workDbDisableLocalClear(){
   window.clearDB = function(){
-    if(
-      typeof window.showToast ===
-      "function"
-    ){
+    if(typeof window.showToast === "function"){
       window.showToast(
         "현재 작업DB 운영 중입니다. Firestore 조회 전환 전까지 로컬 DB를 초기화할 수 없습니다.",
         "info"
       );
     }else{
-      alert(
-        "현재 작업DB 운영 중입니다. Firestore 조회 전환 전까지 로컬 DB를 초기화할 수 없습니다."
-      );
+      alert("현재 작업DB 운영 중입니다. Firestore 조회 전환 전까지 로컬 DB를 초기화할 수 없습니다.");
     }
   };
 
-  const clearItem =
-    document.querySelector(
-      '.sets-item[onclick="clearDB()"]'
-    );
+  const clearItem = document.querySelector('.sets-item[onclick="clearDB()"]');
+  if(!clearItem){ return; }
 
-  if(!clearItem){
-    return;
-  }
+  const name = clearItem.querySelector(".sets-name");
+  const right = clearItem.querySelector(".sets-r");
 
-  const name =
-    clearItem.querySelector(
-      ".sets-name"
-    );
-
-  const right =
-    clearItem.querySelector(
-      ".sets-r"
-    );
-
-  if(name){
-    name.textContent =
-      "로컬 DB 초기화";
-  }
-
+  if(name){ name.textContent = "로컬 DB 초기화"; }
   if(right){
-    right.textContent =
-      "사용 중지";
-
-    right.style.color =
-      "var(--faint)";
+    right.textContent = "사용 중지";
+    right.style.color = "var(--faint)";
   }
-
-  clearItem.title =
-    "Firestore 조회 전환 완료 전까지 비활성화된 기능입니다.";
+  clearItem.title = "Firestore 조회 전환 완료 전까지 비활성화된 기능입니다.";
 }
-
-
-/* =========================================================
-   11. 초기 실행
-   ========================================================= */
 
 function workDbInitialize(){
   workDbCreatePanel();
@@ -6212,14 +3631,11 @@ function workDbInitialize(){
 }
 
 if(document.readyState === "loading"){
-  window.addEventListener(
-    "DOMContentLoaded",
-    workDbInitialize
-  );
+  window.addEventListener("DOMContentLoaded", workDbInitialize);
 }else{
   workDbInitialize();
 }
 </script>
 
 </body>
-</html>   
+</html>
