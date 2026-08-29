@@ -848,6 +848,68 @@ body{
   .btn-row{flex-direction:column}
   .permit-no-badge{display:none}
 }
+
+ 
+/* ═══════════════════════════════════════
+   커스텀 확인 다이얼로그 (Custom Confirm)
+   브라우저 기본 confirm 대체
+   ═══════════════════════════════════════ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:500;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto}
+.custom-confirm-modal{
+  width:100%;max-width:380px;background:var(--card);
+  border-radius:22px;padding:26px 24px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:19px;font-weight:800;letter-spacing:-.035em;
+  color:var(--ink);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14.5px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15.5px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97)}
+.custom-confirm-btn-cancel{
+  background:var(--sunk);color:var(--sub);
+  border:1.5px solid var(--line);
+}
+.custom-confirm-btn-confirm{
+  background:var(--deep);color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:var(--stop);
+  box-shadow:0 4px 12px rgba(214,39,61,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:var(--warn);
+  box-shadow:0 4px 12px rgba(180,83,9,.25);
+}
+  
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
@@ -1494,6 +1556,19 @@ body{
 </div>
 
 </div>
+<!-- 커스텀 확인 다이얼로그 -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" id="customConfirmCancel" onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" id="customConfirmOk" onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- 사유 입력 모달 -->
 <div class="reason-overlay" id="reasonOverlay">
@@ -1809,6 +1884,63 @@ function initTheme(){
     }
   });
 }
+// ═══════════════════════════════════════════════════════
+// 커스텀 확인 다이얼로그 (Custom Confirm)
+// 브라우저 기본 confirm() 대체
+// ═══════════════════════════════════════════════════════
+var customConfirmCallback = null;
+
+/**
+ * 커스텀 확인 다이얼로그 표시
+ * @param {Object} options - 다이얼로그 옵션
+ * @param {string} options.icon - 이모지 아이콘 (기본: ⚠️)
+ * @param {string} options.title - 제목
+ * @param {string} options.message - 메시지 (여러 줄 가능)
+ * @param {string} options.okText - 확인 버튼 텍스트 (기본: 확인)
+ * @param {string} options.cancelText - 취소 버튼 텍스트 (기본: 취소)
+ * @param {string} options.okType - 확인 버튼 스타일 (default/danger/warn)
+ * @param {function} callback - 결과 콜백 (true=확인, false=취소)
+ */
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  
+  document.getElementById('customConfirmIcon').textContent = opts.icon || '⚠️';
+  document.getElementById('customConfirmTitle').textContent = opts.title || '확인';
+  document.getElementById('customConfirmMessage').textContent = opts.message || '진행하시겠습니까?';
+  
+  var okBtn = document.getElementById('customConfirmOk');
+  okBtn.textContent = opts.okText || '확인';
+  okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+  if(opts.okType === 'danger') okBtn.classList.add('danger');
+  else if(opts.okType === 'warn') okBtn.classList.add('warn');
+  
+  document.getElementById('customConfirmCancel').textContent = opts.cancelText || '취소';
+  
+  customConfirmCallback = callback || function(){};
+  document.getElementById('customConfirmOverlay').classList.add('active');
+}
+
+function customConfirmClose(result){
+  document.getElementById('customConfirmOverlay').classList.remove('active');
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function'){
+    setTimeout(function(){ cb(result); }, 100);
+  }
+}
+
+// ESC로 취소, 오버레이 클릭으로 취소
+document.addEventListener('DOMContentLoaded', function(){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) customConfirmClose(false);
+    });
+  }
+});
+
 
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
@@ -1816,9 +1948,19 @@ function initTheme(){
 function goHome(){
   var isExtend = document.getElementById('screen-extend').classList.contains('active');
   var isExtComplete = document.getElementById('screen-extend-complete').classList.contains('active');
+  var isComplete = document.getElementById('screen-complete').classList.contains('active');
 
-  if(currentStep > 0 || document.getElementById('screen-complete').classList.contains('active') || isExtend || isExtComplete){
-    if(!confirm('작성 중인 내용이 사라집니다. 홈으로 이동할까요?')) return;
+  if(currentStep > 0 || isComplete || isExtend || isExtComplete){
+    showCustomConfirm({
+      icon: '🏠',
+      title: '홈으로 이동',
+      message: '작성 중인 내용이 사라집니다.\n대시보드로 이동할까요?',
+      okText: '이동',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+    });
+    return;
   }
   window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
@@ -1826,9 +1968,15 @@ function goHome(){
 function goBack() {
   var isExtend = document.getElementById('screen-extend').classList.contains('active');
   if(isExtend){
-    if(confirm('연장 요청을 취소하시겠습니까?')){
-      window.location.href = '안전관리플랫폼_대시보드_V6_.html';
-    }
+    showCustomConfirm({
+      icon: '🔄',
+      title: '연장 요청 취소',
+      message: '연장 요청을 취소하고\n대시보드로 이동할까요?',
+      okText: '취소',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+    });
     return;
   }
   if(currentStep > 1) goToStep(currentStep-1);
@@ -1837,6 +1985,8 @@ function goBack() {
     goToScreen('screen-welcome');
   else history.back();
 }
+
+
 
 // ═══════════════════════════════════════════════════════
 // MODE SELECT
@@ -2982,10 +3132,17 @@ function updateExtSubmitBtn(){
 }
 
 function cancelExtend(){
-  if(confirm('연장 요청을 취소하시겠습니까?')){
-    window.location.href = '안전관리플랫폼_대시보드_V6_.html';
-  }
+  showCustomConfirm({
+    icon: '🔄',
+    title: '연장 요청 취소',
+    message: '연장 요청을 취소하시겠습니까?',
+    okText: '취소',
+    okType: 'warn'
+  }, function(ok){
+    if(ok) window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+  });
 }
+
 
 function submitExtension(){
   if(!extendState.newEndDateTime){
