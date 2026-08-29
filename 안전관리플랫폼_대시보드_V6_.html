@@ -168,18 +168,41 @@ body{
   opacity:.45;
   cursor:not-allowed;
 }
+/* ⭐ picker를 캘린더 버튼 위에 완전히 겹쳐서 배치 */
+.chip-calendar-wrap{
+  position:relative;
+  display:inline-block;
+  flex-shrink:0;
+}
 .dashboard-date-picker{
   position:absolute;
-  right:16px;
-  top:50px;
-  width:1px;
-  height:1px;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   opacity:0;
-  pointer-events:none;
+  cursor:pointer;
   border:0;
   padding:0;
   margin:0;
+  z-index:2;
+  /* iOS Safari 대응 */
+  -webkit-appearance:none;
+  appearance:none;
+  background:transparent;
+  color:transparent;
+  font-size:16px; /* iOS 자동확대 방지 */
 }
+.dashboard-date-picker::-webkit-calendar-picker-indicator{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+}
+
 
 /* ═══ 공지 배너 ═══ */
 .notice-banner{
@@ -2871,24 +2894,31 @@ updateWorkStatus();
     }
   }
 
-   /* ═══════════════════════════════════════════════════════
-     ⭐ Step 2 리팩토링: chip UI는 HTML에 정적 작성됨
-     ⭐ [수정] picker를 버튼 자식이 아닌 형제로 배치
-     (기존 문제: textContent 변경 시 자식 picker가 삭제됨)
+    /* ═══════════════════════════════════════════════════════
+     ⭐ [최종수정] picker를 캘린더 버튼 위에 투명하게 겹쳐서 배치
+     사용자가 캘린더 아이콘을 클릭하면 실제로는 picker를 클릭하게 됨
+     → 모든 브라우저에서 100% 팝업이 열림
      ═══════════════════════════════════════════════════════ */
   function dashboardCreateDateControls(){
-    // 예정 버튼 라벨 초기화
     dashboardUpcomingDate = dashboardFindUpcomingDate();
     dashboardUpdateUpcomingButton();
 
-    // 기존 picker 제거
+    // 기존 picker 및 wrapper 제거
     var oldPicker = document.getElementById('dashboardDatePicker');
     if(oldPicker){ oldPicker.remove(); }
 
     var calendarButton = document.getElementById('dashboardCalendarButton');
     if(!calendarButton){ return; }
 
-    // ⭐ picker 생성 (숨김 처리 - CSS의 .dashboard-date-picker 활용)
+    // ⭐ 캘린더 버튼을 wrapper로 감싸기 (position:relative 컨텍스트 필요)
+    if(!calendarButton.parentNode.classList.contains('chip-calendar-wrap')){
+      var wrap = document.createElement('span');
+      wrap.className = 'chip-calendar-wrap';
+      calendarButton.parentNode.insertBefore(wrap, calendarButton);
+      wrap.appendChild(calendarButton);
+    }
+
+    // ⭐ picker 생성 후 wrapper 안에 배치
     var picker = document.createElement('input');
     picker.type = 'date';
     picker.id = 'dashboardDatePicker';
@@ -2904,53 +2934,22 @@ updateWorkStatus();
         chip.classList.remove('active');
       });
 
-      // ⭐ innerHTML 사용 (textContent 사용 시 자식 노드가 삭제되지만
-      //    이제 picker는 형제이므로 innerHTML도 안전)
       calendarButton.classList.add('active');
+      // ⭐ picker는 wrapper의 자식이므로 innerHTML 변경해도 안전
       calendarButton.innerHTML = '📅 ' + dashboardDateText(dashboardSelectedDate);
 
       applyFilter();
     });
 
-    // ⭐ picker를 chips 컨테이너에 추가 (버튼의 형제로 배치)
+    // ⭐ wrapper 안에 picker 추가 (버튼 위에 투명하게 겹침)
     calendarButton.parentNode.appendChild(picker);
 
-    // ⭐ 버튼 onclick 속성 제거 후 addEventListener로 재설정
+    // ⭐ 캘린더 버튼의 onclick 속성 제거
+    // (이제 picker가 클릭을 직접 받음 - CSS z-index:2로 위에 있음)
     calendarButton.removeAttribute('onclick');
-       calendarButton.addEventListener('click', function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // ⭐ picker를 잠시 보이게 만든 후 팝업 호출
-      // (완전히 숨겨진 상태에서는 브라우저가 팝업을 안 띄움)
-      picker.style.opacity = '0.01';
-      picker.style.pointerEvents = 'auto';
-      
-      // 다음 프레임에서 팝업 열기 (렌더링 완료 후)
-      requestAnimationFrame(function(){
-        try{
-          if(typeof picker.showPicker === 'function'){
-            picker.showPicker();
-          }else{
-            picker.focus();
-            picker.click();
-          }
-        }catch(err){
-          console.warn('showPicker 실패, click으로 fallback:', err);
-          picker.focus();
-          picker.click();
-        }
-      });
-    });
-    
-    // ⭐ picker가 닫히면 다시 숨김 (blur 이벤트로 감지)
-    picker.addEventListener('blur', function(){
-      setTimeout(function(){
-        picker.style.opacity = '0';
-        picker.style.pointerEvents = 'none';
-      }, 200);
-    });
   }
+
+
 
     window.dashboardSetDateFilter = function(mode, button){
     if(mode === 'upcoming' && !dashboardUpcomingDate){
@@ -2978,14 +2977,24 @@ updateWorkStatus();
 
 
   window.dashboardOpenCalendar = function(){
+    // ⭐ picker가 버튼 위에 투명하게 겹쳐있으므로
+    // 사용자가 버튼을 클릭하면 자동으로 picker가 클릭됨
+    // 이 함수는 호환성을 위해 남겨둠 (외부에서 호출 시 대비)
     var picker = document.getElementById('dashboardDatePicker');
     if(!picker){ return; }
-    if(typeof picker.showPicker === 'function'){
-      picker.showPicker();
-    }else{
+    try{
+      if(typeof picker.showPicker === 'function'){
+        picker.showPicker();
+      }else{
+        picker.focus();
+        picker.click();
+      }
+    }catch(err){
+      picker.focus();
       picker.click();
     }
   };
+
 
   window.dashboardGetDisplayStatus = function(work, execution){
     var today = fmtDate(new Date());
