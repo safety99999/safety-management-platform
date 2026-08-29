@@ -2874,15 +2874,29 @@ updateWorkStatus();
     dashboardUpcomingDate = dashboardFindUpcomingDate();
     dashboardUpdateUpcomingButton();
 
-    // 기존 picker 제거 후 새로 생성
+    // 기존 picker 제거
     var oldPicker = document.getElementById('dashboardDatePicker');
     if(oldPicker){ oldPicker.remove(); }
+
+    // ⭐ 캘린더 버튼 위에 picker 직접 배치 (투명하게 겹침)
+    var calendarButton = document.getElementById('dashboardCalendarButton');
+    if(!calendarButton){ return; }
 
     var picker = document.createElement('input');
     picker.type = 'date';
     picker.id = 'dashboardDatePicker';
-    picker.className = 'dashboard-date-picker';
     picker.value = fmtDate(new Date());
+    
+    // ⭐ 버튼 위에 겹쳐서 배치 (사용자가 버튼 클릭 = picker 클릭)
+    picker.style.cssText = 
+      'position:absolute;' +
+      'top:0;' +
+      'left:0;' +
+      'width:100%;' +
+      'height:100%;' +
+      'opacity:0;' +
+      'cursor:pointer;' +
+      'z-index:10;';
 
     picker.addEventListener('change', function(){
       if(!picker.value){ return; }
@@ -2893,7 +2907,6 @@ updateWorkStatus();
         chip.classList.remove('active');
       });
 
-      var calendarButton = document.getElementById('dashboardCalendarButton');
       if(calendarButton){
         calendarButton.classList.add('active');
         calendarButton.textContent = '📅 ' + dashboardDateText(dashboardSelectedDate);
@@ -2902,8 +2915,14 @@ updateWorkStatus();
       applyFilter();
     });
 
-    document.body.appendChild(picker);
+    // ⭐ 캘린더 버튼을 relative로 만들고 picker를 자식으로 추가
+    calendarButton.style.position = 'relative';
+    calendarButton.appendChild(picker);
+    
+    // ⭐ 버튼 onclick 속성 제거 (이제 picker가 직접 처리)
+    calendarButton.removeAttribute('onclick');
   }
+
 
   window.dashboardSetDateFilter = function(mode, button){
     if(mode === 'upcoming' && !dashboardUpcomingDate){
