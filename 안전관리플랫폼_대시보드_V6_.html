@@ -963,31 +963,32 @@ body{
       </div>
     </section>
     <div class="quick-grid">
-      <a href="포항양극재공장_안전퀴즈.html" class="qbtn">
-        <div class="qbtn-ico">🎯</div>
-        <div class="qbtn-lbl">출입자<br>안전퀴즈</div>
-      </a>
-      <a href="안전정보제공서_도급인용.html" class="qbtn">
-        <div class="qbtn-ico">📋</div>
-        <div class="qbtn-lbl">안전정보<br>제공서</div>
-      </a>
-      <a href="안전작업허가서_v2.html" class="qbtn">
-        <div class="qbtn-ico">🔐</div>
-        <div class="qbtn-lbl">작업<br>허가서</div>
-      </a>
-      <a href="TBM_및_작업중지권_v2.html" class="qbtn">
-        <div class="qbtn-ico">📝</div>
-        <div class="qbtn-lbl">TBM<br>일지</div>
-      </a>
-      <a href="위험성평가_v2.html" class="qbtn">
-        <div class="qbtn-ico">🤖</div>
-        <div class="qbtn-lbl">AI<br>위험성평가</div>
-      </a>
-      <a href="TBM_및_작업중지권_v2.html" class="qbtn">
-        <div class="qbtn-ico">🛑</div>
-        <div class="qbtn-lbl">작업<br>중지권</div>
-      </a>
-    </div>
+  <a href="#" onclick="qbClick('quiz'); return false;" class="qbtn">
+    <div class="qbtn-ico">🎯</div>
+    <div class="qbtn-lbl">출입자<br>안전퀴즈</div>
+  </a>
+  <a href="#" onclick="qbClick('safety-info'); return false;" class="qbtn">
+    <div class="qbtn-ico">📋</div>
+    <div class="qbtn-lbl">안전정보<br>제공서</div>
+  </a>
+  <a href="안전작업허가서_v2.html" class="qbtn">
+    <div class="qbtn-ico">🔐</div>
+    <div class="qbtn-lbl">작업<br>허가서</div>
+  </a>
+  <a href="#" onclick="qbClick('tbm'); return false;" class="qbtn">
+    <div class="qbtn-ico">📝</div>
+    <div class="qbtn-lbl">TBM<br>일지</div>
+  </a>
+  <a href="#" onclick="qbClick('risk'); return false;" class="qbtn">
+    <div class="qbtn-ico">🤖</div>
+    <div class="qbtn-lbl">AI<br>위험성평가</div>
+  </a>
+  <a href="TBM_및_작업중지권_v2.html?mode=stop" class="qbtn" style="border-left:3px solid var(--stop);">
+    <div class="qbtn-ico">🛑</div>
+    <div class="qbtn-lbl">작업<br>중지권</div>
+  </a>
+</div>
+
 
   </div>
 </div>
@@ -3955,6 +3956,218 @@ if(document.readyState === "loading"){
 }else{
   workDbInitialize();
 }
+</script>
+<script>
+/* =========================================================
+   v7.3 빠른실행 버튼 workId 전달 패치 (2026-08-29)
+   
+   목적:
+   - "빠른실행" 6개 버튼 클릭 시 오늘 확정 작업 선택 후 이동
+   - 선택된 작업의 workId를 URL 파라미터로 다음 앱에 전달
+   
+   동작:
+   1. 버튼 클릭 → qbClick(appType)
+   2. 오늘 확정 작업 조회
+      - 0건: workId 없이 진입 확인
+      - 1건: 자동 선택 후 이동
+      - 2건+: 바텀시트로 사용자 선택
+   3. 선택 후: 파일명.html?workId=XXX 로 이동
+   
+   파일명은 변경하지 않음 (기존 파일 그대로 사용)
+   ========================================================= */
+
+(function(){
+  
+  // ═══════════════════════════════════════
+  // 앱 타입 → 파일명 매핑
+  // ═══════════════════════════════════════
+  var APP_URLS = {
+    'quiz':        '포항양극재공장_안전퀴즈.html',
+    'safety-info': '안전정보제공서_도급인용.html',
+    'tbm':         'TBM_및_작업중지권_v2.html',
+    'risk':        '위험성평가_v2.html'
+  };
+  
+  var APP_LABELS = {
+    'quiz':        '🎯 안전퀴즈',
+    'safety-info': '📋 안전정보 제공서',
+    'tbm':         '📝 TBM 일지',
+    'risk':        '🤖 위험성평가'
+  };
+  
+  // ═══════════════════════════════════════
+  // 메인 함수: 빠른실행 버튼 클릭 처리
+  // ═══════════════════════════════════════
+  window.qbClick = function(appType){
+    var targetUrl = APP_URLS[appType];
+    var appLabel = APP_LABELS[appType] || '앱';
+    
+    if(!targetUrl){
+      console.warn('[qbClick] 알 수 없는 앱 타입:', appType);
+      return;
+    }
+    
+    // 오늘 확정 작업 조회
+    var today = fmtDate(new Date());
+    var todayWorks = (window.allWorks || []).filter(function(w){
+      return w.date === today;
+    });
+    
+    console.log('[qbClick] 앱:', appType, '오늘 작업:', todayWorks.length + '건');
+    
+    // 케이스 1: 오늘 작업 0건
+    if(todayWorks.length === 0){
+      if(confirm(
+        appLabel + '(으)로 이동합니다.\n\n' +
+        '⚠️ 오늘 확정된 작업이 없습니다.\n' +
+        '작업 선택 없이 진행하시겠습니까?\n\n' +
+        '(빈 양식으로 열립니다)'
+      )){
+        window.location.href = targetUrl;
+      }
+      return;
+    }
+    
+    // 케이스 2: 오늘 작업 1건 (자동 선택)
+    if(todayWorks.length === 1){
+      var work = todayWorks[0];
+      var workId = work.workId || work.id;
+      showToast('✅ 오늘 작업 자동 선택: ' + (work.workName || '작업'), 'success');
+      setTimeout(function(){
+        window.location.href = targetUrl + '?workId=' + encodeURIComponent(workId);
+      }, 500);
+      return;
+    }
+    
+    // 케이스 3: 오늘 작업 2건 이상 (바텀시트로 선택)
+    openWorkPickerSheet(todayWorks, appType, appLabel, targetUrl);
+  };
+  
+  // ═══════════════════════════════════════
+  // 작업 선택 바텀시트
+  // ═══════════════════════════════════════
+  function openWorkPickerSheet(works, appType, appLabel, targetUrl){
+    var titleEl = document.getElementById('wsSheetTitle');
+    var body = document.getElementById('wsBody');
+    
+    if(!titleEl || !body){
+      console.error('[qbClick] wsSheet 요소를 찾을 수 없음');
+      return;
+    }
+    
+    // 시트 제목 설정
+    titleEl.innerHTML = 
+      appLabel + ' 작업 선택 ' +
+      '<span style="background:var(--tint);color:var(--posco);font-size:12px;' +
+      'font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
+      works.length + '건</span>';
+    
+    // 시트 본문 HTML 생성
+    var html = 
+      '<div style="padding:0 0 20px;">' +
+        '<div style="font-size:13px;color:var(--sub);font-weight:600;' +
+        'margin-bottom:12px;padding:8px 12px;background:var(--tint);' +
+        'border-radius:8px;border-left:3px solid var(--posco);">' +
+          '💡 진행할 작업을 선택하세요.<br>' +
+          '<span style="font-size:12px;">선택한 작업의 정보가 자동으로 채워집니다.</span>' +
+        '</div>';
+    
+    works.forEach(function(w){
+      var workId = w.workId || w.id;
+      var isDanger = w.riskLevel === '고위험';
+      var workName = w.workName || '작업명 미지정';
+      var location = w.location || w.locationRaw || '위치 미지정';
+      var company = w.company || '협력사 미지정';
+      var manager = w.manager || w.workManager || w.contractorManager || '';
+      
+      html += 
+        '<div class="work-item" ' +
+        'onclick="pickWork(\'' + escapeJsString(workId) + '\')" ' +
+        'style="cursor:pointer;">';
+      
+      html += '<div class="wi-top">';
+      html += '<span class="wi-badge ' + (isDanger ? 'r' : 'g') + '">' +
+              (isDanger ? '고위험' : '일반') + '</span>';
+      
+      // 담당자 표시
+      if(manager){
+        html += '<span style="font-size:11px;color:var(--sub);' +
+                'font-weight:700;margin-left:auto;">' +
+                '👤 ' + escHtml(manager) + '</span>';
+      }
+      html += '</div>';
+      
+      html += '<div class="wi-name">' + escHtml(workName) + '</div>';
+      
+      html += '<div class="wi-meta">' +
+              '<span>📍 ' + escHtml(location) + '</span>' +
+              '<span>🏢 ' + escHtml(company) + '</span>' +
+              '</div>';
+      
+      html += 
+        '<div class="wi-btn" style="margin-top:8px;">' +
+          '이 작업으로 진행 →' +
+        '</div>';
+      
+      html += '</div>';
+    });
+    
+    html += '</div>';
+    
+    body.innerHTML = html;
+    
+    // 콜백 정보 저장 (선택 시 사용)
+    window._workPickerContext = {
+      appType: appType,
+      appLabel: appLabel,
+      targetUrl: targetUrl
+    };
+    
+    openSheet('ws');
+  }
+  
+  // ═══════════════════════════════════════
+  // 작업 선택 시 이동 처리
+  // ═══════════════════════════════════════
+  window.pickWork = function(workId){
+    var ctx = window._workPickerContext;
+    if(!ctx || !ctx.targetUrl){
+      console.warn('[pickWork] 컨텍스트 정보 없음');
+      return;
+    }
+    
+    var appLabel = ctx.appLabel || '앱';
+    var targetUrl = ctx.targetUrl;
+    
+    // 시트 닫기
+    closeSheet('ws');
+    
+    // 잠깐 대기 후 이동 (시트 닫히는 애니메이션 시간)
+    setTimeout(function(){
+      showToast('✅ ' + appLabel + '(으)로 이동합니다', 'success');
+      setTimeout(function(){
+        window.location.href = targetUrl + '?workId=' + encodeURIComponent(workId);
+      }, 400);
+    }, 350);
+    
+    // 컨텍스트 정리
+    window._workPickerContext = null;
+  };
+  
+  // ═══════════════════════════════════════
+  // JavaScript 문자열 이스케이프 (workId 안전 처리)
+  // ═══════════════════════════════════════
+  function escapeJsString(str){
+    return String(str || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+  
+  console.log('[v7.3] 빠른실행 workId 전달 패치 로드 완료');
+})();
 </script>
 
 </body>
