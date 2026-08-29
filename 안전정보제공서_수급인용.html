@@ -32,6 +32,13 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .nav-btn:active{background:rgba(255,255,255,.28);}
 .topnav-title{color:#fff;font-size:16px;font-weight:800;}
 
+/* WorkID 배지 (v2.1 신규) */
+.workid-badge{background:rgba(255,255,255,.18);color:#fff;
+  font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
+  letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  display:none;}
+.workid-badge.show{display:inline-block;}
+
 .main{padding:14px 13px;}
 .sec-title{background:linear-gradient(135deg,#0A3880,var(--navy2));
   color:#fff;padding:12px 14px;border-radius:10px;
@@ -57,7 +64,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .tag.danger{background:#FFEBEE;color:var(--red2);border-color:rgba(198,40,40,.2);}
 .tag.green{background:#E8F5E9;color:var(--green2);border-color:rgba(46,125,50,.2);}
 
-/* MSDS CARD (수급인용 - 상세 표시) */
+/* MSDS CARD */
 .msds-card{background:#FFF8F0;border-radius:var(--rs);
   padding:12px 14px;margin-bottom:8px;border:1.5px solid rgba(230,81,0,.2);}
 .msds-card-name{font-size:14px;font-weight:800;color:var(--orange);margin-bottom:6px;
@@ -93,12 +100,13 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   background:#fff;border:1.5px solid var(--border);border-radius:8px;
   padding:8px;margin-top:8px;}
 
-/* 비상절차 표시 (자동채움된 내용) */
+/* 비상절차 표시 */
 .emergency-proc-box{background:#FFF3F5;border-radius:var(--r);
   padding:14px 16px;border:1.5px solid rgba(198,40,40,.15);margin-bottom:12px;}
 .emergency-proc-title{font-size:13px;font-weight:800;color:var(--red);margin-bottom:8px;}
 .emergency-proc-content{font-size:13px;color:var(--body);line-height:1.8;
   white-space:pre-line;font-weight:600;}
+
 /* CHECKLIST */
 .cl-item{display:flex;align-items:center;gap:12px;
   padding:14px 14px;background:var(--card);border-radius:var(--rs);
@@ -166,6 +174,47 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   color:#fff;border:none;border-radius:13px;
   font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;}
 
+/* 다음 앱 이동 버튼 (v2.1 신규) */
+.next-app-section{
+  background:linear-gradient(135deg,#EEF2FF 0%,#F5F9FF 100%);
+  border:2px solid var(--navy2);
+  border-radius:16px;padding:18px 16px;margin-bottom:14px;
+  animation:slideDown .4s cubic-bezier(.32,.72,0,1);
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.nas-title{
+  font-size:12px;font-weight:800;color:var(--navy2);
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:8px;text-align:center;
+}
+.nas-desc{
+  font-size:13px;color:var(--body);
+  text-align:center;line-height:1.6;font-weight:600;
+  margin-bottom:14px;
+}
+.nas-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.nas-btn{
+  padding:14px 10px;border:none;border-radius:12px;
+  font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:.15s;line-height:1.3;
+}
+.nas-btn:active{transform:scale(.97);}
+.nas-btn-ico{font-size:22px;line-height:1;}
+.nas-btn.primary{
+  background:linear-gradient(135deg,var(--navy),var(--navy2));
+  color:#fff;
+  box-shadow:0 4px 12px rgba(13,71,161,.25);
+}
+.nas-btn.secondary{
+  background:var(--card);
+  color:var(--navy2);
+  border:1.5px solid var(--navy2);
+}
+
 /* COMPLETE */
 .complete-hero{text-align:center;padding:28px 16px;}
 .complete-ico{font-size:64px;margin-bottom:14px;}
@@ -217,6 +266,71 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .already-signed-ico{font-size:48px;margin-bottom:10px;}
 .already-signed-title{font-size:18px;font-weight:900;color:var(--green);margin-bottom:6px;}
 .already-signed-desc{font-size:13px;color:var(--body);line-height:1.6;font-weight:600;}
+
+/* ═══════════════════════════════════════
+   커스텀 확인 다이얼로그 (v2.1 신규)
+   ═══════════════════════════════════════ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:99999;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:340px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--text);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{
+  background:var(--bg);color:var(--sub);
+  border:1.5px solid var(--border);
+}
+.custom-confirm-btn-confirm{
+  background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+  box-shadow:0 4px 12px rgba(13,71,161,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:linear-gradient(135deg,#8B0000,var(--red2));
+  box-shadow:0 4px 12px rgba(198,40,40,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:linear-gradient(135deg,#B45309,var(--orange2));
+  box-shadow:0 4px 12px rgba(230,81,0,.25);
+}
+.custom-confirm-btn-confirm.success{
+  background:linear-gradient(135deg,var(--green),var(--green2));
+  box-shadow:0 4px 12px rgba(27,94,32,.25);
+}
+.custom-confirm-buttons.single{justify-content:center;}
+.custom-confirm-buttons.single .custom-confirm-btn-cancel{display:none;}
 </style>
 </head>
 <body>
@@ -224,8 +338,11 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 
 <nav class="topnav">
   <div class="topnav-l">
-    <button class="nav-btn" onclick="history.back()">←</button>
+    <button class="nav-btn" onclick="goBack()">←</button>
     <div class="topnav-title">안전정보 확인 (수급인)</div>
+  </div>
+  <div class="topnav-r" style="display:flex;align-items:center;gap:6px;">
+    <div class="workid-badge" id="workidBadge"></div>
   </div>
 </nav>
 
@@ -375,7 +492,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 
   </div>
 </div>
-<!-- 📄 메인 확인 화면 (계속) - 서명 부분 -->
+<!-- 📄 서명 섹션 -->
 <div id="view-signature-section" style="display:none;">
   <div class="main">
 
@@ -486,14 +603,35 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
       <div class="info-row"><span class="info-key">서명자</span><span class="info-val" id="fin-signer">-</span></div>
       <div class="info-row"><span class="info-key">완료일시</span><span class="info-val" id="fin-dt">-</span></div>
     </div>
+
+    <!-- ⭐ v2.1 신규: 다음 앱 이동 섹션 -->
+    <div class="next-app-section" id="nextAppSection">
+      <div class="nas-title">📌 다음 단계</div>
+      <div class="nas-desc" id="nasDesc">
+        서명 완료 후 다음 단계를 진행하세요.<br>
+        <strong>작업자 안전퀴즈 응시</strong>가 필요합니다.
+      </div>
+      <div class="nas-btn-grid">
+        <button class="nas-btn primary" onclick="goToQuiz()">
+          <span class="nas-btn-ico">🎯</span>
+          <span>안전퀴즈</span>
+        </button>
+        <button class="nas-btn secondary" onclick="goToRiskAssessment()">
+          <span class="nas-btn-ico">🤖</span>
+          <span>위험성평가</span>
+        </button>
+      </div>
+    </div>
    
     <div class="info-box">
-      <div class="info-box-t">📌 다음 단계</div>
+      <div class="info-box-t">📋 안전관리 프로세스</div>
       <div class="info-box-b">
-        1. 도급인 최종 확인 진행<br>
-        2. 안전작업허가서(PTW) 발급 요청<br>
-        3. TBM(Tool Box Meeting) 실시<br>
-        4. 작업 시작
+        1. ✅ <strong>안전정보 확인 완료</strong> (현재)<br>
+        2. 🎯 작업자 안전퀴즈 응시<br>
+        3. 🤖 위험성평가 실시<br>
+        4. 🔐 안전작업허가서 신청<br>
+        5. 📝 TBM 실시<br>
+        6. 🚧 작업 시작
       </div>
     </div>
 
@@ -503,16 +641,338 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 </div>
 
 </div><!-- /.app -->
+
+<!-- 커스텀 확인 다이얼로그 (v2.1 신규) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons" id="customConfirmButtons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════
-// STATE
+// 커스텀 확인 다이얼로그 (v2.1 신규)
 // ═══════════════════════════════════════════════════
-var docData = null;      // 조회된 문서 데이터
-var safeinfoNo = '';     // 문서번호
-var clChecked = 0;       // 체크된 항목 수
-var clTotal = 8;         // 전체 체크 항목
-var clItems = {};        // 체크 상태 저장 {1:true, 2:false, ...}
-var isAlreadySigned = false;  // 이미 서명된 문서 여부
+var customConfirmCallback = null;
+
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  
+  var iconEl = document.getElementById('customConfirmIcon');
+  var titleEl = document.getElementById('customConfirmTitle');
+  var messageEl = document.getElementById('customConfirmMessage');
+  var okBtn = document.getElementById('customConfirmOk');
+  var overlay = document.getElementById('customConfirmOverlay');
+  var buttonsEl = document.getElementById('customConfirmButtons');
+  
+  if(!overlay){
+    console.warn('[showCustomConfirm] 다이얼로그 요소 없음');
+    var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+    if(callback) callback(result);
+    return;
+  }
+  
+  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+  if(titleEl) titleEl.textContent = opts.title || '확인';
+  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+  
+  if(okBtn){
+    okBtn.textContent = opts.okText || '확인';
+    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+    if(opts.okType === 'danger') okBtn.classList.add('danger');
+    else if(opts.okType === 'warn') okBtn.classList.add('warn');
+    else if(opts.okType === 'success') okBtn.classList.add('success');
+  }
+  
+  if(buttonsEl){
+    if(opts.alertOnly){
+      buttonsEl.classList.add('single');
+    } else {
+      buttonsEl.classList.remove('single');
+    }
+  }
+  
+  customConfirmCallback = callback || function(){};
+  overlay.classList.add('active');
+}
+
+function customConfirmClose(result){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay) overlay.classList.remove('active');
+  
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function'){
+    setTimeout(function(){ cb(result); }, 150);
+  }
+}
+
+function showCustomAlert(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  opts.alertOnly = true;
+  opts.okText = opts.okText || '확인';
+  showCustomConfirm(opts, callback);
+}
+</script>
+<!-- 📄 서명 섹션 -->
+<div id="view-signature-section" style="display:none;">
+  <div class="main">
+
+    <!-- 9. 수급인 확인 체크리스트 -->
+    <div class="sec-title">✅ 9. 수급인 확인 체크리스트</div>
+    <div class="warn-box">
+      <div class="warn-box-t">⚠️ 필수 확인</div>
+      <div class="warn-box-b">아래 8개 항목을 모두 확인한 후 서명해주세요</div>
+    </div>
+    <div class="cl-prog">
+      <div class="cl-prog-txt">
+        <span>확인 현황</span>
+        <span class="cl-prog-pct" id="cl-pct">0 / 8</span>
+      </div>
+      <div class="cl-prog-bar">
+        <div class="cl-prog-fill" id="cl-fill" style="width:0%"></div>
+      </div>
+    </div>
+    <div id="checklistWrap">
+      <div class="cl-item" onclick="togCL(this,1)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">1. 안전정보제공서 내용을 모두 읽고 이해하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,2)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">2. MSDS(화학물질 정보) 내용을 확인하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,3)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">3. 공장 내 위험 설비 위치 및 주의사항을 파악하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,4)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">4. 비상구 위치 및 대피로를 확인하였습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,5)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">5. 작업별 안전수칙을 준수하겠습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,6)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">6. 필수 보호구를 착용하겠습니다</div>
+      </div>
+      <div class="cl-item" onclick="togCL(this,7)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt">7. 위험 발견 시 작업중지권을 행사하겠습니다</div>
+      </div>
+      <div class="cl-item critical" onclick="togCL(this,8)">
+        <div class="cl-chk"></div>
+        <div class="cl-txt critical">8. ⚠️ 거짓 서명 시 산업안전보건법에 따라 처벌받을 수 있음을 알고 있습니다</div>
+      </div>
+    </div>
+
+    <!-- 10. 수급인 정보 + 서명 -->
+    <div class="sec-title">✍️ 10. 수급인 서명</div>
+    <div class="form-card">
+      <div class="f-row">
+        <div class="form-group">
+          <label class="f-label">담당자명<span class="req">*</span></label>
+          <input class="f-input" id="sub-supervisor" placeholder="홍길동">
+        </div>
+        <div class="form-group">
+          <label class="f-label">확인일<span class="req">*</span></label>
+          <input class="f-input" type="date" id="sub-confirm-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="f-label">연락처<span class="req">*</span></label>
+        <input class="f-input" type="tel" id="sub-phone" placeholder="010-1234-5678">
+      </div>
+    </div>
+   
+    <div class="sig-wrap">
+      <div class="sig-lbl">수급인 서명<span class="req">*</span></div>
+      <canvas class="sig-canvas" id="sub-sig" width="400" height="160"></canvas>
+      <button class="sig-clear" onclick="clearSig()">지우기</button>
+    </div>
+
+    <div class="danger-box">
+      <div class="danger-box-t">⚠️ 최종 확인</div>
+      <div class="danger-box-b">
+        서명 제출 후에는 수정이 불가합니다<br>
+        서명 완료 시 도급인에게 자동으로 알림이 발송됩니다
+      </div>
+    </div>
+
+    <button class="btn-primary" id="submitBtn" onclick="submitSign()" disabled>
+      ✅ 확인 완료 및 서명 제출
+    </button>
+    <button class="btn-mail" onclick="requestResend()">📧 도급인에게 메일 재발송 요청</button>
+    <button class="btn-secondary" onclick="history.back()">취소</button>
+  </div>
+</div>
+
+<!-- 🎉 완료 화면 -->
+<div id="view-complete" style="display:none;">
+  <div class="main">
+    <div class="complete-hero">
+      <div class="complete-ico">✅</div>
+      <div class="complete-title">서명 완료!</div>
+      <div class="complete-sub">안전정보제공서 확인 및 서명이 완료되었습니다.
+도급인에게 자동으로 완료 알림이 발송됩니다.</div>
+    </div>
+   
+    <div class="info-card">
+      <div class="info-row"><span class="info-key">문서번호</span><span class="info-val" id="fin-doc-id">-</span></div>
+      <div class="info-row"><span class="info-key">작업명</span><span class="info-val" id="fin-work-name">-</span></div>
+      <div class="info-row"><span class="info-key">서명자</span><span class="info-val" id="fin-signer">-</span></div>
+      <div class="info-row"><span class="info-key">완료일시</span><span class="info-val" id="fin-dt">-</span></div>
+    </div>
+
+    <!-- ⭐ v2.1 신규: 다음 앱 이동 섹션 -->
+    <div class="next-app-section" id="nextAppSection">
+      <div class="nas-title">📌 다음 단계</div>
+      <div class="nas-desc" id="nasDesc">
+        서명 완료 후 다음 단계를 진행하세요.<br>
+        <strong>작업자 안전퀴즈 응시</strong>가 필요합니다.
+      </div>
+      <div class="nas-btn-grid">
+        <button class="nas-btn primary" onclick="goToQuiz()">
+          <span class="nas-btn-ico">🎯</span>
+          <span>안전퀴즈</span>
+        </button>
+        <button class="nas-btn secondary" onclick="goToRiskAssessment()">
+          <span class="nas-btn-ico">🤖</span>
+          <span>위험성평가</span>
+        </button>
+      </div>
+    </div>
+   
+    <div class="info-box">
+      <div class="info-box-t">📋 안전관리 프로세스</div>
+      <div class="info-box-b">
+        1. ✅ <strong>안전정보 확인 완료</strong> (현재)<br>
+        2. 🎯 작업자 안전퀴즈 응시<br>
+        3. 🤖 위험성평가 실시<br>
+        4. 🔐 안전작업허가서 신청<br>
+        5. 📝 TBM 실시<br>
+        6. 🚧 작업 시작
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="goHome()">🏠 대시보드로 이동</button>
+    <button class="btn-secondary" onclick="location.reload()">문서 다시 조회</button>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- 커스텀 확인 다이얼로그 (v2.1 신규) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons" id="customConfirmButtons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// 커스텀 확인 다이얼로그 (v2.1 신규)
+// ═══════════════════════════════════════════════════
+var customConfirmCallback = null;
+
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  
+  var iconEl = document.getElementById('customConfirmIcon');
+  var titleEl = document.getElementById('customConfirmTitle');
+  var messageEl = document.getElementById('customConfirmMessage');
+  var okBtn = document.getElementById('customConfirmOk');
+  var overlay = document.getElementById('customConfirmOverlay');
+  var buttonsEl = document.getElementById('customConfirmButtons');
+  
+  if(!overlay){
+    console.warn('[showCustomConfirm] 다이얼로그 요소 없음');
+    var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+    if(callback) callback(result);
+    return;
+  }
+  
+  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+  if(titleEl) titleEl.textContent = opts.title || '확인';
+  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+  
+  if(okBtn){
+    okBtn.textContent = opts.okText || '확인';
+    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+    if(opts.okType === 'danger') okBtn.classList.add('danger');
+    else if(opts.okType === 'warn') okBtn.classList.add('warn');
+    else if(opts.okType === 'success') okBtn.classList.add('success');
+  }
+  
+  if(buttonsEl){
+    if(opts.alertOnly){
+      buttonsEl.classList.add('single');
+    } else {
+      buttonsEl.classList.remove('single');
+    }
+  }
+  
+  customConfirmCallback = callback || function(){};
+  overlay.classList.add('active');
+}
+
+function customConfirmClose(result){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay) overlay.classList.remove('active');
+  
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function'){
+    setTimeout(function(){ cb(result); }, 150);
+  }
+}
+
+function showCustomAlert(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  opts.alertOnly = true;
+  opts.okText = opts.okText || '확인';
+  showCustomConfirm(opts, callback);
+}
+</script>
+<script>
+// ═══════════════════════════════════════════════════
+// STATE (v2.1: workId 추가)
+// ═══════════════════════════════════════════════════
+var docData = null;
+var safeinfoNo = '';
+var workIdFromUrl = '';        // ⭐ v2.1 신규: URL에서 받은 workId
+var clChecked = 0;
+var clTotal = 8;
+var clItems = {};
+var isAlreadySigned = false;
 
 // ═══════════════════════════════════════════════════
 // INIT
@@ -520,18 +980,24 @@ var isAlreadySigned = false;  // 이미 서명된 문서 여부
 window.addEventListener('DOMContentLoaded', function(){
   initTheme();
  
-  // 확인일 기본값 = 오늘
   setVal('sub-confirm-date', fmtDate(new Date()));
- 
-  // 서명 캔버스 초기화
   initSig();
- 
-  // 폐기 키 마이그레이션
   migrateLegacyKeys();
  
-  // URL 파라미터 확인 (규약: ?safeinfoNo=)
+  // ⭐ v2.1: URL 파라미터에서 safeinfoNo와 workId 모두 감지
   var params = new URLSearchParams(window.location.search);
-  var id = params.get('safeinfoNo') || params.get('doc'); // ?doc= 은 폐기 예정 fallback
+  var id = params.get('safeinfoNo') || params.get('doc');
+  workIdFromUrl = params.get('workId') || '';
+ 
+  if(workIdFromUrl){
+    console.log('[v2.1] URL에서 workId 감지:', workIdFromUrl);
+    // 상단 배지 표시
+    var badge = document.getElementById('workidBadge');
+    if(badge){
+      badge.textContent = workIdFromUrl;
+      badge.classList.add('show');
+    }
+  }
  
   if(id){
     safeinfoNo = id;
@@ -540,9 +1006,26 @@ window.addEventListener('DOMContentLoaded', function(){
     show('view-manual');
     hide('view-loading');
   }
+
+  // ESC로 다이얼로그 닫기
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var overlay = document.getElementById('customConfirmOverlay');
+      if(overlay && overlay.classList.contains('active')){
+        customConfirmClose(false);
+      }
+    }
+  });
+  
+  // 오버레이 클릭으로 닫기
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) customConfirmClose(false);
+    });
+  }
 });
 
-// KST 기준 날짜
 function fmtDate(d){
   d = d || new Date();
   var y = d.getFullYear();
@@ -551,7 +1034,6 @@ function fmtDate(d){
   return y + '-' + m + '-' + day;
 }
 
-// 다크모드 상속
 function initTheme(){
   var t = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', t);
@@ -566,7 +1048,6 @@ function migrateLegacyKeys(){
     var legacyDocs = localStorage.getItem('safetyInfoDocs');
     var legacySigned = localStorage.getItem('safetyInfoSigned');
    
-    // safetyInfoDocs → safetyProvisions
     if(legacyDocs){
       var legacyData = JSON.parse(legacyDocs);
       var migrated = 0;
@@ -580,8 +1061,8 @@ function migrateLegacyKeys(){
         });
         if(exists) return;
        
-        // 폐기 스키마 → 신규 스키마 변환
         var converted = Object.assign({}, item, {
+          workId: item.workId || '',
           safeinfoNo: existingNo,
           submittedCompany: item.subcontractor || '',
           submittedBy: item.contractorManager || '',
@@ -596,7 +1077,6 @@ function migrateLegacyKeys(){
         migrated++;
       });
      
-      // safetyInfoSigned 데이터를 해당 문서에 병합
       if(legacySigned){
         var signedData = JSON.parse(legacySigned);
         signedData.forEach(function(sign){
@@ -627,7 +1107,7 @@ function migrateLegacyKeys(){
 }
 
 // ═══════════════════════════════════════════════════
-// 문서 조회 (regex 준수 키: safetyProvisions)
+// 문서 조회
 // ═══════════════════════════════════════════════════
 function loadDoc(id){
   show('view-loading');
@@ -636,7 +1116,6 @@ function loadDoc(id){
   hide('view-signature-section');
   hide('view-complete');
  
-  // 로컬 조회 (Firebase 이관 전까지)
   setTimeout(function(){
     var found = findDocLocal(id);
     if(found){
@@ -647,19 +1126,17 @@ function loadDoc(id){
       setVal('manual-doc-id', id);
       showToast('문서를 찾을 수 없습니다. 문서번호를 확인해주세요', 'danger');
     }
-  }, 300);  // 로딩 애니메이션 최소 시간
+  }, 300);
 }
 
 function findDocLocal(id){
   try{
-    // 규약 준수: safetyProvisions 우선
     var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
     var found = docs.find(function(d){
       return d.safeinfoNo === id || d.docId === id;
     });
     if(found) return found;
    
-    // 폐기 예정 키 fallback
     var legacy = JSON.parse(localStorage.getItem('safetyInfoDocs') || '[]');
     return legacy.find(function(d){
       return d.docId === id || d.safeinfoNo === id;
@@ -676,7 +1153,6 @@ function loadByManual(){
     showToast('문서번호를 입력해주세요', 'info');
     return;
   }
-  // 형식 검증
   if(!/^SIP-\d{8}-\d{3}$/.test(id)){
     showToast('올바른 형식이 아닙니다 (예: SIP-20260824-001)', 'danger');
     return;
@@ -691,10 +1167,20 @@ function loadByManual(){
 function renderDoc(d){
   docData = d;
  
-  // 이미 서명된 문서 확인
+  // ⭐ v2.1: workId 우선순위 (URL > 문서 저장값)
+  if(workIdFromUrl){
+    docData.workId = workIdFromUrl;
+  } else if(d.workId){
+    workIdFromUrl = d.workId;
+    var badge = document.getElementById('workidBadge');
+    if(badge){
+      badge.textContent = d.workId;
+      badge.classList.add('show');
+    }
+  }
+ 
   isAlreadySigned = (d.status === '서명완료') || !!d.signature;
  
-  // ─── 문서 정보 배지 ───
   setTxt('view-doc-id', d.safeinfoNo || d.docId || safeinfoNo);
  
   var statusLbl, statusChip, statusChipClass = '';
@@ -713,7 +1199,6 @@ function renderDoc(d){
     chipEl.className = 'doc-status-chip' + (statusChipClass ? ' ' + statusChipClass : '');
   }
  
-  // ─── 이미 서명된 경우 안내 표시 ───
   if(isAlreadySigned){
     var box = document.getElementById('alreadySignedBox');
     var desc = document.getElementById('alreadySignedDesc');
@@ -724,7 +1209,7 @@ function renderDoc(d){
     }
   }
  
-  // ─── 1. 기본정보 ───
+  // 1. 기본정보
   setTxt('v-work-name', d.workName || '-');
   setTxt('v-subcontractor', d.subcontractor || d.submittedCompany || '-');
   setTxt('v-location',
@@ -732,16 +1217,14 @@ function renderDoc(d){
   setTxt('v-period',
     (d.startDate || '-') + ' ~ ' + (d.endDate || '-'));
  
-  // ─── 도급인 담당자 ───
+  // 도급인 담당자
   setTxt('v-manager', d.contractorManager || d.submittedBy || '-');
   setTxt('v-manager-dept', d.contractorDept || '-');
   setTxt('v-manager-phone', d.contractorPhone || '-');
   setTxt('v-manager-email', d.contractorEmail || '-');
  
-  // ─── 2. 화학물질 (MSDS 상세 카드) ───
   renderMSDSCards(d);
  
-  // ─── 3. 관련 서류 ───
   setTxt('v-risk-no', d.riskAssessmentNo || '-');
   setTxt('v-permit-no', d.permitNo || '해당 없음');
   setTxt('v-other-docs',
@@ -749,47 +1232,38 @@ function renderDoc(d){
       ? d.selectedDocs.join(', ')
       : '해당 없음');
  
-  // ─── 4. 공장 위험 정보 ───
   renderFacilities(d);
   setTxt('v-emergency', d.emergencyContact || '-');
   setTxt('v-exit', d.emergencyExit || '-');
   setTxt('v-firstaid', d.firstAid || '-');
   setTxt('v-aed', d.aedLocations || '-');
  
-  // ─── 5. 안전수칙 ───
   renderSafety(d);
- 
-  // ─── 6. 필수 보호구 ───
   renderPPE(d);
  
-  // ─── 7. 비상상황 대응 ───
   setTxt('v-emergency-proc', d.emergencyProc || '-');
   setTxt('v-safety-manager', d.safetyManagerPhone || '-');
  
-  // ─── 8. 도급인 서명 ───
   renderContractorSignature(d);
  
-  // 화면 전환
   hide('view-loading');
   hide('view-manual');
   show('view-main');
  
-  // 이미 서명된 문서는 서명 섹션 안 보임
   if(!isAlreadySigned){
     show('view-signature-section');
   }
  
-  console.log('✅ 문서 조회 완료:', d.safeinfoNo || d.docId);
+  console.log('✅ 문서 조회 완료:', d.safeinfoNo || d.docId, 'workId:', docData.workId);
 }
 
 // ═══════════════════════════════════════════════════
-// MSDS 카드 렌더링 (상세 표시)
+// MSDS 카드 렌더링
 // ═══════════════════════════════════════════════════
 function renderMSDSCards(d){
   var wrap = document.getElementById('v-msds-wrap');
   if(!wrap) return;
  
-  // 화학물질 미사용
   if(d.noChemical){
     wrap.innerHTML =
       '<div class="info-card">' +
@@ -800,15 +1274,11 @@ function renderMSDSCards(d){
   }
  
   var html = '';
- 
-  // 선택된 MSDS 카드 (도급인용에서 저장된 것)
   var msds = d.msdsItems || [];
   if(typeof msds === 'string'){
     try{ msds = JSON.parse(msds); }catch(e){ msds = []; }
   }
  
-  // msdsIds가 있으면 상세 정보 조회 시도 (도급인용의 MSDS_LIST 참조)
-  // 하지만 수급인용에서는 MSDS_LIST가 없으므로, 이름만 표시
   if(msds.length > 0){
     html += msds.map(function(name){
       return '<div class="msds-card">' +
@@ -821,7 +1291,6 @@ function renderMSDSCards(d){
     }).join('');
   }
  
-  // 기타 화학물질 (직접 입력)
   if(d.chemicalOther){
     html += '<div class="msds-card">' +
       '<div class="msds-card-name">🧪 기타: ' + escHtml(d.chemicalOther) + '</div>' +
@@ -887,7 +1356,6 @@ function renderSafety(d){
     }).join('');
   }
  
-  // 기타 안전수칙 추가
   if(d.safetyOther){
     html += '<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;">' +
       '<span style="color:var(--orange);font-weight:800;flex-shrink:0;">+</span>' +
@@ -974,12 +1442,10 @@ function togCL(el, n){
 function updateChecklistProgress(){
   var pct = document.getElementById('cl-pct');
   var fill = document.getElementById('cl-fill');
-  var btn = document.getElementById('submitBtn');
  
   if(pct) pct.textContent = clChecked + ' / ' + clTotal;
   if(fill) fill.style.width = (clChecked / clTotal * 100) + '%';
  
-  // 8/8 완료 시 제출 버튼 활성화 가능성 체크
   updateSubmitButtonState();
 }
 
@@ -1016,6 +1482,7 @@ function showToast(msg, type){
   setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3500);
 }
 </script>
+
 <script>
 // ═══════════════════════════════════════════════════
 // 서명 캔버스
@@ -1058,7 +1525,6 @@ function initSig(){
     ctx.stroke();
     lx = p.x;
     ly = p.y;
-    // 서명 시 제출 버튼 활성화 체크
     updateSubmitButtonState();
   };
  
@@ -1089,7 +1555,6 @@ function hasSignature(){
   return false;
 }
 
-// 입력 필드에 이벤트 리스너 추가 (실시간 버튼 활성화)
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
     ['sub-supervisor', 'sub-phone', 'sub-confirm-date'].forEach(function(id){
@@ -1103,16 +1568,14 @@ window.addEventListener('DOMContentLoaded', function(){
 });
 
 // ═══════════════════════════════════════════════════
-// 서명 제출 (규약 완전 준수)
+// 서명 제출 (v2.1: workId 포함)
 // ═══════════════════════════════════════════════════
 function submitSign(){
-  // 1. 체크리스트 8/8 확인
   if(clChecked < clTotal){
     showToast('8개 항목을 모두 확인해주세요 (' + clChecked + '/' + clTotal + ')', 'danger');
     return;
   }
  
-  // 2. 필수 입력 확인
   var name = getVal('sub-supervisor');
   var dt = getVal('sub-confirm-date');
   var ph = getVal('sub-phone');
@@ -1122,69 +1585,62 @@ function submitSign(){
     return;
   }
  
-  // 3. 전화번호 형식 검증 (간단)
   if(!/^[\d-]+$/.test(ph)){
     showToast('올바른 연락처 형식이 아닙니다', 'danger');
     return;
   }
  
-  // 4. 서명 확인
   if(!hasSignature()){
     showToast('서명을 해주세요', 'danger');
     return;
   }
  
-  // 5. 확인 알림
-  if(!confirm('서명을 제출하면 수정할 수 없습니다.\n\n계속하시겠습니까?')){
-    return;
-  }
- 
+  // ⭐ v2.1: 커스텀 다이얼로그로 확인
+  showCustomConfirm({
+    icon: '✍️',
+    title: '서명 제출',
+    message: '서명을 제출하면 수정할 수 없습니다.\n계속하시겠습니까?',
+    okText: '제출',
+    okType: 'success'
+  }, function(ok){
+    if(!ok) return;
+    executeSubmit(name, dt, ph);
+  });
+}
+
+function executeSubmit(name, dt, ph){
   try{
     var now = new Date();
     var signatureDataUrl = document.getElementById('sub-sig').toDataURL();
    
-    // 서명 정보 준비
     var signInfo = {
-      // 서명자 정보
+      workId: docData.workId || workIdFromUrl || '',  // ⭐ v2.1
       signerName: name,
       signerPhone: ph,
       confirmDate: dt,
       signature: signatureDataUrl,
-     
-      // 체크리스트 결과
       checklist: {
         completed: clChecked + '/' + clTotal,
         items: clItems,
         all: clChecked === clTotal
       },
-     
-      // 서명 시각
       signedAt: now.toISOString(),
       signedBy: sessionStorage.getItem('userName') || name,
-     
-      // 상태 변경
       status: '서명완료',
-     
-      // 감사 필드
       updatedAt: now.toISOString(),
       updatedBy: sessionStorage.getItem('userName') || name
     };
    
-    // ═══════════════════════════════════════════════
-    // localStorage 갱신 (safetyProvisions 규약 준수)
-    // ═══════════════════════════════════════════════
     var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
     var idx = docs.findIndex(function(d){
       return d.safeinfoNo === safeinfoNo || d.docId === safeinfoNo;
     });
    
     if(idx >= 0){
-      // 기존 문서 업데이트
       Object.assign(docs[idx], signInfo);
       localStorage.setItem('safetyProvisions', JSON.stringify(docs));
       console.log('✅ 서명 저장 완료 (기존 문서 갱신):', safeinfoNo);
     } else {
-      // 문서를 못 찾은 경우: 새 문서로 추가 (에러 방지)
       docs.push(Object.assign({
         safeinfoNo: safeinfoNo,
         createdAt: now.toISOString(),
@@ -1195,15 +1651,14 @@ function submitSign(){
       console.warn('⚠️ 기존 문서 없음, 새 문서로 추가:', safeinfoNo);
     }
    
-    // ═══════════════════════════════════════════════
-    // 실시간 동기화 이벤트 (대시보드 알림)
-    // ═══════════════════════════════════════════════
+    // 이벤트 발행 (workId 포함)
     try{
       window.dispatchEvent(new CustomEvent('app-data-changed', {
         detail: {
           key: 'safetyProvisions',
           action: 'signed',
           safeinfoNo: safeinfoNo,
+          workId: docData.workId || workIdFromUrl || '',
           timestamp: Date.now()
         }
       }));
@@ -1211,19 +1666,13 @@ function submitSign(){
       console.warn('이벤트 발생 실패:', e);
     }
    
-    // ═══════════════════════════════════════════════
-    // 도급인에게 알림 발송 (mailto 폴백)
-    // ═══════════════════════════════════════════════
     if(docData && docData.contractorEmail){
       notifyContractor(docData.contractorEmail, name);
     }
    
-    // ═══════════════════════════════════════════════
-    // 완료 화면 표시
-    // ═══════════════════════════════════════════════
+    // 완료 화면
     setTxt('fin-doc-id', safeinfoNo);
-    setTxt('fin-work-name',
-      docData ? (docData.workName || '-') : '-');
+    setTxt('fin-work-name', docData ? (docData.workName || '-') : '-');
     setTxt('fin-signer', name + ' (' + ph + ')');
     setTxt('fin-dt', now.toLocaleString('ko-KR'));
    
@@ -1232,34 +1681,33 @@ function submitSign(){
     show('view-complete');
    
     showToast('✅ 서명 완료! 도급인에게 알림이 발송되었습니다', 'success');
-   
-    // 완료 화면으로 스크롤
     window.scrollTo(0, 0);
    
   }catch(error){
     console.error('❌ 서명 저장 실패:', error);
-    alert('저장 중 오류가 발생했습니다.\n\n' + error.message);
+    showCustomAlert({
+      icon: '❌',
+      title: '저장 실패',
+      message: '저장 중 오류가 발생했습니다.\n\n' + error.message,
+      okType: 'danger'
+    });
   }
 }
 
 // ═══════════════════════════════════════════════════
-// 도급인에게 알림 (mailto 폴백)
+// 도급인 알림
 // ═══════════════════════════════════════════════════
 function notifyContractor(contractorEmail, signerName){
   if(!contractorEmail) return;
  
-  // 백그라운드로 처리 (사용자 UX 방해 없이)
-  // 실제 발송은 서버 API가 있을 때만 자동, 없으면 로그만 남김
   console.log('📧 도급인 알림 준비:', contractorEmail);
   console.log('   서명자:', signerName);
   console.log('   문서번호:', safeinfoNo);
- 
-  // 실제 개발 단계에서는 이메일 자동 발송 없음
-  // 사용자가 "재발송 요청" 버튼 등으로 수동 발송 가능
+  console.log('   workId:', docData.workId || workIdFromUrl || 'N/A');
 }
 
 // ═══════════════════════════════════════════════════
-// 재발송 요청 (도급인에게)
+// 재발송 요청
 // ═══════════════════════════════════════════════════
 function requestResend(){
   if(!docData){
@@ -1269,11 +1717,15 @@ function requestResend(){
  
   var email = docData.contractorEmail || '';
   if(!email){
-    showToast('도급인 이메일 정보가 없습니다', 'danger');
+    showCustomAlert({
+      icon: '⚠️',
+      title: '이메일 정보 없음',
+      message: '도급인 이메일 정보가 없습니다.\n관리자에게 문의해주세요.',
+      okType: 'warn'
+    });
     return;
   }
  
-  // mailto 폴백
   var subject = encodeURIComponent(
     '[안전정보제공서 재발송 요청] ' + safeinfoNo
   );
@@ -1294,10 +1746,57 @@ function requestResend(){
 }
 
 // ═══════════════════════════════════════════════════
-// 대시보드로 이동
+// ⭐ v2.1 신규: 다음 앱 이동
+// ═══════════════════════════════════════════════════
+function goToQuiz(){
+  var workId = docData.workId || workIdFromUrl || '';
+  var url = '포항양극재공장_안전퀴즈.html';
+  if(workId){
+    url += '?workId=' + encodeURIComponent(workId);
+  }
+  
+  showToast('🎯 안전퀴즈로 이동합니다', 'info');
+  setTimeout(function(){
+    window.location.href = url;
+  }, 500);
+}
+
+function goToRiskAssessment(){
+  var workId = docData.workId || workIdFromUrl || '';
+  var url = '위험성평가_v2.html';
+  if(workId){
+    url += '?workId=' + encodeURIComponent(workId);
+  }
+  
+  showToast('🤖 위험성평가로 이동합니다', 'info');
+  setTimeout(function(){
+    window.location.href = url;
+  }, 500);
+}
+
+// ═══════════════════════════════════════════════════
+// 대시보드로 이동 (v2.1: 커스텀 다이얼로그)
 // ═══════════════════════════════════════════════════
 function goHome(){
   window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+}
+
+function goBack(){
+  // 서명 화면에서 뒤로가기 시 확인
+  var sigSection = document.getElementById('view-signature-section');
+  if(sigSection && sigSection.style.display !== 'none' && clChecked > 0){
+    showCustomConfirm({
+      icon: '⚠️',
+      title: '작성 취소',
+      message: '작성 중인 내용이 사라집니다.\n뒤로 가시겠습니까?',
+      okText: '나가기',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) history.back();
+    });
+    return;
+  }
+  history.back();
 }
 </script>
 </body>
