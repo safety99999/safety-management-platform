@@ -154,13 +154,16 @@ body{
   padding-right:14px;
 }
 .chip-calendar{
-  width:40px;
+  min-width:40px;
   height:38px;
-  padding:0;
+  padding:0 12px;
   display:grid;
   place-items:center;
-  font-size:18px;
+  font-size:14px;
+  white-space:nowrap;
+  gap:4px;
 }
+
 .chip:disabled{
   opacity:.45;
   cursor:not-allowed;
@@ -2864,10 +2867,10 @@ updateWorkStatus();
     }
   }
 
-  /* ═══════════════════════════════════════════════════════
+   /* ═══════════════════════════════════════════════════════
      ⭐ Step 2 리팩토링: chip UI는 HTML에 정적 작성됨
-     여기서는 예정 버튼 라벨 초기화 + date picker만 생성
-     (기존: chips.innerHTML = '...' 통째 교체 → 플리커링 원인)
+     ⭐ [수정] picker를 버튼 자식이 아닌 형제로 배치
+     (기존 문제: textContent 변경 시 자식 picker가 삭제됨)
      ═══════════════════════════════════════════════════════ */
   function dashboardCreateDateControls(){
     // 예정 버튼 라벨 초기화
@@ -2878,25 +2881,15 @@ updateWorkStatus();
     var oldPicker = document.getElementById('dashboardDatePicker');
     if(oldPicker){ oldPicker.remove(); }
 
-    // ⭐ 캘린더 버튼 위에 picker 직접 배치 (투명하게 겹침)
     var calendarButton = document.getElementById('dashboardCalendarButton');
     if(!calendarButton){ return; }
 
+    // ⭐ picker 생성 (숨김 처리 - CSS의 .dashboard-date-picker 활용)
     var picker = document.createElement('input');
     picker.type = 'date';
     picker.id = 'dashboardDatePicker';
+    picker.className = 'dashboard-date-picker';
     picker.value = fmtDate(new Date());
-    
-    // ⭐ 버튼 위에 겹쳐서 배치 (사용자가 버튼 클릭 = picker 클릭)
-    picker.style.cssText = 
-      'position:absolute;' +
-      'top:0;' +
-      'left:0;' +
-      'width:100%;' +
-      'height:100%;' +
-      'opacity:0;' +
-      'cursor:pointer;' +
-      'z-index:10;';
 
     picker.addEventListener('change', function(){
       if(!picker.value){ return; }
@@ -2907,24 +2900,31 @@ updateWorkStatus();
         chip.classList.remove('active');
       });
 
-      if(calendarButton){
-        calendarButton.classList.add('active');
-        calendarButton.textContent = '📅 ' + dashboardDateText(dashboardSelectedDate);
-      }
+      // ⭐ innerHTML 사용 (textContent 사용 시 자식 노드가 삭제되지만
+      //    이제 picker는 형제이므로 innerHTML도 안전)
+      calendarButton.classList.add('active');
+      calendarButton.innerHTML = '📅 ' + dashboardDateText(dashboardSelectedDate);
 
       applyFilter();
     });
 
-    // ⭐ 캘린더 버튼을 relative로 만들고 picker를 자식으로 추가
-    calendarButton.style.position = 'relative';
-    calendarButton.appendChild(picker);
-    
-    // ⭐ 버튼 onclick 속성 제거 (이제 picker가 직접 처리)
+    // ⭐ picker를 chips 컨테이너에 추가 (버튼의 형제로 배치)
+    calendarButton.parentNode.appendChild(picker);
+
+    // ⭐ 버튼 onclick 속성 제거 후 addEventListener로 재설정
     calendarButton.removeAttribute('onclick');
+    calendarButton.addEventListener('click', function(e){
+      e.preventDefault();
+      if(typeof picker.showPicker === 'function'){
+        try{ picker.showPicker(); }
+        catch(err){ picker.click(); }
+      }else{
+        picker.click();
+      }
+    });
   }
 
-
-  window.dashboardSetDateFilter = function(mode, button){
+    window.dashboardSetDateFilter = function(mode, button){
     if(mode === 'upcoming' && !dashboardUpcomingDate){
       showToast('등록된 예정 작업이 없습니다.', 'info');
       return;
@@ -2938,11 +2938,16 @@ updateWorkStatus();
     });
     if(button){ button.classList.add('active'); }
 
+    // ⭐ [수정] 캘린더 버튼을 원래 아이콘 상태로 복원 + active 해제
     var calendarButton = document.getElementById('dashboardCalendarButton');
-    if(calendarButton){ calendarButton.textContent = '📅'; }
+    if(calendarButton){
+      calendarButton.innerHTML = '📅';
+      calendarButton.classList.remove('active');
+    }
 
     applyFilter();
   };
+
 
   window.dashboardOpenCalendar = function(){
     var picker = document.getElementById('dashboardDatePicker');
