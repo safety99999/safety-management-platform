@@ -3666,23 +3666,16 @@ async function workDbLoadFromFirestore(retryCount){
   retryCount = retryCount || 0;
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 2000;
-  const TIMEOUT_MS = 20000; // iOS Safari는 느리므로 20초
-  
-  if(retryCount === 0 && typeof window.showToast === "function"){
-    window.showToast("☁️ Firestore에서 최신 데이터 동기화 중...", "info");
-  }
+  const TIMEOUT_MS = 20000;
   
   try{
-    // ⭐ 네트워크 상태 확인
+    // 네트워크 상태 확인
     if(!navigator.onLine){
       console.warn("[작업DB] 오프라인 상태 - localStorage 사용");
-      if(typeof window.showToast === "function"){
-        window.showToast("📴 오프라인 모드 (저장된 데이터 표시)", "info");
-      }
       return;
     }
     
-    // ⭐ 타임아웃 경쟁 (iOS Safari 무한 대기 방지)
+    // 타임아웃 경쟁 (iOS Safari 무한 대기 방지)
     const fetchPromise = getDocs(collection(workDbFirestore, WORKDB_COLLECTION));
     const timeoutPromise = new Promise(function(_, reject){
       setTimeout(function(){
@@ -3694,9 +3687,6 @@ async function workDbLoadFromFirestore(retryCount){
     
     if(snapshot.empty){
       console.warn("[작업DB] Firestore가 비어있음");
-      if(typeof window.showToast === "function"){
-        window.showToast("⚠️ Firestore에 데이터가 없습니다", "info");
-      }
       return;
     }
     
@@ -3720,37 +3710,21 @@ async function workDbLoadFromFirestore(retryCount){
       window.applyFilter();
     }
     
-    if(typeof window.showToast === "function"){
-      window.showToast(
-        "✅ " + firestoreWorks.length + "건 로드 완료",
-        "success"
-      );
-    }
-    
   }catch(error){
     console.error("[작업DB] Firestore 로드 실패 (시도 " + (retryCount + 1) + "):", error.message);
     
-    // ⭐ 재시도 (iOS Safari 일시적 실패 대응)
+    // 재시도 (iOS Safari 일시적 실패 대응)
     if(retryCount < MAX_RETRIES && navigator.onLine){
       console.log("[작업DB] " + (RETRY_DELAY_MS / 1000) + "초 후 재시도...");
-      if(typeof window.showToast === "function"){
-        window.showToast(
-          "재시도 중... (" + (retryCount + 2) + "/" + (MAX_RETRIES + 1) + ")",
-          "info"
-        );
-      }
       await new Promise(function(resolve){ setTimeout(resolve, RETRY_DELAY_MS); });
       return workDbLoadFromFirestore(retryCount + 1);
     }
     
-    // ⭐ 최종 실패 → localStorage fallback
+    // 최종 실패 → localStorage fallback (조용히)
     console.warn("[작업DB] 모든 재시도 실패 - localStorage 사용");
-    if(typeof window.showToast === "function"){
-      window.showToast("📴 오프라인 모드 (저장된 데이터 표시)", "info");
-    }
-    // 오류 재전파 하지 않음 (fallback 완료로 처리)
   }
 }
+
 
 
 /* =========================================================
