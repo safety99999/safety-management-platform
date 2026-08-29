@@ -2584,22 +2584,6 @@ function resolveWorkExecution(work, maps){
    실제 동작 정의: Part 4b의 window.updateWorkStatus
    ========================================================= */
 
-  setTxt('cntTotal', dispWorks.length);
-  setTxt('cntDanger', cntDanger);
-  setTxt('cntWait', cntWait);
-  setTxt('cntRun', cntRun);
-  setTxt('cntStop', cntStop);
-  setTxt('cntDone', cntDone);
-
-  ['cntWait','cntRun','cntStop','cntDone'].forEach(function(id){
-    var element = document.getElementById(id);
-    if(!element){ return; }
-    var value = parseInt(element.textContent, 10) || 0;
-    if(value === 0){ element.classList.add('zero'); }
-    else{ element.classList.remove('zero'); }
-  });
-}
-
 /* =========================================================
    12. 상태별 작업 목록 (Step 5: v7.2가 정본으로 덮어씀)
    ─────────────────────────────────────────
