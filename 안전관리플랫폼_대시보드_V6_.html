@@ -169,12 +169,16 @@ body{
   cursor:not-allowed;
 }
 .dashboard-date-picker{
-  position:fixed;
-  left:-9999px;
+  position:absolute;
+  right:16px;
+  top:50px;
   width:1px;
   height:1px;
   opacity:0;
   pointer-events:none;
+  border:0;
+  padding:0;
+  margin:0;
 }
 
 /* ═══ 공지 배너 ═══ */
@@ -2913,14 +2917,38 @@ updateWorkStatus();
 
     // ⭐ 버튼 onclick 속성 제거 후 addEventListener로 재설정
     calendarButton.removeAttribute('onclick');
-    calendarButton.addEventListener('click', function(e){
+       calendarButton.addEventListener('click', function(e){
       e.preventDefault();
-      if(typeof picker.showPicker === 'function'){
-        try{ picker.showPicker(); }
-        catch(err){ picker.click(); }
-      }else{
-        picker.click();
-      }
+      e.stopPropagation();
+      
+      // ⭐ picker를 잠시 보이게 만든 후 팝업 호출
+      // (완전히 숨겨진 상태에서는 브라우저가 팝업을 안 띄움)
+      picker.style.opacity = '0.01';
+      picker.style.pointerEvents = 'auto';
+      
+      // 다음 프레임에서 팝업 열기 (렌더링 완료 후)
+      requestAnimationFrame(function(){
+        try{
+          if(typeof picker.showPicker === 'function'){
+            picker.showPicker();
+          }else{
+            picker.focus();
+            picker.click();
+          }
+        }catch(err){
+          console.warn('showPicker 실패, click으로 fallback:', err);
+          picker.focus();
+          picker.click();
+        }
+      });
+    });
+    
+    // ⭐ picker가 닫히면 다시 숨김 (blur 이벤트로 감지)
+    picker.addEventListener('blur', function(){
+      setTimeout(function(){
+        picker.style.opacity = '0';
+        picker.style.pointerEvents = 'none';
+      }, 200);
     });
   }
 
