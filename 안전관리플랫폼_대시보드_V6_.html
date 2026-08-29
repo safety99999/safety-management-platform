@@ -1536,11 +1536,16 @@ function applyFilter(){
 }
 
 // ═══════════════════════════════════════
-// 작업 현황 카운트 (기본 정의 - v7.1/v7.2가 덮어씀)
+// updateWorkStatus STUB (Step 4 리팩토링)
+// ─────────────────────────────────────────
+// updateWorkStatus의 실제 정의는 v7.2 패치에 있음.
+// 이 stub은 v7.2 패치 로드 전 (loadDB → applyFilter →
+// updateWorkStatus 호출 시점)의 안전장치.
+// v7.2 로드 후에는 window.updateWorkStatus가 이 정의를 덮어씀.
 // ═══════════════════════════════════════
 function updateWorkStatus(){
-  // v7.1/v7.2 패치가 덮어씀
-  var total = dispWorks.length;
+  // v7.2 로드 전 임시 동작: 총 건수만 표시하고 나머지는 0
+  var total = (dispWorks || []).length;
   setTxt('cntTotal', total);
   setTxt('cntDanger', 0);
   setTxt('cntWait', 0);
@@ -2562,23 +2567,16 @@ function resolveWorkExecution(work, maps){
 }
 
 /* =========================================================
-   11. 작업 현황 카운트 함수 (v7.2가 덮어씀)
+   11. 작업 현황 카운트 함수 (Step 4: v7.2가 정본으로 덮어씀)
+   ─────────────────────────────────────────
+   ⚠️ 죽은 코드 (Dead Code) 제거됨
+   
+   기존 v7.1 정의는 v7.2 패치의 window.updateWorkStatus가
+   완전히 덮어쓰므로 실제 동작하지 않았음.
+   Step 4 리팩토링에서 삭제.
+   
+   실제 동작 정의: Part 4b의 window.updateWorkStatus
    ========================================================= */
-
-function updateWorkStatus(){
-  var maps = buildExecutionMaps();
-  var cntWait = 0, cntRun = 0, cntStop = 0, cntDone = 0, cntDanger = 0;
-
-  dispWorks.forEach(function(work){
-    if(work.riskLevel === '고위험'){ cntDanger++; }
-    var execution = resolveWorkExecution(work, maps);
-    var status = execution.status;
-
-    if(status === '작업완료' || status === '완료'){ cntDone++; }
-    else if(status === '작업중지'){ cntStop++; }
-    else if(status === '허가완료' || status === '작업중'){ cntRun++; }
-    else{ cntWait++; }
-  });
 
   setTxt('cntTotal', dispWorks.length);
   setTxt('cntDanger', cntDanger);
@@ -3049,7 +3047,37 @@ updateWorkStatus();
     renderInspPage();
   };
 
+  /* ═══════════════════════════════════════════════════════
+     ⭐ updateWorkStatus 정본 (Step 4 리팩토링에서 확정)
+     
+     이 함수가 실제 동작하는 유일한 정의입니다.
+     - 본체 script의 updateWorkStatus()는 v7.2 로드 전 안전 stub
+     - v7.1 패치의 updateWorkStatus()는 Step 4에서 삭제됨 (죽은 코드)
+     
+     ─────────────────────────────────────────
+     상태 판정 로직 (2단계):
+     
+     1단계) resolveWorkExecution() [Part 3b]
+       permit / TBM / emergency 데이터로 실행 상태 결정
+       우선순위: 작업완료 > 작업중지 > 작업중 > 허가완료 
+                > 허가진행중 > 대기중
+     
+     2단계) dashboardGetDisplayStatus() [Part 4a]
+       1단계 결과 + 작업 날짜로 표시 상태 결정
+       - 과거 날짜 → 작업종료
+       - 미래 날짜 → 예정
+       - 오늘 날짜 → 1단계 결과 그대로
+     
+     ─────────────────────────────────────────
+     카운트 매핑:
+       cntDone  = 작업종료 + 예정 (날짜별 종료/예정 합산)
+       cntStop  = 작업중지
+       cntRun   = 작업중 + 허가완료
+       cntWait  = 허가전 (그 외)
+       cntDanger = riskLevel이 '고위험'인 작업
+     ═══════════════════════════════════════════════════════ */
   window.updateWorkStatus = function(){
+
     var maps = buildExecutionMaps();
     var countWait = 0, countRun = 0, countStop = 0, countEnded = 0, countDanger = 0;
 
