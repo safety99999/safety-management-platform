@@ -1555,10 +1555,16 @@ function updateWorkStatus(){
 }
 
 // ═══════════════════════════════════════
-// 상태별 시트 (기본 정의 - v7.2가 덮어씀)
+// openStatusSheet STUB (Step 5 리팩토링)
+// ─────────────────────────────────────────
+// openStatusSheet의 실제 정의는 v7.2 패치에 있음.
+// 이 stub은 v7.2 패치 로드 전 (거의 발생하지 않음)의 안전장치.
+// v7.2 로드 후에는 window.openStatusSheet가 이 정의를 덮어씀.
+// 실제 정의: Part 4b의 window.openStatusSheet
 // ═══════════════════════════════════════
 function openStatusSheet(filter){
-  // v7.2 패치가 덮어씀
+  // v7.2 로드 전 임시 동작: 아무것도 하지 않음 (사용자 클릭 무시)
+  console.warn('[Step 5 stub] openStatusSheet 호출됨 - v7.2 미로드 상태');
 }
 
 // ═══════════════════════════════════════
@@ -2595,74 +2601,19 @@ function resolveWorkExecution(work, maps){
 }
 
 /* =========================================================
-   12. 상태별 작업 목록 (v7.2가 덮어씀)
+   12. 상태별 작업 목록 (Step 5: v7.2가 정본으로 덮어씀)
+   ─────────────────────────────────────────
+   ⚠️ 죽은 코드 (Dead Code) 제거됨
+   
+   기존 v7.1 정의(openStatusSheet, renderStatusSheet)는
+   v7.2 패치의 window.openStatusSheet + 
+   window.dashboardRenderStatusSheet가 완전히 덮어쓰므로
+   실제 동작하지 않았음. Step 5 리팩토링에서 삭제.
+   
+   실제 동작 정의:
+   - openStatusSheet: Part 4b의 window.openStatusSheet
+   - 렌더링: Part 4b의 window.dashboardRenderStatusSheet
    ========================================================= */
-
-function openStatusSheet(filter){
-  var maps = buildExecutionMaps();
-
-  var enriched = dispWorks.map(function(work){
-    var execution = resolveWorkExecution(work, maps);
-    return {
-      workId: work.workId || work.id,
-      workName: work.workName || '미지정',
-      company: work.company || '미지정',
-      location: work.location || work.locationRaw || '미지정',
-      riskLevel: work.riskLevel || '일반',
-      status: execution.status,
-      permit: execution.permit,
-      permitNo: execution.permitNo,
-      tbm: execution.tbm,
-      emergency: execution.emergency
-    };
-  });
-
-  var filtered = [];
-  var title = '작업 목록';
-
-  if(filter === 'wait'){
-    filtered = enriched.filter(function(work){
-      return work.status === '대기중' || work.status === '허가진행중';
-    });
-    title = '🟡 허가전 작업';
-  }else if(filter === 'run'){
-    filtered = enriched.filter(function(work){
-      return work.status === '허가완료' || work.status === '작업중';
-    });
-    title = '🟠 작업중';
-  }else if(filter === 'stop'){
-    filtered = enriched.filter(function(work){ return work.status === '작업중지'; });
-    title = '🔴 작업중지';
-  }else if(filter === 'done'){
-    filtered = enriched.filter(function(work){
-      return work.status === '작업완료' || work.status === '완료';
-    });
-    title = '🟢 작업완료';
-  }else if(filter === 'danger'){
-    filtered = enriched.filter(function(work){ return work.riskLevel === '고위험'; });
-    title = '🚨 고위험 작업';
-  }else{
-    filtered = enriched;
-    title = '📋 전체 작업';
-  }
-
-  var titleElement = document.getElementById('wsSheetTitle');
-  if(titleElement){
-    titleElement.innerHTML = title +
-      ' <span style="background:var(--tint);color:var(--posco);font-size:12px;font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
-      filtered.length + '건</span>';
-  }
-
-  renderStatusSheet(filtered, filter);
-  openSheet('ws');
-}
-
-// renderStatusSheet는 v7.2가 정본으로 정의함
-function renderStatusSheet(works, filter){
-  var body = document.getElementById('wsBody');
-  if(!body) return;
-  body.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><div class="empty-txt">v7.2 패치가 로드되지 않았습니다</div></div>';
-}
 
 /* =========================================================
    13. 설정 화면 안내 문구 자동 변경
@@ -3108,7 +3059,35 @@ updateWorkStatus();
     });
   };
 
+
+  /* ═══════════════════════════════════════════════════════
+     ⭐ openStatusSheet 정본 (Step 5 리팩토링에서 확정)
+     
+     이 함수가 실제 동작하는 유일한 정의입니다.
+     - 본체 script의 openStatusSheet()는 v7.2 로드 전 안전 stub
+     - v7.1 패치의 openStatusSheet()는 Step 5에서 삭제됨 (죽은 코드)
+     
+     ─────────────────────────────────────────
+     필터별 표시 규칙:
+     
+       'wait'    → status === '허가전'
+       'run'     → status === '허가완료' 또는 '작업중'
+       'stop'    → status === '작업중지'
+       'done'    → status === '작업종료' 또는 '예정'
+                   (미래 날짜면 타이틀은 "📅 예정 작업"으로 변경)
+       'danger'  → riskLevel === '고위험' (상태 무관)
+       'all'     → 전체
+     
+     ─────────────────────────────────────────
+     status 값의 출처:
+       dashboardGetDisplayStatus(work, execution)의 반환값
+       (2단계 판정: 실행상태 + 날짜 → 표시상태)
+     
+     렌더링 위임:
+       dashboardRenderStatusSheet(filtered, filter)
+     ═══════════════════════════════════════════════════════ */
   window.openStatusSheet = function(filter){
+
     var maps = buildExecutionMaps();
 
     var enriched = dispWorks.map(function(work){
