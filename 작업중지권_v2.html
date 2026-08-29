@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D6273D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>작업중지권 · 긴급 신고</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/* ═══════════════════════════════════════
+   작업중지권 v2.0 (독립 앱)
+   산업안전보건법 제52조 · 근로자 작업중지권
+   최종 수정: 2026-08-29
+   
+   ⭐ 특징:
+   - 독립 앱 (workId 없이도 접근 가능)
+   - 긴급 원터치 신고
+   - 빨간색 강조 UI (긴급성)
+   - 대시보드 시스템 통일
+   ═══════════════════════════════════════ */
+
+:root{
+  --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
+  --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
+  --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
+  --line:#DFE7EF;
+  --run:#E8590C; --run-bg:#FFF4EC;
+  --stop:#D6273D; --stop-bg:#FFF3F5;
+  --stop-dark:#8B1728;
+  --done:#0E8A6B; --done-bg:#EDFAF6;
+  --warn:#B45309; --warn-bg:#FEF6E7;
+  --r:18px; --r-s:14px; --r-xs:10px;
+  --sh:0 2px 10px rgba(15,29,43,.06);
+  --sh-m:0 4px 16px rgba(15,29,43,.09);
+}
+
+[data-theme="dark"]{
+  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
+  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
+  --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
+  --faint:#5A7288; --line:#1E3145;
+  --run:#FF8A3D; --run-bg:#2A1A0E;
+  --stop:#FF5F70; --stop-bg:#2B1116;
+  --stop-dark:#4A0F1A;
+  --done:#3DD9AE; --done-bg:#0D2620;
+  --warn:#FBBF24; --warn-bg:#2A2010;
+  --sh:0 2px 10px rgba(0,0,0,.35);
+  --sh-m:0 4px 16px rgba(0,0,0,.45);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+html,body{width:100%;overflow-x:hidden;
+  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+
+body{
+  color:var(--ink);line-height:1.5;font-size:16px;
+  padding-bottom:max(20px,env(safe-area-inset-bottom));
+  min-height:100vh;
+  /* 긴급 앱 - 빨간 그라디언트 배경 */
+  background:linear-gradient(135deg,
+    #8B1728 0%,
+    var(--stop) 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+  transition:background .25s,color .25s;
+}
+[data-theme="dark"] body{
+  background:linear-gradient(135deg,
+    #4A0F1A 0%,
+    #2B1116 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+}
+
+.app{
+  max-width:480px;margin:0 auto;min-height:100vh;
+  background:var(--bg);position:relative;
+}
+
+@media(min-width:768px){
+  body{padding:24px 0 max(20px,env(safe-area-inset-bottom));}
+  .app{
+    min-height:calc(100vh - 48px);
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:
+      0 0 40px rgba(214,39,61,.3),
+      0 20px 60px rgba(0,0,0,.15);
+  }
+}
+
+/* ═══ TOP NAV (빨간색 강조) ═══ */
+.topnav{
+  position:sticky;top:0;z-index:200;
+  background:linear-gradient(158deg,#8B1728 0%,var(--stop) 100%);
+  height:56px;padding:0 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 16px rgba(214,39,61,.4);
+  overflow:hidden;
+}
+.topnav::after{
+  content:'';position:absolute;right:-40px;top:-46px;width:150px;height:150px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.topnav-l{display:flex;align-items:center;gap:10px;position:relative;z-index:1;min-width:0;}
+.topnav-title{
+  color:#fff;font-size:16px;font-weight:800;
+  letter-spacing:-.03em;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
+}
+.topnav-r{display:flex;align-items:center;gap:8px;position:relative;z-index:1;flex-shrink:0;}
+
+.back-btn,.theme-btn,.home-btn{
+  background:rgba(255,255,255,.16);border:none;color:#fff;
+  border-radius:12px;font-size:20px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+.back-btn{width:40px;height:40px;font-size:22px;}
+.theme-btn{width:34px;height:34px;font-size:16px;}
+.home-btn{width:40px;height:40px;font-size:20px;}
+.back-btn:active,.theme-btn:active,.home-btn:active{
+  transform:scale(.9);background:rgba(255,255,255,.3);
+}
+
+/* Permit 배지 */
+.permit-badge{background:rgba(255,255,255,.18);color:#fff;
+  font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
+  letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  display:none;}
+.permit-badge.show{display:inline-block;}
+
+/* ═══ MAIN ═══ */
+.screen{display:none;padding:16px 14px;}
+.screen.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+/* ═══ 긴급 히어로 ═══ */
+.emergency-hero{
+  background:linear-gradient(158deg,#8B1728 0%,var(--stop) 100%);
+  color:#fff;
+  border-radius:22px;padding:28px 22px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 24px rgba(214,39,61,.35);
+}
+.emergency-hero::after{
+  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.emergency-ico{
+  font-size:56px;margin-bottom:10px;position:relative;z-index:1;line-height:1;
+  animation:emg-shake 3s infinite;
+}
+@keyframes emg-shake{
+  0%,90%,100%{transform:rotate(0deg);}
+  92%,96%{transform:rotate(-8deg);}
+  94%,98%{transform:rotate(8deg);}
+}
+.emergency-title{
+  font-size:24px;font-weight:900;
+  letter-spacing:-.035em;position:relative;z-index:1;line-height:1.3;
+}
+.emergency-sub{
+  font-size:14px;opacity:.95;margin-top:10px;
+  line-height:1.6;font-weight:600;position:relative;z-index:1;
+}
+
+.legal-badge{
+  background:rgba(255,255,255,.18);
+  border:1.5px solid rgba(255,255,255,.35);
+  border-radius:12px;
+  padding:10px 14px;margin-top:14px;
+  font-size:12px;font-weight:700;line-height:1.55;
+  position:relative;z-index:1;
+}
+.legal-badge strong{font-weight:900;}
+
+/* ═══ 원터치 긴급 신고 버튼 ═══ */
+.urgent-btn{
+  width:100%;padding:28px 20px;
+  background:linear-gradient(135deg,#8B1728,var(--stop));
+  color:#fff;border:none;border-radius:20px;
+  font-family:inherit;font-size:20px;font-weight:900;
+  cursor:pointer;letter-spacing:-.02em;
+  box-shadow:0 6px 24px rgba(214,39,61,.4);
+  margin-bottom:14px;
+  animation:urgent-pulse 2.5s infinite;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:.15s;
+}
+.urgent-btn:active{transform:scale(.97);}
+.urgent-btn-ico{font-size:38px;line-height:1;}
+.urgent-btn-sub{font-size:13px;font-weight:600;opacity:.9;}
+@keyframes urgent-pulse{
+  0%,100%{box-shadow:0 6px 24px rgba(214,39,61,.4);}
+  50%{box-shadow:0 6px 40px rgba(214,39,61,.75);}
+}
+
+/* ═══ INFO BOXES ═══ */
+.info-box,.warn-box,.danger-box{
+  padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;
+}
+.info-box{background:var(--tint);border-left:4px solid var(--posco);}
+.warn-box{background:var(--warn-bg);border-left:4px solid var(--warn);}
+.danger-box{background:var(--stop-bg);border-left:4px solid var(--stop);}
+.info-box-t,.warn-box-t,.danger-box-t{
+  font-size:12px;font-weight:800;margin-bottom:4px;letter-spacing:-.01em;
+}
+.info-box-t{color:var(--posco);}
+[data-theme="dark"] .info-box-t{color:var(--bright);}
+.warn-box-t{color:var(--warn);}
+.danger-box-t{color:var(--stop);}
+.info-box-b,.warn-box-b,.danger-box-b{
+  font-size:13px;line-height:1.65;font-weight:600;
+}
+.info-box-b{color:var(--body);}
+.warn-box-b{color:var(--warn);}
+.danger-box-b{color:var(--stop);}
+[data-theme="dark"] .danger-box-b{color:#FF9BAB;}
+
+/* ═══ 연결 정보 배너 ═══ */
+.permit-info-banner{
+  background:var(--tint);border-left:5px solid var(--posco);
+  border-radius:0 var(--r-s) var(--r-s) 0;padding:14px 16px;margin-bottom:14px;
+  animation:slideDown .35s cubic-bezier(.32,.72,0,1);
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.pib-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.pib-badge{background:var(--posco);color:#fff;
+  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
+  letter-spacing:.5px;}
+.pib-no{font-size:12px;font-weight:800;color:var(--posco);
+  font-family:'Courier New',monospace;letter-spacing:.5px;}
+[data-theme="dark"] .pib-no{color:var(--bright);}
+.pib-name{font-size:15px;font-weight:800;color:var(--ink);
+  line-height:1.4;margin-bottom:4px;letter-spacing:-.02em;}
+.pib-meta{font-size:12px;color:var(--sub);font-weight:600;
+  display:flex;gap:12px;flex-wrap:wrap;}
+</style>
+<style>
+/* ═══════════════════════════════════════
+   Part 2: 폼 + 사유 카드 + 다이얼로그
+   ═══════════════════════════════════════ */
+
+/* ═══ FORM ═══ */
+.form-section{
+  background:var(--card);border-radius:var(--r);padding:18px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.form-section-title{
+  font-size:15px;font-weight:800;color:var(--ink);
+  margin-bottom:14px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--line);
+}
+.form-section-title.danger{
+  color:var(--stop);
+  border-bottom-color:var(--stop);
+}
+.form-group{margin-bottom:14px;}
+.form-group:last-child{margin-bottom:0;}
+.f-label{
+  font-size:14px;font-weight:800;color:var(--body);
+  margin-bottom:7px;display:block;letter-spacing:-.02em;
+}
+.req{color:var(--stop);margin-left:2px;}
+
+.f-input,.f-textarea{
+  width:100%;padding:14px 15px;border:2px solid var(--line);
+  border-radius:12px;font-size:15px;background:var(--sunk);color:var(--ink);
+  font-family:inherit;font-weight:600;min-height:48px;
+  box-sizing:border-box;transition:.15s;
+}
+.f-input:focus,.f-textarea:focus{
+  outline:none;border-color:var(--stop);background:var(--card);
+  box-shadow:0 0 0 3px rgba(214,39,61,.1);
+}
+.f-input::placeholder,.f-textarea::placeholder{color:var(--faint);font-weight:500;}
+.f-textarea{
+  resize:vertical;min-height:90px;line-height:1.6;
+}
+
+.f-input[type="datetime-local"]{
+  -webkit-appearance:none;appearance:none;
+  padding:13px 44px 13px 15px;
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:20px 20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .f-input[type="datetime-local"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* 자동 채움 필드 */
+.f-input.auto-filled{
+  background:var(--done-bg);border-color:var(--done);color:var(--ink);
+}
+
+/* ═══ 사유 선택 카드 (2x3 그리드) ═══ */
+.reason-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-bottom:12px;
+}
+.reason-card{
+  background:var(--card);border:2.5px solid var(--line);
+  border-radius:var(--r-s);padding:16px 8px;
+  text-align:center;cursor:pointer;transition:.15s;
+  box-shadow:var(--sh);
+}
+.reason-card:active{transform:scale(.96);}
+.reason-card.selected{
+  border-color:var(--stop);
+  background:var(--stop-bg);
+  box-shadow:0 0 0 3px rgba(214,39,61,.15);
+}
+.reason-ico{
+  font-size:30px;margin-bottom:6px;line-height:1;
+}
+.reason-txt{
+  font-size:13px;font-weight:700;color:var(--body);
+  line-height:1.35;letter-spacing:-.02em;
+}
+.reason-card.selected .reason-txt{
+  color:var(--stop);font-weight:800;
+}
+
+/* ═══ 사진 첨부 ═══ */
+.photo-upload{
+  background:var(--card);border:2px dashed var(--line);
+  border-radius:12px;padding:24px 16px;text-align:center;
+  cursor:pointer;transition:.15s;
+}
+.photo-upload:active{transform:scale(.98);}
+.photo-upload:hover{border-color:var(--stop);background:var(--stop-bg);}
+.photo-upload-ico{
+  font-size:36px;margin-bottom:8px;line-height:1;color:var(--sub);
+}
+.photo-upload-txt{
+  font-size:13px;font-weight:700;color:var(--sub);
+  line-height:1.5;
+}
+.photo-upload-sub{
+  font-size:11px;color:var(--faint);margin-top:4px;font-weight:600;
+}
+.photo-preview{
+  position:relative;border-radius:12px;overflow:hidden;
+  background:var(--sunk);
+}
+.photo-preview img{width:100%;display:block;}
+.photo-preview-del{
+  position:absolute;top:8px;right:8px;
+  width:32px;height:32px;border-radius:50%;
+  background:rgba(0,0,0,.7);color:#fff;border:none;
+  font-size:18px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+}
+.photo-preview-del:active{transform:scale(.9);}
+
+/* ═══ 서명 ═══ */
+.sig-wrap{
+  background:var(--sunk);border-radius:var(--r-s);padding:14px;
+}
+.sig-label{
+  font-size:13px;font-weight:800;color:var(--body);
+  margin-bottom:10px;letter-spacing:-.02em;
+}
+.sig-canvas{
+  width:100%;height:150px;background:#fff;
+  border:2.5px dashed var(--line);border-radius:var(--r-s);
+  cursor:crosshair;touch-action:none;display:block;
+}
+[data-theme="dark"] .sig-canvas{background:#F7FAFC;}
+.sig-clear{
+  width:100%;padding:11px;margin-top:8px;
+  border:2px solid var(--line);border-radius:10px;
+  background:var(--card);color:var(--sub);
+  font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
+  transition:.15s;
+}
+.sig-clear:active{transform:scale(.98);}
+
+/* ═══ 완료 화면 ═══ */
+.complete-hero{
+  background:linear-gradient(158deg,#8B1728 0%,var(--stop) 100%);
+  color:#fff;
+  border-radius:22px;padding:32px 22px 24px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 24px rgba(214,39,61,.35);
+}
+.complete-hero::after{
+  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.complete-ico{
+  font-size:64px;margin-bottom:12px;line-height:1;position:relative;z-index:1;
+}
+.complete-title{
+  font-size:24px;font-weight:900;letter-spacing:-.035em;
+  position:relative;z-index:1;
+}
+.complete-sub{
+  font-size:14px;opacity:.9;margin-top:10px;
+  line-height:1.65;font-weight:600;position:relative;z-index:1;
+  white-space:pre-line;
+}
+
+.emergency-no-box{
+  background:var(--card);border:2px solid var(--stop);
+  border-radius:var(--r);padding:18px;
+  text-align:center;margin-bottom:14px;box-shadow:var(--sh);
+}
+.emergency-no-label{
+  font-size:11px;font-weight:800;color:var(--stop);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
+}
+.emergency-no-value{
+  font-size:22px;font-weight:900;color:var(--stop);
+  font-family:'Courier New',monospace;letter-spacing:1px;
+}
+
+/* ═══ 정보 카드 ═══ */
+.info-card{
+  background:var(--card);border-radius:var(--r);padding:16px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.info-card-title{
+  font-size:14px;font-weight:800;color:var(--ink);
+  margin-bottom:12px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--line);
+}
+.info-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--line);
+  font-size:13.5px;gap:12px;
+}
+.info-row:last-child{border-bottom:none;}
+.info-key{color:var(--sub);font-weight:700;flex-shrink:0;}
+.info-val{color:var(--ink);font-weight:800;text-align:right;
+  max-width:60%;word-break:break-word;letter-spacing:-.01em;}
+
+/* ═══ 처리 안내 ═══ */
+.process-steps{
+  background:var(--warn-bg);border-radius:var(--r);padding:16px 18px;
+  margin-bottom:14px;border-left:4px solid var(--warn);
+}
+.process-title{
+  font-size:13px;font-weight:800;color:var(--warn);
+  margin-bottom:10px;letter-spacing:-.02em;
+}
+.process-step{
+  display:flex;gap:10px;padding:8px 0;
+  font-size:13px;color:var(--body);font-weight:600;
+  line-height:1.55;
+}
+.process-step-num{
+  flex-shrink:0;width:22px;height:22px;
+  background:var(--warn);color:#fff;
+  border-radius:50%;
+  display:grid;place-items:center;
+  font-size:11px;font-weight:800;
+}
+
+/* ═══ 버튼 ═══ */
+.btn-row{display:flex;gap:10px;margin-top:14px;}
+.btn-primary,.btn-secondary,.btn-danger,.btn-warn,.btn-success{
+  flex:1;padding:16px;border:none;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.btn-primary:active,.btn-secondary:active,.btn-danger:active,.btn-warn:active,.btn-success:active{
+  transform:scale(.98);
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--deep),var(--bright));
+  color:#fff;box-shadow:0 4px 14px rgba(0,60,126,.28);
+}
+.btn-primary:disabled{
+  background:var(--line);color:var(--faint);
+  box-shadow:none;cursor:not-allowed;transform:none;
+}
+.btn-secondary{
+  background:var(--card);color:var(--sub);
+  border:2px solid var(--line);
+}
+.btn-danger{
+  background:linear-gradient(135deg,#8B1728,var(--stop));
+  color:#fff;box-shadow:0 4px 14px rgba(214,39,61,.28);
+}
+.btn-danger:disabled{
+  background:var(--line);color:var(--faint);
+  box-shadow:none;cursor:not-allowed;transform:none;
+}
+.btn-warn{
+  background:linear-gradient(135deg,#B45309,var(--warn));
+  color:#fff;box-shadow:0 4px 14px rgba(180,83,9,.28);
+}
+.btn-success{
+  background:linear-gradient(135deg,#0B7A5F,var(--done));
+  color:#fff;box-shadow:0 4px 14px rgba(14,138,107,.28);
+}
+
+/* ═══ TOAST ═══ */
+.toast-wrap{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column;gap:7px;
+  pointer-events:none;width:90%;max-width:390px;
+}
+.toast{
+  padding:13px 17px;border-radius:12px;
+  font-size:14px;font-weight:800;color:#fff;
+  display:flex;align-items:center;gap:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+  animation:tslide .3s ease;pointer-events:all;
+  letter-spacing:-.02em;
+}
+.toast.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
+.toast.danger{background:linear-gradient(135deg,#8B1728,var(--stop));}
+.toast.info{background:linear-gradient(135deg,var(--deep),var(--bright));}
+.toast.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
+@keyframes tslide{
+  from{opacity:0;transform:translateY(-12px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ═══ 커스텀 다이얼로그 ═══ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:99999;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:340px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--ink);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{
+  background:var(--sunk);color:var(--sub);
+  border:2px solid var(--line);
+}
+.custom-confirm-btn-confirm{
+  background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:linear-gradient(135deg,#8B1728,var(--stop));
+  box-shadow:0 4px 12px rgba(214,39,61,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:linear-gradient(135deg,#B45309,var(--warn));
+  box-shadow:0 4px 12px rgba(180,83,9,.25);
+}
+.custom-confirm-btn-confirm.success{
+  background:linear-gradient(135deg,#0B7A5F,var(--done));
+  box-shadow:0 4px 12px rgba(14,138,107,.25);
+}
+.custom-confirm-buttons.single{justify-content:center;}
+.custom-confirm-buttons.single .custom-confirm-btn-cancel{display:none;}
+
+/* ═══ 반응형 ═══ */
+@media(max-width:360px){
+  .topnav-title{font-size:14px;}
+  .theme-btn{width:32px;height:32px;font-size:15px;}
+  .back-btn,.home-btn{width:36px;height:36px;font-size:18px;}
+  .emergency-title{font-size:20px;}
+  .urgent-btn{font-size:18px;padding:22px 16px;}
+  .urgent-btn-ico{font-size:32px;}
+  .reason-grid{grid-template-columns:1fr;}
+  .btn-row{flex-wrap:wrap;}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ TOP NAV ═══ -->
+<nav class="topnav">
+  <div class="topnav-l">
+    <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
+    <div class="topnav-title">
+      <span>🛑</span>
+      <span>작업중지권</span>
+    </div>
+  </div>
+  <div class="topnav-r">
+    <div class="permit-badge" id="permitBadge"></div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="테마">🌙</button>
+    <button class="home-btn" onclick="goHome()" aria-label="홈">🏠</button>
+  </div>
+</nav>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 1: 시작 화면 (긴급 원터치)
+     ══════════════════════════════════════ -->
+<div class="screen active" id="screen-welcome">
+  <!-- 연결된 허가서 정보 (URL 파라미터 있을 때만) -->
+  <div id="permitInfoBanner" style="display:none;"></div>
+
+  <div class="emergency-hero">
+    <div class="emergency-ico">🚨</div>
+    <div class="emergency-title">작업중지 요청</div>
+    <div class="emergency-sub">
+      위험 상황 발생 시 즉시 신고하세요<br>
+      담당자가 확인 후 조치합니다
+    </div>
+    <div class="legal-badge">
+      <strong>산업안전보건법 제52조</strong><br>
+      근로자는 산업재해가 발생할 급박한 위험이<br>
+      있을 때 작업을 중지할 권리가 있습니다
+    </div>
+  </div>
+
+  <!-- 원터치 긴급 신고 버튼 -->
+  <button class="urgent-btn" onclick="startUrgentReport()">
+    <span class="urgent-btn-ico">🚨</span>
+    <span>긴급 작업중지 요청</span>
+    <span class="urgent-btn-sub">클릭 후 상세 정보 입력</span>
+  </button>
+
+  <div class="info-box">
+    <div class="info-box-t">📌 안내</div>
+    <div class="info-box-b">
+      • 버튼 클릭 즉시 요청이 접수됩니다<br>
+      • 이후 상세 정보를 추가로 입력해주세요<br>
+      • 담당자가 현장 확인 후 조치합니다<br>
+      • 작업중지권 행사 후 불이익 금지 (법적 보호)
+    </div>
+  </div>
+
+  <div class="warn-box">
+    <div class="warn-box-t">⚠️ 다음 상황에서 신고하세요</div>
+    <div class="warn-box-b">
+      • 화재·폭발·감전 위험<br>
+      • 추락·낙하·붕괴 위험<br>
+      • 유해가스·질식 위험<br>
+      • 안전조치 미흡·PPE 미착용<br>
+      • 기타 급박한 재해 위험
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 2: 상세 정보 입력
+     ══════════════════════════════════════ -->
+<div class="screen" id="screen-detail">
+  <div class="danger-box">
+    <div class="danger-box-t">🛑 작업중지 요청이 접수되었습니다</div>
+    <div class="danger-box-b">
+      담당자 확인을 위해 아래 상세 정보를 입력해주세요.<br>
+      정보가 정확할수록 신속한 조치가 가능합니다.
+    </div>
+  </div>
+
+  <!-- 사유 선택 -->
+  <div class="form-section">
+    <div class="form-section-title danger">
+      <span>⛔</span>
+      <span>작업중지 사유 (복수 선택)</span>
+    </div>
+    <div class="reason-grid" id="reasonGrid">
+      <div class="reason-card" onclick="toggleReason(this,'화재·폭발 위험')">
+        <div class="reason-ico">🔥</div>
+        <div class="reason-txt">화재·폭발<br>위험</div>
+      </div>
+      <div class="reason-card" onclick="toggleReason(this,'감전 위험')">
+        <div class="reason-ico">⚡</div>
+        <div class="reason-txt">감전<br>위험</div>
+      </div>
+      <div class="reason-card" onclick="toggleReason(this,'추락 위험')">
+        <div class="reason-ico">🪜</div>
+        <div class="reason-txt">추락<br>위험</div>
+      </div>
+      <div class="reason-card" onclick="toggleReason(this,'밀폐공간 질식')">
+        <div class="reason-ico">😮‍💨</div>
+        <div class="reason-txt">밀폐공간<br>질식</div>
+      </div>
+      <div class="reason-card" onclick="toggleReason(this,'중량물 낙하')">
+        <div class="reason-ico">🏗️</div>
+        <div class="reason-txt">중량물<br>낙하</div>
+      </div>
+      <div class="reason-card" onclick="toggleReason(this,'기타 위험')">
+        <div class="reason-ico">⚠️</div>
+        <div class="reason-txt">기타<br>위험</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상세 정보 -->
+  <div class="form-section">
+    <div class="form-section-title">
+      <span>📝</span>
+      <span>작업중지 상세</span>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">작업명<span class="req">*</span></label>
+      <input class="f-input" id="stop-work-name" placeholder="예: 3라인 소성로 시운전">
+    </div>
+    
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">발생 장소<span class="req">*</span></label>
+        <input class="f-input" id="stop-location" placeholder="1공장 2층">
+      </div>
+      <div class="form-group">
+        <label class="f-label">발생 일시<span class="req">*</span></label>
+        <input class="f-input" type="datetime-local" id="stop-datetime">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">위험 상황 설명<span class="req">*</span></label>
+      <textarea class="f-textarea" id="stop-description" 
+                placeholder="발견한 위험 상황을 구체적으로 설명하세요&#10;예: 안전난간 미설치 상태에서 고소작업 진행 중"></textarea>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">안전 기준 위반 사항 (선택)</label>
+      <input class="f-input" id="stop-violation" 
+             placeholder="예: 안전모 미착용, 안전대 미설치, LOTO 미실시">
+    </div>
+  </div>
+
+  <!-- 사진 첨부 -->
+  <div class="form-section">
+    <div class="form-section-title">
+      <span>📷</span>
+      <span>현장 사진 (선택)</span>
+    </div>
+    
+    <div id="photoUploadArea">
+      <label for="photoInput" class="photo-upload">
+        <div class="photo-upload-ico">📷</div>
+        <div class="photo-upload-txt">터치하여 사진 촬영</div>
+        <div class="photo-upload-sub">JPG, PNG (최대 5MB)</div>
+      </label>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" 
+             style="display:none" onchange="onPhotoSelect(event)">
+    </div>
+    
+    <div id="photoPreview" style="display:none;" class="photo-preview">
+      <img id="photoImg" src="" alt="첨부 사진">
+      <button class="photo-preview-del" onclick="removePhoto()">×</button>
+    </div>
+  </div>
+
+  <!-- 요청자 정보 -->
+  <div class="form-section">
+    <div class="form-section-title">
+      <span>👤</span>
+      <span>요청자 정보</span>
+    </div>
+    
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">이름<span class="req">*</span></label>
+        <input class="f-input" id="req-name" placeholder="홍길동">
+      </div>
+      <div class="form-group">
+        <label class="f-label">소속 부서<span class="req">*</span></label>
+        <input class="f-input" id="req-dept" placeholder="안전팀">
+      </div>
+    </div>
+    
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">직위</label>
+        <input class="f-input" id="req-position" placeholder="안전관리자">
+      </div>
+      <div class="form-group">
+        <label class="f-label">연락처<span class="req">*</span></label>
+        <input class="f-input" type="tel" id="req-phone" placeholder="010-1234-5678">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">서명<span class="req">*</span></label>
+      <div class="sig-wrap">
+        <div class="sig-label">요청자 서명</div>
+        <canvas id="req-sig" class="sig-canvas" width="400" height="150"></canvas>
+        <button class="sig-clear" onclick="clearSig()">🗑️ 서명 지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="danger-box">
+    <div class="danger-box-t">⚠️ 최종 확인</div>
+    <div class="danger-box-b">
+      제출 후 <strong>모든 관계자에게 즉시 통지</strong>됩니다.<br>
+      허위 신고 시 처벌받을 수 있습니다.
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="cancelReport()">취소</button>
+    <button class="btn-danger" style="flex:2;" onclick="submitReport()">
+      🛑 작업중지 요청 제출
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 3: 완료 화면
+     ══════════════════════════════════════ -->
+<div class="screen" id="screen-complete">
+  <div class="complete-hero">
+    <div class="complete-ico">✅</div>
+    <div class="complete-title">신고 접수 완료</div>
+    <div class="complete-sub">작업중지 요청이 접수되었습니다.
+담당자에게 즉시 통지되었으며
+현장 확인 후 조치가 진행됩니다.</div>
+  </div>
+
+  <!-- 접수 번호 -->
+  <div class="emergency-no-box">
+    <div class="emergency-no-label">🚨 접수 번호</div>
+    <div class="emergency-no-value" id="fin-emergency-no">-</div>
+  </div>
+
+  <!-- 접수 정보 -->
+  <div class="info-card">
+    <div class="info-card-title">
+      <span>📋</span>
+      <span>접수 정보</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">작업명</span>
+      <span class="info-val" id="fin-work-name">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">발생 장소</span>
+      <span class="info-val" id="fin-location">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">발생 일시</span>
+      <span class="info-val" id="fin-datetime">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">사유</span>
+      <span class="info-val" id="fin-reasons">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">요청자</span>
+      <span class="info-val" id="fin-requester">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">접수 시각</span>
+      <span class="info-val" id="fin-created-at">-</span>
+    </div>
+  </div>
+
+  <!-- 처리 단계 안내 -->
+  <div class="process-steps">
+    <div class="process-title">📌 처리 절차</div>
+    <div class="process-step">
+      <div class="process-step-num">1</div>
+      <div>담당자 즉시 통지 (완료)</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">2</div>
+      <div>현장 확인 및 위험 요소 조사</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">3</div>
+      <div>필요 조치 실시 (안전조치·시정)</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">4</div>
+      <div>조치 완료 후 작업 재개 검토</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">5</div>
+      <div>결과 통보 (요청자에게)</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-box-t">💡 안내</div>
+    <div class="info-box-b">
+      • 처리 현황은 <strong>대시보드</strong>에서 확인 가능합니다<br>
+      • 추가 문의: <strong>안전관리팀 054-240-5131</strong><br>
+      • 작업중지권 행사에 따른 <strong>불이익은 법으로 금지</strong>됩니다
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="reportAnother()">추가 신고</button>
+    <button class="btn-primary" style="flex:2;" onclick="goHome()">
+      🏠 대시보드
+    </button>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- 커스텀 확인 다이얼로그 -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons" id="customConfirmButtons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════
+// 작업중지권 v2.0 - JavaScript
+// 산업안전보건법 제52조 · 독립 앱
+// 저장: localStorage.emergencies (대시보드 자동 연동)
+// ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+var stopData = {
+  emergencyNo: '',
+  workId: '',
+  permitNo: '',
+  riskId: '',
+  tbmNo: '',
+  reasons: [],
+  workName: '',
+  location: '',
+  datetime: '',
+  description: '',
+  violation: '',
+  photo: null,
+  requesterName: '',
+  requesterDept: '',
+  requesterPosition: '',
+  requesterPhone: '',
+  requesterSig: null,
+  status: '요청',
+  detailStatus: '요청접수',
+  date: '',
+  createdAt: '',
+  createdBy: ''
+};
+
+var isUrgentSubmitted = false;  // 긴급 원터치 신고 상태
+var isDrawing = false;
+
+// ═══════════════════════════════════════════════════
+// 커스텀 다이얼로그
+// ═══════════════════════════════════════════════════
+var customConfirmCallback = null;
+
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  
+  var iconEl = document.getElementById('customConfirmIcon');
+  var titleEl = document.getElementById('customConfirmTitle');
+  var messageEl = document.getElementById('customConfirmMessage');
+  var okBtn = document.getElementById('customConfirmOk');
+  var overlay = document.getElementById('customConfirmOverlay');
+  var buttonsEl = document.getElementById('customConfirmButtons');
+  
+  if(!overlay){
+    var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+    if(callback) callback(result);
+    return;
+  }
+  
+  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+  if(titleEl) titleEl.textContent = opts.title || '확인';
+  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+  
+  if(okBtn){
+    okBtn.textContent = opts.okText || '확인';
+    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+    if(opts.okType === 'danger') okBtn.classList.add('danger');
+    else if(opts.okType === 'warn') okBtn.classList.add('warn');
+    else if(opts.okType === 'success') okBtn.classList.add('success');
+  }
+  
+  if(buttonsEl){
+    if(opts.alertOnly){
+      buttonsEl.classList.add('single');
+    } else {
+      buttonsEl.classList.remove('single');
+    }
+  }
+  
+  customConfirmCallback = callback || function(){};
+  overlay.classList.add('active');
+}
+
+function customConfirmClose(result){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay) overlay.classList.remove('active');
+  
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function'){
+    setTimeout(function(){ cb(result); }, 150);
+  }
+}
+
+function showCustomAlert(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  opts.alertOnly = true;
+  opts.okText = opts.okText || '확인';
+  showCustomConfirm(opts, callback);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function(){
+  initTheme();
+  setupThemeSync();
+  initSignaturePad();
+  setNow();
+  
+  // URL 파라미터 처리
+  var params = new URLSearchParams(window.location.search);
+  var workId = params.get('workId');
+  var permitNo = params.get('permitNo');
+  var mode = params.get('mode');  // 'urgent' or 'stop'
+  
+  if(workId){
+    console.log('[작업중지권] URL workId:', workId);
+    stopData.workId = workId;
+    loadWorkFromDb(workId);
+  }
+  
+  if(permitNo){
+    console.log('[작업중지권] URL permitNo:', permitNo);
+    stopData.permitNo = permitNo;
+    loadPermitInfo(permitNo);
+    
+    // 상단 배지 표시
+    var badge = document.getElementById('permitBadge');
+    if(badge){
+      badge.textContent = permitNo;
+      badge.classList.add('show');
+    }
+  }
+  
+  // ESC / 오버레이 클릭
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var overlay = document.getElementById('customConfirmOverlay');
+      if(overlay && overlay.classList.contains('active')){
+        customConfirmClose(false);
+      }
+    }
+  });
+  
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) customConfirmClose(false);
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// 테마
+// ═══════════════════════════════════════════════════
+function initTheme(){
+  var saved = localStorage.getItem('theme');
+  if(saved) applyTheme(saved);
+  else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){
+    applyTheme('dark');
+  } else {
+    applyTheme('light');
+  }
+}
+
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', t);
+}
+
+function toggleTheme(){
+  var c = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(c === 'dark' ? 'light' : 'dark');
+}
+
+function setupThemeSync(){
+  window.addEventListener('storage', function(e){
+    if(e.key === 'theme' && e.newValue) applyTheme(e.newValue);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// 작업DB / 허가서 자동 조회
+// ═══════════════════════════════════════════════════
+function loadWorkFromDb(workId){
+  try{
+    var raw = localStorage.getItem('safetyDatabase');
+    if(!raw) return;
+    
+    var db = JSON.parse(raw);
+    var works = db.workHistory || [];
+    var work = works.find(function(w){
+      var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
+      return wid === workId;
+    });
+    
+    if(!work) return;
+    
+    // 작업 정보 자동 채움
+    stopData.workName = work.workName || work.workNameFull || '';
+    stopData.location = work.locationRaw || 
+                        (work.location && work.location.raw) || '';
+    
+    // 배너 표시
+    showPermitInfoBanner({
+      type: '작업',
+      no: workId,
+      name: stopData.workName,
+      company: work.company || work.executingCompany || '',
+      date: work.date || ''
+    });
+    
+    console.log('[작업중지권] 작업 정보 로드:', work.workName);
+    
+  }catch(e){
+    console.error('[loadWorkFromDb] 오류:', e);
+  }
+}
+
+function loadPermitInfo(permitNo){
+  try{
+    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
+    var permit = permits.find(function(p){ return p.permitNo === permitNo; });
+    
+    if(!permit) return;
+    
+    stopData.workId = permit.workId || permit.sourceWorkId || '';
+    stopData.riskId = permit.riskId || '';
+    stopData.workName = permit.workName || '';
+    stopData.location = (permit.location || '') + 
+                        (permit.detailLocation ? ' ' + permit.detailLocation : '');
+    
+    // TBM 정보 있으면 tbmNo도 저장
+    if(permit.tbmNo) stopData.tbmNo = permit.tbmNo;
+    
+    // 배너 표시
+    showPermitInfoBanner({
+      type: '허가서',
+      no: permitNo,
+      name: permit.workName || '',
+      company: permit.companyName || '',
+      workers: permit.workerCount || ''
+    });
+    
+    console.log('[작업중지권] 허가서 정보 로드:', permit.workName);
+    
+  }catch(e){
+    console.error('[loadPermitInfo] 오류:', e);
+  }
+}
+
+function showPermitInfoBanner(info){
+  var banner = document.getElementById('permitInfoBanner');
+  if(!banner) return;
+  
+  var metaHtml = '';
+  if(info.company) metaHtml += '<span>🏢 ' + escHtml(info.company) + '</span>';
+  if(info.workers) metaHtml += '<span>👥 ' + escHtml(info.workers) + '명</span>';
+  if(info.date) metaHtml += '<span>📅 ' + escHtml(info.date) + '</span>';
+  
+  banner.innerHTML = 
+    '<div class="permit-info-banner">' +
+      '<div class="pib-top">' +
+        '<span class="pib-badge">🔗 연결된 ' + escHtml(info.type) + '</span>' +
+        '<span class="pib-no">' + escHtml(info.no) + '</span>' +
+      '</div>' +
+      '<div class="pib-name">' + escHtml(info.name) + '</div>' +
+      (metaHtml ? '<div class="pib-meta">' + metaHtml + '</div>' : '') +
+    '</div>';
+  banner.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════
+// 시간 유틸
+// ═══════════════════════════════════════════════════
+function pad(n){ return ('0' + n).slice(-2); }
+
+function fmtDate(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+
+function fmtDateTime(d){
+  d = d || new Date();
+  return fmtDate(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function setNow(){
+  var el = document.getElementById('stop-datetime');
+  if(el && !el.value) el.value = fmtDateTime();
+}
+
+// ═══════════════════════════════════════════════════
+// 원터치 긴급 신고 시작
+// ═══════════════════════════════════════════════════
+function startUrgentReport(){
+  showCustomConfirm({
+    icon: '🚨',
+    title: '긴급 작업중지 요청',
+    message: '즉시 작업중지 요청이 접수됩니다.\n\n담당자에게 통지 후\n상세 정보를 추가로 입력해주세요.\n\n계속하시겠습니까?',
+    okText: '즉시 요청',
+    okType: 'danger'
+  }, function(ok){
+    if(!ok) return;
+    
+    // 최소 정보로 긴급 접수 생성 (기준서 §16.1)
+    createUrgentEmergency();
+    
+    // 상세 화면으로 이동
+    document.getElementById('screen-welcome').classList.remove('active');
+    document.getElementById('screen-detail').classList.add('active');
+    window.scrollTo(0, 0);
+    
+    showToast('🚨 긴급 신고 접수됨 - 상세 정보를 추가하세요', 'danger');
+  });
+}
+
+/**
+ * 긴급 원터치 접수 (최소 정보만 저장)
+ * 이후 사용자가 상세 정보를 추가하면 detailsCompleted: true로 갱신
+ */
+function createUrgentEmergency(){
+  try{
+    var now = new Date();
+    var emergencyNo = getNextEmergencyNo();
+    
+    stopData.emergencyNo = emergencyNo;
+    stopData.detailStatus = '요청접수';
+    stopData.createdAt = now.toISOString();
+    stopData.date = fmtDate(now);
+    
+    // 임시 저장 (상세 미완료 상태)
+    var urgent = {
+      emergencyNo: emergencyNo,
+      type: 'stop',
+      workId: stopData.workId || '',
+      permitNo: stopData.permitNo || '',
+      riskId: stopData.riskId || '',
+      tbmNo: stopData.tbmNo || '',
+      workName: stopData.workName || '(긴급 신고 - 상세 미입력)',
+      location: stopData.location || '(위치 미확인)',
+      datetime: fmtDateTime(now),
+      date: fmtDate(now),
+      reasons: [],
+      description: '(긴급 원터치 신고 - 상세 정보 입력 중)',
+      status: '요청',
+      detailStatus: '요청접수',
+      detailsCompleted: false,     // ⭐ 상세 미완료 표시
+      createdAt: now.toISOString(),
+      createdBy: 'anonymous',
+      updatedAt: now.toISOString(),
+      updatedBy: 'anonymous',
+      schemaVersion: 1
+    };
+    
+    var list = JSON.parse(localStorage.getItem('emergencies') || '[]');
+    list.push(urgent);
+    localStorage.setItem('emergencies', JSON.stringify(list));
+    
+    isUrgentSubmitted = true;
+    
+    // 대시보드 실시간 반영
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: { 
+          key: 'emergencies', 
+          workId: stopData.workId,
+          permitNo: stopData.permitNo,
+          timestamp: Date.now() 
+        }
+      }));
+    }catch(e){}
+    
+    // 허가서 상태 업데이트 (있는 경우)
+    if(stopData.permitNo){
+      updatePermitStatus(stopData.permitNo, '작업중지', emergencyNo);
+    }
+    
+    console.log('✅ 긴급 신고 접수:', emergencyNo);
+    
+  }catch(e){
+    console.error('긴급 신고 저장 실패:', e);
+    showCustomAlert({
+      icon: '❌',
+      title: '접수 실패',
+      message: '저장 중 오류가 발생했습니다.\n\n' + e.message,
+      okType: 'danger'
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 사유 선택
+// ═══════════════════════════════════════════════════
+function toggleReason(card, reason){
+  card.classList.toggle('selected');
+  if(card.classList.contains('selected')){
+    if(stopData.reasons.indexOf(reason) < 0){
+      stopData.reasons.push(reason);
+    }
+  } else {
+    stopData.reasons = stopData.reasons.filter(function(r){ return r !== reason; });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 사진 첨부
+// ═══════════════════════════════════════════════════
+function onPhotoSelect(event){
+  var file = event.target.files[0];
+  if(!file) return;
+  
+  // 5MB 제한
+  if(file.size > 5 * 1024 * 1024){
+    showCustomAlert({
+      icon: '⚠️',
+      title: '용량 초과',
+      message: '사진 크기가 5MB를 초과합니다.\n다른 사진을 선택해주세요.',
+      okType: 'warn'
+    });
+    return;
+  }
+  
+  var reader = new FileReader();
+  reader.onload = function(e){
+    stopData.photo = e.target.result;
+    document.getElementById('photoImg').src = stopData.photo;
+    document.getElementById('photoUploadArea').style.display = 'none';
+    document.getElementById('photoPreview').style.display = 'block';
+    showToast('📷 사진이 첨부되었습니다', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(){
+  stopData.photo = null;
+  document.getElementById('photoImg').src = '';
+  document.getElementById('photoUploadArea').style.display = 'block';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoInput').value = '';
+}
+
+// ═══════════════════════════════════════════════════
+// 서명
+// ═══════════════════════════════════════════════════
+function initSignaturePad(){
+  var canvas = document.getElementById('req-sig');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#1C2B3A';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  var lx = 0, ly = 0;
+  
+  function pos(e){
+    var r = canvas.getBoundingClientRect();
+    var src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - r.left) * (canvas.width / r.width),
+      y: (src.clientY - r.top) * (canvas.height / r.height)
+    };
+  }
+  
+  canvas.onmousedown = canvas.ontouchstart = function(e){
+    e.preventDefault();
+    isDrawing = true;
+    var p = pos(e);
+    lx = p.x;
+    ly = p.y;
+  };
+  
+  canvas.onmousemove = canvas.ontouchmove = function(e){
+    e.preventDefault();
+    if(!isDrawing) return;
+    var p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(lx, ly);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lx = p.x;
+    ly = p.y;
+  };
+  
+  canvas.onmouseup = canvas.ontouchend = function(){ isDrawing = false; };
+  canvas.onmouseleave = function(){ isDrawing = false; };
+}
+
+function clearSig(){
+  var canvas = document.getElementById('req-sig');
+  if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function hasSignature(){
+  var canvas = document.getElementById('req-sig');
+  if(!canvas) return false;
+  var d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  for(var i = 3; i < d.length; i += 4){
+    if(d[i] > 0) return true;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════
+// 상세 제출 (긴급 신고를 완전한 신고로 갱신)
+// ═══════════════════════════════════════════════════
+function submitReport(){
+  // 유효성 검증
+  if(stopData.reasons.length === 0){
+    showToast('작업중지 사유를 1개 이상 선택해주세요', 'danger');
+    return;
+  }
+  
+  var workName = getVal('stop-work-name');
+  var location = getVal('stop-location');
+  var datetime = getVal('stop-datetime');
+  var description = getVal('stop-description');
+  
+  if(!workName || !location || !datetime || !description){
+    showToast('상세 정보를 모두 입력해주세요', 'danger');
+    return;
+  }
+  
+  var name = getVal('req-name');
+  var dept = getVal('req-dept');
+  var phone = getVal('req-phone');
+  
+  if(!name || !dept || !phone){
+    showToast('요청자 정보를 모두 입력해주세요', 'danger');
+    return;
+  }
+  
+  if(!hasSignature()){
+    showToast('요청자 서명을 해주세요', 'danger');
+    return;
+  }
+  
+  // 최종 확인
+  showCustomConfirm({
+    icon: '🛑',
+    title: '작업중지 요청 제출',
+    message: '제출 후에는 수정할 수 없습니다.\n\n모든 관계자에게 즉시 통지됩니다.\n계속하시겠습니까?',
+    okText: '제출',
+    okType: 'danger'
+  }, function(ok){
+    if(!ok) return;
+    executeSubmit(workName, location, datetime, description, name, dept, phone);
+  });
+}
+
+function executeSubmit(workName, location, datetime, description, name, dept, phone){
+  try{
+    var now = new Date();
+    var canvas = document.getElementById('req-sig');
+    
+    // 상세 정보 채움
+    stopData.workName = workName;
+    stopData.location = location;
+    stopData.datetime = datetime;
+    stopData.description = description;
+    stopData.violation = getVal('stop-violation');
+    stopData.requesterName = name;
+    stopData.requesterDept = dept;
+    stopData.requesterPosition = getVal('req-position');
+    stopData.requesterPhone = phone;
+    stopData.requesterSig = canvas.toDataURL();
+    stopData.updatedAt = now.toISOString();
+    stopData.updatedBy = name;
+    
+    // localStorage 갱신 (긴급 접수분을 완전한 신고로 업데이트)
+    var list = JSON.parse(localStorage.getItem('emergencies') || '[]');
+    var idx = list.findIndex(function(e){ 
+      return e.emergencyNo === stopData.emergencyNo; 
+    });
+    
+    var finalData = {
+      emergencyNo: stopData.emergencyNo,
+      type: 'stop',
+      workId: stopData.workId || '',
+      permitNo: stopData.permitNo || '',
+      riskId: stopData.riskId || '',
+      tbmNo: stopData.tbmNo || '',
+      workName: workName,
+      location: location,
+      datetime: datetime,
+      date: stopData.date,
+      reasons: stopData.reasons,
+      description: description,
+      violation: stopData.violation,
+      photo: stopData.photo,
+      requesterName: name,
+      requesterDept: dept,
+      requesterPosition: stopData.requesterPosition,
+      requesterPhone: phone,
+      requesterSig: stopData.requesterSig,
+      status: '요청',
+      detailStatus: '요청접수',
+      detailsCompleted: true,     // ⭐ 상세 완료
+      createdAt: stopData.createdAt,
+      createdBy: name,
+      updatedAt: now.toISOString(),
+      updatedBy: name,
+      schemaVersion: 1
+    };
+    
+    if(idx >= 0){
+      list[idx] = finalData;
+    } else {
+      list.push(finalData);
+    }
+    
+    localStorage.setItem('emergencies', JSON.stringify(list));
+    
+    // 대시보드 실시간 반영
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: {
+          key: 'emergencies',
+          workId: stopData.workId,
+          permitNo: stopData.permitNo,
+          timestamp: Date.now()
+        }
+      }));
+    }catch(e){}
+    
+    // 허가서 상태 재확인 (긴급 접수 시 이미 업데이트했지만 안전하게)
+    if(stopData.permitNo){
+      updatePermitStatus(stopData.permitNo, '작업중지', stopData.emergencyNo);
+    }
+    
+    console.log('✅ 작업중지 상세 제출 완료:', stopData.emergencyNo);
+    
+    // 완료 화면
+    showCompleteScreen(finalData);
+    
+  }catch(error){
+    console.error('❌ 저장 실패:', error);
+    showCustomAlert({
+      icon: '❌',
+      title: '저장 실패',
+      message: '저장 중 오류가 발생했습니다.\n\n' + error.message,
+      okType: 'danger'
+    });
+  }
+}
+
+function showCompleteScreen(data){
+  setTxt('fin-emergency-no', data.emergencyNo);
+  setTxt('fin-work-name', data.workName);
+  setTxt('fin-location', data.location);
+  setTxt('fin-datetime', new Date(data.datetime).toLocaleString('ko-KR'));
+  setTxt('fin-reasons', data.reasons.join(', '));
+  setTxt('fin-requester', data.requesterName + ' (' + data.requesterDept + ')');
+  setTxt('fin-created-at', new Date(data.createdAt).toLocaleString('ko-KR'));
+  
+  document.getElementById('screen-detail').classList.remove('active');
+  document.getElementById('screen-complete').classList.add('active');
+  window.scrollTo(0, 0);
+  
+  showToast('✅ 작업중지 요청이 접수되었습니다', 'success');
+}
+
+// ═══════════════════════════════════════════════════
+// 허가서 상태 업데이트
+// ═══════════════════════════════════════════════════
+function updatePermitStatus(permitNo, status, emergencyNo){
+  try{
+    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
+    var srcWorkId = null;
+    var updated = false;
+    
+    permits.forEach(function(p){
+      if(p.permitNo === permitNo){
+        p.status = status;
+        p.permitStatus = status;
+        p.emergencyNo = emergencyNo;
+        p.stopReason = stopData.reasons.join(', ');
+        p.stopAt = new Date().toISOString();
+        p.updatedAt = new Date().toISOString();
+        srcWorkId = p.workId || p.sourceWorkId;
+        updated = true;
+      }
+    });
+    
+    if(updated){
+      localStorage.setItem('safetyPermits', JSON.stringify(permits));
+      
+      // 작업DB도 갱신
+      if(srcWorkId){
+        var dbRaw = localStorage.getItem('safetyDatabase');
+        if(dbRaw){
+          var db = JSON.parse(dbRaw);
+          (db.workHistory || []).forEach(function(w){
+            var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
+            if(wid === srcWorkId){
+              w.status = status;
+            }
+          });
+          localStorage.setItem('safetyDatabase', JSON.stringify(db));
+        }
+      }
+      
+      // 이벤트 발행
+      try{
+        window.dispatchEvent(new CustomEvent('app-data-changed', {
+          detail: { key: 'safetyPermits', timestamp: Date.now() }
+        }));
+      }catch(e){}
+      
+      console.log('✅ 허가서 상태 업데이트:', permitNo, '→', status);
+    }
+  }catch(e){
+    console.warn('허가서 상태 업데이트 실패:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 시퀀스 번호 발급
+// ═══════════════════════════════════════════════════
+function getNextEmergencyNo(){
+  var today = fmtDate(new Date()).replace(/-/g, '');
+  try{
+    var list = JSON.parse(localStorage.getItem('emergencies') || '[]');
+    var todayCount = list.filter(function(e){
+      return e.emergencyNo && e.emergencyNo.startsWith('EM-' + today);
+    }).length;
+    return 'EM-' + today + '-' + String(todayCount + 1).padStart(3, '0');
+  }catch(e){
+    return 'EM-' + today + '-001';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 화면 전환 / 취소
+// ═══════════════════════════════════════════════════
+function cancelReport(){
+  if(!isUrgentSubmitted){
+    goHome();
+    return;
+  }
+  
+  showCustomConfirm({
+    icon: '⚠️',
+    title: '작성 취소',
+    message: '긴급 신고는 접수되었으나,\n상세 정보가 미입력됩니다.\n\n대시보드로 이동하시겠습니까?',
+    okText: '이동',
+    okType: 'warn'
+  }, function(ok){
+    if(ok) goHome();
+  });
+}
+
+function reportAnother(){
+  showCustomConfirm({
+    icon: '🚨',
+    title: '추가 신고',
+    message: '새로운 작업중지 요청을\n작성하시겠습니까?',
+    okText: '작성',
+    okType: 'danger'
+  }, function(ok){
+    if(ok) location.reload();
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// 홈 / 뒤로가기
+// ═══════════════════════════════════════════════════
+function goHome(){
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+}
+
+function goBack(){
+  var isDetail = document.getElementById('screen-detail').classList.contains('active');
+  var isComplete = document.getElementById('screen-complete').classList.contains('active');
+  
+  if(isDetail && isUrgentSubmitted){
+    showCustomConfirm({
+      icon: '⚠️',
+      title: '뒤로 가기',
+      message: '긴급 신고는 접수되었으나,\n상세 정보가 미입력됩니다.\n\n계속하시겠습니까?',
+      okText: '나가기',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) history.back();
+    });
+    return;
+  }
+  
+  if(isComplete){
+    goHome();
+    return;
+  }
+  
+  history.back();
+}
+
+// ═══════════════════════════════════════════════════
+// UTIL
+// ═══════════════════════════════════════════════════
+function getVal(id){
+  var el = document.getElementById(id);
+  return el ? (el.value || '').trim() : '';
+}
+
+function setVal(id, v){
+  var el = document.getElementById(id);
+  if(el) el.value = v;
+}
+
+function setTxt(id, v){
+  var el = document.getElementById(id);
+  if(el) el.textContent = v;
+}
+
+function escHtml(s){
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showToast(msg, type){
+  var wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){
+    if(t.parentNode) t.parentNode.removeChild(t);
+  }, 3500);
+}
+</script>
+
+</body>
+</html>
