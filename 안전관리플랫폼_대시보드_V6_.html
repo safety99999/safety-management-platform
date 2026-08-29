@@ -3623,11 +3623,151 @@ function workDbDisableLocalClear(){
   }
   clearItem.title = "Firestore 조회 전환 완료 전까지 비활성화된 기능입니다.";
 }
+/* =========================================================
+   ⭐ 신규: Firestore → 대시보드 로드 (2026-08-28)
+   
+   페이지 로드 시 Firestore 작업DB (703건)를 조회하여
+   대시보드에 표시합니다.
+   
+   흐름:
+   1. Firestore 작업DB 컬렉션 전체 조회
+   2. allWorks 전역 변수 갱신
+   3. localStorage에도 캐시 저장 (다음 로드 시 빠름, 오프라인 대응)
+   4. applyFilter() 재실행 → 화면 갱신
+   ========================================================= */
+
+async function workDbLoadFromFirestore(){
+  if(typeof window.showToast === "function"){
+    window.showToast("☁️ Firestore에서 최신 데이터 동기화 중...", "info");
+  }
+  
+  try{
+    // Firestore 작업DB 전체 조회
+    const snapshot = await getDocs(
+      collection(workDbFirestore, WORKDB_COLLECTION)
+    );
+    
+    if(snapshot.empty){
+      console.warn("[작업DB] Firestore가 비어있음");
+      if(typeof window.showToast === "function"){
+        window.showToast("⚠️ Firestore에 데이터가 없습니다", "warning");
+      }
+      return;
+    }
+    
+    // 문서 배열로 변환
+    const firestoreWorks = [];
+    snapshot.forEach(function(documentSnapshot){
+      const data = documentSnapshot.data();
+      // Firestore 문서 ID를 workId로 확실히 설정
+      data.workId = data.workId || documentSnapshot.id;
+      // migratedAt 같은 Firestore Timestamp는 제거 (localStorage 호환)
+      delete data.migratedAt;
+      firestoreWorks.push(data);
+    });
+    
+    console.log("[작업DB] Firestore 로드 완료:", firestoreWorks.length + "건");
+    
+    // 전역 allWorks 갱신 (window.allWorks로 접근)
+    if(typeof window !== "undefined"){
+      window.allWorks = firestoreWorks;
+    }
+    
+    // localStorage에 캐시 저장 (다음 로드 시 빠름 + 오프라인 대응)
+    workDbSaveToLocalCache(firestoreWorks);
+    
+    // 대시보드 화면 갱신 (v7.2의 applyFilter 호출)
+    if(typeof window.applyFilter === "function"){
+      window.applyFilter();
+    }
+    
+    if(typeof window.showToast === "function"){
+      window.showToast(
+        "✅ " + firestoreWorks.length + "건 로드 완료 (Firestore)",
+        "success"
+      );
+    }
+    
+  }catch(error){
+    console.error("[작업DB] Firestore 로드 실패:", error);
+    
+    if(typeof window.showToast === "function"){
+      window.showToast(
+        "⚠️ 오프라인 모드 (localStorage 사용)",
+        "warning"
+      );
+    }
+    
+    // 오류 재전파 (호출자가 catch 가능하도록)
+    throw error;
+  }
+}
+
+/* =========================================================
+   ⭐ 신규: Firestore 데이터를 localStorage에 캐시 저장
+   
+   다음 페이지 로드 시 빠른 표시와 오프라인 대응을 위해
+   Firestore 데이터를 localStorage safetyDatabase에 저장합니다.
+   ========================================================= */
+
+function workDbSaveToLocalCache(firestoreWorks){
+  try{
+    const database = {
+      metadata: {
+        version: "7.2",
+        schemaVersion: 1,
+        sourceType: "firestore-sync",
+        lastUpdate: new Date().toISOString(),
+        totalCount: firestoreWorks.length,
+        syncedFromFirestore: true,
+        syncedAt: new Date().toISOString()
+      },
+      workHistory: firestoreWorks
+    };
+    
+    localStorage.setItem("safetyDatabase", JSON.stringify(database));
+    
+    console.log(
+      "[작업DB] localStorage 캐시 저장 완료:",
+      firestoreWorks.length + "건"
+    );
+    
+    // 다른 탭에도 알림
+    try{
+      window.dispatchEvent(
+        new CustomEvent("app-data-changed", {
+          detail: {
+            key: "safetyDatabase",
+            source: "firestore-sync",
+            timestamp: Date.now()
+          }
+        })
+      );
+    }catch(eventError){
+      // 이벤트 실패는 무시 (조회는 성공했으므로)
+    }
+    
+  }catch(error){
+    console.error("[작업DB] localStorage 캐시 저장 실패:", error);
+    // 캐시 실패는 조용히 무시 (Firestore 데이터는 이미 window.allWorks에 있음)
+  }
+}
+
 
 function workDbInitialize(){
   workDbCreatePanel();
   workDbDisableLocalClear();
+  
+  // ⭐ 신규 추가: 페이지 로드 시 Firestore에서 703건 자동 조회
+  // 500ms 지연으로 다른 스크립트 (v7.1, v7.2)가 완전히 로드된 후 실행
+  setTimeout(function(){
+    workDbLoadFromFirestore().catch(function(error){
+      console.warn("[작업DB] 초기 로드 실패:", error);
+      // 실패 시 localStorage 데이터 그대로 사용 (fallback)
+    });
+  }, 500);
 }
+
 
 if(document.readyState === "loading"){
   window.addEventListener("DOMContentLoaded", workDbInitialize);
