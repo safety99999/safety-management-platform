@@ -3717,6 +3717,80 @@ function workDbDisableLocalClear(){
   clearItem.title = "Firestore 조회 전환 완료 전까지 비활성화된 기능입니다.";
 }
 /* =========================================================
+   안전작업허가서 Firestore 조회 연동
+   컬렉션명: safetyPermits
+   ========================================================= */
+
+const PERMIT_COLLECTION = "safetyPermits";
+
+async function loadPermitsFromFirestore(){
+  try{
+    if(!navigator.onLine){
+      console.warn("[허가서] 오프라인 상태 - localStorage 허가서 사용");
+      return [];
+    }
+
+    const snapshot = await getDocs(
+      collection(workDbFirestore, PERMIT_COLLECTION)
+    );
+
+    const firestorePermits = [];
+
+    snapshot.forEach(function(documentSnapshot){
+      const permit = documentSnapshot.data();
+
+      permit.permitNo =
+        permit.permitNo ||
+        documentSnapshot.id;
+
+      firestorePermits.push(permit);
+    });
+
+    console.log(
+      "[허가서] Firestore 로드 완료:",
+      firestorePermits.length + "건"
+    );
+
+    // 현재 대시보드는 localStorage의 safetyPermits를 읽으므로 캐시 갱신
+    localStorage.setItem(
+      "safetyPermits",
+      JSON.stringify(firestorePermits)
+    );
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent("app-data-changed", {
+          detail: {
+            key: "safetyPermits",
+            source: "firestore-sync",
+            timestamp: Date.now()
+          }
+        })
+      );
+    }catch(eventError){
+      console.warn(
+        "[허가서] 변경 이벤트 전송 실패:",
+        eventError
+      );
+    }
+
+    return firestorePermits;
+
+  }catch(error){
+    console.error(
+      "[허가서] Firestore 조회 실패:",
+      error.message
+    );
+
+    // 조회 실패 시 기존 localStorage 캐시 유지
+    return [];
+  }
+}
+
+// 일반 script에서 호출할 수 있도록 전역 등록
+window.loadPermitsFromFirestore = loadPermitsFromFirestore;
+   
+/* =========================================================
    ⭐ 신규: Firestore → 대시보드 로드 (2026-08-28)
    
    페이지 로드 시 Firestore 작업DB (703건)를 조회하여
@@ -3844,20 +3918,37 @@ function workDbSaveToLocalCache(firestoreWorks){
   }
 }
 
-
 function workDbInitialize(){
   workDbCreatePanel();
   workDbDisableLocalClear();
-  
-  // ⭐ 신규 추가: 페이지 로드 시 Firestore에서 703건 자동 조회
-  // 500ms 지연으로 다른 스크립트 (v7.1, v7.2)가 완전히 로드된 후 실행
-  setTimeout(function(){
-    workDbLoadFromFirestore().catch(function(error){
-      console.warn("[작업DB] 초기 로드 실패:", error);
-      // 실패 시 localStorage 데이터 그대로 사용 (fallback)
-    });
+
+  setTimeout(async function(){
+    try{
+      // 1. Firestore 작업DB 조회
+      await workDbLoadFromFirestore();
+
+      // 2. Firestore 안전작업허가 조회
+      await loadPermitsFromFirestore();
+
+      // 3. 최신 허가서 상태를 대시보드에 반영
+      if(typeof window.applyFilter === "function"){
+        window.applyFilter();
+      }
+
+      console.log(
+        "[Firestore] 작업DB 및 안전작업허가 초기 로드 완료"
+      );
+
+    }catch(error){
+      console.warn(
+        "[Firestore] 초기 데이터 로드 실패:",
+        error
+      );
+    }
   }, 500);
 }
+
+
 
 
 if(document.readyState === "loading"){
