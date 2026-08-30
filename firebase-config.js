@@ -222,6 +222,29 @@ async function syncFirebaseToLocalStorage() {
     alert('복원 실패: ' + error.message);
     return false;
   }
+  // ============================================
+// 🧪 테스트/운영 모드 전환 시스템
+// ============================================
+
+// 모드 결정 (URL > localStorage > 기본값)
+const urlMode = new URLSearchParams(location.search).get('mode');
+if (urlMode === 'test' || urlMode === 'prod') {
+  localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+}
+
+window.APP_MODE = localStorage.getItem('appMode') || 'test';  // 기본값: test
+window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+
+// 편의 헬퍼: firestore().collection() 대신 사용
+window.getCollection = function(name) {
+  return firebase.firestore().collection(window.COLLECTION_PREFIX + name);
+};
+
+console.log(
+  `%c[APP MODE] ${window.APP_MODE.toUpperCase()}`,
+  `background:${window.APP_MODE==='test'?'#dc3545':'#28a745'};color:white;padding:4px 12px;border-radius:4px;font-weight:bold;`
+);
+
 }
 
 console.log('🔧 Firebase 설정 로드 완료');
