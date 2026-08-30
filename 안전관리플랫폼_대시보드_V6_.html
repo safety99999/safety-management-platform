@@ -1040,7 +1040,34 @@ body{
   .phone-screen::before {
     display: none !important;
   }
-
+ 
+  /* ⭐ PC 프레임 안에서 콘텐츠 여백 최적화 */
+  .phone-screen .main {
+    padding-bottom: 8px !important;
+  }
+  
+  .phone-screen .hero {
+    padding: 16px 20px 18px;
+  }
+  
+  .phone-screen .sec {
+    margin-top: 10px;
+  }
+  
+  .phone-screen .quick-grid {
+    margin-top: 6px;
+  }
+  
+  .phone-screen .qbtn {
+    padding: 14px 6px 12px;
+  }
+  
+  .phone-screen .qbtn-ico {
+    width: 50px;
+    height: 50px;
+    font-size: 23px;
+  }
+ 
 
   /* 커스텀 다이얼로그·토스트가 프레임 안에 갇히도록 */
   .phone-screen .custom-confirm-overlay,
