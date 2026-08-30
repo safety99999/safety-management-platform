@@ -176,3 +176,60 @@
     height: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   페이지 전환 페이드 애니메이션 (v1.0)
+   
+   - 페이지 로드 시 페이드인
+   - 페이지 이동 시 페이드아웃 (JS로 body.page-leaving 클래스 추가)
+   - prefers-reduced-motion 존중
+   ═══════════════════════════════════════════════════════ */
+
+.phone-frame .app,
+body > .app {
+  animation: pageEnter 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+body.page-leaving .phone-frame .app,
+body.page-leaving > .app {
+  animation: pageLeave 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes pageLeave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* PC에서는 프레임 자체는 유지 (내용만 페이드) */
+@media (min-width: 768px) {
+  .phone-frame {
+    animation: none !important;
+  }
+}
+
+/* 접근성: 애니메이션 최소화 사용자는 즉시 표시 */
+@media (prefers-reduced-motion: reduce) {
+  .phone-frame .app,
+  body > .app,
+  body.page-leaving .phone-frame .app,
+  body.page-leaving > .app {
+    animation: none !important;
+  }
+}
