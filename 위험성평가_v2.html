@@ -2892,7 +2892,10 @@ function goToTBM(){
     showToast('연결된 허가서가 없습니다', 'danger');
     return;
   }
-  var url = 'TBM_및_작업중지권_v2.html?permitNo=' + encodeURIComponent(permitNo);
+  var url = 'TBM_v2.html?permitNo=' + encodeURIComponent(permitNo);
+  if(riskData.workId){
+    url += '&workId=' + encodeURIComponent(riskData.workId);
+  }
   window.location.href = url;
 }
 
