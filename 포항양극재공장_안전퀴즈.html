@@ -2,7 +2,20 @@
 <html lang="ko" data-theme="light">
 <head>
 <meta charset="UTF-8">
+<script>
+/* 다크모드 사전 적용 (렌더링 전 실행 → 흰 화면 깜빡임 방지) */
+(function(){
+  try{
+    var saved = localStorage.getItem('theme');
+    var theme = saved || (window.matchMedia && 
+      window.matchMedia('(prefers-color-scheme: dark)').matches 
+      ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+
 <meta name="theme-color" content="#003C7E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>포항양극재 출입자 안전퀴즈</title>
@@ -747,6 +760,51 @@ body{
   *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
 }
 </style>
+<script>
+/* ═══════════════════════════════════════════════════
+   페이지 전환 페이드아웃 트리거 (v1.0)
+   - 링크 클릭 시 페이드아웃 후 이동
+   - 새 창/새 탭/외부 도메인 제외
+   ═══════════════════════════════════════════════════ */
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    // 제외 조건
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    // 외부 도메인 제외
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    // 페이드아웃 애니메이션 후 이동
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  // JS로 이동할 때 사용 (선택)
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
+</script>
+   
 </head>
 <body>
 <div class="phone-frame">
