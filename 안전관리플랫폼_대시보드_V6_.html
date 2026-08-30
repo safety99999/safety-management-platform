@@ -1040,30 +1040,39 @@ body{
   .phone-screen::before {
     display: none !important;
   }
-   /* ⭐ 바텀시트와 오버레이를 프레임 안에 가두기 */
-  .phone-screen .overlay {
-    position: absolute !important;
-    inset: 0 !important;
-  }
-  
-  .phone-screen .sheet {
-    position: absolute !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    transform: translateY(100%) !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: 85% !important;
-  }
-  
-  .phone-screen .sheet.open {
-    transform: translateY(0) !important;
-  }
-  
-  .phone-screen {
-    contain: layout;
-  }
+/* ⭐ PC 프레임용 바텀시트: 화면 높이 90% */
+.phone-screen .overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 80 !important;
+  background: rgba(6,17,28,.55) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.phone-screen .sheet {
+  position: absolute !important;
+  top: auto !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 90% !important;
+  max-height: 90% !important;
+  transform: translateY(100%) !important;
+  z-index: 90 !important;
+  border-radius: 22px 22px 40px 40px !important;
+  overflow: hidden !important;
+}
+
+.phone-screen .sheet.open {
+  transform: translateY(0) !important;
+}
+
+.phone-screen {
+  contain: layout;
+}
+
 
   /* ⭐ PC 프레임 안에서 콘텐츠 여백 최적화 */
   .phone-screen .main {
@@ -3710,11 +3719,11 @@ updateWorkStatus();
                 encodeURIComponent(work.workId) +
                 '" class="wi-btn">🔐 허가서 신청 →</a>';
       }else if(work.workDate === today && work.status === '허가완료'){
-        html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' +
+        html += '<a href="TBM_v2.html?permitNo=' +
                 encodeURIComponent(work.permitNo || '') +
                 '" class="wi-btn">📝 TBM 작성 →</a>';
       }else if(work.workDate === today && work.status === '작업중'){
-        html += '<a href="TBM_및_작업중지권_v2.html?permitNo=' +
+        html += '<a href="TBM_v2.html?permitNo=' +
                 encodeURIComponent(work.permitNo || '') +
                 '" class="wi-btn secondary">📝 TBM 보기 →</a>';
       }else if(work.status === '작업중지'){
