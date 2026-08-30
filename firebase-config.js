@@ -19,6 +19,11 @@ firebase.initializeApp(firebaseConfig);
 // Firebase 서비스 초기화
 const auth = firebase.auth();
 const db = firebase.firestore();
+db.settings({
+  experimentalForceLongPolling: true,  // WebChannel 실패 대응 (Edge/사내망)
+  merge: true
+});
+
 const storage = firebase.storage();
 
 // 현재 로그인한 사용자 정보
