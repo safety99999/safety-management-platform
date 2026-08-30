@@ -1,0 +1,178 @@
+/* ═══════════════════════════════════════════════════════
+   POSCO FUTURE M 안전관리 플랫폼
+   PC 모바일 프레임 공통 CSS (v1.0)
+   
+   적용 대상: 모든 사용자 앱 (대시보드 제외)
+   최종 수정: 2026-08-30
+   ═══════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) {
+
+  body {
+    background: radial-gradient(ellipse at center,
+      #e5e8ec 0%,
+      #c8ccd2 60%,
+      #a8adb4 100%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+    padding: 20px !important;
+    margin: 0 !important;
+  }
+
+  [data-theme="dark"] body {
+    background: radial-gradient(ellipse at center,
+      #1e2530 0%,
+      #0f1620 60%,
+      #050810 100%) !important;
+  }
+
+  .phone-frame {
+    position: relative;
+    width: 480px;
+    height: 820px;
+    max-height: calc(100vh - 40px);
+    background: #1a1a1a;
+    border-radius: 52px;
+    padding: 12px;
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.30),
+      0 20px 40px rgba(0,0,0,0.20),
+      0 8px 16px rgba(0,0,0,0.15),
+      inset 0 0 0 2px #2a2a2a,
+      inset 0 2px 8px rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+
+  [data-theme="dark"] .phone-frame {
+    background: #2a2a2a;
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.7),
+      0 20px 40px rgba(0,0,0,0.5),
+      0 8px 16px rgba(0,0,0,0.3),
+      inset 0 0 0 2px #444,
+      inset 0 2px 8px rgba(255,255,255,0.05);
+  }
+
+  .phone-frame::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 200px;
+    width: 4px; height: 80px;
+    background: linear-gradient(90deg, #2a2a2a 0%, #555 50%, #333 100%);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 1px 0 2px rgba(0,0,0,0.3);
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 40px;
+    overflow: hidden !important;
+    background: var(--bg);
+    position: relative;
+    overscroll-behavior: none;
+    contain: layout;
+  }
+
+  .phone-frame .app {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: relative;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .phone-frame .app::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  .phone-screen .overlay,
+  .phone-screen .custom-confirm-overlay,
+  .phone-screen .custom-alert-overlay,
+  .phone-screen .toast-container,
+  .phone-screen .toast-wrap {
+    position: absolute !important;
+  }
+
+  .phone-screen .sheet {
+    position: absolute !important;
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 90% !important;
+    max-height: 90% !important;
+    transform: translateY(100%) !important;
+    z-index: 90 !important;
+    border-radius: 22px 22px 40px 40px !important;
+    overflow: hidden !important;
+  }
+
+  .phone-screen .sheet.open {
+    transform: translateY(0) !important;
+  }
+}
+
+.sheet {
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear .3s;
+}
+
+.sheet.open {
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear 0s;
+}
+
+@media (max-width: 767px) {
+  .phone-frame {
+    all: unset;
+    display: block;
+  }
+  .phone-frame::after {
+    display: none;
+  }
+  .phone-screen {
+    border-radius: 0;
+    overflow: visible;
+    height: auto;
+    width: auto;
+  }
+}
+
+@media print {
+  .phone-frame {
+    all: unset !important;
+    display: block !important;
+  }
+  .phone-frame::after {
+    display: none !important;
+  }
+  .phone-screen {
+    border-radius: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+}
