@@ -13,7 +13,7 @@
     document.documentElement.setAttribute('data-theme', theme);
   }catch(e){}
 })();
-</script>   
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#D6273D">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -183,6 +183,45 @@ body{
   font-size:14px;opacity:.95;margin-top:10px;
   line-height:1.6;font-weight:600;position:relative;z-index:1;
 }
+
+/* ⭐ 통합 원터치: 히어로 카드를 클릭 가능하게 */
+.emergency-hero.clickable{
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .3s ease;
+  animation:urgent-pulse-hero 2.5s infinite;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.emergency-hero.clickable:active{
+  transform:scale(.98);
+}
+.emergency-hero.clickable:hover{
+  box-shadow:0 10px 32px rgba(214,39,61,.5);
+}
+@keyframes urgent-pulse-hero{
+  0%,100%{box-shadow:0 8px 24px rgba(214,39,61,.35);}
+  50%{box-shadow:0 8px 40px rgba(214,39,61,.7);}
+}
+
+/* CTA 문구 (히어로 카드 안 강조 버튼 스타일) */
+.emergency-cta{
+  background:rgba(255,255,255,.22);
+  border:2px solid rgba(255,255,255,.4);
+  border-radius:14px;
+  padding:14px 16px;
+  margin-top:16px;
+  font-size:17px;font-weight:900;
+  letter-spacing:-.02em;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  position:relative;z-index:1;
+  color:#fff;
+  box-shadow:0 4px 14px rgba(0,0,0,.15) inset;
+}
+.emergency-cta-ico{
+  font-size:22px;line-height:1;
+  animation:emg-shake 3s infinite;
+}
+
 
 .legal-badge{
   background:rgba(255,255,255,.18);
@@ -685,13 +724,18 @@ body{
 <div class="screen active" id="screen-welcome">
   <!-- 연결된 허가서 정보 (URL 파라미터 있을 때만) -->
   <div id="permitInfoBanner" style="display:none;"></div>
-
-  <div class="emergency-hero">
+  <!-- ⭐ 통합 원터치 신고 (히어로 + 액션 버튼) -->
+  <div class="emergency-hero clickable" onclick="startUrgentReport()" role="button" tabindex="0" aria-label="긴급 작업중지 요청">
     <div class="emergency-ico">🚨</div>
     <div class="emergency-title">작업중지 요청</div>
     <div class="emergency-sub">
       위험 상황 발생 시 즉시 신고하세요<br>
       담당자가 확인 후 조치합니다
+    </div>
+    <div class="emergency-cta">
+      <span class="emergency-cta-ico">🚨</span>
+      <span>클릭하여 즉시 신고</span>
+      <span class="emergency-cta-ico">🚨</span>
     </div>
     <div class="legal-badge">
       <strong>산업안전보건법 제52조</strong><br>
@@ -699,13 +743,6 @@ body{
       있을 때 작업을 중지할 권리가 있습니다
     </div>
   </div>
-
-  <!-- 원터치 긴급 신고 버튼 -->
-  <button class="urgent-btn" onclick="startUrgentReport()">
-    <span class="urgent-btn-ico">🚨</span>
-    <span>긴급 작업중지 요청</span>
-    <span class="urgent-btn-sub">클릭 후 상세 정보 입력</span>
-  </button>
 
   <div class="info-box">
     <div class="info-box-t">📌 안내</div>
