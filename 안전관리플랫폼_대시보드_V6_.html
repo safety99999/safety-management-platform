@@ -1040,7 +1040,31 @@ body{
   .phone-screen::before {
     display: none !important;
   }
- 
+   /* ⭐ 바텀시트와 오버레이를 프레임 안에 가두기 */
+  .phone-screen .overlay {
+    position: absolute !important;
+    inset: 0 !important;
+  }
+  
+  .phone-screen .sheet {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    transform: translateY(100%) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 85% !important;
+  }
+  
+  .phone-screen .sheet.open {
+    transform: translateY(0) !important;
+  }
+  
+  .phone-screen {
+    contain: layout;
+  }
+
   /* ⭐ PC 프레임 안에서 콘텐츠 여백 최적화 */
   .phone-screen .main {
     padding-bottom: 8px !important;
