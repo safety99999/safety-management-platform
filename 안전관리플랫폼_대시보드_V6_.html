@@ -1557,6 +1557,66 @@ body{
 </div>
 
 <!-- ══════════════════════════════════════
+     위험등급 수정 모달 (v7.4 관리자용)
+     ══════════════════════════════════════ -->
+<div class="custom-confirm-overlay" id="riskEditOverlay">
+  <div class="custom-confirm-modal" style="max-width:380px;">
+    <div class="custom-confirm-icon">⚙️</div>
+    <div class="custom-confirm-title">위험등급 수정</div>
+    <div class="custom-confirm-message"
+         id="riskEditWorkName"
+         style="font-weight:800;color:var(--ink);margin-bottom:6px;">-</div>
+    <div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:16px;">
+      원본 판정: <span id="riskEditOriginal">-</span>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);
+                  margin-bottom:8px;letter-spacing:.02em;">변경할 등급</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button type="button"
+                onclick="riskEditSelect('고위험')"
+                id="riskEditBtnHigh"
+                style="padding:14px 6px;border:2px solid var(--line);
+                       border-radius:var(--r-s);background:var(--card);
+                       color:var(--ink);font-family:inherit;font-size:13px;
+                       font-weight:800;cursor:pointer;transition:.15s;">
+          🚨 고위험
+        </button>
+        <button type="button"
+                onclick="riskEditSelect('일반')"
+                id="riskEditBtnNormal"
+                style="padding:14px 6px;border:2px solid var(--line);
+                       border-radius:var(--r-s);background:var(--card);
+                       color:var(--ink);font-family:inherit;font-size:13px;
+                       font-weight:800;cursor:pointer;transition:.15s;">
+          ⚪ 일반
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);
+                  margin-bottom:8px;letter-spacing:.02em;">수정자 이름</div>
+      <input type="text"
+             id="riskEditManager"
+             placeholder="예: 홍길동"
+             style="width:100%;padding:11px 13px;border:1.5px solid var(--line);
+                    border-radius:var(--r-s);background:var(--card);
+                    color:var(--ink);font-family:inherit;font-size:14.5px;
+                    font-weight:600;">
+    </div>
+
+    <div class="custom-confirm-buttons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel"
+              onclick="closeRiskEditModal()">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm"
+              onclick="submitRiskEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      작업 상태별 목록 시트
      ══════════════════════════════════════ -->
 <div class="overlay" id="wsOv" onclick="closeSheet('ws')"></div>
@@ -2674,11 +2734,15 @@ function parseExcel(text){
       sourceHighRiskFromName || sourceHighRiskFromFlags
     );
 
+        // ═══════════════════════════════════════════════════════
+    // 공식 고위험 판정 (문서 12.3항 준수)
+    // - 작업관리대장 원본 기준만 사용
+    // - keywordHighRisk, derivedHighRiskCategories는
+    //   위험성평가 추천용 참고 정보로만 저장 (공식 통계 제외)
+    // ═══════════════════════════════════════════════════════
     var risk = (
       sourceHighRiskFromName ||
-      sourceHighRiskFromFlags ||
-      keywordHighRisk ||
-      derivedHighRiskCategories.length > 0
+      sourceHighRiskFromFlags
     ) ? '고위험' : '일반';
 
     var hazardSafety = pHS(safetyOriginal);
@@ -2889,8 +2953,15 @@ function loadDB(){
         return null;
       }
 
-      var riskLevel = work.risk || work.riskLevel || '일반';
+      // ═══════════════════════════════════════════════════════
+      // riskLevel 재계산 (문서 12.6항 준수)
+      // - 관리자 수동 수정값(work.risk)이 있으면 우선 사용
+      // - 없으면 isHighRiskFromSource 기반으로 즉석 재계산
+      // ═══════════════════════════════════════════════════════
+      var riskLevel = work.risk
+        || (work.isHighRiskFromSource ? '고위험' : '일반');
       if(riskLevel === '중위험'){ riskLevel = '일반'; }
+
 
       var locationObject = (work.location && typeof work.location === 'object') ? work.location : {};
       var locationDisplay =
@@ -3734,7 +3805,20 @@ updateWorkStatus();
         html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 작업종료</div>';
       }
 
+      // ⭐ 위험등급 수정 버튼 (관리자용, 모든 작업에 표시)
+      html += '<button type="button" ' +
+              'onclick="openRiskEditModal(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
+              'style="margin-top:6px;width:100%;padding:8px;' +
+              'background:var(--sunk);color:var(--sub);' +
+              'border:1px solid var(--line);border-radius:var(--r-s);' +
+              'font-family:inherit;font-size:12px;font-weight:700;' +
+              'cursor:pointer;letter-spacing:-.01em;">' +
+              '⚙️ 위험등급 수정 (현재: ' +
+              (work.riskLevel === '고위험' ? '🚨 고위험' : '⚪ 일반') +
+              ')</button>';
+
       html += '</div>';
+
     });
 
     body.innerHTML = html;
@@ -4710,6 +4794,305 @@ if(document.readyState === "loading"){
   console.log('[v7.3] 빠른실행 workId 전달 패치 로드 완료');
 })();
 </script>
+
+<script type="module">
+/* =========================================================
+   v7.4 위험등급 수동 수정 패치 (2026-08-30)
+
+   목적:
+   - 관리자가 작업의 위험등급(고위험/일반)을 수동으로 수정
+   - 엑셀 담당자 실수, 작업 취소 등으로 인한 오류 정정용
+   - 시스템(작업관리대장 서버) 도입 전 임시 조치
+
+   저장 방식: 단순 덮어쓰기
+   - work.risk, work.riskLevel 두 필드만 변경
+   - localStorage safetyDatabase 갱신
+   - Firestore 작업DB/{workId} 갱신
+   - app-data-changed 이벤트 발행
+   ========================================================= */
+
+import {
+  initializeApp,
+  getApps,
+  getApp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+
+import {
+  getFirestore,
+  initializeFirestore,
+  doc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const RISK_EDIT_COLLECTION = "작업DB";
+
+const riskEditIsIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const riskEditIsSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const riskEditNeedsLongPolling = riskEditIsIOS || riskEditIsSafari;
+
+const riskEditFirebaseConfig = {
+  apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+  authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+  projectId: "safety-management-platfo-5f413",
+  storageBucket: "safety-management-platfo-5f413.appspot.com",
+  messagingSenderId: "96226952530",
+  appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+};
+
+const riskEditApp = getApps().length ? getApp() : initializeApp(riskEditFirebaseConfig);
+
+let riskEditDb;
+try{
+  if(riskEditNeedsLongPolling){
+    riskEditDb = initializeFirestore(riskEditApp, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false
+    });
+  }else{
+    riskEditDb = getFirestore(riskEditApp);
+  }
+}catch(initError){
+  riskEditDb = getFirestore(riskEditApp);
+}
+
+let riskEditContext = {
+  workId: null,
+  workName: '',
+  currentRisk: '',
+  originalRisk: '',
+  selectedRisk: ''
+};
+
+window.escapeJsStringForRisk = function(str){
+  return String(str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+};
+
+window.openRiskEditModal = function(workId, event){
+  if(event){
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  const work = (window.allWorks || []).find(function(w){
+    return (w.workId || w.id) === workId;
+  });
+
+  if(!work){
+    if(typeof window.showToast === 'function'){
+      window.showToast('작업 정보를 찾을 수 없습니다', 'error');
+    }
+    return;
+  }
+
+  const currentRisk = work.riskLevel || work.risk || '일반';
+  const originalRisk = work.isHighRiskFromSource ? '고위험' : '일반';
+
+  riskEditContext = {
+    workId: workId,
+    workName: work.workName || '작업명 미지정',
+    currentRisk: currentRisk,
+    originalRisk: originalRisk,
+    selectedRisk: currentRisk
+  };
+
+  const nameEl = document.getElementById('riskEditWorkName');
+  const originalEl = document.getElementById('riskEditOriginal');
+  const managerEl = document.getElementById('riskEditManager');
+
+  if(nameEl) nameEl.textContent = riskEditContext.workName;
+  if(originalEl){
+    originalEl.textContent = originalRisk;
+    originalEl.style.color = originalRisk === '고위험' ? 'var(--stop)' : 'var(--sub)';
+  }
+  if(managerEl) managerEl.value = '';
+
+  riskEditUpdateButtons(currentRisk);
+
+  const overlay = document.getElementById('riskEditOverlay');
+  if(overlay) overlay.classList.add('active');
+};
+
+window.riskEditSelect = function(risk){
+  riskEditContext.selectedRisk = risk;
+  riskEditUpdateButtons(risk);
+};
+
+function riskEditUpdateButtons(selectedRisk){
+  const btnHigh = document.getElementById('riskEditBtnHigh');
+  const btnNormal = document.getElementById('riskEditBtnNormal');
+
+  if(btnHigh){
+    if(selectedRisk === '고위험'){
+      btnHigh.style.background = 'var(--stop-bg)';
+      btnHigh.style.borderColor = 'var(--stop)';
+      btnHigh.style.color = 'var(--stop)';
+    }else{
+      btnHigh.style.background = 'var(--card)';
+      btnHigh.style.borderColor = 'var(--line)';
+      btnHigh.style.color = 'var(--ink)';
+    }
+  }
+
+  if(btnNormal){
+    if(selectedRisk === '일반'){
+      btnNormal.style.background = 'var(--tint)';
+      btnNormal.style.borderColor = 'var(--posco)';
+      btnNormal.style.color = 'var(--posco)';
+    }else{
+      btnNormal.style.background = 'var(--card)';
+      btnNormal.style.borderColor = 'var(--line)';
+      btnNormal.style.color = 'var(--ink)';
+    }
+  }
+}
+
+window.closeRiskEditModal = function(){
+  const overlay = document.getElementById('riskEditOverlay');
+  if(overlay) overlay.classList.remove('active');
+
+  riskEditContext = {
+    workId: null,
+    workName: '',
+    currentRisk: '',
+    originalRisk: '',
+    selectedRisk: ''
+  };
+};
+
+window.submitRiskEdit = async function(){
+  const managerEl = document.getElementById('riskEditManager');
+  const managerName = managerEl ? (managerEl.value || '').trim() : '';
+
+  if(!managerName){
+    if(typeof window.showToast === 'function'){
+      window.showToast('수정자 이름을 입력하세요', 'error');
+    }
+    if(managerEl) managerEl.focus();
+    return;
+  }
+
+  if(!riskEditContext.workId){
+    if(typeof window.showToast === 'function'){
+      window.showToast('작업 정보 오류', 'error');
+    }
+    return;
+  }
+
+  if(riskEditContext.selectedRisk === riskEditContext.currentRisk){
+    if(typeof window.showToast === 'function'){
+      window.showToast('변경 사항이 없습니다', 'info');
+    }
+    window.closeRiskEditModal();
+    return;
+  }
+
+  const workId = riskEditContext.workId;
+  const newRisk = riskEditContext.selectedRisk;
+
+  try{
+    const raw = localStorage.getItem('safetyDatabase');
+    if(raw){
+      const database = JSON.parse(raw);
+      if(Array.isArray(database.workHistory)){
+        const targetIndex = database.workHistory.findIndex(function(w){
+          return (w.workId || '') === workId;
+        });
+        if(targetIndex >= 0){
+          database.workHistory[targetIndex].risk = newRisk;
+          database.workHistory[targetIndex].riskLevel = newRisk;
+          database.workHistory[targetIndex].updatedAt = new Date().toISOString();
+          database.workHistory[targetIndex].updatedBy = managerName;
+          localStorage.setItem('safetyDatabase', JSON.stringify(database));
+        }
+      }
+    }
+
+    if(Array.isArray(window.allWorks)){
+      const memoryTarget = window.allWorks.find(function(w){
+        return (w.workId || w.id) === workId;
+      });
+      if(memoryTarget){
+        memoryTarget.risk = newRisk;
+        memoryTarget.riskLevel = newRisk;
+      }
+    }
+
+    if(navigator.onLine){
+      try{
+        const docRef = doc(riskEditDb, RISK_EDIT_COLLECTION, workId);
+        await updateDoc(docRef, {
+          risk: newRisk,
+          riskLevel: newRisk,
+          updatedAt: new Date().toISOString(),
+          updatedBy: managerName
+        });
+        console.log('[위험등급 수정] Firestore 갱신 완료:', workId, '→', newRisk);
+      }catch(fsError){
+        console.warn('[위험등급 수정] Firestore 갱신 실패 (로컬은 저장됨):', fsError.message);
+      }
+    }else{
+      console.warn('[위험등급 수정] 오프라인 - localStorage만 갱신');
+    }
+
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: {
+          key: 'safetyDatabase',
+          workId: workId,
+          source: 'risk-edit',
+          timestamp: Date.now()
+        }
+      }));
+    }catch(eventError){}
+
+    if(typeof window.applyFilter === 'function'){
+      window.applyFilter();
+    }
+
+    window.closeRiskEditModal();
+
+    if(typeof window.showToast === 'function'){
+      const emoji = newRisk === '고위험' ? '🚨' : '⚪';
+      window.showToast(
+        '✅ 위험등급이 ' + emoji + ' ' + newRisk + '(으)로 변경되었습니다',
+        'success'
+      );
+    }
+
+  }catch(error){
+    console.error('[위험등급 수정] 오류:', error);
+    if(typeof window.showToast === 'function'){
+      window.showToast('저장 중 오류: ' + error.message, 'error');
+    }
+  }
+};
+
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    const overlay = document.getElementById('riskEditOverlay');
+    if(overlay && overlay.classList.contains('active')){
+      window.closeRiskEditModal();
+    }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  const overlay = document.getElementById('riskEditOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) window.closeRiskEditModal();
+    });
+  }
+});
+
+console.log('[v7.4] 위험등급 수동 수정 패치 로드 완료');
+</script>
+       
  </div>
 </div>    
 </body>
