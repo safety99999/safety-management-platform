@@ -1207,6 +1207,93 @@ body{
 }
    
 </style>
+<script>
+/* ═══════════════════════════════════════════════════
+   페이지 전환 페이드아웃 트리거 (v1.0)
+   - 링크 클릭 시 페이드아웃 후 이동
+   - 대시보드 → 다른 앱 이동 시 부드러운 전환
+   ═══════════════════════════════════════════════════ */
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    // 제외 조건
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    // 외부 도메인 제외
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    // 페이드아웃 애니메이션 후 이동
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   페이지 전환 페이드아웃 트리거 (v1.0)
+   - 링크 클릭 시 페이드아웃 후 이동
+   - 대시보드 → 다른 앱 이동 시 부드러운 전환
+   ═══════════════════════════════════════════════════ */
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    // 제외 조건
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    // 외부 도메인 제외
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    // 페이드아웃 애니메이션 후 이동
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
+</script>   
 </head>
 <body>
   <div class="phone-frame">
