@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // Firebase 설정 (모든 페이지에서 사용)
 // ============================================
 
@@ -222,7 +222,9 @@ async function syncFirebaseToLocalStorage() {
     alert('복원 실패: ' + error.message);
     return false;
   }
-  // ============================================
+}
+
+// ============================================
 // 🧪 테스트/운영 모드 전환 시스템
 // ============================================
 
@@ -244,7 +246,5 @@ console.log(
   `%c[APP MODE] ${window.APP_MODE.toUpperCase()}`,
   `background:${window.APP_MODE==='test'?'#dc3545':'#28a745'};color:white;padding:4px 12px;border-radius:4px;font-weight:bold;`
 );
-
-}
 
 console.log('🔧 Firebase 설정 로드 완료');
