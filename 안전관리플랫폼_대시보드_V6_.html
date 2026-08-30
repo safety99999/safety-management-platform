@@ -1166,6 +1166,36 @@ body{
     pointer-events:auto;
   }
 }
+/* =========================================================
+   PC 모바일 프레임 스크롤 구조 수정
+   phone-screen은 고정하고 app 내부만 스크롤
+   ========================================================= */
+@media (min-width:768px){
+
+  .phone-screen{
+    overflow:hidden !important;
+    background:var(--bg);
+    overscroll-behavior:none;
+  }
+
+  .phone-frame .app{
+    width:100%;
+    height:100% !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+
+  .phone-frame .app::-webkit-scrollbar{
+    width:0;
+    height:0;
+    display:none;
+  }
+}
    
 </style>
 </head>
@@ -2182,7 +2212,17 @@ function goTab(tab){
   });
   var page=document.getElementById('page'+cap(tab));if(page) page.classList.add('active');
   var tabEl=document.getElementById('tab'+cap(tab));if(tabEl) tabEl.classList.add('active');
+  var appScroll = document.querySelector('.phone-frame .app');
+
+if(window.matchMedia('(min-width:768px)').matches && appScroll){
+  appScroll.scrollTo({
+    top:0,
+    behavior:'auto'
+  });
+}else{
   window.scrollTo(0,0);
+}
+
 }
 
 // ═══════════════════════════════════════
