@@ -2946,12 +2946,11 @@ function updateWorkStatus(wid,status){
 }
 
 function goToTBM(){
-  var p='?permitNo='+encodeURIComponent(permitData.permitNo)+
-        '&workName='+encodeURIComponent(permitData.workName)+
-        '&company='+encodeURIComponent(permitData.companyName)+
-        '&location='+encodeURIComponent(permitData.location+' '+permitData.detailLocation)+
-        '&workers='+encodeURIComponent(permitData.workerCount);
-  window.location.href='TBM_및_작업중지권_v2.html'+p;
+  var p='?permitNo='+encodeURIComponent(permitData.permitNo);
+  if(permitData.workId){
+    p += '&workId=' + encodeURIComponent(permitData.workId);
+  }
+  window.location.href='TBM_v2.html'+p;
 }
 
 // ═══════════════════════════════════════════════════════
