@@ -904,11 +904,15 @@ body{
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
 /* ============================================ */
-/* 📱 PHONE FRAME (PC 전용, ≥768px)           */
+/* 📱 PHONE FRAME v2 (PC 전용, ≥768px)         */
 /* ============================================ */
 @media (min-width: 768px) {
   body {
-    background: #d0d0d0 !important;
+    /* ⭐ 배경 비네트: 프레임 주변만 살짝 어두운 조명 효과 */
+    background: radial-gradient(ellipse at center, 
+      #e5e8ec 0%, 
+      #c8ccd2 60%, 
+      #a8adb4 100%) !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -918,93 +922,93 @@ body{
   }
   
   [data-theme="dark"] body {
-    background: #1a1a1a !important;
+    background: radial-gradient(ellipse at center, 
+      #1e2530 0%, 
+      #0f1620 60%, 
+      #050810 100%) !important;
   }
 
   .phone-frame {
     position: relative;
-    width: 400px;
-    height: 800px;
+    width: 480px;                       /* ⭐ 400 → 480 확장 */
+    height: 820px;                      /* 살짝 확대 */
     max-height: calc(100vh - 40px);
     background: #1a1a1a;
-    border-radius: 48px;
+    border-radius: 52px;                /* 폭 확장에 맞춰 미세 조정 */
     padding: 12px;
+    /* ⭐ 극적인 그림자 (공중에 뜬 느낌) */
     box-shadow: 
-      0 25px 50px rgba(0,0,0,0.25),
-      0 12px 24px rgba(0,0,0,0.15),
-      inset 0 0 0 2px #2a2a2a;
+      0 40px 80px rgba(0,0,0,0.30),
+      0 20px 40px rgba(0,0,0,0.20),
+      0 8px 16px rgba(0,0,0,0.15),
+      inset 0 0 0 2px #2a2a2a,
+      inset 0 2px 8px rgba(255,255,255,0.05);
     flex-shrink: 0;
   }
   
   [data-theme="dark"] .phone-frame {
     background: #2a2a2a;
     box-shadow: 
-      0 25px 50px rgba(0,0,0,0.6),
-      0 12px 24px rgba(0,0,0,0.3),
-      inset 0 0 0 2px #444;
+      0 40px 80px rgba(0,0,0,0.7),
+      0 20px 40px rgba(0,0,0,0.5),
+      0 8px 16px rgba(0,0,0,0.3),
+      inset 0 0 0 2px #444,
+      inset 0 2px 8px rgba(255,255,255,0.05);
   }
 
-  /* 상단 미니 카메라 */
-  .phone-frame::before {
-    content: '';
-    position: absolute;
-    top: 22px; left: 50%;
-    transform: translateX(-50%);
-    width: 8px; height: 8px;
-    background: #333;
-    border-radius: 50%;
-    z-index: 100;
-    box-shadow: inset 0 0 2px rgba(60,120,180,0.4);
-  }
+  /* ⭐ 상단 카메라 홀 제거 (::before 규칙 없음) */
 
   /* 우측 전원 버튼 */
   .phone-frame::after {
     content: '';
     position: absolute;
-    right: -3px; top: 180px;
-    width: 4px; height: 72px;
+    right: -3px; top: 200px;
+    width: 4px; height: 80px;
     background: linear-gradient(90deg, #2a2a2a 0%, #555 50%, #333 100%);
     border-radius: 0 3px 3px 0;
     box-shadow: 1px 0 2px rgba(0,0,0,0.3);
   }
 
-  /* 화면 영역 (앱 컨테이너) */
+  /* 화면 영역 */
   .phone-screen {
     width: 100%;
     height: 100%;
-    border-radius: 36px;
+    border-radius: 40px;
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    /* ⭐ 스크롤바 완전 숨김 (Firefox) */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  /* ⭐ 스크롤바 완전 숨김 (Chrome/Safari) */
+  .phone-screen::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   /* 하단 제스처 바 */
-  .phone-screen::after {
+  .phone-screen::before {
     content: '';
     position: absolute;
     bottom: 8px; left: 50%;
     transform: translateX(-50%);
-    width: 100px; height: 4px;
-    background: rgba(0,0,0,0.25);
+    width: 120px; height: 4px;
+    background: rgba(0,0,0,0.28);
     border-radius: 2px;
     z-index: 100;
     pointer-events: none;
   }
   
-  /* 스크롤바 얇게 */
-  .phone-screen::-webkit-scrollbar { width: 6px; }
-  .phone-screen::-webkit-scrollbar-track { background: transparent; }
-  .phone-screen::-webkit-scrollbar-thumb { 
-    background: rgba(0,0,0,0.2); 
-    border-radius: 3px; 
-  }
-  .phone-screen::-webkit-scrollbar-thumb:hover { 
-    background: rgba(0,0,0,0.4); 
+  [data-theme="dark"] .phone-screen::before {
+    background: rgba(255,255,255,0.35);
   }
   
-  /* 프레임 안에서는 body 기존 그라디언트 배경 제거 
-     (앱 자체 배경이 phone-screen 안에서 표시됨) */
+  /* 프레임 안 앱 컨테이너 */
   .phone-frame .app {
     max-width: 100% !important;
     min-height: 100%;
@@ -1013,7 +1017,8 @@ body{
   /* 커스텀 다이얼로그·토스트가 프레임 안에 갇히도록 */
   .phone-screen .custom-confirm-overlay,
   .phone-screen .custom-alert-overlay,
-  .phone-screen .toast-container {
+  .phone-screen .toast-container,
+  .phone-screen .toast-wrap {
     position: absolute !important;
   }
 }
@@ -1024,7 +1029,6 @@ body{
     all: unset; 
     display: block; 
   }
-  .phone-frame::before,
   .phone-frame::after { display: none; }
   .phone-screen { 
     border-radius: 0; 
@@ -1032,7 +1036,7 @@ body{
     height: auto; 
     width: auto;
   }
-  .phone-screen::after { display: none; }
+  .phone-screen::before { display: none; }
 }
 
 /* 인쇄 시 프레임 제거 */
@@ -1041,17 +1045,16 @@ body{
     all: unset !important;
     display: block !important;
   }
-  .phone-frame::before,
   .phone-frame::after { display: none !important; }
   .phone-screen {
     border-radius: 0 !important;
     overflow: visible !important;
     height: auto !important;
   }
-  .phone-screen::after { display: none !important; }
+  .phone-screen::before { display: none !important; }
 }
 /* ============================================ */
-/* 📱 PHONE FRAME END                           */
+/* 📱 PHONE FRAME v2 END                        */
 /* ============================================ */
    
 </style>
