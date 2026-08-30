@@ -1,9 +1,14 @@
 /* ═══════════════════════════════════════════════════════
    POSCO FUTURE M 안전관리 플랫폼
-   PC 모바일 프레임 공통 CSS (v1.0)
+   PC 모바일 프레임 공통 CSS (v1.2)
    
    적용 대상: 모든 사용자 앱 (대시보드 제외)
    최종 수정: 2026-08-30
+   
+   v1.2 변경:
+   - .app overflow 강제 (기존 앱 overflow:hidden 오버라이드)
+   - .topnav sticky 프레임 스크롤 컨텍스트 대응
+   - progress-wrap도 동일 처리
    ═══════════════════════════════════════════════════════ */
 
 @media (min-width: 768px) {
@@ -81,6 +86,7 @@
     width: 100% !important;
     height: 100% !important;
     min-height: 100% !important;
+    max-height: 100% !important;
     margin: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -93,6 +99,7 @@
     position: relative;
     display: flex !important;
     flex-direction: column !important;
+    background: var(--bg);
   }
 
   .phone-frame .app::-webkit-scrollbar {
@@ -107,6 +114,22 @@
   .phone-screen .toast-container,
   .phone-screen .toast-wrap {
     position: absolute !important;
+  }
+
+  /* ═══════════════════════════════════════════════════
+     프레임 안 상단 네비게이션 대응 (v1.1)
+     ═══════════════════════════════════════════════════ */
+  .phone-screen .topnav {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 200;
+    flex-shrink: 0;
+  }
+
+  .phone-screen .progress-wrap {
+    position: sticky !important;
+    z-index: 190;
+    flex-shrink: 0;
   }
 
   .phone-screen .sheet {
@@ -130,59 +153,8 @@
   }
 }
 
-.sheet {
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    transform .3s cubic-bezier(.32,.72,0,1),
-    visibility 0s linear .3s;
-}
-
-.sheet.open {
-  visibility: visible;
-  pointer-events: auto;
-  transition:
-    transform .3s cubic-bezier(.32,.72,0,1),
-    visibility 0s linear 0s;
-}
-
-@media (max-width: 767px) {
-  .phone-frame {
-    all: unset;
-    display: block;
-  }
-  .phone-frame::after {
-    display: none;
-  }
-  .phone-screen {
-    border-radius: 0;
-    overflow: visible;
-    height: auto;
-    width: auto;
-  }
-}
-
-@media print {
-  .phone-frame {
-    all: unset !important;
-    display: block !important;
-  }
-  .phone-frame::after {
-    display: none !important;
-  }
-  .phone-screen {
-    border-radius: 0 !important;
-    overflow: visible !important;
-    height: auto !important;
-  }
-}
-
 /* ═══════════════════════════════════════════════════════
-   페이지 전환 페이드 애니메이션 (v1.0)
-   
-   - 페이지 로드 시 페이드인
-   - 페이지 이동 시 페이드아웃 (JS로 body.page-leaving 클래스 추가)
-   - prefers-reduced-motion 존중
+   페이지 전환 페이드 애니메이션
    ═══════════════════════════════════════════════════════ */
 
 .phone-frame .app,
@@ -217,19 +189,88 @@ body.page-leaving > .app {
   }
 }
 
-/* PC에서는 프레임 자체는 유지 (내용만 페이드) */
 @media (min-width: 768px) {
   .phone-frame {
     animation: none !important;
   }
 }
 
-/* 접근성: 애니메이션 최소화 사용자는 즉시 표시 */
 @media (prefers-reduced-motion: reduce) {
   .phone-frame .app,
   body > .app,
   body.page-leaving .phone-frame .app,
   body.page-leaving > .app {
     animation: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   바텀시트 중복 방지
+   ═══════════════════════════════════════════════════════ */
+
+.sheet {
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear .3s;
+}
+
+.sheet.open {
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear 0s;
+}
+
+@media (min-width: 768px) {
+  .phone-screen .sheet {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .phone-screen .sheet.open {
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   모바일(<768px): 프레임 완전 무력화
+   ═══════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .phone-frame {
+    all: unset;
+    display: block;
+  }
+  .phone-frame::after {
+    display: none;
+  }
+  .phone-screen {
+    border-radius: 0;
+    overflow: visible;
+    height: auto;
+    width: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   인쇄 시 프레임 제거
+   ═══════════════════════════════════════════════════════ */
+
+@media print {
+  .phone-frame {
+    all: unset !important;
+    display: block !important;
+  }
+  .phone-frame::after {
+    display: none !important;
+  }
+  .phone-screen {
+    border-radius: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
   }
 }
