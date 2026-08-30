@@ -1010,14 +1010,17 @@ body{
   
     /* 프레임 안 앱 컨테이너 */
   .phone-frame .app {
-    max-width: 100% !important;
-    min-height: 100%;
-    position: relative;
-  }
+  max-width: 100% !important;
+  min-height: 100%;
+  position: relative;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
   
-  /* ⭐ 하단 네비게이션을 프레임 안에 가두기 */
+  /* ⭐ 하단 네비게이션을 프레임 안에 고정 (스크롤 무관) */
   .phone-screen .botnav {
-    position: absolute !important;
+    position: sticky !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
@@ -1025,18 +1028,19 @@ body{
     max-width: 100% !important;
     border-radius: 0 0 40px 40px;
     z-index: 50;
+    margin-top: auto;
   }
   
-  /* ⭐ 콘텐츠가 네비에 가려지지 않게 페이지에 여백 */
+  /* ⭐ 페이지가 나머지 공간을 차지하도록 */
   .phone-screen .page {
-    padding-bottom: 90px !important;
+    flex: 1 0 auto;
   }
   
-  /* ⭐ 제스처 바를 네비 위로 이동 */
+  /* ⭐ 제스처 바 완전 삭제 */
   .phone-screen::before {
-    bottom: 78px !important;
-    z-index: 60 !important;
+    display: none !important;
   }
+
 
   /* 커스텀 다이얼로그·토스트가 프레임 안에 갇히도록 */
   .phone-screen .custom-confirm-overlay,
