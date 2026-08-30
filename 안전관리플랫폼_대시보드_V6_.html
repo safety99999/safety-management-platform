@@ -1135,6 +1135,41 @@ body{
 /* ============================================ */
 /* 📱 PHONE FRAME v2 END                        */
 /* ============================================ */
+
+/* =========================================================
+   바텀시트 중복 노출 방지
+   ========================================================= */
+.sheet{
+  visibility:hidden;
+  pointer-events:none;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear .3s;
+}
+
+.sheet.open{
+  visibility:visible;
+  pointer-events:auto;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear 0s;
+}
+
+@media (min-width:768px){
+  .phone-screen .sheet{
+    visibility:hidden;
+    pointer-events:none;
+  }
+
+  .phone-screen .sheet.open{
+    visibility:visible;
+    pointer-events:auto;
+  }
+}
+   
+</style>
+</head>
+
    
 </style>
 </head>
@@ -2153,19 +2188,92 @@ function goTab(tab){
 // ═══════════════════════════════════════
 // SHEETS
 // ═══════════════════════════════════════
-function openSheet(n){
-  var ov=document.getElementById(n+'Ov'),sh=document.getElementById(n+'Sheet');
-  if(ov) ov.classList.add('active');
-  if(sh) setTimeout(function(){sh.classList.add('open');},10);
+// 바텀시트별 닫기 타이머
+var sheetCloseTimers = {};
+
+/**
+ * 다른 바텀시트를 즉시 닫습니다.
+ */
+function closeOtherSheets(currentName){
+  ['ws', 'if'].forEach(function(name){
+    if(name === currentName) return;
+
+    if(sheetCloseTimers[name]){
+      clearTimeout(sheetCloseTimers[name]);
+      sheetCloseTimers[name] = null;
+    }
+
+    var sheet = document.getElementById(name + 'Sheet');
+    var overlay = document.getElementById(name + 'Ov');
+
+    if(sheet){
+      sheet.classList.remove('open');
+
+      // 다른 시트가 새 시트 아래에서 잠시 보이지 않도록 즉시 숨김
+      sheet.style.visibility = 'hidden';
+      sheet.style.pointerEvents = 'none';
+    }
+
+    if(overlay){
+      overlay.classList.remove('active');
+    }
+  });
 }
 
-function closeSheet(n){
-  var sh=document.getElementById(n+'Sheet');
-  if(sh) sh.classList.remove('open');
-  setTimeout(function(){
-    var ov=document.getElementById(n+'Ov');
-    if(ov) ov.classList.remove('active');
-  },340);
+/**
+ * 지정한 바텀시트만 단독으로 엽니다.
+ */
+function openSheet(name){
+  closeOtherSheets(name);
+
+  if(sheetCloseTimers[name]){
+    clearTimeout(sheetCloseTimers[name]);
+    sheetCloseTimers[name] = null;
+  }
+
+  var overlay = document.getElementById(name + 'Ov');
+  var sheet = document.getElementById(name + 'Sheet');
+
+  if(!sheet) return;
+
+  // 이전 강제 숨김 상태 해제
+  sheet.style.visibility = '';
+  sheet.style.pointerEvents = '';
+
+  if(overlay){
+    overlay.classList.add('active');
+  }
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      sheet.classList.add('open');
+    });
+  });
+}
+
+/**
+ * 지정한 바텀시트를 닫습니다.
+ */
+function closeSheet(name){
+  if(sheetCloseTimers[name]){
+    clearTimeout(sheetCloseTimers[name]);
+  }
+
+  var sheet = document.getElementById(name + 'Sheet');
+
+  if(sheet){
+    sheet.classList.remove('open');
+  }
+
+  sheetCloseTimers[name] = setTimeout(function(){
+    var overlay = document.getElementById(name + 'Ov');
+
+    if(overlay){
+      overlay.classList.remove('active');
+    }
+
+    sheetCloseTimers[name] = null;
+  }, 320);
 }
 
 // ═══════════════════════════════════════
