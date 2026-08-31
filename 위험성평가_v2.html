@@ -1,27 +1,26 @@
 <!DOCTYPE html>
 <html lang="ko" data-theme="light">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>   
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#003C7E">
-<title>위험성평가 v2 (JSA_DB 연동)</title>
+<title>위험성평가 v3 (AI 자동 판정)</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
 <style>
-/* ═══════════════════════════════════════
-   위험성평가 v2 - JSA_DB 연동 완성판
-   최종 수정: 2026-08-27
-   
-   ⭐ 핵심 기능:
-   - JSA_DB 검색 (자동 + 수동 하이브리드)
-   - 안전대책 카드 선택 (태그 표시)
-   - 매트릭스 + 통제 적정성 하이브리드
-   - 작업허가서 → TBM 자동 흐름
-   
-   ✅ Phase B: CSS 통일 · 홈버튼 · 반응형 · 다크모드
-   ═══════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   위험성평가 v3 - CSS 전체
+   핵심 UI:
+   - 자동 판정 카드
+   - 카테고리 아코디언 (필수/공학/행정/PPE)
+   - 오버라이드 다이얼로그
+   - Toast 하단 배치
+   ═══════════════════════════════════════════════ */
 
 :root{
   --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
@@ -36,16 +35,6 @@
   --r:16px; --r-s:12px;
   --sh:0 2px 10px rgba(15,29,43,.06);
   --sh-m:0 4px 16px rgba(15,29,43,.09);
-  
-  /* 하위 호환 별칭 */
-  --navy:var(--deep); --navy2:var(--posco); --blue:var(--bright); --blue2:var(--bright);
-  --red:var(--stop); --red2:var(--stop);
-  --green:var(--done); --green2:var(--done); --green3:var(--done);
-  --orange:var(--run); --orange2:var(--run);
-  --amber:var(--warn); --amber2:var(--warn);
-  --text:var(--ink); --mute:var(--faint); --border:var(--line);
-  --shadow:var(--sh); --shadow-md:var(--sh-m);
-  --rs:var(--r-s);
 }
 
 [data-theme="dark"]{
@@ -68,7 +57,6 @@ html{-webkit-text-size-adjust:100%;}
 html,body{width:100%;overflow-x:hidden;
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
-/* ═══ 반응형 방안 A ═══ */
 body{
   color:var(--ink);line-height:1.5;font-size:17px;
   padding-bottom:max(30px,env(safe-area-inset-bottom));
@@ -81,6 +69,7 @@ body{
   background-attachment:fixed;
   transition:background .25s,color .25s;
 }
+
 [data-theme="dark"] body{
   background:linear-gradient(135deg,
     #0A1B2E 0%,
@@ -107,7 +96,7 @@ body{
   }
 }
 
-/* ═══ TOP NAV (홈버튼 + 테마 유지) ═══ */
+/* TOP NAV */
 .topnav{position:sticky;top:0;z-index:200;
   background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
   height:56px;padding:0 16px;
@@ -137,7 +126,7 @@ body{
   font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
   display:none;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
 
-/* ═══ PROGRESS ═══ */
+/* PROGRESS BAR */
 .progress-wrap{background:var(--card);padding:14px 16px;border-bottom:1.5px solid var(--line);}
 .progress-steps{display:flex;gap:4px;margin-bottom:10px;}
 .pstep{flex:1;height:5px;border-radius:2px;background:var(--line);transition:background .3s;}
@@ -150,12 +139,15 @@ body{
   font-variant-numeric:tabular-nums;}
 [data-theme="dark"] .progress-pct{color:var(--bright);}
 
-/* ═══ SCREENS ═══ */
+/* SCREEN */
 .screen{display:none;padding:16px 14px;}
-.screen.active{display:block;animation:fade .22s ease;}
+.screen.active{display:block;animation:fade .25s ease;}
 @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 
-/* ═══ 공통 섹션 ═══ */
+.screen.fade-out{animation:fadeOut .2s ease forwards;}
+@keyframes fadeOut{from{opacity:1;}to{opacity:0;}}
+
+/* 폼 요소 */
 .form-section{background:var(--card);border-radius:var(--r);
   padding:16px;margin-bottom:12px;
   box-shadow:var(--sh);border:1.5px solid var(--line);}
@@ -180,6 +172,7 @@ body{
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .f-input.auto{background:var(--done-bg);border-color:var(--done);}
 .f-input[readonly]{opacity:.75;}
+
 .f-select{
   appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -190,42 +183,17 @@ body{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
-/* ═══ date/time 통일 (규약 준수) ═══ */
-.f-input[type="date"],
-.f-input[type="time"],
-.f-input[type="datetime-local"]{
-  -webkit-appearance:none;
-  -moz-appearance:none;
-  appearance:none;
-  min-height:48px;
-  padding:13px 44px 13px 15px;
-  font-family:inherit;
-  font-size:15px;
-  font-weight:600;
-  font-variant-numeric:tabular-nums;
-  line-height:1.2;
-  color:var(--ink);
-  background-color:var(--sunk);
-  border:1.5px solid var(--line);
-  border-radius:11px;
-  text-align:left;
-  background-repeat:no-repeat;
-  background-position:right 14px center;
-  background-size:20px 20px;
-}
 .f-input[type="date"]{
+  -webkit-appearance:none; appearance:none;
+  padding:13px 44px 13px 15px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 14px center; background-size:20px 20px;
 }
 [data-theme="dark"] .f-input[type="date"]{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
 }
-.f-input[type="date"]::-webkit-date-and-time-value,
-.f-input[type="time"]::-webkit-date-and-time-value{
-  text-align:left;min-height:1.2em;
-}
-.f-input[type="date"]::-webkit-datetime-edit{text-align:left;padding:0;}
 
-/* ═══ 시작 화면 ═══ */
+/* 시작 화면 */
 .welcome-hero{
   background:linear-gradient(158deg,var(--deep),var(--posco));color:#fff;
   border-radius:22px;padding:28px 22px;text-align:center;margin-bottom:18px;
@@ -254,7 +222,7 @@ body{
 .mode-title{font-size:15px;font-weight:800;letter-spacing:-.03em;margin-bottom:5px;color:var(--ink);}
 .mode-desc{font-size:12.5px;color:var(--sub);font-weight:600;line-height:1.45;}
 
-/* ═══ 작업 목록 & 필터 ═══ */
+/* 작업 목록 & 필터 */
 .sec-label{font-size:12px;font-weight:800;color:var(--sub);
   letter-spacing:.5px;text-transform:uppercase;margin-bottom:9px;
   display:flex;align-items:center;justify-content:space-between;padding-left:2px;}
@@ -265,6 +233,7 @@ body{
   color:var(--sub);font-size:13px;font-weight:700;cursor:pointer;
   transition:all .2s;font-family:inherit;}
 .ftab.act{background:var(--posco);border-color:var(--posco);color:#fff;}
+
 .company-filter{width:100%;padding:12px 14px;border:1.5px solid var(--line);
   border-radius:11px;font-size:14px;background:var(--sunk);color:var(--ink);
   margin-bottom:10px;font-weight:600;font-family:inherit;
@@ -296,309 +265,418 @@ body{
 .wc-redo{background:var(--sunk);color:var(--sub);border:1.5px solid var(--line);
   border-radius:9px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .wc-done-label{font-size:12px;color:var(--done);font-weight:800;display:flex;align-items:center;gap:4px;}
+
 .empty-work{text-align:center;padding:30px 16px;color:var(--sub);}
 .empty-work-ico{font-size:36px;margin-bottom:8px;opacity:.4;}
 .empty-work-txt{font-size:14px;line-height:1.6;font-weight:600;}
 
-/* ═══ 허가서 연결 배너 ═══ */
-.permit-banner{background:var(--tint);border-left:4px solid var(--posco);
-  border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:12px;}
-.permit-banner-lbl{font-size:11px;color:var(--sub);font-weight:800;margin-bottom:3px;
-  letter-spacing:.4px;text-transform:uppercase;}
-.permit-banner-no{font-size:16px;font-weight:900;color:var(--posco);}
-[data-theme="dark"] .permit-banner-no{color:var(--bright);}
-
-/* ═══ INFO / WARN / DANGER BOX ═══ */
+/* 정보 박스 */
 .info-box{background:var(--tint);border-left:4px solid var(--posco);
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .info-box-title{font-size:12px;font-weight:800;color:var(--posco);margin-bottom:4px;}
 [data-theme="dark"] .info-box-title{color:var(--bright);}
 .info-box-text{font-size:13px;color:var(--body);line-height:1.7;font-weight:600;}
+
 .warn-box{background:var(--warn-bg);border-left:4px solid var(--warn);
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .warn-box-title{font-size:12px;font-weight:800;color:var(--warn);margin-bottom:4px;}
 .warn-box-text{font-size:13px;color:var(--warn);line-height:1.7;font-weight:600;}
+
 .danger-box{background:var(--stop-bg);border-left:4px solid var(--stop);
   padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;}
 .danger-box-title{font-size:12px;font-weight:800;color:var(--stop);margin-bottom:4px;}
 .danger-box-text{font-size:13px;color:var(--stop);line-height:1.7;font-weight:600;}
-[data-theme="dark"] .danger-box-text{color:#FF9BAB;}
 
-/* ═══ TOAST ═══ */
-.toast-wrap{position:fixed;top:64px;left:50%;transform:translateX(-50%);
-  z-index:9999;display:flex;flex-direction:column;gap:7px;
-  pointer-events:none;width:90%;max-width:390px;}
-.toast{padding:13px 17px;border-radius:12px;font-size:14px;font-weight:700;color:#fff;
-  display:flex;align-items:center;gap:8px;
-  box-shadow:0 4px 20px rgba(0,0,0,.22);animation:tslide .3s ease;pointer-events:all;}
+/* 배너 */
+.permit-banner,.safeinfo-banner{
+  background:var(--tint);border-left:4px solid var(--posco);
+  border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:12px;
+}
+.permit-banner-lbl,.safeinfo-banner-lbl{
+  font-size:11px;color:var(--sub);font-weight:800;margin-bottom:3px;
+  letter-spacing:.4px;text-transform:uppercase;
+}
+.permit-banner-no,.safeinfo-banner-no{
+  font-size:16px;font-weight:900;color:var(--posco);
+}
+[data-theme="dark"] .permit-banner-no,
+[data-theme="dark"] .safeinfo-banner-no{color:var(--bright);}
+
+.safeinfo-banner{border-left-color:var(--done);}
+.safeinfo-banner-no{color:var(--done);}
+[data-theme="dark"] .safeinfo-banner-no{color:var(--done);}
+
+/* TOAST (하단) */
+.toast-wrap{
+  position:fixed;
+  bottom:100px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:9999;
+  display:flex;
+  flex-direction:column-reverse;
+  gap:7px;
+  pointer-events:none;
+  width:90%;
+  max-width:390px;
+}
+.toast{
+  padding:13px 17px;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:700;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+  animation:tslide .3s ease;
+  pointer-events:all;
+}
 .toast.danger{background:linear-gradient(135deg,#B0202F,var(--stop));}
 .toast.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
 .toast.info{background:linear-gradient(135deg,var(--deep),var(--bright));}
 .toast.warning{background:linear-gradient(135deg,#8B4513,var(--warn));}
 .toast.ai{background:linear-gradient(135deg,#4A148C,var(--purple));}
-@keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
 
-/* ═══ 이력 목록 ═══ */
-.hist-card{background:var(--card);border-radius:var(--r-s);border:1.5px solid var(--line);
-  padding:14px 16px;margin-bottom:9px;box-shadow:var(--sh);cursor:pointer;transition:all .15s;}
-.hist-card:active{transform:scale(.98);}
-.hist-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
-.hist-name{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:5px;line-height:1.35;letter-spacing:-.02em;}
-.hist-meta{font-size:12px;color:var(--sub);font-weight:600;display:flex;gap:8px;flex-wrap:wrap;}
-.hist-score{font-size:12.5px;font-weight:900;padding:4px 10px;border-radius:7px;font-variant-numeric:tabular-nums;}
-.hist-score.low{background:var(--done-bg);color:var(--done);}
-.hist-score.med{background:var(--warn-bg);color:var(--warn);}
-.hist-score.high{background:var(--run-bg);color:var(--run);}
-.hist-score.critical{background:var(--stop-bg);color:var(--stop);}
-
-/* ═══ 좁은 화면 ═══ */
-@media(max-width:360px){
-  .topnav-title{font-size:14px;}
-  .theme-btn{width:32px;height:32px;font-size:15px;}
-  .back-btn,.home-btn{width:36px;height:36px;font-size:18px;}
-  .welcome-title{font-size:21px;}
-  .f-input[type="date"],
-  .f-input[type="time"],
-  .f-input[type="datetime-local"]{
-    font-size:14px;padding:12px 40px 12px 12px;
-    background-size:18px 18px;background-position:right 11px center;
-  }
-}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
-/* ═══════════════════════════════════════
-   Part 2: JSA 검색 · 대책 선택 · 매트릭스 · 통제 적정성
-   ═══════════════════════════════════════ */
-
-/* ═══ JSA_DB 검색 결과 카드 ═══ */
-.jsa-search-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px;background:var(--tint);border-radius:11px;
-  margin-bottom:10px;
-}
-.jsa-search-title{
-  font-size:13px;font-weight:800;color:var(--posco);
-  display:flex;align-items:center;gap:6px;
-}
-[data-theme="dark"] .jsa-search-title{color:var(--bright);}
-.jsa-search-count{
-  font-size:12px;font-weight:800;background:var(--card);
-  color:var(--posco);padding:3px 9px;border-radius:8px;
-  font-variant-numeric:tabular-nums;
-}
-[data-theme="dark"] .jsa-search-count{color:var(--bright);}
-
-.jsa-search-btn{
-  width:100%;padding:14px;
-  background:linear-gradient(135deg,#4A148C,var(--purple));
-  color:#fff;border:none;border-radius:12px;
-  font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 4px 14px rgba(74,20,140,.28);
-  transition:.2s;
-  margin-bottom:10px;
-}
-.jsa-search-btn:active{transform:scale(.98);}
-.jsa-search-btn:disabled{opacity:.4;cursor:not-allowed;}
-
-/* JSA 검색 결과 카드 */
-.jsa-result-card{
-  background:var(--card);border:2px solid var(--line);border-radius:var(--r);
-  padding:14px 16px;margin-bottom:10px;
-  box-shadow:var(--sh);transition:.2s;
-}
-.jsa-result-card:hover{border-color:var(--posco);}
-.jsa-result-header{
-  display:flex;align-items:flex-start;justify-content:space-between;
-  gap:10px;margin-bottom:8px;
-}
-.jsa-result-title{
-  flex:1;font-size:14.5px;font-weight:800;color:var(--ink);
-  letter-spacing:-.02em;line-height:1.4;
-}
-.jsa-similarity{
-  flex-shrink:0;font-size:11.5px;font-weight:800;
-  padding:4px 10px;border-radius:8px;
-  background:var(--tint);color:var(--posco);
-  font-variant-numeric:tabular-nums;
-}
-[data-theme="dark"] .jsa-similarity{color:var(--bright);}
-.jsa-similarity.high{background:var(--done-bg);color:var(--done);}
-.jsa-similarity.mid{background:var(--warn-bg);color:var(--warn);}
-
-.jsa-result-meta{
-  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
-}
-.jsa-tag{
-  font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:6px;
-  background:var(--sunk);color:var(--sub);letter-spacing:.02em;
-}
-.jsa-tag.law{background:#FFF3F5;color:var(--stop);}
-.jsa-tag.int{background:var(--tint);color:var(--posco);}
-.jsa-tag.sop{background:var(--warn-bg);color:var(--warn);}
-.jsa-tag.wrk{background:var(--sunk);color:var(--sub);}
-.jsa-tag.acc{background:var(--stop-bg);color:var(--stop);}
-.jsa-tag.nms{background:var(--warn-bg);color:var(--warn);}
-.jsa-tag.rec{background:var(--tint);color:var(--posco);}
-.jsa-tag.ai{background:var(--purple-bg);color:var(--purple);}
-[data-theme="dark"] .jsa-tag.law{background:rgba(214,39,61,.2);}
-[data-theme="dark"] .jsa-tag.int{background:rgba(0,103,177,.2);}
-[data-theme="dark"] .jsa-tag.ai{background:rgba(123,31,162,.25);}
-
-.jsa-control{
-  font-size:16px;font-weight:900;padding:0 6px;
-}
-.jsa-control.ok{color:var(--done);}
-.jsa-control.warn{color:var(--warn);}
-.jsa-control.no{color:var(--stop);}
-
-.jsa-hazard-box{
-  background:var(--sunk);border-left:3px solid var(--stop);
-  padding:10px 12px;border-radius:0 8px 8px 0;
-  margin-bottom:10px;
-}
-.jsa-hazard-label{
-  font-size:10.5px;font-weight:800;color:var(--sub);
-  letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;
-}
-.jsa-hazard-text{
-  font-size:13px;color:var(--body);font-weight:600;line-height:1.55;
+@keyframes tslide{
+  from{opacity:0;transform:translateY(12px);}
+  to{opacity:1;transform:translateY(0);}
 }
 
-.jsa-expand-btn{
-  width:100%;padding:10px;border:1.5px solid var(--line);
-  background:var(--sunk);border-radius:9px;
-  font-size:13px;font-weight:700;color:var(--posco);cursor:pointer;
-  font-family:inherit;transition:.15s;
-  display:flex;align-items:center;justify-content:center;gap:6px;
+/* 자동 판정 카드 (v3 핵심!) */
+.auto-judgment-card{
+  background:linear-gradient(145deg,var(--card),var(--sunk));
+  border:2.5px solid var(--posco);
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:14px;
+  box-shadow:0 4px 16px rgba(0,103,177,.15);
+  position:relative;
+  overflow:hidden;
+  animation:slideDown .4s ease;
 }
-.jsa-expand-btn:active{transform:scale(.98);}
-.jsa-expand-btn.expanded{background:var(--tint);}
-[data-theme="dark"] .jsa-expand-btn{color:var(--bright);}
-
-.jsa-detail-panel{
-  display:none;
-  margin-top:10px;padding:12px;background:var(--sunk);
-  border-radius:10px;
-}
-.jsa-detail-panel.open{display:block;animation:expand .25s ease;}
-@keyframes expand{from{opacity:0;max-height:0;}to{opacity:1;max-height:1000px;}}
-
-.jsa-detail-section{margin-bottom:10px;}
-.jsa-detail-section:last-child{margin-bottom:0;}
-.jsa-detail-label{
-  font-size:11px;font-weight:800;color:var(--sub);
-  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
-}
-.jsa-detail-value{
-  font-size:13px;color:var(--body);font-weight:600;line-height:1.6;
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-10px);}
+  to{opacity:1;transform:translateY(0);}
 }
 
-/* 안전대책 미리보기 */
-.jsa-measures-preview{
-  display:flex;flex-direction:column;gap:5px;
+.auto-judgment-card::before{
+  content:'⚡';
+  position:absolute;
+  top:-20px;right:-20px;
+  font-size:120px;
+  opacity:.05;
+  pointer-events:none;
 }
-.jsa-measure-preview{
-  display:flex;align-items:flex-start;gap:8px;
-  font-size:12.5px;color:var(--body);line-height:1.5;
-}
-.jsa-measure-preview-num{
-  flex-shrink:0;width:20px;height:20px;border-radius:50%;
-  background:var(--posco);color:#fff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:10.5px;font-weight:800;margin-top:1px;
-}
-.jsa-measure-preview-text{flex:1;font-weight:600;}
 
-.jsa-apply-btn{
-  width:100%;padding:12px;margin-top:12px;
-  background:linear-gradient(135deg,var(--deep),var(--bright));
-  color:#fff;border:none;border-radius:11px;
-  font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;
-  box-shadow:0 3px 12px rgba(0,60,126,.25);
+.ajc-header{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:12px;padding-bottom:10px;
+  border-bottom:1.5px dashed var(--line);
+}
+.ajc-header-icon{font-size:20px;}
+.ajc-header-text{
+  flex:1;
+  font-size:14px;font-weight:800;color:var(--posco);
+  letter-spacing:-.02em;
+}
+[data-theme="dark"] .ajc-header-text{color:var(--bright);}
+
+.ajc-override-btn{
+  background:var(--warn-bg);border:1.5px solid var(--warn);color:var(--warn);
+  padding:6px 10px;border-radius:8px;
+  font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;
   transition:.15s;
 }
-.jsa-apply-btn:active{transform:scale(.98);}
+.ajc-override-btn:hover{background:var(--warn);color:#fff;}
 
-/* ═══ 대책 선택 화면 (Screen 3) ═══ */
-.measures-summary{
-  background:var(--card);border-radius:var(--r);padding:14px 16px;
-  margin-bottom:12px;box-shadow:var(--sh);
-  border-left:5px solid var(--posco);
+.ajc-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-bottom:12px;
 }
-.measures-summary-title{
+
+.ajc-item{
+  background:var(--card);border-radius:12px;padding:12px;
+  border:1.5px solid var(--line);
+  text-align:center;
+}
+
+.ajc-item-label{
+  font-size:11px;font-weight:800;color:var(--sub);
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:8px;
+}
+
+.ajc-item-value{
+  font-size:20px;font-weight:900;
+}
+
+.ajc-badge{
+  display:inline-block;
+  padding:6px 14px;
+  border-radius:10px;
+  font-size:16px;font-weight:900;
+  letter-spacing:-.02em;
+}
+.ajc-badge.low{background:var(--done-bg);color:var(--done);}
+.ajc-badge.med{background:var(--warn-bg);color:var(--warn);}
+.ajc-badge.high{background:var(--run-bg);color:var(--run);}
+.ajc-badge.critical{background:var(--stop-bg);color:var(--stop);}
+.ajc-badge.na{background:var(--sunk);color:var(--sub);}
+
+.ajc-symbol{
+  display:inline-flex;
+  font-size:32px;font-weight:900;
+  line-height:1;
+  width:56px;height:56px;
+  border-radius:14px;
+  align-items:center;justify-content:center;
+  margin:0 auto;
+}
+.ajc-symbol.ok{background:var(--done-bg);color:var(--done);}
+.ajc-symbol.warn{background:var(--warn-bg);color:var(--warn);}
+.ajc-symbol.no{background:var(--stop-bg);color:var(--stop);}
+.ajc-symbol.na{background:var(--sunk);color:var(--sub);font-size:18px;}
+
+.ajc-basis{
+  background:var(--sunk);border-radius:10px;padding:10px 12px;
+  font-size:12px;color:var(--body);font-weight:600;line-height:1.6;
+}
+
+.ajc-overridden{
+  margin-top:10px;
+  background:var(--warn-bg);border-left:3px solid var(--warn);
+  padding:10px 12px;border-radius:0 8px 8px 0;
+  font-size:12px;color:var(--warn);font-weight:600;line-height:1.5;
+}
+.ajc-overridden-icon{margin-right:6px;}
+.ajc-override-reason{
+  margin-top:6px;
+  padding:6px 8px;
+  background:var(--card);border-radius:6px;
+  color:var(--body);font-weight:500;
+}
+
+/* JSA 검색 요약 */
+.jsa-search-summary{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;
+  background:var(--purple-bg);
+  border-radius:11px;
+  margin-bottom:12px;
+}
+.jsa-search-title{
+  font-size:13px;font-weight:800;color:var(--purple);
+}
+[data-theme="dark"] .jsa-search-title{color:#E1BEE7;}
+.jsa-refresh-btn{
+  background:var(--card);border:1.5px solid var(--purple);
+  color:var(--purple);
+  padding:6px 10px;border-radius:8px;
+  font-size:16px;cursor:pointer;
+  transition:.15s;
+}
+.jsa-refresh-btn:hover{background:var(--purple);color:#fff;}
+[data-theme="dark"] .jsa-refresh-btn{color:#E1BEE7;border-color:#E1BEE7;}
+
+/* 대책 선택 진행률 */
+.measures-progress{
+  background:var(--card);border-radius:12px;
+  padding:14px 16px;
+  border:1.5px solid var(--line);
+  box-shadow:var(--sh);
+  margin-bottom:12px;
+}
+
+.mp-title{
   font-size:12px;font-weight:800;color:var(--sub);
-  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:10px;
 }
-.measures-summary-count{
-  display:flex;gap:12px;flex-wrap:wrap;
+
+.mp-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  margin-bottom:10px;
 }
-.msc-item{
-  display:flex;align-items:center;gap:6px;
-  font-size:13.5px;font-weight:700;color:var(--body);
+
+.mp-item{
+  background:var(--sunk);border-radius:8px;
+  padding:10px 8px;text-align:center;
 }
-.msc-num{
-  font-size:16px;font-weight:900;color:var(--posco);
+
+.mp-num{
+  font-size:16px;font-weight:900;color:var(--ink);
+  margin-bottom:2px;
   font-variant-numeric:tabular-nums;
 }
-[data-theme="dark"] .msc-num{color:var(--bright);}
 
-/* 안전대책 카드 (선택 가능) */
-.measure-card{
-  background:var(--card);border:2px solid var(--line);border-radius:12px;
-  padding:12px 14px;margin-bottom:8px;
+.mp-lbl{
+  font-size:11px;font-weight:700;color:var(--sub);
+}
+
+.mp-total{
+  text-align:center;
+  padding:10px;
+  background:var(--tint);
+  border-radius:8px;
+  font-size:13px;font-weight:800;color:var(--posco);
+}
+[data-theme="dark"] .mp-total{color:var(--bright);}
+
+.mp-total span{
+  font-variant-numeric:tabular-nums;
+}
+
+/* 카테고리 아코디언 */
+.category-section{
+  background:var(--card);border-radius:12px;
+  margin-bottom:10px;
+  border:1.5px solid var(--line);
+  overflow:hidden;
+  box-shadow:var(--sh);
+}
+
+.category-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;cursor:pointer;
+  transition:.15s;
+  user-select:none;
+}
+.category-header:hover{background:var(--sunk);}
+.category-header:active{transform:scale(.99);}
+
+.category-title{
+  display:flex;align-items:center;gap:8px;
+  font-size:14px;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;
+}
+
+.category-icon{font-size:18px;}
+
+.category-count{
+  font-size:11px;font-weight:800;
+  padding:3px 8px;border-radius:6px;
+  background:var(--sunk);color:var(--sub);
+  font-variant-numeric:tabular-nums;
+}
+
+.category-arrow{
+  font-size:14px;color:var(--sub);
+  transition:transform .25s;
+  margin-left:6px;
+}
+.category-section.expanded .category-arrow{transform:rotate(180deg);}
+
+.category-content{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s ease;
+}
+.category-section.expanded .category-content{
+  max-height:5000px;
+}
+
+.category-body{padding:0 12px 12px;}
+
+.category-section.essential{border-left:4px solid var(--stop);}
+.category-section.essential .category-icon{color:var(--stop);}
+
+.category-section.engineering{border-left:4px solid var(--run);}
+.category-section.engineering .category-icon{color:var(--run);}
+
+.category-section.administrative{border-left:4px solid var(--warn);}
+.category-section.administrative .category-icon{color:var(--warn);}
+
+.category-section.ppe{border-left:4px solid var(--done);}
+.category-section.ppe .category-icon{color:var(--done);}
+
+/* 대책 카드 */
+.measure-item{
+  background:var(--sunk);border-radius:10px;
+  padding:11px 12px;margin-bottom:6px;
+  border:2px solid transparent;
   cursor:pointer;transition:.15s;
   display:flex;align-items:flex-start;gap:10px;
 }
-.measure-card:active{transform:scale(.98);}
-.measure-card.selected{
-  border-color:var(--posco);background:var(--tint);
-  box-shadow:0 0 0 3px rgba(0,103,177,.08);
+.measure-item:last-child{margin-bottom:0;}
+.measure-item:active{transform:scale(.98);}
+.measure-item.selected{
+  background:var(--tint);
+  border-color:var(--posco);
 }
-.measure-card.selected .measure-check::after{content:'✓';}
 
 .measure-check{
-  flex-shrink:0;width:24px;height:24px;border-radius:7px;
+  flex-shrink:0;width:22px;height:22px;border-radius:6px;
   border:2px solid var(--line);background:var(--card);
   display:flex;align-items:center;justify-content:center;
-  font-size:14px;font-weight:900;color:#fff;
+  font-size:13px;font-weight:900;color:#fff;
   transition:.15s;margin-top:1px;
 }
-.measure-card.selected .measure-check{
+.measure-item.selected .measure-check{
   background:var(--posco);border-color:var(--posco);
 }
+.measure-item.selected .measure-check::after{content:'✓';}
 
 .measure-content{flex:1;min-width:0;}
 .measure-text{
-  font-size:14px;font-weight:600;color:var(--ink);
+  font-size:13.5px;font-weight:600;color:var(--ink);
   line-height:1.5;letter-spacing:-.01em;
   margin-bottom:5px;word-break:break-word;
 }
 .measure-tags{
-  display:flex;gap:5px;flex-wrap:wrap;
+  display:flex;gap:4px;flex-wrap:wrap;align-items:center;
+}
+.measure-tag{
+  font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;
+  letter-spacing:.02em;
+}
+.measure-tag.law{background:#FFF3F5;color:var(--stop);}
+.measure-tag.int{background:var(--tint);color:var(--posco);}
+.measure-tag.sop{background:var(--warn-bg);color:var(--warn);}
+.measure-tag.wrk{background:var(--sunk);color:var(--sub);}
+.measure-tag.acc{background:var(--stop-bg);color:var(--stop);}
+.measure-tag.nms{background:var(--warn-bg);color:var(--warn);}
+.measure-tag.rec{background:var(--tint);color:var(--posco);}
+.measure-tag.ai{background:var(--purple-bg);color:var(--purple);}
+.measure-tag.user{background:var(--done-bg);color:var(--done);}
+
+.measure-source-count{
+  font-size:10px;color:var(--sub);font-weight:700;
+  margin-left:4px;
 }
 
-.measure-add-section{
-  background:var(--card);border-radius:12px;padding:12px 14px;
-  border:2px dashed var(--line);margin-top:10px;
+/* 사용자 추가 대책 */
+.user-measures-section{
+  border:2px dashed var(--line);
+  background:var(--sunk);
 }
-.measure-add-title{
-  font-size:13px;font-weight:800;color:var(--sub);
-  margin-bottom:8px;
-}
+
 .measure-add-row{
-  display:flex;gap:8px;
+  display:grid;
+  grid-template-columns:1fr 100px auto;
+  gap:6px;
+  align-items:stretch;
 }
+
 .measure-add-input{
-  flex:1;padding:11px 13px;border:1.5px solid var(--line);
-  border-radius:10px;font-size:14px;background:var(--sunk);color:var(--ink);
+  padding:11px 13px;border:1.5px solid var(--line);
+  border-radius:10px;font-size:14px;background:var(--card);color:var(--ink);
   font-weight:600;font-family:inherit;
 }
-.measure-add-input:focus{outline:none;border-color:var(--posco);background:var(--card);}
+.measure-add-input:focus{outline:none;border-color:var(--posco);}
+
+.measure-add-cat{
+  padding:11px 8px;border:1.5px solid var(--line);
+  border-radius:10px;font-size:12px;background:var(--card);color:var(--ink);
+  font-weight:700;font-family:inherit;
+  appearance:none;
+  text-align:center;
+}
+
 .measure-add-btn{
-  padding:11px 16px;background:var(--posco);color:#fff;
+  padding:11px 14px;background:var(--posco);color:#fff;
   border:none;border-radius:10px;font-size:13px;font-weight:800;
-  cursor:pointer;font-family:inherit;transition:.15s;
-  white-space:nowrap;
+  cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;
 }
 .measure-add-btn:active{transform:scale(.96);}
 
@@ -607,164 +685,39 @@ body{
   background:var(--done-bg);border:1.5px solid var(--done);
   border-radius:10px;margin-bottom:6px;
 }
-.user-measure-text{flex:1;font-size:13.5px;color:var(--body);font-weight:600;line-height:1.5;}
+.user-measure-text{flex:1;font-size:13px;color:var(--body);font-weight:600;line-height:1.5;}
+.user-measure-cat{
+  font-size:10px;padding:2px 6px;border-radius:5px;
+  background:var(--card);color:var(--done);font-weight:800;
+}
 .user-measure-del{
-  flex-shrink:0;width:24px;height:24px;border-radius:50%;
+  flex-shrink:0;width:22px;height:22px;border-radius:50%;
   background:var(--stop);color:#fff;border:none;
-  font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;
+  font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;
   display:flex;align-items:center;justify-content:center;
 }
-.user-measure-del:active{transform:scale(.9);}
 
-/* ═══ 매트릭스 (5×5) ═══ */
-.matrix-wrap{
-  background:var(--card);border-radius:12px;padding:14px;
-  border:1.5px solid var(--line);box-shadow:var(--sh);
-}
-.matrix-title{
-  font-size:13px;font-weight:800;color:var(--ink);
-  margin-bottom:10px;letter-spacing:-.02em;
-}
-.matrix-legend{
-  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;
-}
-.matrix-legend-item{
-  display:flex;align-items:center;gap:5px;
-  font-size:10.5px;font-weight:700;color:var(--body);
-}
-.matrix-dot{width:10px;height:10px;border-radius:3px;}
-.matrix-dot.low{background:var(--done);}
-.matrix-dot.med{background:var(--warn);}
-.matrix-dot.high{background:var(--run);}
-.matrix-dot.critical{background:var(--stop);}
-
-.matrix-grid{
-  display:grid;grid-template-columns:32px repeat(5,1fr);gap:4px;
-  margin-bottom:10px;
-}
-.matrix-head{
-  font-size:11px;font-weight:800;color:var(--sub);
-  display:flex;align-items:center;justify-content:center;
-}
-.matrix-cell{
-  aspect-ratio:1;border-radius:6px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  font-size:12.5px;font-weight:800;color:#fff;transition:all .2s;
-  font-variant-numeric:tabular-nums;
-}
-.matrix-cell:active{transform:scale(1.08);}
-.matrix-cell.sel{
-  box-shadow:0 0 0 3px var(--posco);transform:scale(1.12);
-  z-index:1;position:relative;
-}
-.matrix-cell.low{background:var(--done);}
-.matrix-cell.med{background:var(--warn);}
-.matrix-cell.high{background:var(--run);}
-.matrix-cell.critical{background:var(--stop);}
-
-.matrix-result{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 14px;border-radius:11px;margin-top:10px;
-}
-.matrix-result.low{background:var(--done-bg);border:1.5px solid var(--done);}
-.matrix-result.med{background:var(--warn-bg);border:1.5px solid var(--warn);}
-.matrix-result.high{background:var(--run-bg);border:1.5px solid var(--run);}
-.matrix-result.critical{background:var(--stop-bg);border:1.5px solid var(--stop);}
-.matrix-result-num{
-  font-size:32px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;
-}
-.matrix-result-num.low{color:var(--done);}
-.matrix-result-num.med{color:var(--warn);}
-.matrix-result-num.high{color:var(--run);}
-.matrix-result-num.critical{color:var(--stop);}
-.matrix-result-info{flex:1;}
-.matrix-result-level{
-  font-size:14.5px;font-weight:900;letter-spacing:-.02em;
-}
-.matrix-result-level.low{color:var(--done);}
-.matrix-result-level.med{color:var(--warn);}
-.matrix-result-level.high{color:var(--run);}
-.matrix-result-level.critical{color:var(--stop);}
-.matrix-result-desc{
-  font-size:11.5px;color:var(--sub);font-weight:600;margin-top:2px;
-}
-
-/* ═══ 통제 적정성 (○/△/×) ═══ */
-.control-adequacy{
-  background:var(--card);border-radius:12px;padding:14px 16px;
-  border:1.5px solid var(--line);box-shadow:var(--sh);margin-top:10px;
-}
-.control-adequacy-title{
-  font-size:13px;font-weight:800;color:var(--ink);
-  margin-bottom:6px;letter-spacing:-.02em;
-}
-.control-adequacy-desc{
-  font-size:12px;color:var(--sub);font-weight:600;
-  line-height:1.5;margin-bottom:12px;
-}
-.control-buttons{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;
-}
-.ctrl-btn{
-  padding:14px 8px;border:2px solid var(--line);border-radius:11px;
-  background:var(--card);cursor:pointer;transition:.15s;
-  font-family:inherit;text-align:center;
-}
-.ctrl-btn:active{transform:scale(.96);}
-.ctrl-btn-symbol{
-  font-size:24px;font-weight:900;line-height:1;margin-bottom:4px;
-}
-.ctrl-btn-label{
-  font-size:11px;font-weight:700;color:var(--sub);
-}
-.ctrl-btn.ok .ctrl-btn-symbol{color:var(--done);}
-.ctrl-btn.warn .ctrl-btn-symbol{color:var(--warn);}
-.ctrl-btn.no .ctrl-btn-symbol{color:var(--stop);}
-.ctrl-btn.selected.ok{
-  background:var(--done-bg);border-color:var(--done);
-  box-shadow:0 0 0 3px rgba(14,138,107,.15);
-}
-.ctrl-btn.selected.warn{
-  background:var(--warn-bg);border-color:var(--warn);
-  box-shadow:0 0 0 3px rgba(180,83,9,.15);
-}
-.ctrl-btn.selected.no{
-  background:var(--stop-bg);border-color:var(--stop);
-  box-shadow:0 0 0 3px rgba(214,39,61,.15);
-}
-.ctrl-btn.selected .ctrl-btn-label{
-  font-weight:800;color:var(--ink);
-}
-
-.ai-review-hint{
-  margin-top:12px;padding:10px 12px;
-  background:var(--purple-bg);border-left:3px solid var(--purple);
-  border-radius:0 8px 8px 0;
-  font-size:12px;color:var(--body);font-weight:600;line-height:1.5;
-  display:none;
-}
-.ai-review-hint.show{display:block;}
-.ai-review-hint strong{color:var(--purple);}
-[data-theme="dark"] .ai-review-hint strong{color:#E1BEE7;}
-
-/* ═══ 종합 결과 ═══ */
-.overall-badge{
+/* 최종 배지 */
+.final-badge{
   border-radius:var(--r);padding:22px 20px;
   text-align:center;color:#fff;margin-bottom:14px;
   position:relative;overflow:hidden;
 }
-.overall-badge::before{
+.final-badge::before{
   content:'';position:absolute;top:-20px;right:-20px;
   width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);
 }
-.overall-badge.low{background:linear-gradient(145deg,#0B7A5F,var(--done));}
-.overall-badge.med{background:linear-gradient(145deg,#8B4513,var(--warn));}
-.overall-badge.high{background:linear-gradient(145deg,#BF360C,var(--run));}
-.overall-badge.critical{background:linear-gradient(145deg,#B0202F,var(--stop));}
-.ob-level{font-size:22px;font-weight:900;margin-bottom:6px;letter-spacing:-.03em;}
-.ob-score{font-size:56px;font-weight:900;line-height:1;margin:8px 0;font-variant-numeric:tabular-nums;}
-.ob-desc{font-size:13px;opacity:.9;line-height:1.55;font-weight:600;}
+.final-badge.low{background:linear-gradient(145deg,#0B7A5F,var(--done));}
+.final-badge.med{background:linear-gradient(145deg,#8B4513,var(--warn));}
+.final-badge.high{background:linear-gradient(145deg,#BF360C,var(--run));}
+.final-badge.critical{background:linear-gradient(145deg,#B0202F,var(--stop));}
+.final-badge.na{background:linear-gradient(145deg,#5E7183,#93A5B5);}
 
+.fb-level{font-size:22px;font-weight:900;margin-bottom:6px;letter-spacing:-.03em;}
+.fb-control{font-size:36px;font-weight:900;line-height:1;margin:8px 0;}
+.fb-desc{font-size:13px;opacity:.9;line-height:1.55;font-weight:600;}
+
+/* Summary Card */
 .summary-card{
   background:var(--card);border-radius:var(--r);
   padding:14px 18px;margin-bottom:12px;
@@ -781,7 +734,23 @@ body{
 .summary-val.hl{color:var(--posco);}
 [data-theme="dark"] .summary-val.hl{color:var(--bright);}
 
-/* ═══ 버튼 ═══ */
+.fm-item{
+  padding:8px 10px;background:var(--sunk);
+  border-radius:8px;margin-bottom:5px;
+  font-size:13px;color:var(--body);
+  display:flex;align-items:center;gap:8px;
+  line-height:1.5;
+}
+.fm-item-cat{
+  font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;
+  flex-shrink:0;
+}
+.fm-cat-essential{background:var(--stop-bg);color:var(--stop);}
+.fm-cat-engineering{background:var(--run-bg);color:var(--run);}
+.fm-cat-administrative{background:var(--warn-bg);color:var(--warn);}
+.fm-cat-ppe{background:var(--done-bg);color:var(--done);}
+
+/* 버튼 */
 .btn-row{display:flex;gap:10px;margin-top:16px;margin-bottom:20px;}
 .btn-primary{flex:2;padding:16px;
   background:linear-gradient(135deg,var(--deep),var(--bright));
@@ -802,7 +771,7 @@ body{
   box-shadow:0 4px 14px rgba(14,138,107,.28);transition:.2s;}
 .btn-success:active{transform:scale(.98);}
 
-/* ═══ 완료 화면 ═══ */
+/* 완료 화면 */
 .complete-hero{text-align:center;padding:28px 16px 14px;}
 .complete-ico{font-size:56px;margin-bottom:12px;line-height:1;}
 .complete-title{font-size:22px;font-weight:900;color:var(--ink);
@@ -824,35 +793,125 @@ body{
 .ca-dash{background:var(--card);border:1.5px solid var(--line);color:var(--body);}
 .ca-new{background:var(--sunk);border:1.5px solid var(--line);color:var(--sub);}
 
-/* ═══ 이력 화면 ═══ */
+/* 이력 */
+.hist-card{background:var(--card);border-radius:var(--r-s);border:1.5px solid var(--line);
+  padding:14px 16px;margin-bottom:9px;box-shadow:var(--sh);cursor:pointer;transition:all .15s;}
+.hist-card:active{transform:scale(.98);}
+.hist-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.hist-name{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:5px;line-height:1.35;letter-spacing:-.02em;}
+.hist-meta{font-size:12px;color:var(--sub);font-weight:600;display:flex;gap:8px;flex-wrap:wrap;}
+
+.hist-badge{font-size:11px;font-weight:900;padding:4px 10px;border-radius:7px;}
+.hist-badge.low{background:var(--done-bg);color:var(--done);}
+.hist-badge.med{background:var(--warn-bg);color:var(--warn);}
+.hist-badge.high{background:var(--run-bg);color:var(--run);}
+.hist-badge.critical{background:var(--stop-bg);color:var(--stop);}
+.hist-badge.na{background:var(--sunk);color:var(--sub);}
+
 .hist-empty{text-align:center;padding:40px 16px;color:var(--sub);}
 .hist-empty-ico{font-size:44px;margin-bottom:12px;opacity:.35;}
 .hist-empty-txt{font-size:14px;line-height:1.65;font-weight:600;}
 
-/* ═══ 로딩 ═══ */
-.jsa-loading{text-align:center;padding:24px 16px;}
-.jsa-loading-ico{font-size:36px;margin-bottom:10px;animation:spin 1.5s linear infinite;}
+/* 로딩 */
+.jsa-loading{text-align:center;padding:32px 16px;
+  background:var(--card);border-radius:12px;
+  border:1.5px solid var(--line);}
+.jsa-loading-ico{font-size:44px;margin-bottom:14px;animation:spin 1.5s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.jsa-loading-txt{font-size:13px;color:var(--sub);font-weight:700;line-height:1.6;}
+.jsa-loading-txt{font-size:14px;color:var(--body);font-weight:700;line-height:1.7;}
+.jsa-loading-txt small{
+  font-size:12px;color:var(--sub);font-weight:600;
+  display:block;margin-top:6px;
+}
 
-/* ═══ 좁은 화면 추가 ═══ */
+/* 커스텀 다이얼로그 */
+.dialog-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.5);
+  z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+.dialog-content{
+  background:var(--card);
+  border-radius:16px;
+  max-width:400px;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+  animation:slideUp .25s ease;
+}
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.dialog-header{
+  display:flex;align-items:center;gap:10px;
+  padding:16px 18px;
+  border-bottom:1.5px solid var(--line);
+}
+.dialog-icon{font-size:24px;}
+.dialog-title{
+  font-size:15px;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;
+}
+
+.dialog-body{
+  padding:16px 18px;
+  font-size:14px;color:var(--body);line-height:1.6;
+}
+
+.dialog-warn{
+  background:var(--warn-bg);
+  border-left:3px solid var(--warn);
+  padding:10px 12px;
+  border-radius:0 8px 8px 0;
+  margin-bottom:14px;
+  font-size:12px;color:var(--warn);
+  font-weight:700;line-height:1.55;
+}
+
+.dialog-actions{
+  display:flex;gap:8px;
+  padding:12px 18px 16px;
+  border-top:1.5px solid var(--line);
+}
+.dialog-actions .btn-primary,
+.dialog-actions .btn-secondary{
+  flex:1;padding:12px;
+  font-size:14px;
+}
+
+/* 좁은 화면 */
 @media(max-width:360px){
-  .matrix-cell{font-size:11px;}
-  .matrix-grid{grid-template-columns:26px repeat(5,1fr);}
+  .topnav-title{font-size:14px;}
+  .theme-btn{width:32px;height:32px;font-size:15px;}
+  .back-btn,.home-btn{width:36px;height:36px;font-size:18px;}
+  .welcome-title{font-size:21px;}
+  .ajc-grid{grid-template-columns:1fr;}
+  .mp-grid{grid-template-columns:1fr;}
+  .measure-add-row{grid-template-columns:1fr;}
   .btn-row{flex-wrap:wrap;}
-  .ob-score{font-size:48px;}
-  .ctrl-btn-symbol{font-size:20px;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
 }
 </style>
 </head>
 <body>
 <div class="app">
 
-<!-- ═══ TOP NAV ═══ -->
+<!-- TOP NAV -->
 <nav class="topnav">
   <div class="topnav-l">
     <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
-    <div class="topnav-title" id="topTitle">🤖 위험성평가</div>
+    <div class="topnav-title" id="topTitle">🤖 위험성평가 v3</div>
   </div>
   <div class="topnav-r">
     <div class="risk-id-badge" id="riskIdBadge"></div>
@@ -863,34 +922,30 @@ body{
 
 <div class="toast-wrap" id="toastWrap"></div>
 
-<!-- ═══ 진행 바 (4단계) ═══ -->
+<!-- PROGRESS -->
 <div class="progress-wrap" id="progressWrap" style="display:none;">
   <div class="progress-steps">
     <div class="pstep" id="ps1"></div>
     <div class="pstep" id="ps2"></div>
     <div class="pstep" id="ps3"></div>
-    <div class="pstep" id="ps4"></div>
   </div>
   <div class="progress-info">
     <div class="progress-label" id="progressLabel">1단계: 기본정보</div>
-    <div class="progress-pct" id="progressPct">1/4</div>
+    <div class="progress-pct" id="progressPct">1/3</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 0: 시작 화면
-     ══════════════════════════════════════ -->
+<!-- SCREEN 0: 시작 -->
 <div class="screen active" id="screen-welcome">
   <div class="welcome-hero">
     <div class="welcome-ico">🤖</div>
     <div class="welcome-title">AI 위험성평가</div>
     <div class="welcome-sub">
-      JSA_DB 검색 · 안전대책 자동 제안<br>
-      매트릭스 + 통제 적정성 평가
+      JSA_DB 다중 검색 · 대책 자동 병합<br>
+      위험도 · 통제 적정성 자동 판정
     </div>
   </div>
 
-  <!-- 모드 선택 -->
   <div class="mode-grid">
     <div class="mode-card" onclick="selectMode('db')">
       <div class="mode-ico">📋</div>
@@ -904,7 +959,6 @@ body{
     </div>
   </div>
 
-  <!-- 공장 필터 -->
   <div class="sec-label">
     <span>📅 오늘 작업 목록</span>
     <span id="workCount" style="font-size:12px;color:var(--posco);font-weight:700;text-transform:none;">0건</span>
@@ -920,7 +974,6 @@ body{
   </select>
   <div id="workList"></div>
 
-  <!-- 최근 평가 이력 -->
   <div class="sec-label" style="margin-top:16px;">
     <span>📂 최근 평가 이력</span>
     <span onclick="goToScreen('screen-history')" 
@@ -931,21 +984,24 @@ body{
   <div id="recentHistList"></div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 1: 기본정보
-     ══════════════════════════════════════ -->
+<!-- SCREEN 1: 기본정보 -->
 <div class="screen" id="screen-step1">
-  <!-- 허가서 연결 배너 -->
   <div class="permit-banner" id="permitBanner" style="display:none;">
     <div class="permit-banner-lbl">📄 연결된 허가서</div>
     <div class="permit-banner-no" id="permitBannerNo">-</div>
   </div>
 
+  <div class="safeinfo-banner" id="safeinfoBanner" style="display:none;">
+    <div class="safeinfo-banner-lbl">📋 연결된 안전정보</div>
+    <div class="safeinfo-banner-no" id="safeinfoBannerNo">-</div>
+  </div>
+
   <div class="info-box">
-    <div class="info-box-title">💡 자동 채움 활용</div>
+    <div class="info-box-title">💡 v3 자동 판정 안내</div>
     <div class="info-box-text">
-      작업허가서에서 이동한 경우 <strong>기본정보가 자동 입력</strong>됩니다.<br>
-      다음 단계에서 <strong>JSA_DB 검색</strong>으로 표준 안전대책을 자동 제안받을 수 있습니다.
+      기본정보 입력 후 <strong>JSA_DB를 다중 검색</strong>하여<br>
+      <strong>대책 · 위험도 · 통제 적정성이 자동 반영</strong>됩니다.<br>
+      사용자는 필요한 대책만 선택하면 됩니다.
     </div>
   </div>
 
@@ -953,7 +1009,7 @@ body{
     <div class="form-section-title">📋 기본 정보</div>
     <div class="form-group">
       <label class="f-label">작업명<span class="req">*</span></label>
-      <input class="f-input" id="f-workName" placeholder="소성로 냉각스판 용접작업">
+      <input class="f-input" id="f-workName" placeholder="예: 소성로 냉각스판 용접작업">
     </div>
     <div class="f-row">
       <div class="form-group">
@@ -967,7 +1023,7 @@ body{
       </div>
       <div class="form-group">
         <label class="f-label">세부 위치</label>
-        <input class="f-input" id="f-detailLoc" placeholder="2층 4라인">
+        <input class="f-input" id="f-detailLoc" placeholder="예: 2층 4라인">
       </div>
     </div>
     <div class="f-row">
@@ -977,17 +1033,17 @@ body{
       </div>
       <div class="form-group">
         <label class="f-label">평가자<span class="req">*</span></label>
-        <input class="f-input" id="f-assessor" placeholder="이안전">
+        <input class="f-input" id="f-assessor" placeholder="예: 홍길동">
       </div>
     </div>
     <div class="f-row">
       <div class="form-group">
         <label class="f-label">협력사<span class="req">*</span></label>
-        <input class="f-input" id="f-company" placeholder="보겸솔루션">
+        <input class="f-input" id="f-company" placeholder="예: ○○건설">
       </div>
       <div class="form-group">
         <label class="f-label">작업인원</label>
-        <input class="f-input" type="number" id="f-workers" min="1" placeholder="5">
+        <input class="f-input" type="number" id="f-workers" min="1" placeholder="예: 5">
       </div>
     </div>
   </div>
@@ -999,201 +1055,156 @@ body{
       <select class="f-select" id="f-workType">
         <option value="">선택하세요</option>
         <option value="일반작업">🔧 일반작업</option>
-        <option value="화기작업">🔥 화기작업 (용접·용단·연삭)</option>
-        <option value="고소작업">🪜 고소작업 (2m 이상)</option>
+        <option value="화기">🔥 화기작업 (용접·용단·연삭)</option>
+        <option value="떨어짐 위험">🪜 고소작업 (2m 이상)</option>
         <option value="밀폐공간">🚪 밀폐공간 작업</option>
-        <option value="전기작업">⚡ 전기작업</option>
-        <option value="중장비작업">🏗️ 중장비작업 (양중·운반)</option>
+        <option value="전기">⚡ 전기작업</option>
+        <option value="양중">🏗️ 중장비작업 (양중·운반)</option>
         <option value="화학물질">🧪 화학물질 취급</option>
         <option value="굴착작업">⛏️ 굴착작업</option>
-        <option value="정비작업">🔩 정비작업</option>
+        <option value="정비">🔩 정비작업</option>
+        <option value="운반">🚚 운반작업</option>
+        <option value="공통">📋 공통</option>
       </select>
     </div>
     <div class="form-group">
       <label class="f-label">작업 상세 내용</label>
-      <textarea class="f-textarea" id="f-workDesc" placeholder="작업 내용을 간략히 입력하세요&#10;예: 3라인 배관 연결부 용접 및 검사"></textarea>
+      <textarea class="f-textarea" id="f-workDesc" 
+                placeholder="작업 내용을 간략히 입력하세요&#10;예: 3라인 배관 연결부 용접 및 검사"></textarea>
     </div>
   </div>
 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goBack()">← 이전</button>
-    <button class="btn-primary" onclick="validateStep1()">다음 →</button>
+    <button class="btn-primary" onclick="validateStep1()">JSA_DB 검색 및 판정 →</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 2: JSA_DB 검색 및 선택 ⭐ 핵심
-     ══════════════════════════════════════ -->
+<!-- SCREEN 2: 대책 선택 + 자동 판정 -->
 <div class="screen" id="screen-step2">
-  <!-- 검색 상태 헤더 -->
-  <div class="jsa-search-header">
+  <div class="jsa-search-summary" id="jsaSearchSummary">
     <div class="jsa-search-title">
-      <span>🔍</span>
-      <span id="jsaSearchTitle">JSA_DB 검색 결과</span>
+      🔍 <span id="jsaSummaryText">JSA_DB 검색 중...</span>
     </div>
-    <div class="jsa-search-count" id="jsaSearchCount">0건</div>
+    <button class="jsa-refresh-btn" onclick="rerunJSASearch()" title="다시 검색">🔄</button>
   </div>
 
-  <!-- 재검색 버튼 -->
-  <button class="jsa-search-btn" onclick="runJSASearch(true)">
-    <span>🔄</span>
-    <span>JSA_DB 다시 검색</span>
-  </button>
-
-  <div class="info-box">
-    <div class="info-box-title">💡 사용 방법</div>
-    <div class="info-box-text">
-      1️⃣ 유사 작업 카드를 확인하세요<br>
-      2️⃣ [자세히 보기]로 표준 안전대책을 확인<br>
-      3️⃣ 적합한 JSA를 [적용]하면 다음 단계에서 <strong>대책을 선택</strong>할 수 있습니다
+  <div class="auto-judgment-card" id="autoJudgmentCard" style="display:none;">
+    <div class="ajc-header">
+      <span class="ajc-header-icon">⚡</span>
+      <span class="ajc-header-text">자동 판정 결과</span>
+      <button class="ajc-override-btn" id="overrideBtn" onclick="showOverrideDialog()" 
+              style="display:none;">
+        ✏️ 수정 (관리자)
+      </button>
+    </div>
+    
+    <div class="ajc-grid">
+      <div class="ajc-item" id="ajcRiskItem">
+        <div class="ajc-item-label">위험도</div>
+        <div class="ajc-item-value" id="ajcRiskValue">
+          <span class="ajc-badge" id="ajcRiskBadge">-</span>
+        </div>
+      </div>
+      
+      <div class="ajc-item" id="ajcControlItem">
+        <div class="ajc-item-label">통제 적정성</div>
+        <div class="ajc-item-value" id="ajcControlValue">
+          <span class="ajc-symbol" id="ajcControlSymbol">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="ajc-basis" id="ajcBasis">
+      판정 근거가 여기에 표시됩니다.
+    </div>
+    
+    <div class="ajc-overridden" id="ajcOverriddenBox" style="display:none;">
+      <span class="ajc-overridden-icon">✏️</span>
+      <span>관리자가 수동으로 조정한 결과입니다.</span>
+      <div class="ajc-override-reason" id="ajcOverrideReason"></div>
     </div>
   </div>
 
-  <!-- 검색 결과 컨테이너 -->
-  <div id="jsaResultArea">
-    <!-- JavaScript에서 동적 렌더링 -->
+  <div class="measures-progress" id="measuresProgress" style="display:none;">
+    <div class="mp-title">📊 대책 선택 현황</div>
+    <div class="mp-grid">
+      <div class="mp-item">
+        <div class="mp-num" id="mpEssentialCount">0/0</div>
+        <div class="mp-lbl">🔴 필수 (제거·대체)</div>
+      </div>
+      <div class="mp-item">
+        <div class="mp-num" id="mpEngineeringCount">0/0</div>
+        <div class="mp-lbl">🟠 공학적 통제</div>
+      </div>
+      <div class="mp-item">
+        <div class="mp-num" id="mpAdministrativeCount">0/0</div>
+        <div class="mp-lbl">🟡 행정적 통제</div>
+      </div>
+      <div class="mp-item">
+        <div class="mp-num" id="mpPpeCount">0/0</div>
+        <div class="mp-lbl">🟢 PPE</div>
+      </div>
+    </div>
+    <div class="mp-total">
+      총 선택: <span id="mpTotalSelected">0</span> / <span id="mpTotalAvailable">0</span>개
+      <span id="mpUserCount" style="color:var(--sub);"></span>
+    </div>
+  </div>
+
+  <div id="measuresContainer">
+    <div class="jsa-loading" id="measuresLoading">
+      <div class="jsa-loading-ico">🔍</div>
+      <div class="jsa-loading-txt">
+        JSA_DB에서 관련 작업을 검색하고 있습니다...<br>
+        <small>다중 검색 → 대책 병합 → 자동 판정</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section user-measures-section" id="userMeasuresSection" style="display:none;">
+    <div class="form-section-title">➕ 추가 대책 (현장 판단)</div>
+    <div class="measure-add-row">
+      <input class="measure-add-input" id="userMeasureInput" 
+             placeholder="현장 상황에 맞는 추가 대책"
+             onkeypress="if(event.key==='Enter')addUserMeasure();">
+      <select class="measure-add-cat" id="userMeasureCat">
+        <option value="essential">🔴 필수</option>
+        <option value="engineering">🟠 공학적</option>
+        <option value="administrative" selected>🟡 행정적</option>
+        <option value="ppe">🟢 PPE</option>
+      </select>
+      <button class="measure-add-btn" onclick="addUserMeasure()">추가</button>
+    </div>
+    <div id="userMeasuresList" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="warn-box" id="noJSAWarn" style="display:none;">
+    <div class="warn-box-title">⚠️ JSA_DB에 유사 작업이 없습니다</div>
+    <div class="warn-box-text">
+      아래에서 <strong>추가 대책</strong>을 직접 입력하거나,<br>
+      작업명·작업유형을 다시 확인 후 재검색해주세요.
+    </div>
   </div>
 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goToStep(1)">← 이전</button>
-    <button class="btn-primary" onclick="skipJSASearch()">JSA 없이 진행 →</button>
+    <button class="btn-primary" onclick="validateStep2()">종합 검토 →</button>
   </div>
 </div>
-<!-- ══════════════════════════════════════
-     SCREEN 3: 안전대책 선택 및 매트릭스 평가 ⭐ 핵심
-     ══════════════════════════════════════ -->
+
+<!-- SCREEN 3: 종합 검토 -->
 <div class="screen" id="screen-step3">
-  
-  <!-- 참조 JSA 표시 -->
-  <div class="info-box" id="referencedJSABox" style="display:none;">
-    <div class="info-box-title">📚 참조 JSA</div>
-    <div class="info-box-text" id="referencedJSAText">-</div>
-  </div>
-
-  <!-- 원문 위험요인 (JSA에서 가져온 것) -->
-  <div class="danger-box" id="originalHazardBox" style="display:none;">
-    <div class="danger-box-title">⚠️ 원문 위험요인</div>
-    <div class="danger-box-text" id="originalHazardText">-</div>
-  </div>
-
-  <!-- 선택 요약 -->
-  <div class="measures-summary">
-    <div class="measures-summary-title">📊 선택 현황</div>
-    <div class="measures-summary-count" id="measuresSummary">
-      <div class="msc-item"><span class="msc-num" id="mscSelected">0</span>개 선택</div>
-      <div class="msc-item"><span class="msc-num" id="mscTotal">0</span>개 중</div>
-      <div class="msc-item"><span class="msc-num" id="mscAdded">0</span>개 추가</div>
-    </div>
-  </div>
-
-  <!-- 안전대책 리스트 -->
-  <div class="form-section">
-    <div class="form-section-title">
-      ✅ 안전대책 선택
-      <span style="font-size:11px;color:var(--sub);font-weight:600;margin-left:auto;">
-        (카드 클릭하여 선택)
-      </span>
-    </div>
-    
-    <div id="measuresList">
-      <!-- JavaScript에서 동적 렌더링 -->
-    </div>
-
-    <!-- 사용자 추가 대책 -->
-    <div class="measure-add-section">
-      <div class="measure-add-title">➕ 추가 대책 입력</div>
-      <div class="measure-add-row">
-        <input class="measure-add-input" id="userMeasureInput" 
-               placeholder="현장 상황에 맞는 추가 대책"
-               onkeypress="if(event.key==='Enter')addUserMeasure();">
-        <button class="measure-add-btn" onclick="addUserMeasure()">추가</button>
-      </div>
-      <div id="userMeasuresList" style="margin-top:10px;"></div>
-    </div>
-  </div>
-
-  <!-- 위험도 평가 (매트릭스) -->
-  <div class="form-section">
-    <div class="form-section-title">📊 위험도 평가 (매트릭스)</div>
-    <div class="info-box" style="margin-bottom:12px;">
-      <div class="info-box-text" style="font-size:12px;">
-        💡 위험도 = <strong>빈도(가능성) × 강도(심각성)</strong>. 셀을 직접 선택하세요.
-      </div>
-    </div>
-
-    <div class="matrix-wrap">
-      <div class="matrix-legend">
-        <div class="matrix-legend-item">
-          <div class="matrix-dot low"></div>저위험 (1~4)
-        </div>
-        <div class="matrix-legend-item">
-          <div class="matrix-dot med"></div>중위험 (5~9)
-        </div>
-        <div class="matrix-legend-item">
-          <div class="matrix-dot high"></div>고위험 (10~15)
-        </div>
-        <div class="matrix-legend-item">
-          <div class="matrix-dot critical"></div>매우고위험 (16~25)
-        </div>
-      </div>
-
-      <div class="matrix-grid" id="matrixGrid">
-        <!-- JavaScript에서 동적 렌더링 -->
-      </div>
-
-      <div id="matrixResult"></div>
-    </div>
-  </div>
-
-  <!-- 통제 적정성 -->
-  <div class="form-section">
-    <div class="form-section-title">⚖️ 통제 적정성 판정</div>
-    
-    <div class="control-adequacy">
-      <div class="control-adequacy-title">선택한 안전대책이 위험을 충분히 통제하는가?</div>
-      <div class="control-adequacy-desc">
-        ○: 제거·대체·공학적·행정적 대책 포함, PPE 미의존<br>
-        △: 대책은 있으나 행정·PPE 중심 (상위 통제 보완 필요)<br>
-        ×: 핵심 대책 없거나 PPE만 있음
-      </div>
-
-      <div class="control-buttons">
-        <button class="ctrl-btn ok" id="ctrlBtnOk" onclick="setControlAdequacy('○')">
-          <div class="ctrl-btn-symbol">○</div>
-          <div class="ctrl-btn-label">적정</div>
-        </button>
-        <button class="ctrl-btn warn" id="ctrlBtnWarn" onclick="setControlAdequacy('△')">
-          <div class="ctrl-btn-symbol">△</div>
-          <div class="ctrl-btn-label">보완 필요</div>
-        </button>
-        <button class="ctrl-btn no" id="ctrlBtnNo" onclick="setControlAdequacy('×')">
-          <div class="ctrl-btn-symbol">×</div>
-          <div class="ctrl-btn-label">미흡</div>
-        </button>
-      </div>
-
-      <div class="ai-review-hint" id="aiReviewHint">
-        💡 <strong>[Phase 2]</strong> △ 또는 ×를 선택하신 경우, 다음 세션에서 
-        <strong>AI 자동 보완 대책</strong>을 추가로 제안받을 수 있습니다.
-      </div>
-    </div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="goToStep(2)">← 이전</button>
-    <button class="btn-primary" onclick="validateStep3()">다음 →</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════
-     SCREEN 4: 종합 검토
-     ══════════════════════════════════════ -->
-<div class="screen" id="screen-step4">
-  <div id="overallBadgeArea"></div>
+  <div id="finalBadgeArea"></div>
 
   <div class="form-section">
     <div class="form-section-title">📋 평가 종합 요약</div>
     <div id="summaryTable"></div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">✅ 선택된 대책 (<span id="finalMeasuresCount">0</span>개)</div>
+    <div id="finalMeasuresList"></div>
   </div>
 
   <div class="form-section">
@@ -1212,21 +1223,19 @@ body{
     </div>
     <div class="info-box" style="margin:0;">
       <div class="info-box-text">
-        허가서 선택 시 <strong>선택한 안전대책과 위험도가 허가서에 자동 반영</strong>됩니다.<br>
+        허가서 선택 시 <strong>선택한 대책 · 위험도 · 통제 적정성이 자동 반영</strong>됩니다.<br>
         이후 TBM 작성 시에도 <strong>위험요인이 자동 채워집니다</strong>.
       </div>
     </div>
   </div>
 
   <div class="btn-row">
-    <button class="btn-secondary" onclick="goToStep(3)">← 이전</button>
+    <button class="btn-secondary" onclick="goToStep(2)">← 이전</button>
     <button class="btn-success" onclick="submitAssessment()">✅ 평가 제출</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 완료
-     ══════════════════════════════════════ -->
+<!-- SCREEN: 완료 -->
 <div class="screen" id="screen-complete">
   <div class="complete-hero">
     <div class="complete-ico">✅</div>
@@ -1261,15 +1270,13 @@ body{
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN: 이력 목록
-     ══════════════════════════════════════ -->
+<!-- SCREEN: 이력 -->
 <div class="screen" id="screen-history">
   <div class="info-box">
     <div class="info-box-title">📂 평가 이력</div>
     <div class="info-box-text">
       최근 저장된 위험성평가를 확인할 수 있습니다.<br>
-      각 평가는 <strong>대시보드</strong>와 실시간 동기화됩니다.
+      각 평가는 <strong>Firestore</strong>와 실시간 동기화됩니다.
     </div>
   </div>
 
@@ -1283,206 +1290,246 @@ body{
   </div>
 </div>
 
-</div><!-- /.app -->
-<script>
-// ═══════════════════════════════════════════════════
-// 위험성평가 v2 - JSA_DB 연동 완성판
-// 규약 준수: riskAssessments / RA-YYYYMMDD-SEQ3
-// 최종 수정: 2026-08-27
-// ═══════════════════════════════════════════════════
+<!-- 오버라이드 다이얼로그 -->
+<div class="dialog-overlay" id="overrideDialog" style="display:none;">
+  <div class="dialog-content">
+    <div class="dialog-header">
+      <span class="dialog-icon">✏️</span>
+      <span class="dialog-title">자동 판정 수동 조정</span>
+    </div>
+    <div class="dialog-body">
+      <div class="dialog-warn">
+        ⚠️ 관리자 권한이 필요합니다.<br>
+        수동 조정 시 근거를 반드시 기록해주세요.
+      </div>
+      
+      <div class="form-group">
+        <label class="f-label">위험도 수정</label>
+        <select class="f-select" id="overrideRisk">
+          <option value="">변경 없음 (자동 판정 유지)</option>
+          <option value="저위험">저위험</option>
+          <option value="중위험">중위험</option>
+          <option value="고위험">고위험</option>
+          <option value="매우고위험">매우고위험</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label class="f-label">통제 적정성 수정</label>
+        <select class="f-select" id="overrideControl">
+          <option value="">변경 없음 (자동 판정 유지)</option>
+          <option value="○">○ (적정)</option>
+          <option value="△">△ (보완필요)</option>
+          <option value="×">× (미흡)</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label class="f-label">조정 사유<span class="req">*</span></label>
+        <textarea class="f-textarea" id="overrideReason" 
+                  placeholder="수동 조정의 이유를 명확히 기록해주세요."></textarea>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn-secondary" onclick="closeOverrideDialog()">취소</button>
+      <button class="btn-primary" onclick="applyOverride()">적용</button>
+    </div>
+  </div>
+</div>
 
-// ═══════════════════════════════
-// STATE
-// ═══════════════════════════════
+<!-- 커스텀 Alert -->
+<div class="dialog-overlay" id="customAlert" style="display:none;">
+  <div class="dialog-content">
+    <div class="dialog-header">
+      <span class="dialog-icon" id="customAlertIcon">ℹ️</span>
+      <span class="dialog-title" id="customAlertTitle">알림</span>
+    </div>
+    <div class="dialog-body">
+      <div id="customAlertMessage">메시지</div>
+    </div>
+    <div class="dialog-actions" id="customAlertActions">
+      <button class="btn-primary" onclick="closeCustomAlert()">확인</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// 위험성평가 v3 - JavaScript
+// ═══════════════════════════════════════════════════════
+
+// APP MODE
+var APP_MODE = 'test';
+
+(function initAppMode(){
+  var params = new URLSearchParams(window.location.search);
+  var mode = params.get('mode');
+  if(mode === 'production' || mode === 'test'){
+    APP_MODE = mode;
+  }
+  console.log('[APP MODE]', APP_MODE);
+})();
+
+window.getCollectionName = function(name){
+  if(APP_MODE === 'production'){
+    return name;
+  }
+  return 'test_' + name;
+};
+
+// Firebase
+var firebaseConfig = {
+  apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+  authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+  projectId: "safety-management-platfo-5f413",
+  storageBucket: "safety-management-platfo-5f413.firebasestorage.app",
+  messagingSenderId: "96226952530",
+  appId: "1:96226952530:web:07e7cb286dc4e120cea68b",
+  measurementId: "G-KNK5ECRCX5"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+var db = firebase.firestore();
+
+// 전역 상태
 var riskData = {
-  riskId:'', workId:'', permitNo:'',
-  date:'', assessor:'',
-  workName:'', location:'', detailLocation:'', 
-  company:'', workers:'',
-  workType:'', workDesc:'',
-  
-  // JSA 참조
-  referencedJSA: null,  // { jsaId, workName, similarity, originalHazard, ... }
-  
-  // 안전대책 (선택형)
-  selectedMeasures: [],  // [{ text, source, selected }]
-  userMeasures: [],      // [{ text, source: 'USER' }]
-  
-  // 매트릭스 평가
-  frequency: 0,
-  severity: 0,
-  overallScore: 0,
-  overallRisk: '',
-  
-  // 통제 적정성 (신규)
-  controlAdequacy: '',   // '○' / '△' / '×'
-  
-  // 종합
-  opinion: '',
-  linkedPermitNo: '',
-  status: '평가완료',
-  createdAt: ''
+  riskId: '', workId: '', safeinfoNo: '', permitNo: '',
+  date: '', assessor: '', workName: '', location: '',
+  detailLocation: '', company: '', workers: '', workType: '', workDesc: '',
+  referencedJSAs: [],
+  autoJudgment: { riskLevel: '', controlAdequacy: '', basis: '', calculatedAt: '' },
+  finalRiskLevel: '', finalControlAdequacy: '',
+  overridden: false, overrideReason: '', overriddenBy: '', overriddenAt: '',
+  measuresByCategory: { essential: [], engineering: [], administrative: [], ppe: [] },
+  userMeasures: [],
+  stats: {
+    totalMeasures: 0, selectedMeasures: 0,
+    essentialSelected: 0, engineeringSelected: 0,
+    administrativeSelected: 0, ppeSelected: 0, userMeasures: 0
+  },
+  status: '작성중', statusHistory: [],
+  opinion: '', linkedPermitNo: '',
+  createdAt: '', createdBy: '', updatedAt: '', updatedBy: '',
+  schemaVersion: 3
 };
 
 var isFromDB = false;
 var allTodayWorks = [];
 var curFactory = '전체';
 var currentStep = 0;
-var jsaDatabase = [];          // 로드된 JSA_DB
-var jsaSearchResults = [];     // 검색 결과
-var currentJSACandidate = null; // 선택된 JSA
+var jsaDatabase = [];
+var jsaSearchResults = [];
+var expandedCategoriesCache = new Set();
 
-// ═══════════════════════════════
+var CATEGORY_LABELS = {
+  essential: '🔴 필수 대책 (제거·대체)',
+  engineering: '🟠 공학적 통제',
+  administrative: '🟡 행정적 통제',
+  ppe: '🟢 개인보호구 (PPE)'
+};
+
+var CATEGORY_ORDER = ['essential', 'engineering', 'administrative', 'ppe'];
+
+var RISK_ORDER = { '저위험': 1, '중위험': 2, '고위험': 3, '매우고위험': 4, '판정불가': 0 };
+var CONTROL_ORDER = { '○': 1, '△': 2, '×': 3 };
+
 // INIT
-// ═══════════════════════════════
 window.addEventListener('DOMContentLoaded', function(){
   initTheme();
   setupThemeSync();
   
   var today = fmtDate(new Date());
   setVal('f-date', today);
-
-  // JSA_DB 로드 (비동기)
-  loadJSADatabase();
   
-  // 오늘 작업 목록 로드
+  loadJSADatabase();
   loadTodayWorks();
   renderRecentHist();
-
-  // URL 파라미터 처리
+  
   var params = new URLSearchParams(window.location.search);
   var wid = params.get('workId');
   var pno = params.get('permitNo');
+  var sno = params.get('safeinfoNo');
   
-  if(wid) setTimeout(function(){ startFromDB(wid, pno); }, 200);
-  else if(pno) setTimeout(function(){ startFromPermit(pno); }, 200);
+  if(wid) {
+    setTimeout(function(){ startFromDB(wid, pno, sno); }, 200);
+  } else if(pno) {
+    setTimeout(function(){ startFromPermit(pno); }, 200);
+  } else if(sno) {
+    setTimeout(function(){ startFromSafeinfo(sno); }, 200);
+  }
 });
 
-// ═══════════════════════════════
-// JSA_DB 로드 (별도 JSON 파일)
-// ═══════════════════════════════
+// JSA_DB 로드
 async function loadJSADatabase(){
   try {
-    // 1) localStorage 캐시 우선
-    var cached = localStorage.getItem('jsa_database');
-    var cachedAt = parseInt(localStorage.getItem('jsa_database_at') || '0');
-    var CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
-
+    var cached = localStorage.getItem('jsa_database_v3');
+    var cachedAt = parseInt(localStorage.getItem('jsa_database_v3_at') || '0');
+    var CACHE_DURATION = 24 * 60 * 60 * 1000;
+    
     if(cached && Date.now() - cachedAt < CACHE_DURATION){
       jsaDatabase = JSON.parse(cached);
       console.log('✅ JSA_DB 캐시 로드:', jsaDatabase.length + '건');
       return;
     }
-
-    // 2) Firebase 설정
-    var firebaseConfig = {
-      apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
-      authDomain: "safety-management-platfo-5f413.firebaseapp.com",
-      projectId: "safety-management-platfo-5f413",
-      storageBucket: "safety-management-platfo-5f413.firebasestorage.app",
-      messagingSenderId: "96226952530",
-      appId: "1:96226952530:web:07e7cb286dc4e120cea68b",
-      measurementId: "G-KNK5ECRCX5"
-    };
-
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-
-    var db = firebase.firestore();
-
-    // 3) Firestore 테스트 컬렉션 읽기
+    
+    console.log('🔄 Firestore에서 JSA_DB 로드 중...');
     var snapshot = await db.collection('jsaDatabase').get();
-
-    if (!snapshot.empty) {
-      var rows = [];
-
-      snapshot.forEach(function(doc){
-        var data = doc.data() || {};
-
-        rows.push({
-          id: doc.id,
-          docId: data.docId || doc.id,
-          jsaId: data.jsaId || '',
-          rowNo: Number(data.rowNo || 0),
-          no: data.no || '',
-          classCode: data.classCode || '',
-          sheet: data.sheet || '',
-          workType: data.workType || '',
-          workSubType: data.workSubType || '',
-          workName: data.workName || '',
-          workStage: data.workStage || '',
-          equipment: data.equipment || '',
-          materials: data.materials || '',
-          originalHazard: data.originalHazard || '',
-          accidentType: data.accidentType || '',
-          scenario: data.scenario || '',
-          detailedMeasures: data.detailedMeasures || '',
-          standardMeasures: data.standardMeasures || '',
-          controlAdequacy: data.controlAdequacy || '',
-          remark: data.remark || '',
-          datasetType: data.datasetType || 'test',
-          datasetVersion: data.datasetVersion || '',
-          sourceType: data.sourceType || '',
-          sourceFile: data.sourceFile || '',
-          status: data.status || 'active',
-          isProduction: data.isProduction === true
-        });
-      });
-
-      rows.sort(function(a, b){
-        var j1 = String(a.jsaId || '');
-        var j2 = String(b.jsaId || '');
-        if (j1 < j2) return -1;
-        if (j1 > j2) return 1;
-        return Number(a.rowNo || 0) - Number(b.rowNo || 0);
-      });
-
-      jsaDatabase = rows;
-
-      localStorage.setItem('jsa_database', JSON.stringify(jsaDatabase));
-      localStorage.setItem('jsa_database_at', String(Date.now()));
-
-      console.log('✅ Firestore JSA_DB 로드:', jsaDatabase.length + '건');
+    
+    if (snapshot.empty) {
+      console.warn('⚠️ jsaDatabase 컬렉션이 비어있음');
+      jsaDatabase = [];
       return;
     }
-
-    console.warn('⚠️ Firestore 컬렉션이 비어 있습니다. JSON fallback 시도');
-
-    // 4) fallback: 기존 JSON
-    var response = await fetch('data/jsa_database.json');
-    if(response.ok){
-      jsaDatabase = await response.json();
-      localStorage.setItem('jsa_database', JSON.stringify(jsaDatabase));
-      localStorage.setItem('jsa_database_at', String(Date.now()));
-      console.log('✅ JSON fallback 로드:', jsaDatabase.length + '건');
-    } else {
-      jsaDatabase = [];
-      console.warn('⚠️ JSA_DB 파일 없음. 검색 기능 제한됨.');
-    }
-
+    
+    var rows = [];
+    snapshot.forEach(function(doc){
+      var data = doc.data() || {};
+      rows.push({
+        id: doc.id,
+        docId: data.docId || doc.id,
+        jsaId: data.jsaId || '',
+        rowNo: Number(data.rowNo || 0),
+        no: Number(data.no || 0),
+        classCode: data.classCode || '',
+        sheet: data.sheet || '',
+        workType: data.workType || '',
+        workSubType: data.workSubType || '',
+        workName: data.workName || '',
+        workStage: data.workStage || '',
+        equipment: data.equipment || '',
+        materials: data.materials || '',
+        originalHazard: data.originalHazard || '',
+        accidentType: data.accidentType || '',
+        scenario: data.scenario || '',
+        detailedMeasures: data.detailedMeasures || '',
+        standardMeasures: data.standardMeasures || '',
+        controlAdequacy: data.controlAdequacy || '',
+        riskLevel: data.riskLevel || '',
+        remark: data.remark || '',
+        status: data.status || 'active'
+      });
+    });
+    
+    rows.sort(function(a, b){ return (a.no || 0) - (b.no || 0); });
+    jsaDatabase = rows;
+    
+    localStorage.setItem('jsa_database_v3', JSON.stringify(jsaDatabase));
+    localStorage.setItem('jsa_database_v3_at', String(Date.now()));
+    
+    console.log('✅ Firestore JSA_DB 로드 완료:', jsaDatabase.length + '건');
+    
   } catch(e) {
     console.error('❌ JSA_DB 로드 실패:', e);
-
-    try {
-      var response = await fetch('data/jsa_database.json');
-      if(response.ok){
-        jsaDatabase = await response.json();
-        localStorage.setItem('jsa_database', JSON.stringify(jsaDatabase));
-        localStorage.setItem('jsa_database_at', String(Date.now()));
-        console.log('✅ 오류 후 JSON fallback 로드:', jsaDatabase.length + '건');
-        return;
-      }
-    } catch(jsonErr){
-      console.error('❌ JSON fallback도 실패:', jsonErr);
-    }
-
     jsaDatabase = [];
+    showToast('⚠️ JSA_DB 로드 실패. 새로고침 후 다시 시도하세요.', 'danger');
   }
 }
-// ═══════════════════════════════
-// 시간 유틸 (KST 규약 준수)
-// ═══════════════════════════════
+
+// 유틸: 날짜
 function fmtDate(d){
   d = d || new Date();
   var y = d.getFullYear();
@@ -1491,11 +1538,7 @@ function fmtDate(d){
   return y + '-' + m + '-' + day;
 }
 
-function pad(n){ return ('0'+n).slice(-2); }
-
-// ═══════════════════════════════
-// THEME (규약 준수)
-// ═══════════════════════════════
+// THEME
 function initTheme(){
   var saved = localStorage.getItem('theme');
   if(saved){
@@ -1510,13 +1553,13 @@ function initTheme(){
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
   var b = document.getElementById('themeBtn');
-  if(b) b.textContent = t==='dark' ? '☀️' : '🌙';
+  if(b) b.textContent = t === 'dark' ? '☀️' : '🌙';
   localStorage.setItem('theme', t);
 }
 
 function toggleTheme(){
   var c = document.documentElement.getAttribute('data-theme') || 'light';
-  applyTheme(c==='dark' ? 'light' : 'dark');
+  applyTheme(c === 'dark' ? 'light' : 'dark');
 }
 
 function setupThemeSync(){
@@ -1527,15 +1570,20 @@ function setupThemeSync(){
   });
 }
 
-// ═══════════════════════════════
-// 홈 / 뒤로가기
-// ═══════════════════════════════
+// 홈/뒤로
 function goHome(){
-  var hasUnsavedData = checkUnsavedData();
-  if(hasUnsavedData){
-    if(!confirm('⚠️ 작성 중인 내용이 있습니다.\n\n홈으로 이동하시겠습니까?')) return;
+  if(checkUnsavedData()){
+    showCustomConfirm({
+      title: '홈으로 이동',
+      icon: '⚠️',
+      message: '작성 중인 내용이 있습니다.\n홈으로 이동하시겠습니까?',
+      onConfirm: function(){
+        window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+      }
+    });
+  } else {
+    window.location.href = '안전관리플랫폼_대시보드_V6_.html';
   }
-  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
 
 function checkUnsavedData(){
@@ -1543,31 +1591,31 @@ function checkUnsavedData(){
   if(currentStep === 1){
     return getVal('f-workName') || getVal('f-detailLoc');
   }
-  if(currentStep >= 2){
-    return true; // 이후 단계는 항상 미저장 데이터 있음
-  }
-  return false;
+  return currentStep >= 2;
 }
 
 function goBack(){
-  if(currentStep>1) goToStep(currentStep-1);
-  else if(currentStep===1) goToStep(0);
+  if(currentStep > 1) goToStep(currentStep - 1);
+  else if(currentStep === 1) goToStep(0);
   else history.back();
 }
 
-// ═══════════════════════════════
-// 오늘 작업 목록 (기존 유지)
-// ═══════════════════════════════
+// 오늘 작업 목록
 function loadTodayWorks(){
   var today = fmtDate(new Date());
-  try{
+  try {
     var raw = localStorage.getItem('safetyDatabase');
-    if(!raw){ allTodayWorks=[]; }
-    else{
-      var db = JSON.parse(raw);
-      allTodayWorks = (db.workHistory||[]).filter(function(w){ return w.date===today; });
+    if(!raw){
+      allTodayWorks = [];
+    } else {
+      var localDB = JSON.parse(raw);
+      allTodayWorks = (localDB.workHistory || []).filter(function(w){
+        return w.date === today;
+      });
     }
-  }catch(e){ allTodayWorks=[]; }
+  } catch(e){
+    allTodayWorks = [];
+  }
   buildCompanyDropdown();
   renderWorkList();
 }
@@ -1576,12 +1624,12 @@ function buildCompanyDropdown(){
   var sel = document.getElementById('companyFilter');
   var companies = [];
   allTodayWorks.forEach(function(w){
-    var co = w.company||''; 
-    if(co && companies.indexOf(co)<0) companies.push(co);
+    var co = w.company || '';
+    if(co && companies.indexOf(co) < 0) companies.push(co);
   });
   sel.innerHTML = '<option value="">🏢 전체 협력사</option>';
   companies.forEach(function(co){
-    sel.innerHTML += '<option value="'+escHtml(co)+'">'+escHtml(co)+'</option>';
+    sel.innerHTML += '<option value="' + escHtml(co) + '">' + escHtml(co) + '</option>';
   });
 }
 
@@ -1594,159 +1642,154 @@ function setFactory(f, el){
 
 function getWorkFactory(w){
   if(!w.location) return '기타';
-  var f = (w.location.factory||'');
-  if(f.indexOf('1공장')>=0||f.indexOf('2-1')>=0) return '1공장';
-  if(f.indexOf('2공장')>=0||f.indexOf('2-2')>=0) return '2공장';
-  if(f.indexOf('정비')>=0) return '정비동';
+  var f = (w.location.factory || '');
+  if(f.indexOf('1공장') >= 0 || f.indexOf('2-1') >= 0) return '1공장';
+  if(f.indexOf('2공장') >= 0 || f.indexOf('2-2') >= 0) return '2공장';
+  if(f.indexOf('정비') >= 0) return '정비동';
   if(f) return f;
   return '기타';
 }
 
 function getRiskDB(){
-  try{
-    var primary = JSON.parse(localStorage.getItem('riskAssessments')||'[]');
-    if(primary.length > 0) return primary;
-    var legacy1 = JSON.parse(localStorage.getItem('riskDatabase')||'[]');
-    var legacy2 = JSON.parse(localStorage.getItem('safetyRiskAssessments')||'[]');
-    return legacy1.concat(legacy2);
+  try {
+    return JSON.parse(localStorage.getItem('riskAssessments') || '[]');
+  } catch(e){
+    return [];
   }
-  catch(e){ return []; }
 }
 
 function renderWorkList(){
-  var selCo = (document.getElementById('companyFilter')||{value:''}).value;
+  var selCo = (document.getElementById('companyFilter') || {value:''}).value;
   var riskDB = getRiskDB();
   var riskMap = {};
-  riskDB.forEach(function(r){ if(r.workId) riskMap[r.workId]=r; });
-
+  riskDB.forEach(function(r){
+    if(r.workId) riskMap[r.workId] = r;
+  });
+  
   var works = allTodayWorks.filter(function(w){
-    if(curFactory!=='전체' && getWorkFactory(w)!==curFactory) return false;
-    if(selCo && (w.company||'')!==selCo) return false;
+    if(curFactory !== '전체' && getWorkFactory(w) !== curFactory) return false;
+    if(selCo && (w.company || '') !== selCo) return false;
     return true;
   });
-
+  
   var el = document.getElementById('workCount');
-  if(el) el.textContent = works.length+'건';
-
+  if(el) el.textContent = works.length + '건';
+  
   var list = document.getElementById('workList');
   if(!list) return;
-
+  
   if(!works.length){
-    list.innerHTML='<div class="empty-work"><div class="empty-work-ico">📋</div>'+
-      '<div class="empty-work-txt">해당하는 작업이 없습니다.<br>신규 평가로 직접 시작하세요.</div></div>';
+    list.innerHTML = '<div class="empty-work">' +
+      '<div class="empty-work-ico">📋</div>' +
+      '<div class="empty-work-txt">해당하는 작업이 없습니다.<br>신규 평가로 직접 시작하세요.</div>' +
+      '</div>';
     return;
   }
-
+  
   var html = '';
   works.forEach(function(w){
     if(!w.originalNo) return;
-    var wid = w.date+'_'+w.originalNo;
-    var isDgr = w.risk==='고위험';
+    var wid = w.date + '_' + w.originalNo;
+    var isDgr = w.risk === '고위험';
     var existRisk = riskMap[wid];
-    var wName = (w.workName||'').substring(0,26);
-    var loc = w.location?(w.location.factory||'')+(w.location.line?' '+w.location.line+'라인':''):'';
-
-    html += '<div class="work-card'+(isDgr?' danger':'')+(existRisk?' has-risk':'')+'">';
+    var wName = (w.workName || '').substring(0, 26);
+    var loc = w.location ? (w.location.factory || '') + (w.location.line ? ' ' + w.location.line + '라인' : '') : '';
+    
+    html += '<div class="work-card' + (isDgr ? ' danger' : '') + (existRisk ? ' has-risk' : '') + '">';
     html += '<div class="wc-top">';
-    html += '<span class="wc-badge '+(isDgr?'r':'g')+'">'+(isDgr?'고위험':'일반')+'</span>';
+    html += '<span class="wc-badge ' + (isDgr ? 'r' : 'g') + '">' + (isDgr ? '고위험' : '일반') + '</span>';
     if(existRisk){
-      html += '<span class="wc-status done">✅ 평가완료 ('+existRisk.overallScore+'점)</span>';
+      html += '<span class="wc-status done">✅ ' + escHtml(existRisk.finalRiskLevel || '평가완료') + '</span>';
     } else {
       html += '<span class="wc-status">미평가</span>';
     }
     html += '</div>';
-    html += '<div class="wc-name">'+escHtml(wName)+'</div>';
+    html += '<div class="wc-name">' + escHtml(wName) + '</div>';
     html += '<div class="wc-meta">';
-    if(loc) html += '<span>📍 '+escHtml(loc)+'</span>';
-    html += '<span>🏢 '+escHtml(w.company||'-')+'</span>';
+    if(loc) html += '<span>📍 ' + escHtml(loc) + '</span>';
+    html += '<span>🏢 ' + escHtml(w.company || '-') + '</span>';
     html += '</div>';
     html += '<div class="wc-action">';
     if(existRisk){
       html += '<span class="wc-done-label">✅ 평가 완료</span>';
-      html += '<button class="wc-redo" onclick="startFromDB(\''+wid+'\',null,true)">재평가</button>';
+      html += '<button class="wc-redo" onclick="startFromDB(\'' + wid + '\',null,null,true)">재평가</button>';
     } else {
       html += '<span></span>';
-      html += '<button class="wc-btn" onclick="startFromDB(\''+wid+'\')">평가 시작 →</button>';
+      html += '<button class="wc-btn" onclick="startFromDB(\'' + wid + '\')">평가 시작 →</button>';
     }
     html += '</div></div>';
   });
   list.innerHTML = html;
 }
 
-// ═══════════════════════════════
 // 시작 모드
-// ═══════════════════════════════
 function selectMode(mode){
-  if(mode==='new'){
+  if(mode === 'new'){
     isFromDB = false;
     resetRiskData();
     goToStep(1);
-  } else if(mode==='db'){
-    // 스크롤을 작업 목록으로 이동
+  } else if(mode === 'db'){
     var workList = document.getElementById('workList');
     if(workList) workList.scrollIntoView({behavior:'smooth', block:'start'});
   }
 }
 
-function startFromDB(wid, permitNo, isRedo){
+function startFromDB(wid, permitNo, safeinfoNo, isRedo){
   isFromDB = true;
   resetRiskData();
-  try{
+  try {
     var raw = localStorage.getItem('safetyDatabase');
     if(!raw){
-      showToast('작업 데이터를 찾을 수 없습니다','danger');
+      showToast('작업 데이터를 찾을 수 없습니다', 'danger');
       goToStep(1);
       return;
     }
-    var db = JSON.parse(raw);
-    var work = (db.workHistory||[]).find(function(w){
-      return w.originalNo && (w.date+'_'+w.originalNo)===wid;
+    var localDB = JSON.parse(raw);
+    var work = (localDB.workHistory || []).find(function(w){
+      return w.originalNo && (w.date + '_' + w.originalNo) === wid;
     });
     if(!work){
-      showToast('작업을 찾을 수 없습니다','danger');
+      showToast('작업을 찾을 수 없습니다', 'danger');
       goToStep(1);
       return;
     }
-
+    
     riskData.workId = wid;
-    riskData.workName = work.workName||(work.workNameFull||'').substring(0,30);
-    riskData.company = work.company||'';
-    riskData.date = work.date||fmtDate(new Date());
+    riskData.workName = work.workName || (work.workNameFull || '').substring(0, 30);
+    riskData.company = work.company || '';
+    riskData.date = work.date || fmtDate(new Date());
     riskData.workType = detectWorkType(work);
     
     if(work.location){
       var loc = work.location;
       var locStr = '';
-      if(loc.factory==='1공장'||loc.factory==='포항양극재 1공장') locStr='포항양극재 1공장';
-      else if(loc.factory==='2공장'||loc.factory==='포항양극재 2공장') locStr='포항양극재 2공장';
-      else locStr = loc.factory||'';
+      if(loc.factory === '1공장' || loc.factory === '포항양극재 1공장') locStr = '포항양극재 1공장';
+      else if(loc.factory === '2공장' || loc.factory === '포항양극재 2공장') locStr = '포항양극재 2공장';
+      else locStr = loc.factory || '';
       riskData.location = locStr;
-      riskData.detailLocation = loc.line?loc.line+'라인':'';
+      riskData.detailLocation = loc.line ? loc.line + '라인' : '';
     }
-
-    // 허가서 연결 확인
+    
     var permits = [];
-    try{ permits=JSON.parse(localStorage.getItem('safetyPermits')||'[]'); }catch(e){}
-    var linkedPermit = permits.find(function(p){ return p.sourceWorkId===wid; });
-    if(linkedPermit){ riskData.permitNo = linkedPermit.permitNo; }
-    if(permitNo){ riskData.permitNo = permitNo; }
-
-    // 폼 자동 입력 (auto 클래스로 시각화)
+    try { permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]'); } catch(e){}
+    var linkedPermit = permits.find(function(p){ return p.sourceWorkId === wid; });
+    if(linkedPermit) riskData.permitNo = linkedPermit.permitNo;
+    if(permitNo) riskData.permitNo = permitNo;
+    if(safeinfoNo) riskData.safeinfoNo = safeinfoNo;
+    
     setInpAuto('f-workName', riskData.workName);
     setInpAuto('f-company', riskData.company);
     setVal('f-date', riskData.date);
     setInpAuto('f-workType', riskData.workType);
     setLocSelect(riskData.location);
     setInpAuto('f-detailLoc', riskData.detailLocation);
-
-    // 허가서 배너
-    if(riskData.permitNo){
-      showPermitBanner(riskData.permitNo);
-    }
-
+    
+    if(riskData.permitNo) showPermitBanner(riskData.permitNo);
+    if(riskData.safeinfoNo) showSafeinfoBanner(riskData.safeinfoNo);
+    
     goToStep(1);
-    showToast('✨ 작업 정보가 자동 입력되었습니다','success');
-  }catch(e){
+    showToast('✨ 작업 정보가 자동 입력되었습니다', 'success');
+  } catch(e){
     console.error('startFromDB 오류:', e);
     goToStep(1);
   }
@@ -1756,14 +1799,14 @@ function startFromPermit(permitNo){
   isFromDB = false;
   resetRiskData();
   riskData.permitNo = permitNo;
-  try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits')||'[]');
-    var p = permits.find(function(x){ return x.permitNo===permitNo; });
+  try {
+    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
+    var p = permits.find(function(x){ return x.permitNo === permitNo; });
     if(p){
-      riskData.workName = p.workName||'';
-      riskData.company = p.companyName||'';
-      riskData.location = p.location||'';
-      riskData.workers = p.workerCount||'';
+      riskData.workName = p.workName || '';
+      riskData.company = p.companyName || '';
+      riskData.location = p.location || '';
+      riskData.workers = p.workerCount || '';
       riskData.workType = detectWorkTypeFromPermit(p);
       
       setInpAuto('f-workName', riskData.workName);
@@ -1772,52 +1815,89 @@ function startFromPermit(permitNo){
       if(riskData.workers) setInpAuto('f-workers', riskData.workers);
       if(riskData.workType) setInpAuto('f-workType', riskData.workType);
     }
-  }catch(e){}
+  } catch(e){}
   
   showPermitBanner(permitNo);
   goToStep(1);
-  showToast('✨ 허가서 정보가 자동 입력되었습니다','success');
+  showToast('✨ 허가서 정보가 자동 입력되었습니다', 'success');
+}
+
+async function startFromSafeinfo(safeinfoNo){
+  isFromDB = false;
+  resetRiskData();
+  riskData.safeinfoNo = safeinfoNo;
+  
+  try {
+    var collName = window.getCollectionName('safetyProvisions');
+    var doc = await db.collection(collName).doc(safeinfoNo).get();
+    
+    if(doc.exists){
+      var data = doc.data();
+      riskData.workName = data.workName || '';
+      riskData.company = data.contractorCompany || '';
+      riskData.location = data.workLocation || '';
+      riskData.detailLocation = data.detailLocation || '';
+      
+      setInpAuto('f-workName', riskData.workName);
+      setInpAuto('f-company', riskData.company);
+      setLocSelect(riskData.location);
+      setInpAuto('f-detailLoc', riskData.detailLocation);
+    }
+  } catch(e){
+    console.warn('안전정보 조회 실패:', e);
+  }
+  
+  showSafeinfoBanner(safeinfoNo);
+  goToStep(1);
+  showToast('✨ 안전정보에서 자동 입력되었습니다', 'success');
 }
 
 function showPermitBanner(permitNo){
   var ban = document.getElementById('permitBanner');
   var banNo = document.getElementById('permitBannerNo');
-  if(ban) ban.style.display='block';
+  if(ban) ban.style.display = 'block';
   if(banNo) banNo.textContent = permitNo;
 }
 
-// workTypes → workType 매핑 (안전작업허가서 → 위험성평가)
+function showSafeinfoBanner(safeinfoNo){
+  var ban = document.getElementById('safeinfoBanner');
+  var banNo = document.getElementById('safeinfoBannerNo');
+  if(ban) ban.style.display = 'block';
+  if(banNo) banNo.textContent = safeinfoNo;
+}
+
 function detectWorkTypeFromPermit(p){
   if(!p.workTypes || !p.workTypes.length) return '일반작업';
-  // 우선순위: fire > confined > height > electric > heavy > 일반
-  if(p.workTypes.indexOf('confined')>=0) return '밀폐공간';
-  if(p.workTypes.indexOf('fire')>=0) return '화기작업';
-  if(p.workTypes.indexOf('height')>=0) return '고소작업';
-  if(p.workTypes.indexOf('electric-live')>=0) return '전기작업';
-  if(p.workTypes.indexOf('electric')>=0) return '전기작업';
-  if(p.workTypes.indexOf('heavy')>=0) return '중장비작업';
+  if(p.workTypes.indexOf('confined') >= 0) return '밀폐공간';
+  if(p.workTypes.indexOf('fire') >= 0) return '화기';
+  if(p.workTypes.indexOf('height') >= 0) return '떨어짐 위험';
+  if(p.workTypes.indexOf('electric-live') >= 0) return '전기';
+  if(p.workTypes.indexOf('electric') >= 0) return '전기';
+  if(p.workTypes.indexOf('heavy') >= 0) return '양중';
   return '일반작업';
 }
 
 function detectWorkType(work){
-  var txt = ((work.workNameFull||work.workName||'')+' '+(work.safety||'')).toLowerCase();
-  if(txt.indexOf('용접')>=0||txt.indexOf('용단')>=0||txt.indexOf('화기')>=0) return '화기작업';
-  if(txt.indexOf('고소')>=0||txt.indexOf('추락')>=0||txt.indexOf('떨어짐')>=0) return '고소작업';
-  if(txt.indexOf('밀폐')>=0||txt.indexOf('질식')>=0) return '밀폐공간';
-  if(txt.indexOf('전기')>=0||txt.indexOf('감전')>=0) return '전기작업';
-  if(txt.indexOf('크레인')>=0||txt.indexOf('양중')>=0||txt.indexOf('중량')>=0) return '중장비작업';
-  if(txt.indexOf('화학')>=0||txt.indexOf('황산')>=0||txt.indexOf('염산')>=0) return '화학물질';
-  if(txt.indexOf('굴착')>=0) return '굴착작업';
-  if(txt.indexOf('정비')>=0) return '정비작업';
+  var txt = ((work.workNameFull || work.workName || '') + ' ' + (work.safety || '')).toLowerCase();
+  if(txt.indexOf('용접') >= 0 || txt.indexOf('용단') >= 0 || txt.indexOf('화기') >= 0) return '화기';
+  if(txt.indexOf('고소') >= 0 || txt.indexOf('추락') >= 0 || txt.indexOf('떨어짐') >= 0) return '떨어짐 위험';
+  if(txt.indexOf('밀폐') >= 0 || txt.indexOf('질식') >= 0) return '밀폐공간';
+  if(txt.indexOf('전기') >= 0 || txt.indexOf('감전') >= 0) return '전기';
+  if(txt.indexOf('크레인') >= 0 || txt.indexOf('양중') >= 0 || txt.indexOf('중량') >= 0) return '양중';
+  if(txt.indexOf('화학') >= 0 || txt.indexOf('황산') >= 0 || txt.indexOf('염산') >= 0) return '화학물질';
+  if(txt.indexOf('굴착') >= 0) return '굴착작업';
+  if(txt.indexOf('정비') >= 0) return '정비';
+  if(txt.indexOf('운반') >= 0) return '운반';
   return '일반작업';
 }
 
 function setLocSelect(loc){
   var sel = document.getElementById('f-location');
-  if(!sel||!loc) return;
-  for(var i=0;i<sel.options.length;i++){
-    if(sel.options[i].value.indexOf(loc)>=0||loc.indexOf(sel.options[i].value)>=0){
-      sel.selectedIndex=i; break;
+  if(!sel || !loc) return;
+  for(var i = 0; i < sel.options.length; i++){
+    if(sel.options[i].value.indexOf(loc) >= 0 || loc.indexOf(sel.options[i].value) >= 0){
+      sel.selectedIndex = i;
+      break;
     }
   }
 }
@@ -1829,7 +1909,6 @@ function setInpAuto(id, val){
   if(val) el.classList.add('auto');
 }
 
-// 사용자가 auto 필드 수정 시 초록 배경 해제
 document.addEventListener('DOMContentLoaded', function(){
   document.body.addEventListener('input', function(e){
     if(e.target.classList && e.target.classList.contains('auto')){
@@ -1838,519 +1917,485 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 
-// ═══════════════════════════════
-// STEP 네비게이션 (4단계)
-// ═══════════════════════════════
-var STEP_LABELS = ['','기본정보','JSA_DB 검색','대책 선택·평가','종합 검토'];
-var TOTAL_STEPS = 4;
+// STEP 네비게이션 (3단계)
+var STEP_LABELS = ['', '기본정보', '대책 선택 · 자동 판정', '종합 검토'];
+var TOTAL_STEPS = 3;
 
 function goToStep(step){
   currentStep = step;
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   var pw = document.getElementById('progressWrap');
-
-  if(step===0){
+  
+  if(step === 0){
     document.getElementById('screen-welcome').classList.add('active');
-    pw.style.display='none';
+    pw.style.display = 'none';
   } else {
-    document.getElementById('screen-step'+step).classList.add('active');
-    pw.style.display='block';
+    document.getElementById('screen-step' + step).classList.add('active');
+    pw.style.display = 'block';
     updateProgress(step);
   }
-  window.scrollTo(0,0);
-
-  // 단계별 초기화 로직
-  if(step===2) initJSASearch();
-  if(step===3) initMeasureSelection();
-  if(step===4) buildSummary();
+  window.scrollTo(0, 0);
+  
+  if(step === 2) initStep2();
+  if(step === 3) initStep3();
 }
 
 function goToScreen(id){
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
-  document.getElementById('progressWrap').style.display='none';
-  window.scrollTo(0,0);
-  if(id==='screen-history') renderHistoryFull();
+  document.getElementById('progressWrap').style.display = 'none';
+  window.scrollTo(0, 0);
+  if(id === 'screen-history') renderHistoryFull();
 }
 
 function updateProgress(step){
-  for(var i=1;i<=TOTAL_STEPS;i++){
-    var el=document.getElementById('ps'+i);
+  for(var i = 1; i <= TOTAL_STEPS; i++){
+    var el = document.getElementById('ps' + i);
     if(!el) continue;
-    if(i<step) el.className='pstep done';
-    else if(i===step) el.className='pstep active';
-    else el.className='pstep';
+    if(i < step) el.className = 'pstep done';
+    else if(i === step) el.className = 'pstep active';
+    else el.className = 'pstep';
   }
-  setTxt('progressLabel', step+'단계: '+(STEP_LABELS[step]||''));
-  setTxt('progressPct', step+'/'+TOTAL_STEPS);
+  setTxt('progressLabel', step + '단계: ' + (STEP_LABELS[step] || ''));
+  setTxt('progressPct', step + '/' + TOTAL_STEPS);
 }
 
-// ═══════════════════════════════
 // STEP 1 VALIDATE
-// ═══════════════════════════════
 function validateStep1(){
-  var wn=getVal('f-workName'), loc=getVal('f-location'),
-      dt=getVal('f-date'), as=getVal('f-assessor'),
-      co=getVal('f-company'), wt=getVal('f-workType');
-  if(!wn||!loc||!dt||!as||!co){
-    showToast('필수 항목을 모두 입력해주세요','danger'); return;
-  }
-  if(!wt){ showToast('작업 유형을 선택해주세요','danger'); return; }
+  var wn = getVal('f-workName');
+  var loc = getVal('f-location');
+  var dt = getVal('f-date');
+  var as = getVal('f-assessor');
+  var co = getVal('f-company');
+  var wt = getVal('f-workType');
   
-  riskData.workName=wn;
-  riskData.location=getVal('f-location');
-  riskData.detailLocation=getVal('f-detailLoc');
-  riskData.date=dt;
-  riskData.assessor=as;
-  riskData.company=co;
-  riskData.workers=getVal('f-workers');
-  riskData.workType=wt;
-  riskData.workDesc=getVal('f-workDesc');
+  if(!wn || !loc || !dt || !as || !co){
+    showToast('필수 항목을 모두 입력해주세요', 'danger');
+    return;
+  }
+  if(!wt){
+    showToast('작업 유형을 선택해주세요', 'danger');
+    return;
+  }
+  
+  riskData.workName = wn;
+  riskData.location = loc;
+  riskData.detailLocation = getVal('f-detailLoc');
+  riskData.date = dt;
+  riskData.assessor = as;
+  riskData.company = co;
+  riskData.workers = getVal('f-workers');
+  riskData.workType = wt;
+  riskData.workDesc = getVal('f-workDesc');
   
   goToStep(2);
 }
 
-// ═══════════════════════════════════════════════════
-// ⭐ JSA_DB 검색 로직 (핵심)
-// ═══════════════════════════════════════════════════
-
-// 페이지 진입 시 자동 검색
-function initJSASearch(){
-  runJSASearch(false);
-}
-
-// 검색 실행 (자동/수동)
-function runJSASearch(isManual){
-  var area = document.getElementById('jsaResultArea');
-  var countEl = document.getElementById('jsaSearchCount');
-  var titleEl = document.getElementById('jsaSearchTitle');
-  
-  if(isManual){
-    showToast('🔍 JSA_DB 재검색 중...', 'ai');
-    area.innerHTML = '<div class="jsa-loading">'+
-      '<div class="jsa-loading-ico">🔍</div>'+
-      '<div class="jsa-loading-txt">JSA_DB에서 유사 작업을 검색하고 있습니다...</div>'+
-      '</div>';
+// 다중 JSA 검색
+function searchRelevantJSAs(workName, workType, workDesc){
+  if(!jsaDatabase || jsaDatabase.length === 0){
+    return [];
   }
-
-  setTimeout(function(){
-    // JSA_DB 없음
-    if(!jsaDatabase || jsaDatabase.length === 0){
-      titleEl.textContent = 'JSA_DB 미준비';
-      countEl.textContent = '0건';
-      area.innerHTML = 
-        '<div class="warn-box">'+
-        '<div class="warn-box-title">📋 JSA_DB 데이터 없음</div>'+
-        '<div class="warn-box-text">'+
-          '아직 JSA_DB가 준비되지 않았거나 로드 실패했습니다.<br>'+
-          '수동으로 대책을 입력하시려면 <strong>[JSA 없이 진행]</strong>을 클릭하세요.<br><br>'+
-          '💡 Firestore 이관 후 자동으로 활용됩니다.'+
-        '</div>'+
-        '</div>';
-      return;
-    }
-
-    // 유사도 검색
-    jsaSearchResults = findSimilarJSA(
-      riskData.workName, 
-      riskData.workType, 
-      riskData.workDesc,
-      jsaDatabase
-    );
+  
+  var results = jsaDatabase.map(function(jsa){
+    var relevance = 0;
+    var reasons = [];
     
-    countEl.textContent = jsaSearchResults.length + '건';
-    
-    if(jsaSearchResults.length === 0){
-      titleEl.textContent = '유사 작업 없음';
-      area.innerHTML = 
-        '<div class="info-box">'+
-        '<div class="info-box-title">🔍 유사 작업 없음</div>'+
-        '<div class="info-box-text">'+
-          'JSA_DB에서 유사한 작업을 찾을 수 없습니다.<br>'+
-          '<strong>[JSA 없이 진행]</strong>을 클릭하여 수동으로 대책을 작성하세요.'+
-        '</div>'+
-        '</div>';
-      return;
+    if(workType && jsa.workType === workType){
+      relevance += 40;
+      reasons.push('작업유형 일치');
+    } else if(workType && isSimilarWorkType(workType, jsa.workType)){
+      relevance += 20;
+      reasons.push('작업유형 유사');
     }
-
-    // 결과 렌더링
-    titleEl.textContent = 'JSA_DB 검색 결과';
-    renderJSAResults(jsaSearchResults);
     
-    if(isManual){
-      showToast('✅ 유사 작업 '+jsaSearchResults.length+'건 발견', 'success');
+    var nameSimil = calculateSimilarity(workName, jsa.workName || '');
+    var nameScore = Math.round(nameSimil * 30);
+    relevance += nameScore;
+    if(nameScore >= 15) reasons.push('작업명 유사 ' + Math.round(nameSimil * 100) + '%');
+    
+    if(workDesc){
+      var descSimil = calculateSimilarity(workDesc, 
+        (jsa.originalHazard || '') + ' ' + (jsa.workName || ''));
+      relevance += Math.round(descSimil * 15);
     }
-  }, isManual ? 400 : 100);
+    
+    if(workDesc && jsa.workSubType && 
+       workDesc.toLowerCase().indexOf(jsa.workSubType.toLowerCase()) >= 0){
+      relevance += 15;
+      reasons.push('세부유형 매칭');
+    }
+    
+    return { jsa: jsa, relevance: relevance, reasons: reasons };
+  });
+  
+  results = results.filter(function(item){ return item.relevance >= 20; });
+  results.sort(function(a, b){ return b.relevance - a.relevance; });
+  return results.slice(0, 10);
 }
 
-// 유사도 계산 (다중 필드)
-function findSimilarJSA(workName, workType, workDesc, allJSA){
-  return allJSA
-    .map(function(jsa){
-      var score = 0;
-      
-      // 1. 작업명 유사도 (가중치 50%)
-      var nameSimil = calculateSimilarity(workName, jsa.workName || '');
-      score += nameSimil * 0.5;
-      
-      // 2. 작업유형 일치 (가중치 30%)
-      if(workType && jsa.workType){
-        if(workType === jsa.workType) score += 0.3;
-        else if(isSimilarWorkType(workType, jsa.workType)) score += 0.15;
-      }
-      
-      // 3. 작업 설명 유사도 (가중치 20%)
-      if(workDesc){
-        var descSimil = calculateSimilarity(workDesc, 
-          (jsa.originalHazard || '') + ' ' + (jsa.workName || ''));
-        score += descSimil * 0.2;
-      }
-      
-      return { jsa: jsa, score: score };
-    })
-    .filter(function(item){ return item.score > 0.15; })
-    .sort(function(a, b){ return b.score - a.score; })
-    .slice(0, 5); // 상위 5건
-}
-
-// 작업유형 유사도 매핑
 function isSimilarWorkType(a, b){
+  if(!a || !b) return false;
   var groups = [
-    ['화기작업', '화기'],
-    ['고소작업', '고소', '떨어짐 위험'],
+    ['화기', '화기작업'],
+    ['떨어짐 위험', '고소', '고소작업'],
     ['밀폐공간', '밀폐'],
-    ['전기작업', '전기'],
-    ['중장비작업', '양중', '운반'],
+    ['전기', '전기작업'],
+    ['양중', '중량물', '운반'],
     ['화학물질', '화학'],
-    ['정비작업', '정비']
+    ['정비', '정비작업'],
+    ['환경측정', '환경'],
+    ['설비관리', '설비운전']
   ];
-  for(var i=0; i<groups.length; i++){
-    if(groups[i].indexOf(a)>=0 && groups[i].indexOf(b)>=0) return true;
+  for(var i = 0; i < groups.length; i++){
+    if(groups[i].indexOf(a) >= 0 && groups[i].indexOf(b) >= 0) return true;
   }
   return false;
 }
 
-// 키워드 토큰화 (안전한 버전)
-function tokenize(text) {
-  if (!text) return [];
+function tokenize(text){
+  if(!text) return [];
   var str = String(text).toLowerCase();
   var result = [];
-  var current = "";
-  var i;
-  for (i = 0; i < str.length; i++) {
+  var current = '';
+  for(var i = 0; i < str.length; i++){
     var ch = str.charAt(i);
     var code = str.charCodeAt(i);
     var isKorean = (code >= 44032 && code <= 55203);
     var isDigit = (code >= 48 && code <= 57);
     var isLower = (code >= 97 && code <= 122);
-    if (isKorean || isDigit || isLower) {
+    if(isKorean || isDigit || isLower){
       current = current + ch;
     } else {
-      if (current.length > 0) {
-        result.push(current);
-        current = "";
-      }
+      if(current.length > 0){ result.push(current); current = ''; }
     }
   }
-  if (current.length > 0) {
-    result.push(current);
-  }
+  if(current.length > 0) result.push(current);
   return result;
 }
 
-// Jaccard 유사도
 function calculateSimilarity(a, b){
   var tokensA = tokenize(a);
   var tokensB = tokenize(b);
   if(tokensA.length === 0 || tokensB.length === 0) return 0;
-  
   var common = 0;
   tokensA.forEach(function(t){
     if(tokensB.indexOf(t) >= 0) common++;
   });
-  
   return common / Math.max(tokensA.length, tokensB.length);
 }
 
-// JSA 검색 결과 렌더링
-function renderJSAResults(results){
-  var area = document.getElementById('jsaResultArea');
-  var html = '';
-  
-  results.forEach(function(item, idx){
-    var jsa = item.jsa;
-    var similarity = Math.round(item.score * 100);
-    var similarityCls = similarity >= 60 ? 'high' : similarity >= 40 ? 'mid' : '';
-    
-    var controlSymbol = jsa.controlAdequacy || '○';
-    var controlCls = controlSymbol==='○' ? 'ok' : controlSymbol==='△' ? 'warn' : 'no';
-    
-    // 태그 (분류코드 기반)
-    var classCodeCls = (jsa.classCode || 'wrk').toLowerCase();
-    
-    html += '<div class="jsa-result-card" id="jsaCard'+idx+'">';
-    
-    // 헤더
-    html += '<div class="jsa-result-header">';
-    html += '<div class="jsa-result-title">'+escHtml(jsa.workName || '-')+'</div>';
-    html += '<div class="jsa-similarity '+similarityCls+'">유사도 '+similarity+'%</div>';
-    html += '</div>';
-    
-    // 메타 정보 (태그)
-    html += '<div class="jsa-result-meta">';
-    html += '<span class="jsa-tag '+classCodeCls+'">'+escHtml(jsa.classCode || 'WRK')+'</span>';
-    if(jsa.workType) html += '<span class="jsa-tag">'+escHtml(jsa.workType)+'</span>';
-    if(jsa.workSubType) html += '<span class="jsa-tag">'+escHtml(jsa.workSubType)+'</span>';
-    html += '<span class="jsa-control '+controlCls+'">'+controlSymbol+'</span>';
-    html += '</div>';
-    
-    // 원문 위험요인 미리보기
-    if(jsa.originalHazard){
-      html += '<div class="jsa-hazard-box">';
-      html += '<div class="jsa-hazard-label">⚠️ 원문 위험요인</div>';
-      html += '<div class="jsa-hazard-text">'+escHtml(jsa.originalHazard.substring(0, 100))+
-              (jsa.originalHazard.length>100?'...':'')+'</div>';
-      html += '</div>';
-    }
-    
-    // 상세 보기 버튼
-    html += '<button class="jsa-expand-btn" onclick="toggleJSADetail('+idx+')">'+
-            '<span id="jsaExpandIcon'+idx+'">▼</span>'+
-            '<span>자세히 보기</span>'+
-            '</button>';
-    
-    // 상세 패널 (접힘)
-    html += '<div class="jsa-detail-panel" id="jsaDetail'+idx+'">';
-    
-    if(jsa.workStage){
-      html += '<div class="jsa-detail-section">';
-      html += '<div class="jsa-detail-label">📋 작업 단계</div>';
-      html += '<div class="jsa-detail-value">'+escHtml(jsa.workStage)+'</div>';
-      html += '</div>';
-    }
-    
-    if(jsa.accidentType){
-      html += '<div class="jsa-detail-section">';
-      html += '<div class="jsa-detail-label">💥 사고 유형</div>';
-      html += '<div class="jsa-detail-value">'+escHtml(jsa.accidentType)+'</div>';
-      html += '</div>';
-    }
-    
-    // 안전대책 미리보기
-    var measures = parseMeasures(jsa.detailedMeasures || jsa.standardMeasures || '');
-    if(measures.length > 0){
-      html += '<div class="jsa-detail-section">';
-      html += '<div class="jsa-detail-label">✅ 안전대책 ('+measures.length+'개)</div>';
-      html += '<div class="jsa-measures-preview">';
-      measures.slice(0, 5).forEach(function(m, i){
-        html += '<div class="jsa-measure-preview">';
-        html += '<div class="jsa-measure-preview-num">'+(i+1)+'</div>';
-        html += '<div class="jsa-measure-preview-text">'+escHtml(m.text)+'</div>';
-        html += '</div>';
-      });
-      if(measures.length > 5){
-        html += '<div style="font-size:11px;color:var(--sub);margin-top:6px;text-align:center;">'+
-                '외 '+(measures.length-5)+'개 대책은 다음 단계에서 확인'+
-                '</div>';
-      }
-      html += '</div>';
-      html += '</div>';
-    }
-    
-    // 적용 버튼
-    html += '<button class="jsa-apply-btn" onclick="applyJSAData('+idx+')">'+
-            '✅ 이 JSA 적용하기 →'+
-            '</button>';
-    
-    html += '</div>'; // detail-panel
-    html += '</div>'; // jsa-result-card
-  });
-  
-  area.innerHTML = html;
+// STEP 2 초기화
+async function initStep2(){
+  if(!jsaDatabase || jsaDatabase.length === 0){
+    setTxt('jsaSummaryText', 'JSA_DB 로드 중...');
+    document.getElementById('measuresLoading').style.display = 'block';
+    await loadJSADatabase();
+  }
+  await runJSASearch();
 }
 
-// 안전대책 파싱: "1. [사내] 전원 차단 / 2. [AI] 잠금 확인" → 배열
+async function rerunJSASearch(){
+  showToast('🔄 JSA_DB 재검색 중...', 'ai');
+  document.getElementById('autoJudgmentCard').style.display = 'none';
+  document.getElementById('measuresProgress').style.display = 'none';
+  document.getElementById('userMeasuresSection').style.display = 'none';
+  document.getElementById('measuresContainer').innerHTML = 
+    '<div class="jsa-loading">' +
+    '<div class="jsa-loading-ico">🔍</div>' +
+    '<div class="jsa-loading-txt">JSA_DB에서 관련 작업을 재검색 중...<br><small>다중 검색 → 대책 병합 → 자동 판정</small></div>' +
+    '</div>';
+  await runJSASearch();
+}
+
+async function runJSASearch(){
+  console.log('[JSA 검색] 시작');
+  jsaSearchResults = searchRelevantJSAs(
+    riskData.workName,
+    riskData.workType,
+    riskData.workDesc
+  );
+  console.log('[JSA 검색] 결과:', jsaSearchResults.length + '건');
+  
+  riskData.referencedJSAs = jsaSearchResults.map(function(item){
+    return {
+      jsaId: item.jsa.jsaId,
+      workName: item.jsa.workName,
+      relevance: item.relevance,
+      reasons: item.reasons,
+      riskLevel: item.jsa.riskLevel,
+      controlAdequacy: item.jsa.controlAdequacy,
+      classCode: item.jsa.classCode
+    };
+  });
+  
+  updateJSASearchSummary();
+  processJSAResults();
+}
+
+function updateJSASearchSummary(){
+  var count = jsaSearchResults.length;
+  var summaryText = '';
+  if(count === 0){
+    summaryText = '유사 작업 없음 (0건)';
+    document.getElementById('noJSAWarn').style.display = 'block';
+    document.getElementById('userMeasuresSection').style.display = 'block';
+  } else {
+    var topRelevance = jsaSearchResults[0].relevance;
+    summaryText = '유사 작업 ' + count + '건 발견 (최고 관련도 ' + topRelevance + '점)';
+    document.getElementById('noJSAWarn').style.display = 'none';
+  }
+  setTxt('jsaSummaryText', summaryText);
+}
+
+// STEP 2 메인 처리
+function processJSAResults(){
+  console.log('[대책 처리] 시작');
+  var mergedMeasures = mergeMeasures(jsaSearchResults);
+  var categorized = categorizeMeasures(mergedMeasures);
+  riskData.measuresByCategory = categorized;
+  
+  autoJudge();
+  renderAutoJudgment();
+  renderMeasuresContainer();
+  renderMeasuresProgress();
+  renderUserMeasures();
+  
+  document.getElementById('userMeasuresSection').style.display = 'block';
+  
+  var firstCategory = document.querySelector('.category-section');
+  if(firstCategory) firstCategory.classList.add('expanded');
+}
+
+// 대책 병합
+function mergeMeasures(searchResults){
+  var measureMap = new Map();
+  searchResults.forEach(function(item){
+    var jsa = item.jsa;
+    var relevance = item.relevance;
+    var measuresText = jsa.detailedMeasures || jsa.standardMeasures || '';
+    if(!measuresText) return;
+    
+    var measures = parseMeasures(measuresText);
+    measures.forEach(function(m){
+      var key = normalizeMeasureText(m.text);
+      if(!key) return;
+      
+      if(measureMap.has(key)){
+        var existing = measureMap.get(key);
+        existing.sources.push({ jsaId: jsa.jsaId, workName: jsa.workName, relevance: relevance });
+        if(getTagPriority(m.source) < getTagPriority(existing.source)){
+          existing.source = m.source;
+        }
+        existing.totalRelevance = Math.min(100, existing.totalRelevance + Math.round(relevance * 0.3));
+        existing.jsaCount++;
+      } else {
+        measureMap.set(key, {
+          text: m.text,
+          normalizedKey: key,
+          source: m.source,
+          totalRelevance: relevance,
+          jsaCount: 1,
+          sources: [{ jsaId: jsa.jsaId, workName: jsa.workName, relevance: relevance }],
+          selected: true
+        });
+      }
+    });
+  });
+  
+  var merged = Array.from(measureMap.values());
+  merged.sort(function(a, b){
+    if(b.jsaCount !== a.jsaCount) return b.jsaCount - a.jsaCount;
+    return b.totalRelevance - a.totalRelevance;
+  });
+  return merged;
+}
+
+function normalizeMeasureText(text){
+  if(!text) return '';
+  return String(text)
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\wㄱ-힣]/g, '')
+    .trim();
+}
+
+function getTagPriority(tag){
+  var priorities = {
+    'LAW': 1, 'INT': 2, 'SOP': 3, 'JSA': 4,
+    'TBM': 5, 'PTW': 6, 'ACC': 7, 'NMS': 8,
+    'REC': 9, 'EXT': 10, 'WRK': 11, 'AI': 12, 'USER': 13
+  };
+  return priorities[tag] || 99;
+}
+
 function parseMeasures(text){
   if(!text) return [];
-  
   var items = text.split(/\s*\/\s*/);
   var result = [];
-  
   items.forEach(function(item){
     item = item.trim();
     if(!item) return;
-    
-    // "1. " 제거
     var cleaned = item.replace(/^\d+\.\s*/, '').trim();
     if(!cleaned) return;
-    
-    // 태그 추출 (정규식 없이 안전하게)
-      var source = 'WRK';
-      var tagList = ['법령', '사내', '표준', 'JSA', 'TBM', '허가', '재해', '아차', '권고', '외부', 'AI'];
-      var tagMap = {
-        '법령': 'LAW',
-        '사내': 'INT',
-        '표준': 'SOP',
-        'JSA': 'JSA',
-        'TBM': 'TBM',
-        '허가': 'PTW',
-        '재해': 'ACC',
-        '아차': 'NMS',
-        '권고': 'REC',
-        '외부': 'EXT',
-        'AI': 'AI'
-      };
-      for (var t = 0; t < tagList.length; t++) {
-        var tag = '[' + tagList[t] + ']';
-        if (cleaned.indexOf(tag) === 0) {
-          source = tagMap[tagList[t]];
-          cleaned = cleaned.substring(tag.length).trim();
-          break;
-        }
-     }
-     
+    var source = 'WRK';
+    var tagMap = {
+      '법령': 'LAW', '사내': 'INT', '표준': 'SOP',
+      'JSA': 'JSA', 'TBM': 'TBM', '허가': 'PTW',
+      '재해': 'ACC', '아차': 'NMS', '권고': 'REC',
+      '외부': 'EXT', 'AI': 'AI'
+    };
+    for(var tagName in tagMap){
+      var tag = '[' + tagName + ']';
+      if(cleaned.indexOf(tag) === 0){
+        source = tagMap[tagName];
+        cleaned = cleaned.substring(tag.length).trim();
+        break;
+      }
+    }
     if(cleaned){
       result.push({ text: cleaned, source: source });
     }
   });
-  
   return result;
 }
 
-// 상세 패널 토글
-function toggleJSADetail(idx){
-  var panel = document.getElementById('jsaDetail'+idx);
-  var icon = document.getElementById('jsaExpandIcon'+idx);
-  if(!panel) return;
-  
-  var isOpen = panel.classList.contains('open');
-  if(isOpen){
-    panel.classList.remove('open');
-    icon.textContent = '▼';
-  } else {
-    panel.classList.add('open');
-    icon.textContent = '▲';
-  }
-}
-
-// JSA 적용 → SCREEN 3으로 이동
-function applyJSAData(idx){
-  var candidate = jsaSearchResults[idx];
-  if(!candidate){ showToast('데이터를 찾을 수 없습니다','danger'); return; }
-  
-  var jsa = candidate.jsa;
-  var measures = parseMeasures(jsa.detailedMeasures || jsa.standardMeasures || '');
-  
-  if(measures.length === 0){
-    if(!confirm('이 JSA에는 안전대책이 없습니다. 그래도 진행하시겠습니까?')) return;
-  }
-  
-  // riskData에 저장
-  riskData.referencedJSA = {
-    jsaId: jsa.jsaId || (jsa.no ? 'JSA-' + jsa.no : null),
-    workName: jsa.workName,
-    similarity: candidate.score,
-    originalHazard: jsa.originalHazard,
-    accidentType: jsa.accidentType,
-    controlAdequacy: jsa.controlAdequacy
-  };
-  
-  // 대책을 selectedMeasures에 초기화 (모두 선택 상태로)
-  riskData.selectedMeasures = measures.map(function(m){
-    return { text: m.text, source: m.source, selected: true };
+// 카테고리 분류
+function categorizeMeasures(mergedMeasures){
+  var result = { essential: [], engineering: [], administrative: [], ppe: [] };
+  mergedMeasures.forEach(function(m){
+    var category = classifyMeasureText(m.text);
+    m.category = category;
+    result[category].push(m);
   });
-  
-  showToast('✅ JSA 데이터 적용됨 · 대책 선택 화면으로 이동', 'success');
-  goToStep(3);
+  Object.keys(result).forEach(function(cat){
+    result[cat].sort(function(a, b){
+      if(b.jsaCount !== a.jsaCount) return b.jsaCount - a.jsaCount;
+      return b.totalRelevance - a.totalRelevance;
+    });
+  });
+  return result;
 }
 
-// JSA 없이 진행
-function skipJSASearch(){
-  riskData.referencedJSA = null;
-  riskData.selectedMeasures = [];
-  goToStep(3);
-}
-</script>
-<script>
-// ═══════════════════════════════════════════════════
-// STEP 3: 안전대책 선택 + 매트릭스 + 통제 적정성
-// ═══════════════════════════════════════════════════
-
-function initMeasureSelection(){
-  // 참조 JSA 표시
-  var refBox = document.getElementById('referencedJSABox');
-  var refText = document.getElementById('referencedJSAText');
-  var hazBox = document.getElementById('originalHazardBox');
-  var hazText = document.getElementById('originalHazardText');
+function classifyMeasureText(text){
+  if(!text) return 'administrative';
+  var t = text.toLowerCase();
   
-  if(riskData.referencedJSA){
-    refBox.style.display = 'block';
-    var similarity = Math.round(riskData.referencedJSA.similarity * 100);
-    refText.innerHTML = '<strong>'+escHtml(riskData.referencedJSA.workName)+'</strong>'+
-                        ' (유사도 '+similarity+'%)';
-    
-    if(riskData.referencedJSA.originalHazard){
-      hazBox.style.display = 'block';
-      hazText.textContent = riskData.referencedJSA.originalHazard;
-    } else {
-      hazBox.style.display = 'none';
-    }
-  } else {
-    refBox.style.display = 'none';
-    hazBox.style.display = 'none';
+  var ppeKeywords = [
+    '착용', '보호구', '마스크', '보안경', '보안면', '방독', '방진',
+    '송기', '방염', '방열', '절연장갑', '절연화', '안전대', '안전블록',
+    '귀마개', '귀덮개', '용접면', '용접장갑', '화학물질용', '내화학',
+    '방액', '방화복', '보호복'
+  ];
+  for(var i = 0; i < ppeKeywords.length; i++){
+    if(t.indexOf(ppeKeywords[i]) >= 0) return 'ppe';
   }
   
-  // 안전대책 리스트 렌더링
-  renderMeasuresList();
-  renderUserMeasures();
-  updateMeasuresSummary();
+  var essentialKeywords = [
+    '차단', '제거', '해체', '드레인', '방출', '배출', '워터런',
+    '전원 차단', '공압 차단', '전원차단', '공압차단',
+    '잔압 제거', '잔압제거', '잔압',
+    '설비 정지', '설비정지',
+    '위험물질', '유해물질', '가연물',
+    '무전압', '검전', '가스검지', '가스측정',
+    'ils', 'loto', '에너지 격리', '에너지격리',
+    'ph 측정', 'ph측정',
+    '금지', '접근금지', '출입금지', '사용금지'
+  ];
+  for(var j = 0; j < essentialKeywords.length; j++){
+    if(t.indexOf(essentialKeywords[j]) >= 0) return 'essential';
+  }
   
-  // 매트릭스 렌더링
-  renderMatrix();
-  updateMatrixResult();
+  var engineeringKeywords = [
+    '설치', '방호커버', '방호장치', '안전난간', '안전발판',
+    '작업발판', '아웃트리거', '과상승방지', '역화방지',
+    '고임목', '누출받이', '흡착재', '방화포', '불티방지포',
+    '소화기', '비상세척', '비상통화', '샤워설비',
+    '환기', '송풍', '국소배기', '강제환기',
+    '생명줄', '낙하방지', '차량 접근', '동선 분리',
+    '펜스', '바리케이드', '표지', '경보', '자동',
+    '연동', '인터록', '커버', '차단기'
+  ];
+  for(var k = 0; k < engineeringKeywords.length; k++){
+    if(t.indexOf(engineeringKeywords[k]) >= 0) return 'engineering';
+  }
   
-  // 통제 적정성 초기화
-  renderControlAdequacy();
+  return 'administrative';
 }
 
-// ═══════════════════════════════
-// 안전대책 카드 렌더링
-// ═══════════════════════════════
-function renderMeasuresList(){
-  var container = document.getElementById('measuresList');
+// 대책 컨테이너 렌더링
+function renderMeasuresContainer(){
+  var container = document.getElementById('measuresContainer');
   if(!container) return;
   
-  if(riskData.selectedMeasures.length === 0){
+  var totalMeasures = 
+    riskData.measuresByCategory.essential.length +
+    riskData.measuresByCategory.engineering.length +
+    riskData.measuresByCategory.administrative.length +
+    riskData.measuresByCategory.ppe.length;
+  
+  if(totalMeasures === 0){
     container.innerHTML = 
-      '<div class="empty-work" style="padding:20px 16px;">'+
-      '<div class="empty-work-ico">📝</div>'+
-      '<div class="empty-work-txt">JSA_DB에서 제안된 안전대책이 없습니다.<br>'+
-      '아래에서 <strong>직접 대책을 추가</strong>하세요.</div>'+
-      '</div>';
+      '<div class="warn-box">' +
+      '<div class="warn-box-title">⚠️ 매칭된 대책이 없습니다</div>' +
+      '<div class="warn-box-text">' +
+      'JSA_DB에서 유사한 작업을 찾지 못했습니다.<br>' +
+      '아래에서 <strong>직접 대책을 추가</strong>하거나, 재검색해주세요.' +
+      '</div></div>';
     return;
   }
   
+  saveExpandedCategories();
+  
   var html = '';
-  riskData.selectedMeasures.forEach(function(m, idx){
-    var tagCls = (m.source || 'wrk').toLowerCase();
-    var tagLabel = getSourceLabel(m.source);
+  CATEGORY_ORDER.forEach(function(cat){
+    var measures = riskData.measuresByCategory[cat];
+    if(measures.length === 0) return;
     
-    html += '<div class="measure-card'+(m.selected?' selected':'')+'" '+
-            'onclick="toggleMeasure('+idx+')">';
-    html += '<div class="measure-check"></div>';
-    html += '<div class="measure-content">';
-    html += '<div class="measure-text">'+escHtml(m.text)+'</div>';
-    html += '<div class="measure-tags">';
-    html += '<span class="jsa-tag '+tagCls+'">'+escHtml(tagLabel)+'</span>';
+    var label = CATEGORY_LABELS[cat];
+    var icon = label.substring(0, 2);
+    var textLabel = label.substring(3);
+    var selectedCount = measures.filter(function(m){ return m.selected; }).length;
+    
+    html += '<div class="category-section ' + cat + '">';
+    html += '<div class="category-header" onclick="toggleCategory(this)">';
+    html += '<div class="category-title">';
+    html += '<span class="category-icon">' + icon + '</span>';
+    html += '<span>' + escHtml(textLabel) + '</span>';
     html += '</div>';
+    html += '<span class="category-count">' + selectedCount + ' / ' + measures.length + '</span>';
+    html += '<span class="category-arrow">▼</span>';
     html += '</div>';
-    html += '</div>';
+    html += '<div class="category-content">';
+    html += '<div class="category-body">';
+    measures.forEach(function(m, idx){
+      html += renderMeasureCard(m, cat, idx);
+    });
+    html += '</div></div></div>';
   });
   
   container.innerHTML = html;
+  restoreExpandedCategories();
 }
 
-// 태그 라벨 매핑
+function renderMeasureCard(measure, category, idx){
+  var tagLabel = getSourceLabel(measure.source);
+  var tagCls = (measure.source || 'wrk').toLowerCase();
+  
+  var html = '<div class="measure-item' + (measure.selected ? ' selected' : '') + '" ' +
+             'onclick="toggleMeasure(\'' + category + '\', ' + idx + ')">';
+  html += '<div class="measure-check"></div>';
+  html += '<div class="measure-content">';
+  html += '<div class="measure-text">' + escHtml(measure.text) + '</div>';
+  html += '<div class="measure-tags">';
+  html += '<span class="measure-tag ' + tagCls + '">' + escHtml(tagLabel) + '</span>';
+  if(measure.jsaCount > 1){
+    html += '<span class="measure-source-count">📌 ' + measure.jsaCount + '개 JSA</span>';
+  }
+  html += '</div></div></div>';
+  return html;
+}
+
 function getSourceLabel(source){
   var map = {
     'LAW': '법령', 'INT': '사내', 'SOP': '표준',
@@ -2362,343 +2407,510 @@ function getSourceLabel(source){
   return map[source] || source || '원문';
 }
 
-// 대책 선택 토글
-function toggleMeasure(idx){
-  if(!riskData.selectedMeasures[idx]) return;
-  riskData.selectedMeasures[idx].selected = !riskData.selectedMeasures[idx].selected;
-  renderMeasuresList();
-  updateMeasuresSummary();
+function toggleMeasure(category, idx){
+  var measures = riskData.measuresByCategory[category];
+  if(!measures || !measures[idx]) return;
+  measures[idx].selected = !measures[idx].selected;
+  renderMeasuresContainer();
+  renderMeasuresProgress();
 }
 
-// 사용자 추가 대책 렌더링
+function toggleCategory(headerEl){
+  var section = headerEl.closest('.category-section');
+  if(!section) return;
+  section.classList.toggle('expanded');
+}
+
+function saveExpandedCategories(){
+  expandedCategoriesCache.clear();
+  document.querySelectorAll('.category-section.expanded').forEach(function(el){
+    var cat = ['essential', 'engineering', 'administrative', 'ppe'].find(function(c){
+      return el.classList.contains(c);
+    });
+    if(cat) expandedCategoriesCache.add(cat);
+  });
+}
+
+function restoreExpandedCategories(){
+  document.querySelectorAll('.category-section').forEach(function(el){
+    var cat = ['essential', 'engineering', 'administrative', 'ppe'].find(function(c){
+      return el.classList.contains(c);
+    });
+    if(cat && expandedCategoriesCache.has(cat)){
+      el.classList.add('expanded');
+    }
+  });
+}
+
+// 진행률 렌더링
+function renderMeasuresProgress(){
+  var progressEl = document.getElementById('measuresProgress');
+  if(!progressEl) return;
+  
+  var counts = {
+    essential: {
+      total: riskData.measuresByCategory.essential.length,
+      selected: riskData.measuresByCategory.essential.filter(function(m){ return m.selected; }).length
+    },
+    engineering: {
+      total: riskData.measuresByCategory.engineering.length,
+      selected: riskData.measuresByCategory.engineering.filter(function(m){ return m.selected; }).length
+    },
+    administrative: {
+      total: riskData.measuresByCategory.administrative.length,
+      selected: riskData.measuresByCategory.administrative.filter(function(m){ return m.selected; }).length
+    },
+    ppe: {
+      total: riskData.measuresByCategory.ppe.length,
+      selected: riskData.measuresByCategory.ppe.filter(function(m){ return m.selected; }).length
+    }
+  };
+  
+  var totalSelected = counts.essential.selected + counts.engineering.selected + 
+                      counts.administrative.selected + counts.ppe.selected;
+  var totalAvailable = counts.essential.total + counts.engineering.total + 
+                       counts.administrative.total + counts.ppe.total;
+  var userCount = riskData.userMeasures.length;
+  
+  progressEl.style.display = 'block';
+  setTxt('mpEssentialCount', counts.essential.selected + '/' + counts.essential.total);
+  setTxt('mpEngineeringCount', counts.engineering.selected + '/' + counts.engineering.total);
+  setTxt('mpAdministrativeCount', counts.administrative.selected + '/' + counts.administrative.total);
+  setTxt('mpPpeCount', counts.ppe.selected + '/' + counts.ppe.total);
+  setTxt('mpTotalSelected', totalSelected);
+  setTxt('mpTotalAvailable', totalAvailable);
+  
+  var userText = userCount > 0 ? ' + 추가 ' + userCount + '개' : '';
+  setTxt('mpUserCount', userText);
+  
+  riskData.stats = {
+    totalMeasures: totalAvailable,
+    selectedMeasures: totalSelected,
+    essentialSelected: counts.essential.selected,
+    engineeringSelected: counts.engineering.selected,
+    administrativeSelected: counts.administrative.selected,
+    ppeSelected: counts.ppe.selected,
+    userMeasures: userCount
+  };
+}
+
+// 사용자 대책
+function addUserMeasure(){
+  var input = document.getElementById('userMeasureInput');
+  var catSel = document.getElementById('userMeasureCat');
+  var val = (input.value || '').trim();
+  var cat = catSel.value || 'administrative';
+  
+  if(!val){ showToast('대책을 입력해주세요', 'info'); return; }
+  if(val.length < 3){ showToast('3자 이상 입력해주세요', 'info'); return; }
+  
+  var isDup = riskData.userMeasures.some(function(m){
+    return normalizeMeasureText(m.text) === normalizeMeasureText(val);
+  });
+  if(isDup){ showToast('이미 추가된 대책입니다', 'warning'); return; }
+  
+  riskData.userMeasures.push({
+    text: val, category: cat, source: 'USER',
+    createdAt: new Date().toISOString()
+  });
+  
+  input.value = '';
+  renderUserMeasures();
+  renderMeasuresProgress();
+  showToast('✅ 대책이 추가되었습니다', 'success');
+}
+
+function delUserMeasure(idx){
+  riskData.userMeasures.splice(idx, 1);
+  renderUserMeasures();
+  renderMeasuresProgress();
+}
+
 function renderUserMeasures(){
   var container = document.getElementById('userMeasuresList');
   if(!container) return;
   
-  var html = '';
-  riskData.userMeasures.forEach(function(m, idx){
-    html += '<div class="user-measure-item">';
-    html += '<div class="user-measure-text">'+escHtml(m.text)+'</div>';
-    html += '<button class="user-measure-del" onclick="delUserMeasure('+idx+')">×</button>';
-    html += '</div>';
-  });
-  
-  container.innerHTML = html;
-}
-
-// 사용자 대책 추가
-function addUserMeasure(){
-  var input = document.getElementById('userMeasureInput');
-  var val = (input.value || '').trim();
-  if(!val){
-    showToast('대책을 입력해주세요', 'info');
-    return;
-  }
-  if(val.length < 3){
-    showToast('3자 이상 입력해주세요', 'info');
-    return;
-  }
-  
-  riskData.userMeasures.push({ text: val, source: 'USER' });
-  input.value = '';
-  renderUserMeasures();
-  updateMeasuresSummary();
-  showToast('✅ 대책이 추가되었습니다', 'success');
-}
-
-// 사용자 대책 삭제
-function delUserMeasure(idx){
-  riskData.userMeasures.splice(idx, 1);
-  renderUserMeasures();
-  updateMeasuresSummary();
-}
-
-// 선택 현황 업데이트
-function updateMeasuresSummary(){
-  var total = riskData.selectedMeasures.length;
-  var selected = riskData.selectedMeasures.filter(function(m){ return m.selected; }).length;
-  var added = riskData.userMeasures.length;
-  
-  setTxt('mscSelected', selected);
-  setTxt('mscTotal', total);
-  setTxt('mscAdded', added);
-}
-
-// ═══════════════════════════════
-// 매트릭스 (5×5)
-// ═══════════════════════════════
-function renderMatrix(){
-  var grid = document.getElementById('matrixGrid');
-  if(!grid) return;
-  
-  var html = '';
-  // 헤더 (빈 칸 + 빈도 1~5)
-  html += '<div class="matrix-head" style="font-size:9px;">강도↑<br>빈도→</div>';
-  for(var f=1; f<=5; f++){
-    html += '<div class="matrix-head">'+f+'</div>';
-  }
-  
-  // 매트릭스 셀 (강도 5→1, 빈도 1→5)
-  for(var sev=5; sev>=1; sev--){
-    html += '<div class="matrix-head">'+sev+'</div>';
-    for(var fre=1; fre<=5; fre++){
-      var score = fre * sev;
-      var cls = score<=4 ? 'low' : score<=9 ? 'med' : score<=15 ? 'high' : 'critical';
-      var isSel = (riskData.frequency === fre && riskData.severity === sev);
-      html += '<div class="matrix-cell '+cls+(isSel?' sel':'')+'" '+
-              'onclick="selectMatrix('+fre+','+sev+')">'+score+'</div>';
-    }
-  }
-  
-  grid.innerHTML = html;
-}
-
-function selectMatrix(fre, sev){
-  riskData.frequency = fre;
-  riskData.severity = sev;
-  riskData.overallScore = fre * sev;
-  
-  // 위험도 판정
-  var score = riskData.overallScore;
-  if(score <= 4) riskData.overallRisk = '저위험';
-  else if(score <= 9) riskData.overallRisk = '중위험';
-  else if(score <= 15) riskData.overallRisk = '고위험';
-  else riskData.overallRisk = '매우고위험';
-  
-  renderMatrix();
-  updateMatrixResult();
-}
-
-function updateMatrixResult(){
-  var container = document.getElementById('matrixResult');
-  if(!container) return;
-  
-  if(riskData.frequency === 0 || riskData.severity === 0){
+  if(riskData.userMeasures.length === 0){
     container.innerHTML = '';
     return;
   }
   
-  var score = riskData.overallScore;
-  var level = riskData.overallRisk;
-  var cls = score<=4 ? 'low' : score<=9 ? 'med' : score<=15 ? 'high' : 'critical';
-  
-  container.innerHTML = 
-    '<div class="matrix-result '+cls+'">'+
-    '<div class="matrix-result-num '+cls+'">'+score+'</div>'+
-    '<div class="matrix-result-info">'+
-    '<div class="matrix-result-level '+cls+'">'+level+'</div>'+
-    '<div class="matrix-result-desc">빈도 '+riskData.frequency+' × 강도 '+riskData.severity+'</div>'+
-    '</div>'+
-    '</div>';
-}
-
-// ═══════════════════════════════
-// 통제 적정성 (○/△/×)
-// ═══════════════════════════════
-function renderControlAdequacy(){
-  document.querySelectorAll('.ctrl-btn').forEach(function(btn){
-    btn.classList.remove('selected');
+  var html = '';
+  riskData.userMeasures.forEach(function(m, idx){
+    var catLabel = {
+      essential: '🔴 필수', engineering: '🟠 공학적',
+      administrative: '🟡 행정적', ppe: '🟢 PPE'
+    }[m.category] || '🟡 행정적';
+    
+    html += '<div class="user-measure-item">';
+    html += '<div class="user-measure-text">' + escHtml(m.text) + '</div>';
+    html += '<span class="user-measure-cat">' + catLabel + '</span>';
+    html += '<button class="user-measure-del" onclick="delUserMeasure(' + idx + ')" aria-label="삭제">×</button>';
+    html += '</div>';
   });
-  
-  if(riskData.controlAdequacy === '○'){
-    document.getElementById('ctrlBtnOk').classList.add('selected');
-  } else if(riskData.controlAdequacy === '△'){
-    document.getElementById('ctrlBtnWarn').classList.add('selected');
-  } else if(riskData.controlAdequacy === '×'){
-    document.getElementById('ctrlBtnNo').classList.add('selected');
-  }
-  
-  // AI 재평가 힌트
-  var hint = document.getElementById('aiReviewHint');
-  if(hint){
-    if(riskData.controlAdequacy === '△' || riskData.controlAdequacy === '×'){
-      hint.classList.add('show');
-    } else {
-      hint.classList.remove('show');
-    }
-  }
+  container.innerHTML = html;
 }
 
-function setControlAdequacy(symbol){
-  riskData.controlAdequacy = symbol;
-  renderControlAdequacy();
+// STEP 2 VALIDATE
+function validateStep2(){
+  var selectedCount = 
+    riskData.measuresByCategory.essential.filter(function(m){ return m.selected; }).length +
+    riskData.measuresByCategory.engineering.filter(function(m){ return m.selected; }).length +
+    riskData.measuresByCategory.administrative.filter(function(m){ return m.selected; }).length +
+    riskData.measuresByCategory.ppe.filter(function(m){ return m.selected; }).length;
   
-  if(symbol === '○'){
-    showToast('✅ 통제 적정: 상위 통제 대책 포함', 'success');
-  } else if(symbol === '△'){
-    showToast('⚠️ 보완 필요: Phase 2에서 AI 재평가 가능', 'warning');
-  } else if(symbol === '×'){
-    showToast('🚨 미흡: 핵심 대책 재검토 필요', 'danger');
-  }
-}
-
-// ═══════════════════════════════
-// STEP 3 VALIDATE
-// ═══════════════════════════════
-function validateStep3(){
-  // 매트릭스 필수
-  if(riskData.frequency === 0 || riskData.severity === 0){
-    showToast('위험도 매트릭스를 선택해주세요', 'danger');
-    return;
-  }
-  
-  // 대책 최소 1개 선택 필수
-  var selectedCount = riskData.selectedMeasures.filter(function(m){ return m.selected; }).length;
   var userCount = riskData.userMeasures.length;
   
   if(selectedCount + userCount === 0){
     showToast('안전대책을 최소 1개 이상 선택하거나 추가해주세요', 'danger');
     return;
   }
+  if(!riskData.finalRiskLevel){
+    showToast('위험도가 판정되지 않았습니다. 재검색을 시도하세요.', 'danger');
+    return;
+  }
+  goToStep(3);
+}
+
+// 자동 판정
+function autoJudge(){
+  console.log('[자동 판정] 시작');
   
-  // 통제 적정성 필수
-  if(!riskData.controlAdequacy){
-    showToast('통제 적정성을 판정해주세요 (○/△/×)', 'danger');
+  if(!riskData.referencedJSAs || riskData.referencedJSAs.length === 0){
+    riskData.autoJudgment = {
+      riskLevel: '판정불가', controlAdequacy: '×',
+      basis: '유사 작업이 없어 자동 판정 불가',
+      calculatedAt: new Date().toISOString()
+    };
+    riskData.finalRiskLevel = '판정불가';
+    riskData.finalControlAdequacy = '×';
     return;
   }
   
-  goToStep(4);
+  var maxRisk = calculateMaxRiskLevel();
+  var strictControl = calculateStrictestControl();
+  var basis = generateJudgmentBasis(maxRisk, strictControl);
+  
+  riskData.autoJudgment = {
+    riskLevel: maxRisk.level,
+    controlAdequacy: strictControl.symbol,
+    basis: basis,
+    calculatedAt: new Date().toISOString(),
+    detail: {
+      referencedJSACount: riskData.referencedJSAs.length,
+      maxRiskJSA: maxRisk.sourceJSA,
+      strictControlJSA: strictControl.sourceJSA
+    }
+  };
+  
+  if(!riskData.overridden){
+    riskData.finalRiskLevel = maxRisk.level;
+    riskData.finalControlAdequacy = strictControl.symbol;
+  }
+  
+  console.log('[자동 판정] 결과:', {
+    riskLevel: riskData.finalRiskLevel,
+    controlAdequacy: riskData.finalControlAdequacy
+  });
 }
 
-// ═══════════════════════════════════════════════════
-// STEP 4: 종합 검토
-// ═══════════════════════════════════════════════════
-function buildSummary(){
-  // Overall Badge
-  var score = riskData.overallScore;
-  var level = riskData.overallRisk;
-  var cls = score<=4 ? 'low' : score<=9 ? 'med' : score<=15 ? 'high' : 'critical';
+function calculateMaxRiskLevel(){
+  var maxLevel = '저위험';
+  var maxOrder = 0;
+  var sourceJSA = null;
   
-  var badgeHtml = '<div class="overall-badge '+cls+'">';
-  badgeHtml += '<div class="ob-level">'+escHtml(level)+'</div>';
-  badgeHtml += '<div class="ob-score">'+score+'</div>';
-  badgeHtml += '<div class="ob-desc">'+escHtml(riskData.workName)+' · '+escHtml(riskData.workType)+'<br>';
-  badgeHtml += '통제 적정성: <strong>'+riskData.controlAdequacy+'</strong></div>';
-  badgeHtml += '</div>';
-  document.getElementById('overallBadgeArea').innerHTML = badgeHtml;
+  riskData.referencedJSAs.forEach(function(ref){
+    var level = ref.riskLevel || '';
+    var order = RISK_ORDER[level] || 0;
+    if(order > maxOrder){
+      maxOrder = order;
+      maxLevel = level;
+      sourceJSA = { jsaId: ref.jsaId, workName: ref.workName, level: level };
+    }
+  });
   
-  // Summary Table
-  var selectedMeasures = riskData.selectedMeasures.filter(function(m){ return m.selected; });
-  var totalMeasures = selectedMeasures.length + riskData.userMeasures.length;
+  if(maxOrder === 0){ return { level: '판정불가', sourceJSA: null }; }
+  return { level: maxLevel, sourceJSA: sourceJSA };
+}
+
+function calculateStrictestControl(){
+  var strictSymbol = '○';
+  var maxOrder = 0;
+  var sourceJSA = null;
   
+  riskData.referencedJSAs.forEach(function(ref){
+    var symbol = ref.controlAdequacy || '';
+    var order = CONTROL_ORDER[symbol] || 0;
+    if(order > maxOrder){
+      maxOrder = order;
+      strictSymbol = symbol;
+      sourceJSA = { jsaId: ref.jsaId, workName: ref.workName, symbol: symbol };
+    }
+  });
+  
+  if(maxOrder === 0){ return { symbol: '△', sourceJSA: null }; }
+  return { symbol: strictSymbol, sourceJSA: sourceJSA };
+}
+
+function generateJudgmentBasis(maxRisk, strictControl){
+  var count = riskData.referencedJSAs.length;
+  var parts = [];
+  parts.push('참조 JSA ' + count + '건');
+  if(maxRisk.sourceJSA){
+    parts.push('최고 위험도(' + maxRisk.level + '): ' + truncateText(maxRisk.sourceJSA.workName, 20));
+  }
+  if(strictControl.sourceJSA){
+    parts.push('엄격 통제(' + strictControl.symbol + '): ' + truncateText(strictControl.sourceJSA.workName, 20));
+  }
+  return parts.join(' · ');
+}
+
+function truncateText(text, maxLen){
+  if(!text) return '';
+  var s = String(text);
+  return s.length > maxLen ? s.substring(0, maxLen) + '...' : s;
+}
+
+// 자동 판정 UI
+function renderAutoJudgment(){
+  var card = document.getElementById('autoJudgmentCard');
+  if(!card) return;
+  card.style.display = 'block';
+  
+  var risk = riskData.finalRiskLevel || '판정불가';
+  var control = riskData.finalControlAdequacy || '△';
+  var basis = riskData.autoJudgment.basis || '판정 근거 없음';
+  
+  var riskBadge = document.getElementById('ajcRiskBadge');
+  riskBadge.className = 'ajc-badge ' + getRiskClass(risk);
+  riskBadge.textContent = risk;
+  
+  var controlSymbol = document.getElementById('ajcControlSymbol');
+  controlSymbol.className = 'ajc-symbol ' + getControlClass(control);
+  controlSymbol.textContent = control;
+  
+  setTxt('ajcBasis', basis);
+  
+  var overriddenBox = document.getElementById('ajcOverriddenBox');
+  if(riskData.overridden){
+    overriddenBox.style.display = 'block';
+    setTxt('ajcOverrideReason', 
+      '조정자: ' + (riskData.overriddenBy || '관리자') + 
+      ' · 사유: ' + (riskData.overrideReason || '-'));
+  } else {
+    overriddenBox.style.display = 'none';
+  }
+  
+  var overrideBtn = document.getElementById('overrideBtn');
+  if(isManagerOrAdmin()){
+    overrideBtn.style.display = 'inline-block';
+  } else {
+    overrideBtn.style.display = 'none';
+  }
+}
+
+function getRiskClass(level){
+  return { '저위험': 'low', '중위험': 'med', '고위험': 'high', '매우고위험': 'critical', '판정불가': 'na' }[level] || 'na';
+}
+
+function getControlClass(symbol){
+  return { '○': 'ok', '△': 'warn', '×': 'no' }[symbol] || 'na';
+}
+
+function isManagerOrAdmin(){
+  var role = sessionStorage.getItem('userRole') || '';
+  if(APP_MODE === 'test') return true;
+  return role === 'admin' || role === 'employer_manager';
+}
+
+// 오버라이드
+function showOverrideDialog(){
+  if(!isManagerOrAdmin()){
+    showToast('관리자 권한이 필요합니다', 'danger');
+    return;
+  }
+  var dialog = document.getElementById('overrideDialog');
+  if(!dialog) return;
+  document.getElementById('overrideRisk').value = '';
+  document.getElementById('overrideControl').value = '';
+  document.getElementById('overrideReason').value = '';
+  dialog.style.display = 'flex';
+}
+
+function closeOverrideDialog(){
+  var dialog = document.getElementById('overrideDialog');
+  if(dialog) dialog.style.display = 'none';
+}
+
+function applyOverride(){
+  var newRisk = document.getElementById('overrideRisk').value;
+  var newControl = document.getElementById('overrideControl').value;
+  var reason = document.getElementById('overrideReason').value.trim();
+  
+  if(!newRisk && !newControl){ showToast('변경할 항목을 선택해주세요', 'danger'); return; }
+  if(!reason){ showToast('조정 사유를 입력해주세요', 'danger'); return; }
+  if(reason.length < 5){ showToast('조정 사유를 5자 이상 입력해주세요', 'danger'); return; }
+  
+  if(newRisk) riskData.finalRiskLevel = newRisk;
+  if(newControl) riskData.finalControlAdequacy = newControl;
+  
+  riskData.overridden = true;
+  riskData.overrideReason = reason;
+  riskData.overriddenBy = sessionStorage.getItem('userName') || 'admin';
+  riskData.overriddenAt = new Date().toISOString();
+  
+  addStatusHistory('자동판정', '수동조정', reason);
+  renderAutoJudgment();
+  closeOverrideDialog();
+  showToast('✅ 자동 판정이 수동 조정되었습니다', 'success');
+}
+
+// STEP 3
+function initStep3(){
+  buildFinalBadge();
+  buildSummaryTable();
+  buildFinalMeasuresList();
+  buildPermitLinkDropdown();
+  if(riskData.opinion) setVal('f-opinion', riskData.opinion);
+}
+
+function buildFinalBadge(){
+  var risk = riskData.finalRiskLevel || '판정불가';
+  var control = riskData.finalControlAdequacy || '△';
+  var cls = getRiskClass(risk);
+  
+  var html = '<div class="final-badge ' + cls + '">';
+  html += '<div class="fb-level">' + escHtml(risk) + '</div>';
+  html += '<div class="fb-control">통제 ' + escHtml(control) + '</div>';
+  html += '<div class="fb-desc">' + escHtml(riskData.workName) + '<br>' + escHtml(riskData.workType);
+  if(riskData.overridden){
+    html += '<br><small style="opacity:.8;">✏️ 관리자 수동 조정</small>';
+  }
+  html += '</div></div>';
+  document.getElementById('finalBadgeArea').innerHTML = html;
+}
+
+function buildSummaryTable(){
   var tableHtml = '';
   tableHtml += buildSummaryRow('작업명', riskData.workName, true);
   tableHtml += buildSummaryRow('작업유형', riskData.workType);
-  tableHtml += buildSummaryRow('작업장소', riskData.location+' '+riskData.detailLocation);
+  tableHtml += buildSummaryRow('작업장소', riskData.location + ' ' + (riskData.detailLocation || ''));
   tableHtml += buildSummaryRow('협력사', riskData.company);
   tableHtml += buildSummaryRow('평가자', riskData.assessor);
   tableHtml += buildSummaryRow('평가일', riskData.date);
-  tableHtml += buildSummaryRow('빈도 × 강도', riskData.frequency+' × '+riskData.severity+' = '+score+'점');
-  tableHtml += buildSummaryRow('위험도', level);
-  tableHtml += buildSummaryRow('통제 적정성', riskData.controlAdequacy);
-  tableHtml += buildSummaryRow('선택 대책', selectedMeasures.length+'개 (JSA)');
-  tableHtml += buildSummaryRow('추가 대책', riskData.userMeasures.length+'개 (직접)');
-  tableHtml += buildSummaryRow('총 대책', totalMeasures+'개');
-  if(riskData.referencedJSA){
-    tableHtml += buildSummaryRow('참조 JSA', riskData.referencedJSA.workName || '-');
-  }
-  if(riskData.permitNo){
-    tableHtml += buildSummaryRow('연결 허가서', riskData.permitNo, true);
-  }
+  tableHtml += buildSummaryRow('위험도', riskData.finalRiskLevel, true);
+  tableHtml += buildSummaryRow('통제 적정성', riskData.finalControlAdequacy, true);
+  tableHtml += buildSummaryRow('판정 방식', riskData.overridden ? '⚠️ 관리자 수동 조정' : '⚡ 자동 판정');
+  tableHtml += buildSummaryRow('참조 JSA', (riskData.referencedJSAs || []).length + '건');
+  tableHtml += buildSummaryRow('선택 대책', riskData.stats.selectedMeasures + '개');
+  tableHtml += buildSummaryRow('추가 대책', riskData.stats.userMeasures + '개');
+  var totalMeasures = riskData.stats.selectedMeasures + riskData.stats.userMeasures;
+  tableHtml += buildSummaryRow('총 대책', totalMeasures + '개', true);
+  if(riskData.permitNo) tableHtml += buildSummaryRow('연결 허가서', riskData.permitNo);
+  if(riskData.safeinfoNo) tableHtml += buildSummaryRow('연결 안전정보', riskData.safeinfoNo);
+  
   document.getElementById('summaryTable').innerHTML = tableHtml;
-  
-  if(riskData.opinion) setVal('f-opinion', riskData.opinion);
-  
-  buildPermitLinkDropdown();
 }
 
 function buildSummaryRow(key, val, hl){
-  return '<div class="summary-row"><span class="summary-key">'+escHtml(key)+'</span>'+
-    '<span class="summary-val'+(hl?' hl':'')+'">'+escHtml(val||'-')+'</span></div>';
+  return '<div class="summary-row">' +
+         '<span class="summary-key">' + escHtml(key) + '</span>' +
+         '<span class="summary-val' + (hl ? ' hl' : '') + '">' + escHtml(val || '-') + '</span>' +
+         '</div>';
+}
+
+function buildFinalMeasuresList(){
+  var container = document.getElementById('finalMeasuresList');
+  if(!container) return;
+  var allSelected = [];
+  
+  CATEGORY_ORDER.forEach(function(cat){
+    riskData.measuresByCategory[cat].forEach(function(m){
+      if(m.selected){
+        allSelected.push({ text: m.text, category: cat, source: m.source });
+      }
+    });
+  });
+  riskData.userMeasures.forEach(function(m){
+    allSelected.push({ text: m.text, category: m.category, source: 'USER' });
+  });
+  
+  setTxt('finalMeasuresCount', allSelected.length);
+  
+  if(allSelected.length === 0){
+    container.innerHTML = '<div style="color:var(--sub);text-align:center;padding:16px;">선택된 대책이 없습니다.</div>';
+    return;
+  }
+  
+  var catLabels = { essential: '필수', engineering: '공학', administrative: '행정', ppe: 'PPE' };
+  var html = '';
+  allSelected.forEach(function(m, idx){
+    var catCls = 'fm-cat-' + m.category;
+    var catLabel = catLabels[m.category] || '기타';
+    html += '<div class="fm-item">';
+    html += '<span class="fm-item-cat ' + catCls + '">' + catLabel + '</span>';
+    html += '<span>' + (idx + 1) + '. ' + escHtml(m.text) + '</span>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
 }
 
 function buildPermitLinkDropdown(){
   var sel = document.getElementById('f-permitLink');
   if(!sel) return;
   sel.innerHTML = '<option value="">없음 (독립 평가)</option>';
-  try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits')||'[]');
+  try {
+    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
     var today = riskData.date || fmtDate(new Date());
     var todayPermits = permits.filter(function(p){ return p.startDate === today; });
     todayPermits.forEach(function(p){
       var opt = document.createElement('option');
       opt.value = p.permitNo;
-      opt.textContent = p.permitNo+' — '+(p.workName||'');
-      if(p.permitNo===riskData.permitNo) opt.selected=true;
+      opt.textContent = p.permitNo + ' — ' + (p.workName || '');
+      if(p.permitNo === riskData.permitNo) opt.selected = true;
       sel.appendChild(opt);
     });
-  }catch(e){}
+  } catch(e){}
 }
 
-// ═══════════════════════════════════════════════════
-// 제출 & 저장 (규약 준수, 스키마 v2)
-// ═══════════════════════════════════════════════════
-function submitAssessment(){
-  riskData.opinion = getVal('f-opinion');
-  riskData.linkedPermitNo = getVal('f-permitLink');
-  riskData.status = '평가완료';
-  riskData.createdAt = new Date().toISOString();
-  riskData.riskId = getNextRiskIdLocal();
+// 상태 이력
+function addStatusHistory(from, to, reason){
+  if(!riskData.statusHistory) riskData.statusHistory = [];
+  riskData.statusHistory.push({
+    from: from, to: to,
+    changedAt: new Date().toISOString(),
+    changedBy: sessionStorage.getItem('userName') || riskData.assessor || 'anonymous',
+    reason: reason || ''
+  });
+}
+
+// riskId 발급
+async function getNextRiskIdFromFirestore(){
+  var todayStr = fmtDate(new Date()).replace(/-/g, '');
+  var prefix = 'RA-' + todayStr + '-';
   
   try {
-    saveRiskDB();
+    var collName = window.getCollectionName('위험성평가');
+    var snap = await db.collection(collName)
+      .where('riskId', '>=', prefix)
+      .where('riskId', '<', prefix + '\uf8ff').get();
     
-    // 허가서 연동
-    var targetPermit = riskData.linkedPermitNo || riskData.permitNo;
-    if(targetPermit){
-      linkToPermit(targetPermit);
-    }
-    
-    // 완료 화면 배지
-    var badge = document.getElementById('riskIdBadge');
-    if(badge){ badge.textContent=riskData.riskId; badge.style.display='block'; }
-    
-    // 완료 카드
-    var selectedMeasures = riskData.selectedMeasures.filter(function(m){ return m.selected; });
-    var totalMeasures = selectedMeasures.length + riskData.userMeasures.length;
-    
-    var completeCard = document.getElementById('completeCard');
-    completeCard.innerHTML =
-      buildSummaryRow('평가 번호', riskData.riskId, true)+
-      buildSummaryRow('종합 위험도', riskData.overallRisk+' ('+riskData.overallScore+'점)')+
-      buildSummaryRow('통제 적정성', riskData.controlAdequacy)+
-      buildSummaryRow('작업명', riskData.workName)+
-      buildSummaryRow('총 안전대책', totalMeasures+'개')+
-      (riskData.linkedPermitNo?buildSummaryRow('연결 허가서', riskData.linkedPermitNo, true):'')+
-      buildSummaryRow('저장 위치', 'localStorage.riskAssessments');
-    
-    setTxt('completeSub',
-      '위험성평가 결과가 저장되었습니다.\n허가서와 TBM에 자동 반영됩니다.');
-    
-    // 이동 버튼 표시
-    var btnPermit = document.getElementById('btnGoPermit');
-    var btnTBM = document.getElementById('btnGoTBM');
-    
-    if(targetPermit){
-      // 이미 허가서 연결됨 → TBM 이동 우선
-      if(btnTBM) btnTBM.style.display = 'flex';
-      if(btnPermit) btnPermit.style.display = 'none';
-    } else {
-      // 허가서 없음 → 허가서 작성 유도
-      if(btnPermit) btnPermit.style.display = 'flex';
-      if(btnTBM) btnTBM.style.display = 'none';
-    }
-    
-    // 완료 화면 이동
-    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-    document.getElementById('screen-complete').classList.add('active');
-    document.getElementById('progressWrap').style.display='none';
-    window.scrollTo(0,0);
-    
-    showToast('✅ 위험성평가 제출 완료!','success');
-    
-  } catch(error) {
-    console.error('❌ 위험성평가 저장 실패:', error);
-    alert('저장 중 오류가 발생했습니다.\n\n' + error.message);
+    var maxSeq = 0;
+    snap.forEach(function(doc){
+      var rid = doc.data().riskId || '';
+      var match = rid.match(/-(\d{3})$/);
+      if(match){
+        var seq = parseInt(match[1], 10);
+        if(seq > maxSeq) maxSeq = seq;
+      }
+    });
+    return prefix + String(maxSeq + 1).padStart(3, '0');
+  } catch(e){
+    console.warn('Firestore 시퀀스 조회 실패, localStorage 폴백:', e);
+    return getNextRiskIdLocal();
   }
 }
 
-// riskId 시퀀스 발급 (규약: RA-YYYYMMDD-SEQ3)
 function getNextRiskIdLocal(){
   var today = fmtDate(new Date()).replace(/-/g, '');
   try {
@@ -2706,110 +2918,123 @@ function getNextRiskIdLocal(){
     var todayCount = riskDB.filter(function(r){
       return r.riskId && r.riskId.startsWith('RA-' + today);
     }).length;
-    var seq = todayCount + 1;
-    return 'RA-' + today + '-' + String(seq).padStart(3, '0');
-  } catch(e) {
+    return 'RA-' + today + '-' + String(todayCount + 1).padStart(3, '0');
+  } catch(e){
     return 'RA-' + today + '-001';
   }
 }
 
-// 저장 로직 (스키마 v2, 규약 준수)
-function saveRiskDB(){
-  var STORAGE_KEY = 'riskAssessments';
-  
+// 평가 제출
+async function submitAssessment(){
   try {
-    var riskDB = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    
-    // 폐기 예정 키 마이그레이션
-    var legacy1 = localStorage.getItem('riskDatabase');
-    if(legacy1){
-      try {
-        JSON.parse(legacy1).forEach(function(item){
-          if(!riskDB.find(function(r){ return r.riskId === item.riskId; })){
-            riskDB.push(item);
-          }
-        });
-        localStorage.removeItem('riskDatabase');
-        console.log('✅ riskDatabase 마이그레이션 완료');
-      } catch(e){ console.warn('riskDatabase 마이그레이션 실패:', e); }
-    }
-    
-    var legacy2 = localStorage.getItem('safetyRiskAssessments');
-    if(legacy2){
-      try {
-        JSON.parse(legacy2).forEach(function(item){
-          if(!riskDB.find(function(r){ return r.riskId === item.riskId; })){
-            riskDB.push(item);
-          }
-        });
-        localStorage.removeItem('safetyRiskAssessments');
-        console.log('✅ safetyRiskAssessments 마이그레이션 완료');
-      } catch(e){ console.warn('safetyRiskAssessments 마이그레이션 실패:', e); }
-    }
-    
-    // 선택된 대책만 필터링
-    var selectedMeasures = riskData.selectedMeasures.filter(function(m){ return m.selected; });
-    var allMeasures = selectedMeasures.concat(riskData.userMeasures);
+    riskData.opinion = getVal('f-opinion');
+    riskData.linkedPermitNo = getVal('f-permitLink');
+    riskData.status = '평가완료';
+    riskData.createdAt = new Date().toISOString();
+    riskData.updatedAt = riskData.createdAt;
     
     var userName = sessionStorage.getItem('userName') || riskData.assessor || 'anonymous';
+    riskData.createdBy = userName;
+    riskData.updatedBy = userName;
     
-    // 저장 데이터 (스키마 v2)
-    var saveObj = {
-      // 핵심 식별자
-      riskId: riskData.riskId,
-      workId: riskData.workId,
-      permitNo: riskData.permitNo || '',
-      linkedPermitNo: riskData.linkedPermitNo || '',
-      
-      // 작업 정보
-      workName: riskData.workName,
-      workType: riskData.workType,
-      location: riskData.location,
-      detailLocation: riskData.detailLocation,
-      company: riskData.company,
-      workers: riskData.workers,
-      workDesc: riskData.workDesc,
-      
-      // 평가자 & 날짜
-      assessor: riskData.assessor,
-      date: riskData.date,
-      
-      // 매트릭스 평가
-      frequency: riskData.frequency,
-      severity: riskData.severity,
-      overallScore: riskData.overallScore,
-      overallRisk: riskData.overallRisk,
-      
-      // 통제 적정성 (신규)
-      controlAdequacy: riskData.controlAdequacy,
-      
-      // JSA 참조 (신규)
-      referencedJSA: riskData.referencedJSA,
-      
-      // 대책 (신규 구조)
-      selectedMeasures: riskData.selectedMeasures,
-      userMeasures: riskData.userMeasures,
-      allMeasures: allMeasures,  // 최종 적용된 대책 배열 (편의)
-      
-      // 상태
-      status: '평가완료',
-      opinion: riskData.opinion,
-      
-      // 감사 필드
-      createdAt: riskData.createdAt,
-      createdBy: userName,
-      updatedAt: riskData.createdAt,
-      updatedBy: userName,
-      schemaVersion: 2  // ⭐ v2 (매트릭스 + 통제 적정성 + JSA 참조)
-    };
+    addStatusHistory('작성중', '평가완료', '위험성평가 제출');
     
-    // 동일 workId 있으면 업데이트, 없으면 추가
+    showToast('💾 riskId 발급 중...', 'info');
+    riskData.riskId = await getNextRiskIdFromFirestore();
+    
+    showToast('💾 Firestore 저장 중...', 'info');
+    await saveToFirestore();
+    saveToLocalStorage();
+    
+    var targetPermit = riskData.linkedPermitNo || riskData.permitNo;
+    if(targetPermit) await linkToPermit(targetPermit);
+    
+    showCompleteScreen();
+    showToast('✅ 위험성평가 제출 완료!', 'success');
+    
+  } catch(error){
+    console.error('❌ 위험성평가 저장 실패:', error);
+    showCustomAlert({
+      icon: '❌', title: '저장 실패',
+      message: '저장 중 오류가 발생했습니다.\n\n' + error.message
+    });
+  }
+}
+
+async function saveToFirestore(){
+  var collName = window.getCollectionName('위험성평가');
+  var saveObj = buildSaveObject();
+  await db.collection(collName).doc(riskData.riskId).set(saveObj);
+  console.log('✅ Firestore 저장 완료:', riskData.riskId);
+}
+
+function buildSaveObject(){
+  var allMeasures = collectAllSelectedMeasures();
+  return {
+    riskId: riskData.riskId,
+    workId: riskData.workId || '',
+    safeinfoNo: riskData.safeinfoNo || '',
+    permitNo: riskData.permitNo || '',
+    linkedPermitNo: riskData.linkedPermitNo || '',
+    workName: riskData.workName,
+    workType: riskData.workType,
+    location: riskData.location,
+    detailLocation: riskData.detailLocation || '',
+    company: riskData.company,
+    workers: riskData.workers || '',
+    workDesc: riskData.workDesc || '',
+    assessor: riskData.assessor,
+    date: riskData.date,
+    referencedJSAs: riskData.referencedJSAs || [],
+    autoJudgment: riskData.autoJudgment || {},
+    finalRiskLevel: riskData.finalRiskLevel,
+    finalControlAdequacy: riskData.finalControlAdequacy,
+    overridden: riskData.overridden || false,
+    overrideReason: riskData.overrideReason || '',
+    overriddenBy: riskData.overriddenBy || '',
+    overriddenAt: riskData.overriddenAt || '',
+    measuresByCategory: riskData.measuresByCategory,
+    userMeasures: riskData.userMeasures,
+    allMeasures: allMeasures,
+    stats: riskData.stats,
+    status: riskData.status || '평가완료',
+    statusHistory: riskData.statusHistory || [],
+    opinion: riskData.opinion || '',
+    createdAt: riskData.createdAt,
+    createdBy: riskData.createdBy,
+    updatedAt: riskData.updatedAt,
+    updatedBy: riskData.updatedBy,
+    schemaVersion: 3,
+    firestoreCreatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+function collectAllSelectedMeasures(){
+  var result = [];
+  CATEGORY_ORDER.forEach(function(cat){
+    riskData.measuresByCategory[cat].forEach(function(m){
+      if(m.selected){
+        result.push({ text: m.text, category: cat, source: m.source, jsaCount: m.jsaCount || 1 });
+      }
+    });
+  });
+  riskData.userMeasures.forEach(function(m){
+    result.push({ text: m.text, category: m.category, source: 'USER' });
+  });
+  return result;
+}
+
+function saveToLocalStorage(){
+  try {
+    var STORAGE_KEY = 'riskAssessments';
+    var riskDB = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    var saveObj = buildSaveObject();
+    delete saveObj.firestoreCreatedAt;
+    
     var idx = riskData.workId ?
       riskDB.findIndex(function(r){ return r.workId === riskData.workId; }) : -1;
     
     if(idx >= 0){
-      saveObj.createdAt = riskDB[idx].createdAt || saveObj.createdAt;
-      saveObj.createdBy = riskDB[idx].createdBy || saveObj.createdBy;
       riskDB[idx] = saveObj;
     } else {
       riskDB.unshift(saveObj);
@@ -2817,42 +3042,49 @@ function saveRiskDB(){
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(riskDB));
     
-    // 이벤트 발생
     try {
       window.dispatchEvent(new CustomEvent('app-data-changed', {
         detail: { key: STORAGE_KEY, timestamp: Date.now() }
       }));
-    } catch(e) { console.warn('CustomEvent 미지원:', e); }
+    } catch(e){}
     
-    console.log('✅ 위험성평가 저장 완료:', riskData.riskId);
-    console.log('저장 데이터:', saveObj);
-    
-  } catch(error) {
-    console.error('❌ 저장 실패:', error);
-    throw error;
+    console.log('✅ localStorage 백업 완료');
+  } catch(e){
+    console.warn('localStorage 백업 실패:', e);
   }
 }
 
-// 허가서 연동 (선택된 대책 반영)
-function linkToPermit(permitNo){
-  try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits')||'[]');
+// 허가서 연동
+async function linkToPermit(permitNo){
+  try {
+    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
     var updated = false;
     
     permits.forEach(function(p){
       if(p.permitNo === permitNo){
-        // 선택된 대책만 추출
-        var selectedMeasures = riskData.selectedMeasures
-          .filter(function(m){ return m.selected; })
-          .map(function(m){ return m.text; });
-        var userMeasureTexts = riskData.userMeasures.map(function(m){ return m.text; });
-        var allMeasureTexts = selectedMeasures.concat(userMeasureTexts);
-        
-        p.riskScore = riskData.overallScore;
-        p.riskLevel = riskData.overallRisk;
+        p.riskLevel = riskData.finalRiskLevel;
+        p.controlAdequacy = riskData.finalControlAdequacy;
         p.riskId = riskData.riskId;
-        p.controlAdequacy = riskData.controlAdequacy;  // 신규
-        p.riskMeasures = allMeasureTexts.slice(0, 10); // 최대 10개
+        p.riskScore = getRiskScore(riskData.finalRiskLevel);
+        p.overallRisk = riskData.finalRiskLevel;
+        
+        p.riskMeasuresByCategory = {
+          essential: riskData.measuresByCategory.essential
+            .filter(function(m){ return m.selected; })
+            .slice(0, 5).map(function(m){ return m.text; }),
+          engineering: riskData.measuresByCategory.engineering
+            .filter(function(m){ return m.selected; })
+            .slice(0, 5).map(function(m){ return m.text; }),
+          administrative: riskData.measuresByCategory.administrative
+            .filter(function(m){ return m.selected; })
+            .slice(0, 5).map(function(m){ return m.text; }),
+          ppe: riskData.measuresByCategory.ppe
+            .filter(function(m){ return m.selected; })
+            .slice(0, 5).map(function(m){ return m.text; })
+        };
+        
+        var allMeasures = collectAllSelectedMeasures();
+        p.riskMeasures = allMeasures.slice(0, 10).map(function(m){ return m.text; });
         p.updatedAt = new Date().toISOString();
         updated = true;
       }
@@ -2860,28 +3092,109 @@ function linkToPermit(permitNo){
     
     if(updated){
       localStorage.setItem('safetyPermits', JSON.stringify(permits));
-      
       try {
         window.dispatchEvent(new CustomEvent('app-data-changed', {
           detail: { key: 'safetyPermits', timestamp: Date.now() }
         }));
-      } catch(e) {}
-      
-      showToast('✅ 허가서 '+permitNo+'에 위험도·대책 반영 완료', 'success');
+      } catch(e){}
+      showToast('✅ 허가서 ' + permitNo + ' 연동 완료', 'success');
     }
-  }catch(e){
+    
+    try {
+      var collName = window.getCollectionName('safetyPermits');
+      var doc = await db.collection(collName).doc(permitNo).get();
+      if(doc.exists){
+        await db.collection(collName).doc(permitNo).update({
+          riskLevel: riskData.finalRiskLevel,
+          controlAdequacy: riskData.finalControlAdequacy,
+          riskId: riskData.riskId,
+          riskMeasuresByCategory: {
+            essential: riskData.measuresByCategory.essential
+              .filter(function(m){ return m.selected; })
+              .slice(0, 5).map(function(m){ return m.text; }),
+            engineering: riskData.measuresByCategory.engineering
+              .filter(function(m){ return m.selected; })
+              .slice(0, 5).map(function(m){ return m.text; }),
+            administrative: riskData.measuresByCategory.administrative
+              .filter(function(m){ return m.selected; })
+              .slice(0, 5).map(function(m){ return m.text; }),
+            ppe: riskData.measuresByCategory.ppe
+              .filter(function(m){ return m.selected; })
+              .slice(0, 5).map(function(m){ return m.text; })
+          },
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('✅ Firestore 허가서 업데이트 완료');
+      }
+    } catch(e){
+      console.warn('Firestore 허가서 업데이트 실패 (선택):', e);
+    }
+  } catch(e){
     console.error('허가서 연동 실패:', e);
+    showToast('⚠️ 허가서 연동 중 오류', 'warning');
   }
 }
 
-// ═══════════════════════════════
-// 완료 화면 액션
-// ═══════════════════════════════
+function getRiskScore(level){
+  return { '저위험': 3, '중위험': 8, '고위험': 15, '매우고위험': 25, '판정불가': 0 }[level] || 0;
+}
+
+// 완료 화면
+function showCompleteScreen(){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('screen-complete').classList.add('active');
+  document.getElementById('progressWrap').style.display = 'none';
+  window.scrollTo(0, 0);
+  
+  var badge = document.getElementById('riskIdBadge');
+  if(badge){
+    badge.textContent = riskData.riskId;
+    badge.style.display = 'block';
+  }
+  
+  var selectedMeasures = collectAllSelectedMeasures();
+  var completeCard = document.getElementById('completeCard');
+  
+  var cardHtml = '';
+  cardHtml += buildSummaryRow('평가 번호', riskData.riskId, true);
+  cardHtml += buildSummaryRow('위험도', riskData.finalRiskLevel, true);
+  cardHtml += buildSummaryRow('통제 적정성', riskData.finalControlAdequacy, true);
+  cardHtml += buildSummaryRow('작업명', riskData.workName);
+  cardHtml += buildSummaryRow('총 안전대책', selectedMeasures.length + '개');
+  cardHtml += buildSummaryRow('저장 컬렉션', window.getCollectionName('위험성평가'));
+  
+  if(riskData.linkedPermitNo){
+    cardHtml += buildSummaryRow('연결 허가서', riskData.linkedPermitNo, true);
+  }
+  if(riskData.safeinfoNo){
+    cardHtml += buildSummaryRow('연결 안전정보', riskData.safeinfoNo);
+  }
+  
+  completeCard.innerHTML = cardHtml;
+  
+  setTxt('completeSub',
+    '위험성평가 결과가 Firestore에 저장되었습니다.\n허가서와 TBM에 자동 반영됩니다.');
+  
+  var btnPermit = document.getElementById('btnGoPermit');
+  var btnTBM = document.getElementById('btnGoTBM');
+  var targetPermit = riskData.linkedPermitNo || riskData.permitNo;
+  
+  if(targetPermit){
+    if(btnTBM) btnTBM.style.display = 'flex';
+    if(btnPermit) btnPermit.style.display = 'none';
+  } else {
+    if(btnPermit) btnPermit.style.display = 'flex';
+    if(btnTBM) btnTBM.style.display = 'none';
+  }
+}
+
+// 완료 액션
 function goToPermit(){
   var url = '안전작업허가서_v2.html';
   var params = [];
-  if(riskData.workId) params.push('workId='+encodeURIComponent(riskData.workId));
-  if(riskData.riskId) params.push('riskId='+encodeURIComponent(riskData.riskId));
+  if(riskData.workId) params.push('workId=' + encodeURIComponent(riskData.workId));
+  if(riskData.riskId) params.push('riskId=' + encodeURIComponent(riskData.riskId));
+  if(riskData.safeinfoNo) params.push('safeinfoNo=' + encodeURIComponent(riskData.safeinfoNo));
   if(params.length) url += '?' + params.join('&');
   window.location.href = url;
 }
@@ -2910,16 +3223,18 @@ function startNew(){
   renderRecentHist();
 }
 
-// ═══════════════════════════════
 // 이력 관리
-// ═══════════════════════════════
 function renderRecentHist(){
   var container = document.getElementById('recentHistList');
   if(!container) return;
   var riskDB = getRiskDB();
-  var recent = riskDB.slice(0,3);
+  var recent = riskDB.slice(0, 3);
+  
   if(!recent.length){
-    container.innerHTML='<div style="font-size:13px;color:var(--sub);font-weight:600;padding:12px 0;text-align:center;">평가 이력이 없습니다.</div>';
+    container.innerHTML = 
+      '<div style="font-size:13px;color:var(--sub);font-weight:600;padding:12px 0;text-align:center;">' +
+      '평가 이력이 없습니다.' +
+      '</div>';
     return;
   }
   container.innerHTML = recent.map(function(r){ return histCardHTML(r); }).join('');
@@ -2929,64 +3244,77 @@ function renderHistoryFull(){
   var container = document.getElementById('historyList');
   if(!container) return;
   var riskDB = getRiskDB();
+  
   if(!riskDB.length){
-    container.innerHTML='<div class="hist-empty"><div class="hist-empty-ico">📂</div>'+
-      '<div class="hist-empty-txt">저장된 평가 이력이 없습니다.</div></div>';
+    container.innerHTML = 
+      '<div class="hist-empty">' +
+      '<div class="hist-empty-ico">📂</div>' +
+      '<div class="hist-empty-txt">저장된 평가 이력이 없습니다.</div>' +
+      '</div>';
     return;
   }
   container.innerHTML = riskDB.map(function(r){ return histCardHTML(r); }).join('');
 }
 
 function histCardHTML(r){
-  var cls = r.overallRisk==='매우고위험'?'critical':r.overallRisk==='고위험'?'high':r.overallRisk==='중위험'?'med':'low';
+  var risk = r.finalRiskLevel || r.overallRisk || '판정불가';
+  var control = r.finalControlAdequacy || '-';
+  var cls = getRiskClass(risk);
+  
   var totalMeasures = 0;
   if(r.allMeasures) totalMeasures = r.allMeasures.length;
-  else if(r.selectedMeasures) totalMeasures = r.selectedMeasures.filter(function(m){return m.selected;}).length + (r.userMeasures||[]).length;
-  else if(r.steps) totalMeasures = r.steps.length; // 구버전 호환
+  else if(r.stats) totalMeasures = (r.stats.selectedMeasures || 0) + (r.stats.userMeasures || 0);
+  else if(r.selectedMeasures) {
+    totalMeasures = r.selectedMeasures.filter(function(m){ return m.selected; }).length + 
+                    (r.userMeasures || []).length;
+  }
   
   var html = '<div class="hist-card">';
   html += '<div class="hist-top">';
-  html += '<span class="hist-score '+cls+'">'+escHtml(r.overallRisk||'-')+' '+(r.overallScore||0)+'점</span>';
-  html += '<span style="font-size:11px;color:var(--sub);font-weight:600;">'+escHtml(r.date||'')+'</span>';
+  html += '<span class="hist-badge ' + cls + '">' + escHtml(risk) + '</span>';
+  html += '<span style="font-size:11px;color:var(--sub);font-weight:600;">' + escHtml(r.date || '') + '</span>';
   html += '</div>';
-  html += '<div class="hist-name">'+escHtml(r.workName||'-')+'</div>';
+  html += '<div class="hist-name">' + escHtml(r.workName || '-') + '</div>';
   html += '<div class="hist-meta">';
-  html += '<span>🏭 '+escHtml(r.location||'-')+'</span>';
-  html += '<span>🏢 '+escHtml(r.company||'-')+'</span>';
-  html += '<span>✅ '+totalMeasures+'개 대책</span>';
-  if(r.controlAdequacy) html += '<span>⚖️ '+r.controlAdequacy+'</span>';
-  if(r.riskId) html += '<span style="font-size:11px;">'+escHtml(r.riskId)+'</span>';
+  html += '<span>🏭 ' + escHtml(r.location || '-') + '</span>';
+  html += '<span>🏢 ' + escHtml(r.company || '-') + '</span>';
+  html += '<span>✅ ' + totalMeasures + '개 대책</span>';
+  if(control !== '-') html += '<span>⚖️ ' + control + '</span>';
+  if(r.overridden) html += '<span style="color:var(--warn);">✏️ 수동조정</span>';
+  if(r.riskId) html += '<span style="font-size:11px;">' + escHtml(r.riskId) + '</span>';
   html += '</div></div>';
   return html;
 }
 
-// ═══════════════════════════════
-// RESET
-// ═══════════════════════════════
+// 리셋
 function resetRiskData(){
   var today = fmtDate(new Date());
   riskData = {
-    riskId:'', workId:'', permitNo:'',
-    date:today, assessor:'',
-    workName:'', location:'', detailLocation:'', 
-    company:'', workers:'',
-    workType:'', workDesc:'',
-    referencedJSA: null,
-    selectedMeasures: [],
+    riskId: '', workId: '', safeinfoNo: '', permitNo: '',
+    date: today, assessor: '', workName: '', location: '',
+    detailLocation: '', company: '', workers: '', workType: '', workDesc: '',
+    referencedJSAs: [],
+    autoJudgment: { riskLevel: '', controlAdequacy: '', basis: '', calculatedAt: '' },
+    finalRiskLevel: '', finalControlAdequacy: '',
+    overridden: false, overrideReason: '', overriddenBy: '', overriddenAt: '',
+    measuresByCategory: { essential: [], engineering: [], administrative: [], ppe: [] },
     userMeasures: [],
-    frequency: 0,
-    severity: 0,
-    overallScore: 0,
-    overallRisk: '',
-    controlAdequacy: '',
-    opinion: '',
-    linkedPermitNo: '',
-    status: '평가완료',
-    createdAt: ''
+    stats: {
+      totalMeasures: 0, selectedMeasures: 0,
+      essentialSelected: 0, engineeringSelected: 0,
+      administrativeSelected: 0, ppeSelected: 0, userMeasures: 0
+    },
+    status: '작성중', statusHistory: [],
+    opinion: '', linkedPermitNo: '',
+    createdAt: '', createdBy: '', updatedAt: '', updatedBy: '',
+    schemaVersion: 3
   };
   
-  ['f-workName','f-detailLoc','f-assessor','f-company','f-workers','f-workDesc','f-opinion','userMeasureInput'].forEach(function(id){
-    setVal(id,'');
+  jsaSearchResults = [];
+  
+  ['f-workName', 'f-detailLoc', 'f-assessor', 'f-company', 'f-workers', 
+   'f-workDesc', 'f-opinion', 'userMeasureInput'].forEach(function(id){
+    setVal(id, '');
   });
   setVal('f-date', today);
   
@@ -2995,57 +3323,181 @@ function resetRiskData(){
   var typeSel = document.getElementById('f-workType');
   if(typeSel) typeSel.selectedIndex = 0;
   
-  // auto 클래스 제거
   document.querySelectorAll('.f-input.auto').forEach(function(el){
     el.classList.remove('auto');
   });
   
-  var ban = document.getElementById('permitBanner');
-  if(ban) ban.style.display='none';
+  var permitBan = document.getElementById('permitBanner');
+  if(permitBan) permitBan.style.display = 'none';
+  var safeBan = document.getElementById('safeinfoBanner');
+  if(safeBan) safeBan.style.display = 'none';
   var badge = document.getElementById('riskIdBadge');
-  if(badge) badge.style.display='none';
+  if(badge) badge.style.display = 'none';
+  var judgmentCard = document.getElementById('autoJudgmentCard');
+  if(judgmentCard) judgmentCard.style.display = 'none';
+  var progress = document.getElementById('measuresProgress');
+  if(progress) progress.style.display = 'none';
+  var userSection = document.getElementById('userMeasuresSection');
+  if(userSection) userSection.style.display = 'none';
+  
+  var container = document.getElementById('measuresContainer');
+  if(container){
+    container.innerHTML = 
+      '<div class="jsa-loading" id="measuresLoading">' +
+      '<div class="jsa-loading-ico">🔍</div>' +
+      '<div class="jsa-loading-txt">' +
+      'JSA_DB에서 관련 작업을 검색하고 있습니다...<br>' +
+      '<small>다중 검색 → 대책 병합 → 자동 판정</small>' +
+      '</div></div>';
+  }
 }
 
-// ═══════════════════════════════
-// UTIL
-// ═══════════════════════════════
-function getVal(id){ 
-  var el=document.getElementById(id); 
-  return el?(el.value||'').trim():''; 
+// 커스텀 Alert
+function showCustomAlert(options){
+  options = options || {};
+  var dialog = document.getElementById('customAlert');
+  if(!dialog) return;
+  
+  var icon = options.icon || 'ℹ️';
+  var title = options.title || '알림';
+  var message = options.message || '';
+  var onClose = options.onClose || null;
+  
+  document.getElementById('customAlertIcon').textContent = icon;
+  document.getElementById('customAlertTitle').textContent = title;
+  document.getElementById('customAlertMessage').innerHTML = escHtml(message).replace(/\n/g, '<br>');
+  
+  document.getElementById('customAlertActions').innerHTML = 
+    '<button class="btn-primary" onclick="closeCustomAlert()">확인</button>';
+  
+  dialog.style.display = 'flex';
+  if(onClose) dialog._onClose = onClose;
 }
 
-function setVal(id,v){ 
-  var el=document.getElementById(id); 
-  if(el) el.value=v; 
+function closeCustomAlert(){
+  var dialog = document.getElementById('customAlert');
+  if(!dialog) return;
+  dialog.style.display = 'none';
+  if(dialog._onClose){
+    var cb = dialog._onClose;
+    dialog._onClose = null;
+    setTimeout(cb, 100);
+  }
 }
 
-function setTxt(id,v){ 
-  var el=document.getElementById(id); 
-  if(el) el.textContent=v; 
+// 커스텀 Confirm
+function showCustomConfirm(options){
+  options = options || {};
+  var dialog = document.getElementById('customAlert');
+  if(!dialog) return;
+  
+  var icon = options.icon || '❓';
+  var title = options.title || '확인';
+  var message = options.message || '';
+  var onConfirm = options.onConfirm || null;
+  var onCancel = options.onCancel || null;
+  var confirmText = options.confirmText || '확인';
+  var cancelText = options.cancelText || '취소';
+  
+  document.getElementById('customAlertIcon').textContent = icon;
+  document.getElementById('customAlertTitle').textContent = title;
+  document.getElementById('customAlertMessage').innerHTML = escHtml(message).replace(/\n/g, '<br>');
+  
+  document.getElementById('customAlertActions').innerHTML = 
+    '<button class="btn-secondary" onclick="closeCustomConfirm(false)">' + escHtml(cancelText) + '</button>' +
+    '<button class="btn-primary" onclick="closeCustomConfirm(true)">' + escHtml(confirmText) + '</button>';
+  
+  dialog.style.display = 'flex';
+  dialog._onConfirm = onConfirm;
+  dialog._onCancel = onCancel;
 }
 
-function escHtml(s){ 
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+function closeCustomConfirm(isConfirmed){
+  var dialog = document.getElementById('customAlert');
+  if(!dialog) return;
+  var onConfirm = dialog._onConfirm;
+  var onCancel = dialog._onCancel;
+  dialog._onConfirm = null;
+  dialog._onCancel = null;
+  dialog.style.display = 'none';
+  setTimeout(function(){
+    if(isConfirmed && onConfirm) onConfirm();
+    else if(!isConfirmed && onCancel) onCancel();
+  }, 100);
 }
 
+// Toast
 function showToast(msg, type){
-  var wrap=document.getElementById('toastWrap');
+  var wrap = document.getElementById('toastWrap');
   if(!wrap) return;
-  var t=document.createElement('div');
-  t.className='toast '+(type||'info');
-  t.textContent=msg;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
   wrap.appendChild(t);
-  setTimeout(function(){ 
-    if(t.parentNode) t.parentNode.removeChild(t); 
+  setTimeout(function(){
+    if(t.parentNode){
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(12px)';
+      t.style.transition = 'all .25s';
+      setTimeout(function(){
+        if(t.parentNode) t.parentNode.removeChild(t);
+      }, 250);
+    }
   }, 3200);
 }
 
-// ESC 키로 뒤로가기
+// 유틸
+function getVal(id){
+  var el = document.getElementById(id);
+  return el ? (el.value || '').trim() : '';
+}
+
+function setVal(id, v){
+  var el = document.getElementById(id);
+  if(el) el.value = v;
+}
+
+function setTxt(id, v){
+  var el = document.getElementById(id);
+  if(el) el.textContent = v;
+}
+
+function escHtml(s){
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// 키보드
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){
+    var alertDialog = document.getElementById('customAlert');
+    var overrideDialog = document.getElementById('overrideDialog');
+    
+    if(alertDialog && alertDialog.style.display === 'flex'){
+      closeCustomAlert();
+      return;
+    }
+    if(overrideDialog && overrideDialog.style.display === 'flex'){
+      closeOverrideDialog();
+      return;
+    }
     if(currentStep > 0) goBack();
   }
 });
+
+// 초기화 완료 로그
+console.log('═══════════════════════════════════════════════');
+console.log('위험성평가 v3 로드 완료');
+console.log('- APP MODE:', APP_MODE);
+console.log('- 저장 컬렉션:', window.getCollectionName('위험성평가'));
+console.log('- 스키마 버전:', 3);
+console.log('- 3단계 구조');
+console.log('═══════════════════════════════════════════════');
+
 </script>
 </body>
 </html>
