@@ -223,7 +223,7 @@ body{
 }
 .topnav-r{display:flex;align-items:center;gap:6px;position:relative;z-index:1;flex-shrink:0;}
 
-.back-btn,.theme-btn,.home-btn,.emergency-btn{
+.back-btn,.theme-btn,.home-btn{
   background:rgba(255,255,255,.16);border:none;color:#fff;
   border-radius:12px;font-size:20px;cursor:pointer;font-family:inherit;
   display:flex;align-items:center;justify-content:center;
@@ -234,23 +234,6 @@ body{
 .home-btn{width:40px;height:40px;font-size:20px;}
 .back-btn:active,.theme-btn:active,.home-btn:active{
   transform:scale(.9);background:rgba(255,255,255,.3);
-}
-
-/* ⭐ 긴급 작업중지 버튼 (상단 우측 강조) */
-.emergency-btn{
-  width:44px;height:40px;padding:0 10px;
-  background:linear-gradient(135deg,#8B1728,var(--stop));
-  color:#fff;font-size:18px;font-weight:900;
-  box-shadow:0 2px 8px rgba(214,39,61,.5);
-  animation:emg-pulse-nav 2.5s infinite;
-}
-.emergency-btn:active{
-  transform:scale(.92);
-  box-shadow:0 2px 12px rgba(214,39,61,.8);
-}
-@keyframes emg-pulse-nav{
-  0%,100%{box-shadow:0 2px 8px rgba(214,39,61,.5);}
-  50%{box-shadow:0 2px 16px rgba(214,39,61,.9);}
 }
 
 /* Permit 배지 */
@@ -857,8 +840,7 @@ body{
 @media(max-width:360px){
   .topnav-title{font-size:14px;}
   .theme-btn{width:32px;height:32px;font-size:15px;}
-  .back-btn,.home-btn,.emergency-btn{width:36px;height:36px;font-size:18px;}
-  .emergency-btn{width:40px;padding:0 8px;}
+  .back-btn,.home-btn{width:36px;height:36px;font-size:18px;}
   .hero-title{font-size:20px;}
   .btn-row{flex-wrap:wrap;}
   .gas-grid{grid-template-columns:repeat(2,1fr);}
@@ -925,7 +907,6 @@ body{
   <div class="topnav-r">
     <div class="permit-badge" id="permitBadge"></div>
     <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="테마">🌙</button>
-    <button class="emergency-btn" onclick="goToEmergency()" aria-label="긴급 작업중지" title="긴급 작업중지 요청">🛑</button>
     <button class="home-btn" onclick="goHome()" aria-label="홈">🏠</button>
   </div>
 </nav>
