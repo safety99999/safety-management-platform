@@ -4924,10 +4924,39 @@ if(document.readyState === "loading"){
   // 메인 함수: 빠른실행 버튼 클릭 처리
   // ═══════════════════════════════════════
 // ═══════════════════════════════════════════════════
+// ⭐ 안전정보제공서 상태 조회
+// ═══════════════════════════════════════════════════
+window.getWorkSafetyInfoStatus = function(workId){
+  try{
+    var docs = JSON.parse(
+      localStorage.getItem('safetyProvisions') || '[]'
+    );
+
+    var linked = docs.find(function(d){
+      return d && d.workId === workId;
+    });
+
+    if(!linked) return null;
+
+    return {
+      status: linked.status || '발행완료',
+      safeinfoNo: linked.safeinfoNo || '',
+      createdAt: linked.createdAt || '',
+      subEmail: linked.subcontractorEmail || '',
+      subcontractor: linked.subcontractor || ''
+    };
+  }catch(e){
+    console.warn('[getWorkSafetyInfoStatus] 오류:', e);
+    return null;
+  }
+};
+
+// ═══════════════════════════════════════════════════
 // ⭐ 안전퀴즈 상태 조회
 // 같은 workId의 가장 최근 제출 기록을 기준으로 판정
 // ═══════════════════════════════════════════════════
 window.getWorkQuizStatus = function(workId){
+
   try{
     var quizzes = JSON.parse(
       localStorage.getItem('safetyQuizzes') || '[]'
