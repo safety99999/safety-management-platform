@@ -20,7 +20,103 @@
 <title>TBM 일지 · Tool Box Meeting</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="styles/device-frame.css?v=3">
+
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE 시스템 + Firebase 초기화 (2026-08-31 신규)
+     - 테스트/운영 모드 자동 전환
+     - Firebase 연동으로 TBM Firestore 저장/조회
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+
+<!-- Firebase 초기화 -->
+<script type="module">
+  import { 
+    initializeApp, 
+    getApps, 
+    getApp 
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  
+  import { 
+    getFirestore, 
+    initializeFirestore,
+    doc, 
+    setDoc, 
+    getDoc,
+    getDocs,
+    collection,
+    query,
+    where,
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+    projectId: "safety-management-platfo-5f413",
+    storageBucket: "safety-management-platfo-5f413.appspot.com",
+    messagingSenderId: "96226952530",
+    appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+  };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const needsLongPolling = isIOS || isSafari;
+
+  console.log("[TBM Firebase] 환경 감지:", {
+    isIOS: isIOS, isSafari: isSafari, longPolling: needsLongPolling
+  });
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  
+  let db;
+  try {
+    if (needsLongPolling) {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+      });
+      console.log("[TBM Firebase] iOS/Safari 모드로 초기화");
+    } else {
+      db = getFirestore(app);
+      console.log("[TBM Firebase] 표준 모드로 초기화");
+    }
+  } catch (initError) {
+    console.warn("[TBM Firebase] 초기화 재시도:", initError.message);
+    db = getFirestore(app);
+  }
+
+  window.firebaseApp = { 
+    db: db, doc: doc, setDoc: setDoc, getDoc: getDoc,
+    getDocs: getDocs, collection: collection,
+    query: query, where: where,
+    serverTimestamp: serverTimestamp
+  };
+  
+  // ⭐ TBM 컬렉션명 자동 접두사 적용
+  window.firebaseApp.TBM_COLLECTION = window.getCollectionName("safetyTBM");
+  console.log("[TBM Firebase] 사용할 컬렉션:", window.firebaseApp.TBM_COLLECTION);
+  console.log("[TBM Firebase] 초기화 완료");
+</script>
+
 <style>
+
 /* ═══════════════════════════════════════
    TBM 일지 v2.0 (신규 독립 앱)
    Tool Box Meeting · 작업 전 안전 미팅
@@ -1407,15 +1503,30 @@ window.addEventListener('DOMContentLoaded', function(){
   var permitNo = params.get('permitNo');
   var workId = params.get('workId');
   
-  if(permitNo){
+   if(permitNo){
     console.log('[TBM v2.0] URL permitNo:', permitNo);
     tbmData.permitNo = permitNo;
-    loadFromPermit(permitNo);
+    
+    // ⭐ 기존 TBM 확인 (2026-08-31 신규)
+    var existingTbm = findExistingTbm(permitNo);
+    if(existingTbm){
+      console.log('[TBM v2.0] 기존 TBM 발견:', existingTbm.tbmNo);
+      // 허가서 정보도 로드 (배너용)
+      loadFromPermit(permitNo);
+      // 그 다음 기존 TBM 데이터 덮어씀 + 읽기 전용
+      setTimeout(function(){
+        loadTbmReadOnly(existingTbm);
+      }, 100);
+    } else {
+      // 기존 TBM 없음 → 신규 작성 모드
+      loadFromPermit(permitNo);
+    }
   } else if(workId){
     console.log('[TBM v2.0] URL workId:', workId);
     tbmData.workId = workId;
     loadFromWorkId(workId);
   }
+
   
   // 임시저장 복구 시도
   if(!permitNo && !workId){
@@ -1444,6 +1555,183 @@ window.addEventListener('DOMContentLoaded', function(){
 // ═══════════════════════════════════════════════════
 // 허가서에서 자동 채움
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// ⭐ 기존 TBM 조회 (2026-08-31 신규)
+// permitNo로 이미 저장된 TBM이 있는지 확인
+// 있으면 → 읽기 전용 모드로 표시
+// 없으면 → 신규 작성 모드 (기존 로직)
+// ═══════════════════════════════════════════════════
+function findExistingTbm(permitNo){
+  try {
+    var tbms = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
+    // 해당 permitNo의 최신 TBM (createdAt 내림차순)
+    var matched = tbms
+      .filter(function(t){ return t.permitNo === permitNo; })
+      .sort(function(a, b){
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+    
+    return matched.length > 0 ? matched[0] : null;
+  } catch(e) {
+    console.error('[findExistingTbm] 오류:', e);
+    return null;
+  }
+}
+
+function loadTbmReadOnly(tbm){
+  console.log('[loadTbmReadOnly] 기존 TBM 로드:', tbm.tbmNo);
+  
+  // 폼 필드 채우기
+  setVal('tbm-work-name', tbm.workName || '');
+  setVal('tbm-datetime', tbm.datetime || '');
+  setVal('tbm-location', tbm.location || '');
+  setVal('tbm-company', tbm.company || '');
+  setVal('tbm-workers', tbm.workers || '');
+  setVal('supervisor-name', tbm.supervisor || '');
+  setVal('manager-name', tbm.manager || '');
+  
+  // 위험요인 복원
+  if(tbm.hazards && tbm.hazards.length > 0){
+    document.getElementById('hazardList').innerHTML = '';
+    hazardCount = 0;
+    tbm.hazards.forEach(function(hz){
+      addHazard();
+      setVal('hz-hazard-' + hazardCount, hz.hazard || '');
+      setVal('hz-measure-' + hazardCount, hz.measure || '');
+      setVal('hz-person-' + hazardCount, hz.person || '');
+    });
+  }
+  
+  // 밀폐공간 상태
+  if(tbm.isConfined !== null && tbm.isConfined !== undefined){
+    setConfined(tbm.isConfined);
+    
+    // 가스 측정 데이터
+    if(tbm.gasMeasurement){
+      setVal('g-o2', tbm.gasMeasurement.o2 || '');
+      setVal('g-co', tbm.gasMeasurement.co || '');
+      setVal('g-h2s', tbm.gasMeasurement.h2s || '');
+      setVal('g-co2', tbm.gasMeasurement.co2 || '');
+      setVal('g-lel', tbm.gasMeasurement.lel || '');
+      setVal('g-measurer', tbm.gasMeasurement.measurer || '');
+      if(typeof checkGas === 'function') checkGas();
+    }
+  }
+  
+  // 참여자 명단
+  if(tbm.stopNotice){
+    setVal('participants-list', tbm.stopNotice.participantsText || 
+           (tbm.stopNotice.participants || []).join(', '));
+    setVal('rep-name', tbm.stopNotice.representativeName || '');
+    
+    // 서명 복원 (이미지 표시)
+    if(tbm.supervisorSig){
+      restoreSignature('supervisor-sig', tbm.supervisorSig);
+    }
+    if(tbm.managerSig){
+      restoreSignature('manager-sig', tbm.managerSig);
+    }
+    if(tbm.stopNotice.representativeSig){
+      restoreSignature('rep-sig', tbm.stopNotice.representativeSig);
+    }
+  }
+  
+  // ⭐ 읽기 전용 모드 활성화
+  enableReadOnlyMode(tbm);
+}
+
+function restoreSignature(canvasId, dataUrl){
+  var canvas = document.getElementById(canvasId);
+  if(!canvas || !dataUrl) return;
+  
+  var ctx = canvas.getContext('2d');
+  var img = new Image();
+  img.onload = function(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = dataUrl;
+}
+
+function enableReadOnlyMode(tbm){
+  // 상단에 안내 배너 표시
+  var mainEl = document.querySelector('.main');
+  if(mainEl){
+    var banner = document.createElement('div');
+    banner.className = 'success-box';
+    banner.style.marginBottom = '14px';
+    banner.innerHTML = 
+      '<div class="success-box-t">✅ TBM 이미 작성됨 (읽기 전용)</div>' +
+      '<div class="success-box-b">' +
+        'TBM 번호: <strong>' + escHtml(tbm.tbmNo) + '</strong><br>' +
+        '작성일시: ' + new Date(tbm.createdAt).toLocaleString('ko-KR') + '<br>' +
+        '작성자: ' + escHtml(tbm.createdBy || '-') + '<br><br>' +
+        '<em style="font-size:11.5px;">TBM은 작성 후 수정할 수 없습니다.<br>' +
+        '변경 사항은 <strong>점검등록</strong>으로 기록해주세요.</em>' +
+      '</div>';
+    
+    // 히어로 다음에 삽입
+    var hero = mainEl.querySelector('.hero-tbm');
+    if(hero && hero.nextSibling){
+      mainEl.insertBefore(banner, hero.nextSibling);
+    } else {
+      mainEl.insertBefore(banner, mainEl.firstChild);
+    }
+  }
+  
+  // 모든 입력 필드 비활성화
+  var inputs = document.querySelectorAll('.main input, .main textarea, .main select');
+  inputs.forEach(function(el){
+    el.disabled = true;
+    el.readOnly = true;
+    el.style.opacity = '0.85';
+    el.style.cursor = 'not-allowed';
+  });
+  
+  // 서명 캔버스 비활성화
+  var canvases = document.querySelectorAll('.sig-canvas');
+  canvases.forEach(function(canvas){
+    canvas.style.pointerEvents = 'none';
+    canvas.style.opacity = '0.85';
+  });
+  
+  // 버튼 숨기기
+  var deleteBtns = document.querySelectorAll('.hazard-del-btn, .hazard-add-btn, .sig-clear');
+  deleteBtns.forEach(function(btn){ btn.style.display = 'none'; });
+  
+  var toggleBtns = document.querySelectorAll('.toggle-yn-btn');
+  toggleBtns.forEach(function(btn){
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.85';
+  });
+  
+  // 하단 버튼 변경 (제출 → 대시보드로 이동)
+  var btnRow = document.querySelector('.btn-row');
+  if(btnRow){
+    btnRow.innerHTML = 
+      '<button class="btn-secondary" onclick="goHome()">← 대시보드로</button>' +
+      '<button class="btn-primary" style="flex:2;" onclick="printTbm()">' +
+        '🖨️ TBM 인쇄' +
+      '</button>';
+  }
+  
+  // 상단 뱃지
+  var badge = document.getElementById('permitBadge');
+  if(badge){
+    badge.textContent = '📄 ' + tbm.tbmNo;
+    badge.classList.add('show');
+    badge.style.background = 'rgba(255,255,255,0.3)';
+  }
+  
+  showToast('📄 기존 TBM 조회 모드', 'info');
+  console.log('[읽기 전용] 활성화 완료:', tbm.tbmNo);
+}
+
+// TBM 인쇄
+function printTbm(){
+  window.print();
+}
+  
 function loadFromPermit(permitNo){
   try{
     var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
@@ -2151,15 +2439,20 @@ function executeSubmit(workName, datetime, location, workers, supervisor, manage
       schemaVersion: 2
     };
     
-    // localStorage 저장
+       // localStorage 저장
     var tbmList = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
     tbmList.push(saveData);
     localStorage.setItem('safetyTBM', JSON.stringify(tbmList));
+    console.log('[TBM] localStorage 저장 완료:', tbmNo);
+    
+    // ⭐ Firestore 저장 (2026-08-31 신규)
+    saveTbmToFirestore(saveData);
     
     // 허가서 상태 업데이트
     if(tbmData.permitNo){
       updatePermitStatus(tbmData.permitNo, tbmNo, userName);
     }
+
     
     // 임시저장 삭제
     localStorage.removeItem('tbm-v2-draft');
@@ -2191,8 +2484,57 @@ function executeSubmit(workName, datetime, location, workers, supervisor, manage
     });
   }
 }
+// ═══════════════════════════════════════════════════
+// ⭐ Firestore에 TBM 저장 (2026-08-31 신규)
+// ═══════════════════════════════════════════════════
+async function saveTbmToFirestore(record){
+  try {
+    if(!window.firebaseApp || !window.firebaseApp.db){
+      console.warn('[TBM] Firebase 미로드 - Firestore 저장 건너뜀');
+      return;
+    }
+    
+    if(!record.tbmNo){
+      console.error('[TBM] tbmNo 없음 - Firestore 저장 불가');
+      return;
+    }
+    
+    if(!navigator.onLine){
+      console.warn('[TBM] 오프라인 - Firestore 저장 건너뜀');
+      return;
+    }
+    
+    var fb = window.firebaseApp;
+    var collectionName = fb.TBM_COLLECTION || window.getCollectionName("safetyTBM");
+    console.log('[TBM] 💾 Firestore 저장 시작 (컬렉션:', collectionName + ')');
+    
+    var docRef = fb.doc(fb.db, collectionName, record.tbmNo);
+    
+    var TIMEOUT_MS = 15000;
+    var savePromise = fb.setDoc(docRef, record);
+    var timeoutPromise = new Promise(function(_, reject){
+      setTimeout(function(){
+        reject(new Error('Firestore 타임아웃 (' + (TIMEOUT_MS/1000) + '초)'));
+      }, TIMEOUT_MS);
+    });
+    
+    await Promise.race([savePromise, timeoutPromise]);
+    
+    console.log('[TBM] ✅ Firestore 저장 완료:', record.tbmNo);
+    
+    // 대시보드 캐시 무효화 (허가서 상태 변경 반영)
+    try {
+      localStorage.removeItem('permitsLastSync');
+    } catch(e) {}
+    
+  } catch(error) {
+    console.error('[TBM] Firestore 저장 실패:', error.message);
+    // 실패해도 localStorage 저장은 이미 완료됨
+  }
+}
 
 function updatePermitStatus(permitNo, tbmNo, userName){
+
   try{
     var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
     var srcWorkId = null;
