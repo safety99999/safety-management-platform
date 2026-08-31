@@ -1760,6 +1760,7 @@ function showToast(msg, type){
   wrap.appendChild(t);
   setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3500);
 }
+
 // ⭐ 오류 발생 시 필드로 자동 스크롤 + 시각 하이라이트 (2026-09-01)
 function scrollToField(fieldId, message, type){
   if(message){
@@ -1784,6 +1785,7 @@ function scrollToField(fieldId, message, type){
     }, 300);
   }, 100);
 }
+
 
 // ═══════════════════════════════════════════════
 // 서명 캔버스
