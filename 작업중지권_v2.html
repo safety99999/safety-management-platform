@@ -2092,12 +2092,11 @@ async function saveEmergencyToFirestore(record){
     
     console.log('[작업중지권] ✅ Firestore 저장 완료:', record.emergencyNo);
     
-    // 대시보드 캐시 무효화
-    try {
-      localStorage.removeItem('permitsLastSync');
-    } catch(e) {}
+    // ⚠️ 캐시 무효화 제거 (2026-09-01 Firebase 사용량 절약)
+    // 대시보드는 10분 TTL로 자동 갱신되므로 별도 무효화 불필요
     
     return { success: true, collection: collectionName };
+
     
   } catch(error) {
     console.error('[작업중지권] Firestore 저장 실패:', error.message);
