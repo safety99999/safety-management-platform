@@ -1876,19 +1876,12 @@ async function updatePermitInFirestore(permitNo, updates){
     if(!permit) return;
     
     await fb.setDoc(docRef, permit);
-         console.log('✅ 허가서 상태 업데이트:', permitNo, '→', status);
-      
-      // ⭐ Firestore에도 반영 (2026-08-31 신규)
-      updatePermitInFirestore(permitNo, { 
-        status: status, 
-        emergencyNo: emergencyNo 
-      });
-    }
-  }catch(e){
-    console.warn('허가서 상태 업데이트 실패:', e);
+    console.log('[작업중지권] ✅ 허가서 상태 Firestore 반영:', permitNo);
+    
+  } catch(error) {
+    console.error('[작업중지권] 허가서 Firestore 갱신 실패:', error.message);
   }
 }
-
 
   
 function updatePermitStatus(permitNo, status, emergencyNo){
