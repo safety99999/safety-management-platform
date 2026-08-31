@@ -926,6 +926,194 @@ body{
   background:var(--done);
   box-shadow:0 4px 12px rgba(14,138,107,.25);
 }
+/* ═══════════════════════════════════════
+   작업 선택 시트 UX 개선 (2026-09-01 신규)
+   ═══════════════════════════════════════ */
+
+/* 히어로 섹션 */
+.picker-hero{
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;
+  border-radius:var(--r);
+  padding:24px 20px;
+  margin-bottom:16px;
+  text-align:center;
+  position:relative;overflow:hidden;
+  box-shadow:var(--sh-m);
+}
+.picker-hero::after{
+  content:'';position:absolute;right:-30px;bottom:-30px;
+  width:120px;height:120px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 8px,transparent 8px 16px);
+  border-radius:50%;pointer-events:none;
+}
+.picker-hero-ico{
+  font-size:44px;margin-bottom:10px;line-height:1;
+  position:relative;z-index:1;
+}
+.picker-hero-title{
+  font-size:19px;font-weight:900;
+  letter-spacing:-.02em;margin-bottom:8px;
+  position:relative;z-index:1;
+}
+.picker-hero-sub{
+  font-size:13px;font-weight:600;opacity:.95;
+  line-height:1.55;position:relative;z-index:1;
+}
+
+/* 섹션 헤더 */
+.picker-section-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;padding:0 2px;
+}
+.picker-section-title{
+  font-size:14px;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;display:flex;align-items:center;gap:6px;
+}
+.picker-section-count{
+  font-size:13px;font-weight:800;color:var(--posco);
+  background:var(--tint);padding:3px 10px;border-radius:6px;
+}
+
+/* 공장별 필터 */
+.factory-filter{
+  display:flex;gap:6px;margin-bottom:10px;
+  overflow-x:auto;scrollbar-width:none;
+  padding-bottom:2px;
+}
+.factory-filter::-webkit-scrollbar{display:none;}
+.ff-btn{
+  flex-shrink:0;padding:8px 14px;border-radius:999px;
+  border:1.5px solid var(--line);background:var(--card);
+  color:var(--sub);font-family:inherit;font-size:13px;
+  font-weight:700;cursor:pointer;transition:.15s;
+  display:flex;align-items:center;gap:6px;
+  letter-spacing:-.01em;
+}
+.ff-btn:active{transform:scale(.95);}
+.ff-btn.active{
+  background:var(--deep);border-color:var(--deep);
+  color:#fff;box-shadow:0 2px 6px rgba(0,60,126,.25);
+}
+.ff-count{
+  font-size:11px;font-weight:800;
+  padding:1px 6px;border-radius:8px;
+  background:rgba(0,0,0,.08);
+}
+.ff-btn.active .ff-count{
+  background:rgba(255,255,255,.25);
+}
+.ff-btn:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+
+/* 협력사 필터 */
+.company-filter{
+  margin-bottom:12px;
+}
+.company-select{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--line);border-radius:11px;
+  background:var(--card);color:var(--ink);
+  font-family:inherit;font-size:13.5px;font-weight:700;
+  cursor:pointer;
+}
+.company-select:focus{outline:none;border-color:var(--posco);}
+
+/* 안내 배너 */
+.picker-notice{
+  background:var(--tint);border-left:3px solid var(--posco);
+  padding:10px 12px;border-radius:0 8px 8px 0;
+  font-size:12px;font-weight:600;color:var(--body);
+  line-height:1.5;margin-bottom:12px;
+}
+
+/* 컴팩트 작업 카드 */
+.work-card-compact{
+  background:var(--card);border-radius:var(--r-s);
+  padding:12px 14px;margin-bottom:8px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--sub);
+  box-shadow:var(--sh);transition:.15s;
+}
+.work-card-compact.selectable{cursor:pointer;}
+.work-card-compact.selectable:active{transform:scale(.98);}
+.work-card-compact.danger{border-left-color:var(--stop);}
+.work-card-compact.sent{border-left-color:var(--posco);opacity:.75;}
+.work-card-compact.completed{border-left-color:var(--done);opacity:.75;}
+
+.wc-top{
+  display:flex;align-items:center;gap:6px;margin-bottom:6px;
+}
+.wc-badge{
+  font-size:10.5px;font-weight:800;
+  padding:2px 7px;border-radius:4px;letter-spacing:.02em;
+}
+.wc-badge.r{background:var(--stop);color:#fff;}
+.wc-badge.g{background:var(--done);color:#fff;}
+.wc-manager{
+  font-size:11px;color:var(--sub);font-weight:700;
+  margin-left:auto;display:flex;align-items:center;gap:3px;
+}
+.wc-name{
+  font-size:13.5px;font-weight:800;color:var(--ink);
+  margin-bottom:5px;letter-spacing:-.02em;line-height:1.35;
+}
+.wc-meta{
+  display:flex;gap:8px;font-size:11.5px;color:var(--sub);
+  margin-bottom:8px;font-weight:600;flex-wrap:wrap;
+}
+
+/* 상태 뱃지 */
+.wc-status{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11.5px;font-weight:800;
+  padding:4px 10px;border-radius:6px;
+  margin-bottom:6px;
+}
+.wc-status.blue{
+  background:#EEF2FF;color:var(--deep);
+}
+.wc-status.orange{
+  background:var(--run-bg);color:var(--run);
+}
+.wc-status.green{
+  background:var(--done-bg);color:var(--done);
+}
+.wc-doc-no{
+  font-size:11px;color:var(--sub);
+  font-family:'Courier New',monospace;
+  font-weight:700;margin-bottom:8px;
+  letter-spacing:.02em;
+}
+
+/* 액션 버튼 */
+.wc-btn{
+  display:block;width:100%;padding:10px;
+  background:var(--deep);color:#fff;
+  border:none;border-radius:9px;
+  font-family:inherit;font-size:12.5px;font-weight:800;
+  cursor:pointer;letter-spacing:-.01em;
+  transition:.15s;text-align:center;
+}
+.wc-btn:active{transform:scale(.97);background:var(--posco);}
+.wc-btn.disabled{
+  background:var(--sunk);color:var(--faint);
+  cursor:not-allowed;border:1.5px dashed var(--line);
+}
+.wc-btn.disabled:active{transform:none;background:var(--sunk);}
+
+/* 빈 상태 */
+.picker-empty{
+  text-align:center;padding:32px 16px;
+  color:var(--sub);font-weight:700;
+  background:var(--card);border-radius:var(--r-s);
+  border:1.5px dashed var(--line);
+}
+.picker-empty-ico{
+  font-size:44px;opacity:.4;margin-bottom:10px;
+}
+
 
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
@@ -4735,6 +4923,41 @@ if(document.readyState === "loading"){
   // ═══════════════════════════════════════
   // 메인 함수: 빠른실행 버튼 클릭 처리
   // ═══════════════════════════════════════
+ // ═══════════════════════════════════════════════════
+// ⭐ 안전정보제공서 상태 조회 (2026-09-01 신규)
+// 작업 선택 시 이미 발송된 안전정보제공서가 있는지 확인
+// ═══════════════════════════════════════════════════
+window.getWorkSafetyInfoStatus = function(workId){
+  try {
+    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
+    var linked = docs.find(function(d){ 
+      return d.workId === workId; 
+    });
+    
+    if(!linked) return null;  // 미발송
+    
+    return {
+      status: linked.status || '발행완료',
+      safeinfoNo: linked.safeinfoNo,
+      createdAt: linked.createdAt,
+      subEmail: linked.subcontractorEmail || '',
+      subcontractor: linked.subcontractor || ''
+    };
+  } catch(e){
+    console.warn('[getWorkSafetyInfoStatus] 오류:', e);
+    return null;
+  }
+};
+
+// ⭐ 필터 상태 저장
+window._workPickerFilter = {
+  factory: 'all',
+  company: 'all',
+  works: [],
+  ctx: null
+};
+
+    
   window.qbClick = function(appType){
     var targetUrl = APP_URLS[appType];
     var appLabel = APP_LABELS[appType] || '앱';
@@ -4781,9 +5004,13 @@ if(document.readyState === "loading"){
     openWorkPickerSheet(todayWorks, appType, appLabel, targetUrl);
   };
   
-  // ═══════════════════════════════════════
-  // 작업 선택 바텀시트
-  // ═══════════════════════════════════════
+   // ═══════════════════════════════════════════════════
+  // 작업 선택 바텀시트 (2026-09-01 UX 개선)
+  // - 히어로 섹션 추가
+  // - 공장별/협력사별 필터
+  // - 안전정보제공서 상태 표시
+  // - 이미 발송된 작업 재선택 방지
+  // ═══════════════════════════════════════════════════
   function openWorkPickerSheet(works, appType, appLabel, targetUrl){
     var titleEl = document.getElementById('wsSheetTitle');
     var body = document.getElementById('wsBody');
@@ -4793,68 +5020,29 @@ if(document.readyState === "loading"){
       return;
     }
     
-    // 시트 제목 설정
+    // 필터 상태 초기화
+    window._workPickerFilter = {
+      factory: 'all',
+      company: 'all',
+      works: works,
+      ctx: {
+        appType: appType,
+        appLabel: appLabel,
+        targetUrl: targetUrl
+      }
+    };
+    
+    // 시트 제목
     titleEl.innerHTML = 
       appLabel + ' 작업 선택 ' +
       '<span style="background:var(--tint);color:var(--posco);font-size:12px;' +
       'font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
       works.length + '건</span>';
     
-    // 시트 본문 HTML 생성
-    var html = 
-      '<div style="padding:0 0 20px;">' +
-        '<div style="font-size:13px;color:var(--sub);font-weight:600;' +
-        'margin-bottom:12px;padding:8px 12px;background:var(--tint);' +
-        'border-radius:8px;border-left:3px solid var(--posco);">' +
-          '💡 진행할 작업을 선택하세요.<br>' +
-          '<span style="font-size:12px;">선택한 작업의 정보가 자동으로 채워집니다.</span>' +
-        '</div>';
+    // 시트 본문 렌더링
+    renderWorkPickerSheet();
     
-    works.forEach(function(w){
-      var workId = w.workId || w.id;
-      var isDanger = w.riskLevel === '고위험';
-      var workName = w.workName || '작업명 미지정';
-      var location = w.location || w.locationRaw || '위치 미지정';
-      var company = w.company || '협력사 미지정';
-      var manager = w.manager || w.workManager || w.contractorManager || '';
-      
-      html += 
-        '<div class="work-item" ' +
-        'onclick="pickWork(\'' + escapeJsString(workId) + '\')" ' +
-        'style="cursor:pointer;">';
-      
-      html += '<div class="wi-top">';
-      html += '<span class="wi-badge ' + (isDanger ? 'r' : 'g') + '">' +
-              (isDanger ? '고위험' : '일반') + '</span>';
-      
-      // 담당자 표시
-      if(manager){
-        html += '<span style="font-size:11px;color:var(--sub);' +
-                'font-weight:700;margin-left:auto;">' +
-                '👤 ' + escHtml(manager) + '</span>';
-      }
-      html += '</div>';
-      
-      html += '<div class="wi-name">' + escHtml(workName) + '</div>';
-      
-      html += '<div class="wi-meta">' +
-              '<span>📍 ' + escHtml(location) + '</span>' +
-              '<span>🏢 ' + escHtml(company) + '</span>' +
-              '</div>';
-      
-      html += 
-        '<div class="wi-btn" style="margin-top:8px;">' +
-          '이 작업으로 진행 →' +
-        '</div>';
-      
-      html += '</div>';
-    });
-    
-    html += '</div>';
-    
-    body.innerHTML = html;
-    
-    // 콜백 정보 저장 (선택 시 사용)
+    // 컨텍스트 저장 (pickWork에서 사용)
     window._workPickerContext = {
       appType: appType,
       appLabel: appLabel,
@@ -4864,34 +5052,309 @@ if(document.readyState === "loading"){
     openSheet('ws');
   }
   
+  // ═══════════════════════════════════════════════════
+  // 시트 본문 렌더링 (필터 적용)
+  // ═══════════════════════════════════════════════════
+  function renderWorkPickerSheet(){
+    var body = document.getElementById('wsBody');
+    var state = window._workPickerFilter;
+    if(!body || !state) return;
+    
+    var works = state.works || [];
+    var appType = state.ctx.appType;
+    var appLabel = state.ctx.appLabel;
+    
+    // 공장별 카운트
+    var factoryCounts = {
+      'all': works.length,
+      '1공장': 0,
+      '2공장': 0,
+      '기타': 0
+    };
+    
+    works.forEach(function(w){
+      var loc = getWorkFactory(w);
+      if(factoryCounts[loc] !== undefined){
+        factoryCounts[loc]++;
+      } else {
+        factoryCounts['기타']++;
+      }
+    });
+    
+    // 협력사 목록 추출
+    var companies = ['all'];
+    works.forEach(function(w){
+      var comp = w.company || w.executingCompany || '';
+      if(comp && companies.indexOf(comp) < 0) companies.push(comp);
+    });
+    
+    // 필터 적용
+    var filtered = works.filter(function(w){
+      // 공장 필터
+      if(state.factory !== 'all'){
+        var wLoc = getWorkFactory(w);
+        if(wLoc !== state.factory) return false;
+      }
+      // 협력사 필터
+      if(state.company !== 'all'){
+        var wComp = w.company || w.executingCompany || '';
+        if(wComp !== state.company) return false;
+      }
+      return true;
+    });
+    
+    // HTML 렌더링
+    var html = '';
+    
+    // 1. 히어로 섹션
+    html += 
+      '<div class="picker-hero">' +
+        '<div class="picker-hero-ico">' + getAppIcon(appType) + '</div>' +
+        '<div class="picker-hero-title">' + escHtml(appLabel) + ' 작업 선택</div>' +
+        '<div class="picker-hero-sub">' + getAppDescription(appType) + '</div>' +
+      '</div>';
+    
+    // 2. 섹션 헤더
+    html += 
+      '<div class="picker-section-hdr">' +
+        '<div class="picker-section-title">📅 오늘 작업 목록</div>' +
+        '<div class="picker-section-count">' + filtered.length + '건</div>' +
+      '</div>';
+    
+    // 3. 공장 필터
+    html += '<div class="factory-filter">';
+    ['all', '1공장', '2공장', '기타'].forEach(function(f){
+      var isActive = state.factory === f;
+      var count = factoryCounts[f];
+      var isDisabled = count === 0 && f !== 'all';
+      var label = f === 'all' ? '전체' : f;
+      html += 
+        '<button class="ff-btn' + (isActive ? ' active' : '') + '" ' +
+        (isDisabled ? 'disabled ' : '') +
+        'onclick="setFactoryFilter(\'' + f + '\')">' +
+          escHtml(label) +
+          '<span class="ff-count">' + count + '</span>' +
+        '</button>';
+    });
+    html += '</div>';
+    
+    // 4. 협력사 필터
+    html += '<div class="company-filter">';
+    html += '<select class="company-select" onchange="setCompanyFilter(this.value)">';
+    companies.forEach(function(c){
+      var label = c === 'all' ? '🏢 전체 협력사' : '🏢 ' + c;
+      var selected = state.company === c ? ' selected' : '';
+      html += '<option value="' + escHtml(c) + '"' + selected + '>' + escHtml(label) + '</option>';
+    });
+    html += '</select>';
+    html += '</div>';
+    
+    // 5. 안내 배너 (안전정보제공서일 때만)
+    if(appType === 'safety-info'){
+      html += 
+        '<div class="picker-notice">' +
+          '💡 이미 발송된 작업은 <strong>비활성화</strong>되어 중복 발송을 방지합니다.' +
+        '</div>';
+    }
+    
+    // 6. 작업 카드 목록
+    if(filtered.length === 0){
+      html += 
+        '<div class="picker-empty">' +
+          '<div class="picker-empty-ico">📭</div>' +
+          '<div>해당 조건의 작업이 없습니다.</div>' +
+        '</div>';
+    } else {
+      filtered.forEach(function(w){
+        html += renderWorkCard(w, appType);
+      });
+    }
+    
+    body.innerHTML = html;
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 작업 카드 렌더링 (상태 반영)
+  // ═══════════════════════════════════════════════════
+  function renderWorkCard(w, appType){
+    var workId = w.workId || w.id;
+    var isDanger = w.riskLevel === '고위험';
+    var workName = w.workName || '작업명 미지정';
+    var location = w.location || w.locationRaw || '위치 미지정';
+    var company = w.company || '협력사 미지정';
+    var manager = w.manager || w.workManager || w.contractorManager || '';
+    var workTime = w.workTimeRaw || '';
+    
+    // 안전정보제공서 상태 조회
+    var safetyStatus = null;
+    if(appType === 'safety-info'){
+      safetyStatus = window.getWorkSafetyInfoStatus(workId);
+    }
+    
+    var cardClass = 'work-card-compact';
+    if(isDanger) cardClass += ' danger';
+    if(!safetyStatus) cardClass += ' selectable';
+    if(safetyStatus && safetyStatus.status === '발행완료') cardClass += ' sent';
+    if(safetyStatus && safetyStatus.status === '서명완료') cardClass += ' completed';
+    
+    var html = '';
+    
+    if(safetyStatus){
+      // 이미 발송된 경우
+      html += '<div class="' + cardClass + '">';
+    } else {
+      // 선택 가능
+      html += '<div class="' + cardClass + '" onclick="pickWork(\'' + escapeJsString(workId) + '\')">';
+    }
+    
+    // 상단: 뱃지 + 담당자
+    html += '<div class="wc-top">';
+    html += '<span class="wc-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
+    if(manager){
+      html += '<span class="wc-manager">👤 ' + escHtml(manager) + '</span>';
+    }
+    html += '</div>';
+    
+    // 작업명
+    html += '<div class="wc-name">' + escHtml(workName) + '</div>';
+    
+    // 메타 정보
+    html += '<div class="wc-meta">';
+    html += '<span>📍 ' + escHtml(location) + '</span>';
+    html += '<span>🏢 ' + escHtml(company) + '</span>';
+    if(workTime){
+      html += '<span>⏰ ' + escHtml(workTime) + '</span>';
+    }
+    html += '</div>';
+    
+    // 안전정보제공서 상태 표시
+    if(safetyStatus){
+      var statusInfo = getStatusInfo(safetyStatus.status);
+      html += '<div class="wc-status ' + statusInfo.class + '">' + statusInfo.icon + ' ' + statusInfo.label + '</div>';
+      html += '<div class="wc-doc-no">📄 ' + escHtml(safetyStatus.safeinfoNo) + '</div>';
+      html += '<div class="wc-btn disabled">🚫 이미 발송된 작업</div>';
+    } else {
+      html += '<div class="wc-btn">✅ 이 작업으로 진행 →</div>';
+    }
+    
+    html += '</div>';
+    
+    return html;
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 헬퍼 함수들
+  // ═══════════════════════════════════════════════════
+  function getWorkFactory(w){
+    var raw = (w.location || '') + ' ' + (w.locationRaw || '') + ' ' + (w.workNameFull || '');
+    raw = raw.toLowerCase();
+    
+    if(w.location && typeof w.location === 'object' && w.location.factory){
+      var f = w.location.factory;
+      if(f.indexOf('1공장') >= 0) return '1공장';
+      if(f.indexOf('2공장') >= 0) return '2공장';
+    }
+    
+    if(raw.indexOf('2-2') >= 0 || raw.indexOf('2공장') >= 0) return '2공장';
+    if(raw.indexOf('1공장') >= 0 || raw.indexOf('2-1') >= 0) return '1공장';
+    return '기타';
+  }
+  
+  function getAppIcon(appType){
+    var icons = {
+      'safety-info': '📋',
+      'quiz': '🎯',
+      'tbm': '📝',
+      'risk': '🤖'
+    };
+    return icons[appType] || '📄';
+  }
+  
+  function getAppDescription(appType){
+    var descriptions = {
+      'safety-info': '작업관리대장에 등록된 오늘 작업에서<br>안전정보를 제공할 작업을 선택하세요.',
+      'quiz': '작업자가 안전퀴즈를 응시할<br>작업을 선택하세요.',
+      'tbm': 'TBM 일지를 작성할<br>작업을 선택하세요.',
+      'risk': '위험성평가를 진행할<br>작업을 선택하세요.'
+    };
+    return descriptions[appType] || '진행할 작업을 선택하세요.';
+  }
+  
+  function getStatusInfo(status){
+    var map = {
+      '발행완료': { class:'blue', icon:'🔵', label:'수급인 수신 대기중' },
+      '수급인확인': { class:'orange', icon:'🟠', label:'수급인 확인중' },
+      '서명완료': { class:'green', icon:'✅', label:'서명 완료' }
+    };
+    return map[status] || { class:'blue', icon:'📨', label:status };
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 필터 변경 함수 (전역 노출)
+  // ═══════════════════════════════════════════════════
+  window.setFactoryFilter = function(factory){
+    window._workPickerFilter.factory = factory;
+    renderWorkPickerSheet();
+  };
+  
+  window.setCompanyFilter = function(company){
+    window._workPickerFilter.company = company;
+    renderWorkPickerSheet();
+  };
+
+  
   // ═══════════════════════════════════════
   // 작업 선택 시 이동 처리
   // ═══════════════════════════════════════
-  window.pickWork = function(workId){
-    var ctx = window._workPickerContext;
-    if(!ctx || !ctx.targetUrl){
-      console.warn('[pickWork] 컨텍스트 정보 없음');
+window.pickWork = function(workId){
+  var ctx = window._workPickerContext;
+  if(!ctx || !ctx.targetUrl){
+    console.warn('[pickWork] 컨텍스트 정보 없음');
+    return;
+  }
+  
+  // ⭐ 안전정보제공서 재선택 방지 (2026-09-01 신규)
+  if(ctx.appType === 'safety-info'){
+    var status = window.getWorkSafetyInfoStatus(workId);
+    if(status){
+      var statusInfo = {
+        '발행완료': '수급인 수신 대기중',
+        '수급인확인': '수급인 확인중',
+        '서명완료': '서명 완료'
+      };
+      showCustomAlert({
+        icon: '📄',
+        title: '이미 발송된 작업',
+        message: '이 작업에는 이미 안전정보제공서가 발송되었습니다.\n\n' +
+                 '문서번호: ' + status.safeinfoNo + '\n' +
+                 '상태: ' + (statusInfo[status.status] || status.status) + '\n\n' +
+                 '중복 발송을 방지합니다.',
+        okText: '확인',
+        okType: 'warn'
+      });
       return;
     }
-    
-    var appLabel = ctx.appLabel || '앱';
-    var targetUrl = ctx.targetUrl;
-    
-    // 시트 닫기
-    closeSheet('ws');
-    
-    // 잠깐 대기 후 이동 (시트 닫히는 애니메이션 시간)
-    setTimeout(function(){
-      showToast('✅ ' + appLabel + '(으)로 이동합니다', 'success');
-      setTimeout(function(){
-        window.location.href = targetUrl + '?workId=' + encodeURIComponent(workId);
-      }, 400);
-    }, 350);
-    
-    // 컨텍스트 정리
-    window._workPickerContext = null;
-  };
+  }
   
+  var appLabel = ctx.appLabel || '앱';
+  var targetUrl = ctx.targetUrl;
+  
+  // 시트 닫기
+  closeSheet('ws');
+  
+  // 잠깐 대기 후 이동 (시트 닫히는 애니메이션 시간)
+  setTimeout(function(){
+    showToast('✅ ' + appLabel + '(으)로 이동합니다', 'success');
+    setTimeout(function(){
+      window.location.href = targetUrl + '?workId=' + encodeURIComponent(workId);
+    }, 400);
+  }, 350);
+  
+  // 컨텍스트 정리
+  window._workPickerContext = null;
+};
+
+
   // ═══════════════════════════════════════
   // JavaScript 문자열 이스케이프 (workId 안전 처리)
   // ═══════════════════════════════════════
@@ -4946,6 +5409,40 @@ if(document.readyState === "loading"){
     customConfirmCallback = callback || function(){};
     overlay.classList.add('active');
   };
+
+    // ═══════════════════════════════════════
+  // 커스텀 알림 (버튼 1개, 알림 전용)
+  // ═══════════════════════════════════════
+  window.showCustomAlert = function(options, callback){
+    var opts = typeof options === 'string' 
+      ? { message: options } 
+      : (options || {});
+    
+    // 알림 전용 옵션
+    opts.okText = opts.okText || '확인';
+    
+    // showCustomConfirm 재사용
+    showCustomConfirm(opts, callback);
+    
+    // 취소 버튼 숨기기 (알림이므로 확인만 필요)
+    setTimeout(function(){
+      var buttonsEl = document.getElementById('customConfirmButtons');
+      if(buttonsEl){
+        var cancelBtn = buttonsEl.querySelector('.custom-confirm-btn-cancel');
+        if(cancelBtn){
+          cancelBtn.style.display = 'none';
+        }
+      }
+    }, 10);
+    
+    // 다이얼로그 닫힐 때 취소 버튼 복원
+    var originalClose = window.customConfirmClose;
+    var alertClose = function(result){
+      var cancelBtn = document.querySelector('.custom-confirm-btn-cancel');
+      if(cancelBtn) cancelBtn.style.display = '';
+      originalClose(result);
+    };
+  };   
   
   window.customConfirmClose = function(result){
     var overlay = document.getElementById('customConfirmOverlay');
