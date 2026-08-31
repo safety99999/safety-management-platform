@@ -926,6 +926,14 @@ body{
   background:var(--done);
   box-shadow:0 4px 12px rgba(14,138,107,.25);
 }
+/* ⭐ 알림 전용 (버튼 하나만 표시) */
+.custom-confirm-buttons.single{
+  justify-content:center;
+}
+.custom-confirm-buttons.single .custom-confirm-btn-cancel{
+  display:none;
+}
+
 /* ═══════════════════════════════════════
    작업 선택 시트 UX 개선 (2026-09-01 신규)
    ═══════════════════════════════════════ */
@@ -5386,6 +5394,8 @@ window.pickWork = function(workId){
     var messageEl = document.getElementById('customConfirmMessage');
     var okBtn = document.getElementById('customConfirmOk');
     var overlay = document.getElementById('customConfirmOverlay');
+    // ⭐ 신규: 버튼 컨테이너 참조
+    var buttonsEl = overlay ? overlay.querySelector('.custom-confirm-buttons') : null;
     
     if(!overlay){
       console.warn('[showCustomConfirm] 다이얼로그 요소 없음. 기본 confirm 사용');
@@ -5406,9 +5416,19 @@ window.pickWork = function(workId){
       else if(opts.okType === 'success') okBtn.classList.add('success');
     }
     
+    // ⭐ 신규: alertOnly 옵션 지원 (취소 버튼 숨김)
+    if(buttonsEl){
+      if(opts.alertOnly){
+        buttonsEl.classList.add('single');
+      } else {
+        buttonsEl.classList.remove('single');
+      }
+    }
+    
     customConfirmCallback = callback || function(){};
     overlay.classList.add('active');
   };
+
 
     // ═══════════════════════════════════════
   // 커스텀 알림 (버튼 1개, 알림 전용)
@@ -5417,32 +5437,10 @@ window.pickWork = function(workId){
     var opts = typeof options === 'string' 
       ? { message: options } 
       : (options || {});
-    
-    // 알림 전용 옵션
+    opts.alertOnly = true;  // ⭐ 취소 버튼 자동 숨김
     opts.okText = opts.okText || '확인';
-    
-    // showCustomConfirm 재사용
     showCustomConfirm(opts, callback);
-    
-    // 취소 버튼 숨기기 (알림이므로 확인만 필요)
-    setTimeout(function(){
-      var buttonsEl = document.getElementById('customConfirmButtons');
-      if(buttonsEl){
-        var cancelBtn = buttonsEl.querySelector('.custom-confirm-btn-cancel');
-        if(cancelBtn){
-          cancelBtn.style.display = 'none';
-        }
-      }
-    }, 10);
-    
-    // 다이얼로그 닫힐 때 취소 버튼 복원
-    var originalClose = window.customConfirmClose;
-    var alertClose = function(result){
-      var cancelBtn = document.querySelector('.custom-confirm-btn-cancel');
-      if(cancelBtn) cancelBtn.style.display = '';
-      originalClose(result);
-    };
-  };   
+  };
   
   window.customConfirmClose = function(result){
     var overlay = document.getElementById('customConfirmOverlay');
