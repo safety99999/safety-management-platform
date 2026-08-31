@@ -20,6 +20,94 @@
 <title>작업중지권 · 긴급 신고</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="styles/device-frame.css?v=3">
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE 시스템 + Firebase 초기화 (2026-08-31 신규)
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  // ⚠️ 주의: 기존 mode 파라미터('urgent'/'stop')와 충돌 방지
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+
+<!-- Firebase 초기화 -->
+<script type="module">
+  import { 
+    initializeApp, 
+    getApps, 
+    getApp 
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  
+  import { 
+    getFirestore, 
+    initializeFirestore,
+    doc, 
+    setDoc, 
+    getDoc,
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+    projectId: "safety-management-platfo-5f413",
+    storageBucket: "safety-management-platfo-5f413.appspot.com",
+    messagingSenderId: "96226952530",
+    appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+  };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const needsLongPolling = isIOS || isSafari;
+
+  console.log("[작업중지권 Firebase] 환경 감지:", {
+    isIOS: isIOS, isSafari: isSafari, longPolling: needsLongPolling
+  });
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  
+  let db;
+  try {
+    if (needsLongPolling) {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+      });
+      console.log("[작업중지권 Firebase] iOS/Safari 모드로 초기화");
+    } else {
+      db = getFirestore(app);
+      console.log("[작업중지권 Firebase] 표준 모드로 초기화");
+    }
+  } catch (initError) {
+    console.warn("[작업중지권 Firebase] 초기화 재시도:", initError.message);
+    db = getFirestore(app);
+  }
+
+  window.firebaseApp = { 
+    db: db, doc: doc, setDoc: setDoc, getDoc: getDoc,
+    serverTimestamp: serverTimestamp
+  };
+  
+  // ⭐ 작업중지권 컬렉션명 자동 접두사 적용
+  window.firebaseApp.EMERGENCY_COLLECTION = window.getCollectionName("emergencies");
+  window.firebaseApp.PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
+  console.log("[작업중지권 Firebase] 사용할 컬렉션:", window.firebaseApp.EMERGENCY_COLLECTION);
+  console.log("[작업중지권 Firebase] 초기화 완료");
+</script>
+  
 <style>
 /* ═══════════════════════════════════════
    작업중지권 v2.0 (독립 앱)
@@ -1397,11 +1485,16 @@ function createUrgentEmergency(){
       schemaVersion: 1
     };
     
-    var list = JSON.parse(localStorage.getItem('emergencies') || '[]');
+        var list = JSON.parse(localStorage.getItem('emergencies') || '[]');
     list.push(urgent);
     localStorage.setItem('emergencies', JSON.stringify(list));
+    console.log('[작업중지권] localStorage 긴급 접수 완료:', emergencyNo);
+    
+    // ⭐ Firestore 저장 (2026-08-31 신규) - 긴급 신고 즉시 클라우드 반영
+    saveEmergencyToFirestore(urgent);
     
     isUrgentSubmitted = true;
+
     
     // 대시보드 실시간 반영
     try{
@@ -1646,15 +1739,20 @@ function executeSubmit(workName, location, datetime, description, name, dept, ph
       schemaVersion: 1
     };
     
-    if(idx >= 0){
+       if(idx >= 0){
       list[idx] = finalData;
     } else {
       list.push(finalData);
     }
     
     localStorage.setItem('emergencies', JSON.stringify(list));
+    console.log('[작업중지권] localStorage 상세 갱신 완료:', stopData.emergencyNo);
+    
+    // ⭐ Firestore 저장 (2026-08-31 신규) - 상세 정보 완성본 갱신
+    saveEmergencyToFirestore(finalData);
     
     // 대시보드 실시간 반영
+
     try{
       window.dispatchEvent(new CustomEvent('app-data-changed', {
         detail: {
@@ -1706,6 +1804,93 @@ function showCompleteScreen(data){
 // ═══════════════════════════════════════════════════
 // 허가서 상태 업데이트
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// ⭐ Firestore에 작업중지 신고 저장 (2026-08-31 신규)
+// 긴급 원터치 접수 및 상세 제출 모두에서 사용
+// ═══════════════════════════════════════════════════
+async function saveEmergencyToFirestore(record){
+  try {
+    if(!window.firebaseApp || !window.firebaseApp.db){
+      console.warn('[작업중지권] Firebase 미로드 - Firestore 저장 건너뜀');
+      return { success: false, reason: 'no-firebase' };
+    }
+    
+    if(!record.emergencyNo){
+      console.error('[작업중지권] emergencyNo 없음 - Firestore 저장 불가');
+      return { success: false, reason: 'no-emergency-no' };
+    }
+    
+    if(!navigator.onLine){
+      console.warn('[작업중지권] 오프라인 - Firestore 저장 건너뜀 (로컬만 저장됨)');
+      return { success: false, reason: 'offline' };
+    }
+    
+    var fb = window.firebaseApp;
+    var collectionName = fb.EMERGENCY_COLLECTION || window.getCollectionName("emergencies");
+    console.log('[작업중지권] 💾 Firestore 저장 시작 (컬렉션:', collectionName + ')');
+    
+    var docRef = fb.doc(fb.db, collectionName, record.emergencyNo);
+    
+    // 타임아웃 경쟁 (iOS Safari 무한 대기 방지)
+    var TIMEOUT_MS = 15000;
+    var savePromise = fb.setDoc(docRef, record);
+    var timeoutPromise = new Promise(function(_, reject){
+      setTimeout(function(){
+        reject(new Error('Firestore 타임아웃 (' + (TIMEOUT_MS/1000) + '초)'));
+      }, TIMEOUT_MS);
+    });
+    
+    await Promise.race([savePromise, timeoutPromise]);
+    
+    console.log('[작업중지권] ✅ Firestore 저장 완료:', record.emergencyNo);
+    
+    // 대시보드 캐시 무효화
+    try {
+      localStorage.removeItem('permitsLastSync');
+    } catch(e) {}
+    
+    return { success: true, collection: collectionName };
+    
+  } catch(error) {
+    console.error('[작업중지권] Firestore 저장 실패:', error.message);
+    // 실패해도 localStorage 저장은 이미 완료됨 (긴급 신고 손실 없음)
+    return { success: false, error: error };
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// ⭐ Firestore에 허가서 상태 업데이트 (2026-08-31 신규)
+// ═══════════════════════════════════════════════════
+async function updatePermitInFirestore(permitNo, updates){
+  try {
+    if(!window.firebaseApp || !window.firebaseApp.db) return;
+    if(!permitNo || !navigator.onLine) return;
+    
+    var fb = window.firebaseApp;
+    var collectionName = fb.PERMIT_COLLECTION || window.getCollectionName("safetyPermits");
+    var docRef = fb.doc(fb.db, collectionName, permitNo);
+    
+    // 기존 문서 병합 저장
+    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
+    var permit = permits.find(function(p){ return p.permitNo === permitNo; });
+    if(!permit) return;
+    
+    await fb.setDoc(docRef, permit);
+         console.log('✅ 허가서 상태 업데이트:', permitNo, '→', status);
+      
+      // ⭐ Firestore에도 반영 (2026-08-31 신규)
+      updatePermitInFirestore(permitNo, { 
+        status: status, 
+        emergencyNo: emergencyNo 
+      });
+    }
+  }catch(e){
+    console.warn('허가서 상태 업데이트 실패:', e);
+  }
+}
+
+
+  
 function updatePermitStatus(permitNo, status, emergencyNo){
   try{
     var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
