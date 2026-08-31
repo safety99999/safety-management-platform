@@ -277,10 +277,15 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
 .api-dot.loading{background:var(--orange2);animation:blink .8s infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
 
-/* TOAST */
-.toast-wrap{position:fixed;top:64px;left:50%;transform:translateX(-50%);
-  z-index:9999;display:flex;flex-direction:column;gap:7px;
-  pointer-events:none;width:90%;max-width:390px;}
+/* TOAST (2026-09-01 UX 개선: 상단 → 하단) */
+.toast-wrap{
+  position:fixed;
+  bottom:100px;                              /* ⭐ 상단에서 하단으로 */
+  left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column-reverse;  /* ⭐ 최신이 위 */
+  gap:7px;
+  pointer-events:none;width:90%;max-width:390px;
+}
 .toast{padding:13px 17px;border-radius:12px;font-size:14px;font-weight:700;color:#fff;
   display:flex;align-items:center;gap:9px;
   box-shadow:0 4px 20px rgba(0,0,0,.22);animation:tslide .3s ease;pointer-events:all;}
@@ -1565,10 +1570,16 @@ function validateStep(step){
     if(new Date(ed)<new Date(sd)){
       showToast('종료일은 시작일 이후여야 합니다','danger'); return;
     }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ce)){
-      showToast('올바른 이메일 형식이 아닙니다','danger'); return;
-    }
-   
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ce)){
+  showToast('올바른 이메일 형식이 아닙니다','danger'); 
+  // ⭐ 자동 스크롤 + 포커스
+  var emailInput = document.getElementById('contractor-email');
+  if(emailInput){
+    emailInput.scrollIntoView({behavior:'smooth', block:'center'});
+    setTimeout(function(){ emailInput.focus(); }, 300);
+  }
+  return;
+}
     data.subcontractor=sc; data.workName=wn; data.location=loc; data.detailLocation=dloc;
     data.startDate=sd; data.endDate=ed;
     data.contractorManager=cm; data.contractorDept=cd;
