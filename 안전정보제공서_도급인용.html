@@ -6,7 +6,34 @@
 <meta name="theme-color" content="#1565C0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>안전정보제공서 (도급인)</title>
+
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE 시스템 (2026-09-01 신규)
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+
+<!-- PC 프레임 CSS -->
+<link rel="stylesheet" href="styles/device-frame.css?v=3">
+
 <style>
+
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;min-height:100vh;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;}
 :root{
@@ -333,9 +360,40 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   display:none;
 }
 </style>
+
+<!-- 페이지 전환 페이드아웃 트리거 -->
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    var href = link.getAttribute('href');
+    if(!href) return;
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){ window.location.href = href; }, 220);
+  });
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){ window.location.href = url; }, 220);
+  };
+})();
+</script>
 </head>
 <body>
+<div class="phone-frame">
+<div class="phone-screen">
 <div class="app">
+
 
 <!-- TOP NAV -->
 <nav class="topnav">
@@ -2109,5 +2167,10 @@ function showMailResult(success, msg, mode){
   }
 }
 </script>
+
+    </div><!-- /.app -->
+  </div><!-- /.phone-screen -->
+</div><!-- /.phone-frame -->
 </body>
 </html>
+
