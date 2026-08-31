@@ -2966,13 +2966,8 @@ async function savePermitToFirestore(record) {
 
     console.log('[허가서] ✅ Firestore 저장 완료:', record.permitNo, '(컬렉션:', collectionName + ')');
     
-    // ⭐ 대시보드 캐시 무효화 (신규 저장 시 대시보드가 즉시 최신 데이터 조회)
-    try {
-      localStorage.removeItem('permitsLastSync');
-      console.log('[허가서] 🔄 대시보드 캐시 무효화 완료');
-    } catch (cacheErr) {
-      // 캐시 무효화 실패는 무시
-    }
+       // ⚠️ 캐시 무효화 제거 (2026-09-01 Firebase 사용량 절약)
+    // 대시보드는 10분 TTL로 자동 갱신되므로 별도 무효화 불필요
     
     return { success: true, collection: collectionName };
 
