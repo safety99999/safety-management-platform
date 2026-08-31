@@ -6,6 +6,29 @@
 <meta name="theme-color" content="#003C7E">
 <title>안전작업허가서 (PTW)</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE 시스템 (2026-08-31 신규)
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+   
 <style>
 /* ═══════════════════════════════════════
    안전작업허가서 v2 - Step 1 Firestore 저장 통합
@@ -915,8 +938,8 @@ body{
 }
 
 /* ═══════════════════════════════════════
-   인쇄용 스타일 (허가서 A4 출력)
-   PC 프레임/불필요 UI 제거
+   🖨️ 인쇄용 스타일 (A4 출력 시 프레임 제거)
+   Ctrl+P 인쇄 미리보기에서 UI 요소 숨김
    ═══════════════════════════════════════ */
 @media print {
   body {
@@ -944,26 +967,31 @@ body{
   .home-btn,
   .back-btn,
   .sig-clear,
-  .wo-manual-toggle {
+  .wo-manual-toggle,
+  .add-gas-btn {
     display: none !important;
   }
   
-  /* 인쇄 시에도 표시할 요소 강제 표시 */
+  /* 모든 screen을 인쇄 시 표시 */
   .screen {
     display: block !important;
     page-break-inside: avoid;
   }
   
+  /* 폼 섹션 정리 */
   .form-section,
   .cl-section,
-  .summary-card {
+  .summary-card,
+  .info-box,
+  .warn-box,
+  .danger-box {
     box-shadow: none !important;
     border: 1px solid #ccc !important;
     page-break-inside: avoid;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   
-  /* 서명 캔버스는 흰 배경 유지 */
+  /* 서명 캔버스 유지 */
   .sig-canvas {
     border: 1px solid #333 !important;
     background: white !important;
@@ -974,8 +1002,15 @@ body{
     color: black !important;
     text-decoration: none !important;
   }
+  
+  /* 페이지 나누기 방지 */
+  .form-group,
+  .cl-item,
+  .q-item,
+  .summary-row {
+    page-break-inside: avoid;
+  }
 }
-
 </style>
 
 <!-- ═══════════════════════════════════════
@@ -1046,7 +1081,12 @@ body{
     serverTimestamp: serverTimestamp
   };
   
+  // ⭐ 허가서 컬렉션명 자동 접두사 적용 (test_ 또는 없음)
+  window.firebaseApp.PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
+  console.log("[허가서 Firebase] 사용할 컬렉션:", window.firebaseApp.PERMIT_COLLECTION);
+  
   console.log("[허가서 Firebase] 초기화 완료 - window.firebaseApp 사용 가능");
+ 
 </script>
 </head>
 <body>
@@ -2862,7 +2902,12 @@ async function savePermitToFirestore(record) {
     }
 
     var fb = window.firebaseApp;
-    var docRef = fb.doc(fb.db, 'safetyPermits', record.permitNo);
+    
+    // ⭐ APP_MODE에 따라 컬렉션명 자동 선택 (test_ 또는 없음)
+    var collectionName = fb.PERMIT_COLLECTION || window.getCollectionName("safetyPermits");
+    console.log('[허가서] 💾 Firestore 저장 시작 (컬렉션:', collectionName + ')');
+    
+    var docRef = fb.doc(fb.db, collectionName, record.permitNo);
 
     // ⭐ 타임아웃 경쟁 (iOS Safari 무한 대기 방지)
     var TIMEOUT_MS = 15000;
@@ -2875,8 +2920,17 @@ async function savePermitToFirestore(record) {
 
     await Promise.race([savePromise, timeoutPromise]);
 
-    console.log('[허가서] Firestore 저장 완료:', record.permitNo);
-    return { success: true };
+    console.log('[허가서] ✅ Firestore 저장 완료:', record.permitNo, '(컬렉션:', collectionName + ')');
+    
+    // ⭐ 대시보드 캐시 무효화 (신규 저장 시 대시보드가 즉시 최신 데이터 조회)
+    try {
+      localStorage.removeItem('permitsLastSync');
+      console.log('[허가서] 🔄 대시보드 캐시 무효화 완료');
+    } catch (cacheErr) {
+      // 캐시 무효화 실패는 무시
+    }
+    
+    return { success: true, collection: collectionName };
 
   } catch (error) {
     console.error('[허가서] Firestore 저장 실패:', error.message);
