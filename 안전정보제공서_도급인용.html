@@ -1557,7 +1557,7 @@ function onLocationChange(location){
 // VALIDATION & NAVIGATION
 // ═══════════════════════════════════════════════
 function validateStep(step){
-  if(step===1){
+if(step===1){
     var sc=getVal('subcontractor'), wn=getVal('work-name'),
         loc=getVal('location'), dloc=getVal('detail-location'),
         sd=getVal('start-date'), ed=getVal('end-date'),
@@ -1600,6 +1600,7 @@ function validateStep(step){
     data.contractorPhone=cp; data.contractorEmail=ce;
     onLocationChange(loc);
   }
+  
 
   else if(step===2){
     var msdsNames = [];
@@ -1953,7 +1954,7 @@ function submitDoc(){
   var se = getVal('sub-email');
   var sp = getVal('sub-phone');
  
-  // ⭐ 자동 스크롤 적용
+  // ⭐ 자동 스크롤 + 하이라이트 적용
   if(!se){
     scrollToField('sub-email', '수급인 이메일을 입력해주세요', 'danger');
     return;
@@ -1967,7 +1968,7 @@ function submitDoc(){
     return;
   }
   if(!hasSig('contractor-sig')){
-    // 서명 캔버스로 스크롤
+    // 서명 캔버스는 id가 아닌 클래스라 별도 처리
     var sigWrap = document.querySelector('.sig-wrap');
     if(sigWrap){
       sigWrap.scrollIntoView({behavior:'smooth', block:'center'});
