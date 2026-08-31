@@ -16,6 +16,28 @@
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE 시스템 (2026-09-01 통일)
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+
 <meta name="theme-color" content="#003C7E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>포항양극재 출입자 안전퀴즈</title>
@@ -660,12 +682,18 @@ body{
   color:#fff;box-shadow:0 4px 14px rgba(14,138,107,.28);
 }
 
-/* ═══ TOAST ═══ */
+/* ═══ TOAST (2026-09-01 UX 개선: 상단 → 하단) ═══ */
 .toast-wrap{
-  position:fixed;top:64px;left:50%;transform:translateX(-50%);
-  z-index:9999;display:flex;flex-direction:column;gap:7px;
+  position:fixed;
+  bottom:100px;                              /* ⭐ 상단에서 하단으로 */
+  left:50%;transform:translateX(-50%);
+  z-index:9999;
+  display:flex;
+  flex-direction:column-reverse;              /* ⭐ 최신이 위 */
+  gap:7px;
   pointer-events:none;width:90%;max-width:390px;
 }
+
 .toast{
   padding:13px 17px;border-radius:12px;
   font-size:14px;font-weight:800;color:#fff;
@@ -679,7 +707,7 @@ body{
 .toast.info{background:linear-gradient(135deg,var(--deep),var(--bright));}
 .toast.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
 @keyframes tslide{
-  from{opacity:0;transform:translateY(-12px);}
+  from{opacity:0;transform:translateY(12px);}
   to{opacity:1;transform:translateY(0);}
 }
 
