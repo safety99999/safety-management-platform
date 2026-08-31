@@ -795,7 +795,6 @@ window.addEventListener('DOMContentLoaded', function(){
   initSig();
   migrateLegacyKeys();
 
-// window.addEventListener('DOMContentLoaded', function(){ 부터 이어짐
   var params = new URLSearchParams(window.location.search);
   var id = params.get('safeinfoNo') || params.get('doc');
   workIdFromUrl = params.get('workId') || '';
