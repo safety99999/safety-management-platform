@@ -4923,31 +4923,59 @@ if(document.readyState === "loading"){
   // ═══════════════════════════════════════
   // 메인 함수: 빠른실행 버튼 클릭 처리
   // ═══════════════════════════════════════
- // ═══════════════════════════════════════════════════
-// ⭐ 안전정보제공서 상태 조회 (2026-09-01 신규)
-// 작업 선택 시 이미 발송된 안전정보제공서가 있는지 확인
 // ═══════════════════════════════════════════════════
-window.getWorkSafetyInfoStatus = function(workId){
-  try {
-    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
-    var linked = docs.find(function(d){ 
-      return d.workId === workId; 
+// ⭐ 안전퀴즈 상태 조회
+// 같은 workId의 가장 최근 제출 기록을 기준으로 판정
+// ═══════════════════════════════════════════════════
+window.getWorkQuizStatus = function(workId){
+  try{
+    var quizzes = JSON.parse(
+      localStorage.getItem('safetyQuizzes') || '[]'
+    );
+
+    var linked = quizzes.filter(function(q){
+      return q && q.workId === workId;
     });
-    
-    if(!linked) return null;  // 미발송
-    
+
+    if(!linked.length) return null;
+
+    linked.sort(function(a, b){
+      var aTime = new Date(
+        a.completedAt || a.createdAt || 0
+      ).getTime();
+
+      var bTime = new Date(
+        b.completedAt || b.createdAt || 0
+      ).getTime();
+
+      return bTime - aTime;
+    });
+
+    var latest = linked[0];
+
+    var completed = (
+      latest.passed === true &&
+      latest.status === '합격' &&
+      !!latest.signature &&
+      !!latest.completedAt
+    );
+
     return {
-      status: linked.status || '발행완료',
-      safeinfoNo: linked.safeinfoNo,
-      createdAt: linked.createdAt,
-      subEmail: linked.subcontractorEmail || '',
-      subcontractor: linked.subcontractor || ''
+      completed: completed,
+      passed: latest.passed === true,
+      status: latest.status || '',
+      quizId: latest.quizId || '',
+      respondent: latest.respondent || latest.name || '',
+      score: latest.score,
+      totalQuestions: latest.totalQuestions || 13,
+      completedAt: latest.completedAt || latest.createdAt || ''
     };
-  } catch(e){
-    console.warn('[getWorkSafetyInfoStatus] 오류:', e);
+  }catch(e){
+    console.warn('[getWorkQuizStatus] 오류:', e);
     return null;
   }
 };
+
 
 // ⭐ 필터 상태 저장
 window._workPickerFilter = {
@@ -5150,13 +5178,15 @@ window._workPickerFilter = {
     html += '</div>';
     
     // 5. 안내 배너 (안전정보제공서일 때만)
-    if(appType === 'safety-info'){
-      html += 
+       if(appType === 'quiz'){
+      html +=
         '<div class="picker-notice">' +
-          '💡 이미 발송된 작업은 <strong>비활성화</strong>되어 중복 발송을 방지합니다.' +
+          '💡 합격·서명·제출까지 완료한 작업은 ' +
+          '<strong>비활성화</strong>됩니다. ' +
+          '불합격 또는 미완료 작업은 다시 응시할 수 있습니다.' +
         '</div>';
     }
-    
+
     // 6. 작업 카드 목록
     if(filtered.length === 0){
       html += 
@@ -5185,27 +5215,66 @@ window._workPickerFilter = {
     var manager = w.manager || w.workManager || w.contractorManager || '';
     var workTime = w.workTimeRaw || '';
     
-    // 안전정보제공서 상태 조회
+       // 앱별 완료 상태 조회
     var safetyStatus = null;
+    var quizStatus = null;
+
     if(appType === 'safety-info'){
       safetyStatus = window.getWorkSafetyInfoStatus(workId);
     }
-    
-    var cardClass = 'work-card-compact';
+
+    if(appType === 'quiz'){
+      quizStatus = window.getWorkQuizStatus(workId);
+    }
+
+    // 합격·서명·제출까지 완료한 퀴즈만 재선택 방지
+    var quizCompleted = !!(
+      quizStatus && quizStatus.completed
+    );
+
+    var selectionBlocked = !!safetyStatus || quizCompleted;
+
+        var cardClass = 'work-card-compact';
+
     if(isDanger) cardClass += ' danger';
-    if(!safetyStatus) cardClass += ' selectable';
-    if(safetyStatus && safetyStatus.status === '발행완료') cardClass += ' sent';
-    if(safetyStatus && safetyStatus.status === '서명완료') cardClass += ' completed';
+
+    if(!selectionBlocked){
+      cardClass += ' selectable';
+    }
+
+    if(safetyStatus && safetyStatus.status === '발행완료'){
+      cardClass += ' sent';
+    }
+
+    if(
+      safetyStatus &&
+      (
+        safetyStatus.status === '수급인확인' ||
+        safetyStatus.status === '서명완료'
+      )
+    ){
+      cardClass += ' completed';
+    }
+
+    if(quizCompleted){
+      cardClass += ' completed';
+    }
+
+  
     
     var html = '';
     
-    if(safetyStatus){
-      // 이미 발송된 경우
+        if(selectionBlocked){
+      // 완료된 작업은 클릭 비활성화
       html += '<div class="' + cardClass + '">';
     } else {
-      // 선택 가능
-      html += '<div class="' + cardClass + '" onclick="pickWork(\'' + escapeJsString(workId) + '\')">';
+      // 미완료 또는 불합격 작업은 선택 가능
+      html += '<div class="' + cardClass +
+        '" onclick="pickWork(\'' +
+        escapeJsString(workId) +
+        '\')">';
     }
+
     
     // 상단: 뱃지 + 담당자
     html += '<div class="wc-top">';
@@ -5227,15 +5296,58 @@ window._workPickerFilter = {
     }
     html += '</div>';
     
-    // 안전정보제공서 상태 표시
+    // 앱별 상태 표시
     if(safetyStatus){
       var statusInfo = getStatusInfo(safetyStatus.status);
-      html += '<div class="wc-status ' + statusInfo.class + '">' + statusInfo.icon + ' ' + statusInfo.label + '</div>';
-      html += '<div class="wc-doc-no">📄 ' + escHtml(safetyStatus.safeinfoNo) + '</div>';
-      html += '<div class="wc-btn disabled">🚫 이미 발송된 작업</div>';
+
+      html += '<div class="wc-status ' +
+        statusInfo.class + '">' +
+        statusInfo.icon + ' ' +
+        statusInfo.label + '</div>';
+
+      html += '<div class="wc-doc-no">📄 ' +
+        escHtml(safetyStatus.safeinfoNo || '-') +
+        '</div>';
+
+      html += '<div class="wc-btn disabled">' +
+        '🚫 이미 발송된 작업</div>';
+
+    } else if(quizCompleted){
+      html += '<div class="wc-status green">' +
+        '✅ 안전퀴즈 완료</div>';
+
+      html += '<div class="wc-doc-no">' +
+        '🎯 ' + escHtml(quizStatus.quizId || '-') +
+        (quizStatus.respondent
+          ? ' · ' + escHtml(quizStatus.respondent)
+          : '') +
+        '</div>';
+
+      html += '<div class="wc-btn disabled">' +
+        '✅ 응시 완료</div>';
+
+    } else if(quizStatus && !quizStatus.completed){
+      // 기존 기록이 있으나 완료 조건을 충족하지 못한 경우
+      html += '<div class="wc-status orange">' +
+        (quizStatus.passed
+          ? '🟠 서약·서명 완료 필요'
+          : '🔄 재응시 필요') +
+        '</div>';
+
+      if(quizStatus.quizId){
+        html += '<div class="wc-doc-no">🎯 ' +
+          escHtml(quizStatus.quizId) +
+          '</div>';
+      }
+
+      html += '<div class="wc-btn">' +
+        '🔄 안전퀴즈 계속 진행 →</div>';
+
     } else {
-      html += '<div class="wc-btn">✅ 이 작업으로 진행 →</div>';
+      html += '<div class="wc-btn">' +
+        '✅ 이 작업으로 진행 →</div>';
     }
+
     
     html += '</div>';
     
