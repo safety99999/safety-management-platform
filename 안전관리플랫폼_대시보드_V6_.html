@@ -3931,7 +3931,6 @@ updateWorkStatus();
       }else{
         html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 작업종료</div>';
       }
-
       // ⭐ 위험등급 수정 버튼 (관리자용, 모든 작업에 표시)
       html += '<button type="button" ' +
               'onclick="openRiskEditModal(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
@@ -3944,7 +3943,23 @@ updateWorkStatus();
               (work.riskLevel === '고위험' ? '🚨 고위험' : '⚪ 일반') +
               ')</button>';
 
+      // ⭐ 점검등록 버튼 (작업중/허가완료 상태에서만 표시) - 2026-08-31 신규
+      if(work.status === '작업중' || work.status === '허가완료'){
+        html += '<button type="button" ' +
+                'onclick="openInspSheetFromWork(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
+                'style="margin-top:6px;width:100%;padding:12px;' +
+                'background:linear-gradient(135deg,#B0202F,var(--stop));color:#fff;' +
+                'border:0;border-radius:var(--r-s);' +
+                'font-family:inherit;font-size:13.5px;font-weight:800;' +
+                'cursor:pointer;letter-spacing:-.02em;' +
+                'box-shadow:0 4px 12px rgba(214,39,61,.25);">' +
+                '🚨 이 작업 점검등록' +
+                '</button>';
+      }
+
       html += '</div>';
+
+
 
     });
 
@@ -5009,6 +5024,27 @@ window.escapeJsStringForRisk = function(str){
     .replace(/"/g, '\\"')
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r');
+};
+// ⭐ 작업 상세보기에서 점검등록 화면 열기 (2026-08-31 신규)
+window.openInspSheetFromWork = function(workId, event){
+  if(event){
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  // 현재 작업 목록 시트 닫기
+  if(typeof closeSheet === 'function'){
+    closeSheet('ws');
+  }
+  
+  // 점검등록 시트 열기 (workId 전달로 작업 자동 연결)
+  setTimeout(function(){
+    if(typeof openInspSheet === 'function'){
+      openInspSheet(workId);
+    } else {
+      console.error('[openInspSheetFromWork] openInspSheet 함수를 찾을 수 없음');
+    }
+  }, 350);
 };
 
 window.openRiskEditModal = function(workId, event){
