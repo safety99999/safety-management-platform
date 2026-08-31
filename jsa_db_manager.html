@@ -3,45 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JSA DB 관리자</title>
+  <title>JSA DB 관리자 v2</title>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
   <style>
+    * { box-sizing: border-box; }
+    
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Malgun Gothic', Arial, sans-serif;
       margin: 20px;
       background: #f7f9fc;
       color: #222;
+      line-height: 1.5;
     }
+    
     h1 {
       margin-bottom: 10px;
+      color: #003C7E;
+      font-size: 24px;
     }
+    
+    .version-badge {
+      display: inline-block;
+      background: #0067b1;
+      color: white;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    
     .box {
       background: #fff;
       border: 1px solid #d9e1ea;
       border-radius: 10px;
       padding: 16px;
       margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
+    
+    .box h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #003C7E;
+      font-size: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #eef3f8;
+    }
+    
     .hint {
       font-size: 13px;
       color: #555;
-      line-height: 1.6;
+      line-height: 1.7;
     }
+    
+    .hint strong {
+      color: #003C7E;
+    }
+    
+    .hint-warn {
+      background: #FEF6E7;
+      border-left: 4px solid #B45309;
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #7a4a06;
+    }
+    
     textarea {
       width: 100%;
       height: 220px;
-      font-family: Consolas, monospace;
+      font-family: Consolas, 'Courier New', monospace;
       font-size: 13px;
       padding: 10px;
       border: 1px solid #c9d4df;
       border-radius: 8px;
-      box-sizing: border-box;
       resize: vertical;
     }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #0067b1;
+      box-shadow: 0 0 0 3px rgba(0,103,177,0.1);
+    }
+    
     button {
       padding: 10px 16px;
       margin-right: 8px;
@@ -50,45 +100,101 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.15s;
     }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    
+    button:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
     .btn-primary {
       background: #0067b1;
       color: white;
     }
+    
     .btn-secondary {
       background: #e9eef5;
       color: #222;
     }
+    
     .btn-success {
       background: #0e8a6b;
       color: white;
     }
+    
     .btn-danger {
       background: #d6273d;
       color: white;
     }
+    
+    .btn-warn {
+      background: #B45309;
+      color: white;
+    }
+    
+    input[type="file"] {
+      padding: 8px;
+      border: 1px solid #c9d4df;
+      border-radius: 8px;
+      font-family: inherit;
+      background: #f7f9fc;
+    }
+    
     .status {
       margin-top: 10px;
       font-size: 14px;
       font-weight: bold;
+      padding: 8px 12px;
+      border-radius: 8px;
     }
-    .ok { color: #0e8a6b; }
-    .warn { color: #b45309; }
-    .err { color: #d6273d; }
+    
+    .status.ok {
+      background: #EDFAF6;
+      color: #0e8a6b;
+    }
+    
+    .status.warn {
+      background: #FEF6E7;
+      color: #b45309;
+    }
+    
+    .status.err {
+      background: #FFF3F5;
+      color: #d6273d;
+    }
+    
     .summary {
       margin-top: 10px;
-      padding: 10px;
+      padding: 12px 14px;
       border-radius: 8px;
       background: #f3f6fa;
       font-size: 13px;
-      line-height: 1.7;
+      line-height: 1.8;
     }
+    
+    .summary strong {
+      color: #003C7E;
+    }
+    
     .preview-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 12px;
       margin-top: 10px;
     }
+    
     .preview-table th,
     .preview-table td {
       border: 1px solid #d9e1ea;
@@ -96,34 +202,120 @@
       text-align: left;
       vertical-align: top;
     }
+    
     .preview-table th {
+      background: #003C7E;
+      color: white;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    
+    .preview-table tr:nth-child(even) td {
+      background: #f7f9fc;
+    }
+    
+    .preview-table tr:hover td {
       background: #eef3f8;
     }
+    
     .mono {
-      font-family: Consolas, monospace;
+      font-family: Consolas, 'Courier New', monospace;
+      background: #eef3f8;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    /* 위험도 색상 표시 */
+    .risk-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    
+    .risk-low {
+      background: #EDFAF6;
+      color: #0e8a6b;
+    }
+    
+    .risk-med {
+      background: #FEF6E7;
+      color: #b45309;
+    }
+    
+    .risk-high {
+      background: #FFF4EC;
+      color: #E8590C;
+    }
+    
+    .risk-critical {
+      background: #FFF3F5;
+      color: #d6273d;
+    }
+    
+    .risk-na {
+      background: #f3f6fa;
+      color: #666;
+    }
+    
+    /* 통제 적정성 색상 */
+    .ctrl-ok {
+      color: #0e8a6b;
+      font-weight: bold;
+    }
+    
+    .ctrl-warn {
+      color: #b45309;
+      font-weight: bold;
+    }
+    
+    .ctrl-no {
+      color: #d6273d;
+      font-weight: bold;
+    }
+    
+    /* 반응형 */
+    @media (max-width: 768px) {
+      body { margin: 10px; }
+      h1 { font-size: 20px; }
+      .preview-table { font-size: 11px; }
+      button { font-size: 13px; padding: 8px 12px; }
     }
   </style>
 </head>
 <body>
-  <h1>JSA DB 관리자</h1>
+
+  <h1>JSA DB 관리자 <span class="version-badge">v2</span></h1>
 
   <div class="box">
     <div class="hint">
-      - 템플릿 다운로드 / 전체 DB 다운로드 / 업로드 양식은 모두 <strong>동일한 16열 구조</strong>입니다.<br>
+      - 템플릿 / 전체 DB / 업로드 양식은 모두 <strong>동일한 17열 구조</strong>입니다.<br>
       - 업로드는 <strong>엑셀 파일 선택</strong> 또는 <strong>엑셀 복사 후 붙여넣기</strong> 둘 다 가능합니다.<br>
       - Firestore 저장 시 필요한 관리값(<strong>jsaId, rowNo, version, 상태값</strong>)은 내부에서 자동 생성됩니다.<br>
-      - 컬렉션명은 <strong>jsaDatabase</strong>입니다.
+      - 컬렉션명은 <strong class="mono">jsaDatabase</strong> 입니다.
+    </div>
+    <div class="hint-warn">
+      <strong>⚠️ v2 주요 변경사항:</strong><br>
+      1. <strong>위험도</strong> 컬럼 추가 (저위험/중위험/고위험/매우고위험/판정불가)<br>
+      2. <strong>통제 적정성</strong> 값 통일 (X → × 곱셈기호)<br>
+      3. 자동 검증 강화
     </div>
   </div>
 
   <div class="box">
-    <h3>다운로드</h3>
+    <h3>📥 다운로드</h3>
     <button class="btn-success" onclick="downloadTemplateXLSX()">엑셀 템플릿 다운로드</button>
     <button class="btn-secondary" onclick="downloadAllXLSX()">전체 DB 엑셀 다운로드</button>
+    <div class="hint" style="margin-top:10px;">
+      템플릿에는 <strong>17개 컬럼</strong>이 포함되어 있습니다.<br>
+      전체 DB 다운로드는 Firestore의 <span class="mono">jsaDatabase</span> 컬렉션 전체를 조회합니다.
+    </div>
   </div>
 
   <div class="box">
-    <h3>업로드 - 엑셀 파일</h3>
+    <h3>📤 업로드 - 엑셀 파일</h3>
     <input type="file" id="excelFile" accept=".xlsx,.xls" />
     <div style="margin-top:10px;">
       <button class="btn-secondary" onclick="previewExcelFile()">파일 미리보기</button>
@@ -132,23 +324,26 @@
   </div>
 
   <div class="box">
-    <h3>업로드 - 엑셀 복사 붙여넣기</h3>
-    <textarea id="pasteInput" placeholder="엑셀에서 표를 복사한 후 여기에 붙여넣으세요."></textarea>
+    <h3>📤 업로드 - 엑셀 복사 붙여넣기</h3>
+    <textarea id="pasteInput" placeholder="엑셀에서 표를 복사한 후 여기에 붙여넣으세요.&#10;헤더 행을 반드시 포함해주세요."></textarea>
     <div style="margin-top:10px;">
       <button class="btn-secondary" onclick="previewPastedData()">붙여넣기 미리보기</button>
       <button class="btn-primary" onclick="uploadFromPastedData()">붙여넣기 업로드</button>
-      <button class="btn-danger" onclick="clearAll()">초기화</button>
+      <button class="btn-danger" onclick="clearAll()">🗑️ 초기화</button>
     </div>
     <div id="status" class="status"></div>
   </div>
 
   <div class="box">
-    <h3>미리보기</h3>
+    <h3>🔍 미리보기</h3>
     <div id="previewSummary" class="summary">아직 데이터가 없습니다.</div>
     <div id="previewArea" style="margin-top:10px;">-</div>
   </div>
 
   <script>
+    // ═══════════════════════════════════════════════
+    // Firebase 초기화
+    // ═══════════════════════════════════════════════
     const firebaseConfig = {
       apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
       authDomain: "safety-management-platfo-5f413.firebaseapp.com",
@@ -167,42 +362,106 @@
     const COLLECTION_NAME = "jsaDatabase";
     const PREVIEW_LIMIT = 20;
 
+    // ═══════════════════════════════════════════════
+    // 전역 상태
+    // ═══════════════════════════════════════════════
     let parsedRowsCache = [];
 
+    // ═══════════════════════════════════════════════
+    // 상수: 17열 헤더 정의 (⭐ 위험도 추가)
+    // ═══════════════════════════════════════════════
     const TEMPLATE_HEADERS = [
-      "No",
-      "분류코드",
-      "관리시트",
-      "작업유형",
-      "세부작업유형",
-      "작업명",
-      "작업단계",
-      "사용장비·공구",
-      "사용물질·에너지",
-      "원문 위험요인",
-      "사고유형",
-      "사고시나리오",
-      "안전대책",
-      "표준 안전대책명",
-      "통제 적정성",
-      "비고"
+      "분류코드",      // 1
+      "관리시트",      // 2
+      "작업유형",      // 3
+      "세부작업유형",  // 4
+      "작업명",        // 5
+      "작업단계",      // 6
+      "사용장비·공구", // 7
+      "사용물질·에너지", // 8
+      "원문 위험요인", // 9
+      "사고유형",      // 10
+      "사고시나리오",  // 11
+      "안전대책",      // 12
+      "표준 안전대책명", // 13
+      "통제 적정성",   // 14
+      "위험도",        // 15 ⭐ 신규
+      "비고"           // 16
     ];
 
-    function setStatus(msg, cls) {
-      const el = document.getElementById("status");
-      el.className = "status " + (cls || "");
-      el.textContent = msg;
-    }
+    // ═══════════════════════════════════════════════
+    // 상수: 허용 값 정의
+    // ═══════════════════════════════════════════════
+    const ALLOWED_CLASS_CODES = [
+      "WRK", "INT", "SOP", "JSA", "TBM", "PTW",
+      "ACC", "NMS", "REC", "EXT", "LAW", "UNK"
+    ];
 
-    function clearAll() {
-      document.getElementById("excelFile").value = "";
-      document.getElementById("pasteInput").value = "";
-      document.getElementById("previewSummary").innerHTML = "아직 데이터가 없습니다.";
-      document.getElementById("previewArea").innerHTML = "-";
-      setStatus("", "");
-      parsedRowsCache = [];
-    }
+    const ALLOWED_CONTROL_ADEQUACY = ["○", "△", "×"];
 
+    const ALLOWED_RISK_LEVELS = [
+      "저위험", "중위험", "고위험", "매우고위험", "판정불가"
+    ];
+
+    // 통제 적정성 값 자동 정규화 매핑
+    const CONTROL_ADEQUACY_NORMALIZE = {
+      "○": "○",
+      "O": "○",
+      "o": "○",
+      "적정": "○",
+      "△": "△",
+      "▲": "△",
+      "세모": "△",
+      "보완": "△",
+      "×": "×",
+      "X": "×",
+      "x": "×",
+      "엑스": "×",
+      "미흡": "×"
+    };
+
+    // 위험도 값 자동 정규화 매핑
+    const RISK_LEVEL_NORMALIZE = {
+      "저위험": "저위험",
+      "저": "저위험",
+      "낮음": "저위험",
+      "low": "저위험",
+      "LOW": "저위험",
+      
+      "중위험": "중위험",
+      "중": "중위험",
+      "보통": "중위험",
+      "medium": "중위험",
+      "MED": "중위험",
+      "MEDIUM": "중위험",
+      
+      "고위험": "고위험",
+      "고": "고위험",
+      "높음": "고위험",
+      "high": "고위험",
+      "HIGH": "고위험",
+      
+      "매우고위험": "매우고위험",
+      "매우높음": "매우고위험",
+      "매우고": "매우고위험",
+      "최고": "매우고위험",
+      "치명": "매우고위험",
+      "critical": "매우고위험",
+      "CRITICAL": "매우고위험",
+      
+      "판정불가": "판정불가",
+      "판정_불가": "판정불가",
+      "판정 불가": "판정불가",
+      "미정": "판정불가",
+      "N/A": "판정불가",
+      "n/a": "판정불가",
+      "unknown": "판정불가",
+      "UNKNOWN": "판정불가"
+    };
+
+    // ═══════════════════════════════════════════════
+    // 유틸: HTML 이스케이프
+    // ═══════════════════════════════════════════════
     function escapeHtml(str) {
       return String(str || "")
         .replace(/&/g, "&amp;")
@@ -212,6 +471,18 @@
         .replace(/'/g, "&#039;");
     }
 
+    // ═══════════════════════════════════════════════
+    // 유틸: 상태 메시지 표시
+    // ═══════════════════════════════════════════════
+    function setStatus(msg, cls) {
+      const el = document.getElementById("status");
+      el.className = "status " + (cls || "");
+      el.textContent = msg;
+    }
+
+    // ═══════════════════════════════════════════════
+    // 유틸: 날짜 관련
+    // ═══════════════════════════════════════════════
     function getToday() {
       const d = new Date();
       const yyyy = d.getFullYear();
@@ -230,11 +501,54 @@
       const ss = String(d.getSeconds()).padStart(2, "0");
       return `${yyyy}${mm}${dd}_${hh}${mi}${ss}`;
     }
-
+    // ═══════════════════════════════════════════════
+    // 유틸: 값 정규화 함수
+    // ═══════════════════════════════════════════════
+    
+    /**
+     * 분류코드 정규화 (대문자 + 트림)
+     */
     function normalizeClassCode(value) {
       return String(value || "").trim().toUpperCase();
     }
 
+    /**
+     * 통제 적정성 값 자동 정규화
+     * X → ×, O → ○ 등 자동 변환
+     */
+    function normalizeControlAdequacy(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      
+      // 정규화 매핑 조회
+      if (CONTROL_ADEQUACY_NORMALIZE[raw] !== undefined) {
+        return CONTROL_ADEQUACY_NORMALIZE[raw];
+      }
+      
+      // 매핑에 없으면 원본 반환 (검증에서 걸림)
+      return raw;
+    }
+
+    /**
+     * 위험도 값 자동 정규화
+     * "저" → "저위험" 등 자동 변환
+     */
+    function normalizeRiskLevel(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      
+      // 정규화 매핑 조회
+      if (RISK_LEVEL_NORMALIZE[raw] !== undefined) {
+        return RISK_LEVEL_NORMALIZE[raw];
+      }
+      
+      // 매핑에 없으면 원본 반환 (검증에서 걸림)
+      return raw;
+    }
+
+    // ═══════════════════════════════════════════════
+    // ID 생성 함수
+    // ═══════════════════════════════════════════════
     function buildJsaId(no, classCode) {
       return `JSA-${classCode}-${String(no).padStart(6, "0")}`;
     }
@@ -243,60 +557,118 @@
       return `${jsaId}_${String(rowNo).padStart(3, "0")}`;
     }
 
-    function validateAndMapRows(rawRows) {
+    // ═══════════════════════════════════════════════
+    // 자동 No 발급
+    // 
+    // 사용자가 No 컬럼을 제공하지 않으므로 순차 발급
+    // 업로드 시점 기준 다음 번호부터 시작
+    // ═══════════════════════════════════════════════
+    async function getNextStartNo() {
+      try {
+        const snap = await db.collection(COLLECTION_NAME).get();
+        let maxNo = 0;
+        
+        snap.forEach(doc => {
+          const data = doc.data() || {};
+          const no = Number(data.no || 0);
+          if (Number.isFinite(no) && no > maxNo) {
+            maxNo = no;
+          }
+        });
+        
+        return maxNo + 1;
+      } catch (e) {
+        console.warn("기존 No 조회 실패, 1부터 시작:", e);
+        return 1;
+      }
+    }
+
+    // ═══════════════════════════════════════════════
+    // 유효성 검증 & 매핑 (핵심 로직)
+    // 
+    // 17열 헤더 확인 + 각 필드 검증
+    // 자동 정규화 후 검증
+    // ═══════════════════════════════════════════════
+    async function validateAndMapRows(rawRows) {
+      // 1. 데이터 존재 확인
       if (!rawRows || rawRows.length === 0) {
         throw new Error("데이터가 없습니다.");
       }
 
+      // 2. 헤더 검증
       const headers = Object.keys(rawRows[0]).map(h => String(h).trim());
       const missingHeaders = TEMPLATE_HEADERS.filter(h => !headers.includes(h));
 
       if (missingHeaders.length > 0) {
-        throw new Error("필수 헤더 누락: " + missingHeaders.join(", "));
+        throw new Error(
+          "필수 헤더 누락: " + missingHeaders.join(", ") + 
+          "\n\n템플릿 헤더는 17개이며, 반드시 아래 순서를 지켜야 합니다:\n" + 
+          TEMPLATE_HEADERS.join(" | ")
+        );
       }
 
-      const allowedClassCodes = ["WRK", "INT", "NMS", "ACC"];
-      const allowedControlAdequacy = ["○", "△", "X"];
+      // 3. 자동 No 시작 번호 조회
+      const startNo = await getNextStartNo();
+      console.log("자동 No 시작:", startNo);
 
+      // 4. 필수 필드 정의
+      const requiredFields = [
+        "분류코드",
+        "관리시트",
+        "작업유형",
+        "세부작업유형",
+        "작업명",
+        "작업단계",
+        "원문 위험요인",
+        "사고유형",
+        "사고시나리오",
+        "안전대책",
+        "표준 안전대책명",
+        "통제 적정성",
+        "위험도"
+      ];
+
+      // 5. 각 행 검증 및 매핑
       const parsedRows = rawRows.map((obj, idx) => {
-        const lineNo = idx + 2;
+        const lineNo = idx + 2; // 엑셀 행 번호 (헤더 다음부터)
+        const no = startNo + idx; // 자동 발급
 
-        const no = Number(obj["No"]);
+        // 분류코드 검증
         const classCode = normalizeClassCode(obj["분류코드"]);
-
-        if (!Number.isFinite(no) || no <= 0) {
-          throw new Error(`${lineNo}행: No 값이 올바르지 않습니다.`);
+        if (!ALLOWED_CLASS_CODES.includes(classCode)) {
+          throw new Error(
+            `${lineNo}행: 분류코드 값이 올바르지 않습니다. (${classCode})\n` +
+            `허용값: ${ALLOWED_CLASS_CODES.join(", ")}`
+          );
         }
 
-        if (!allowedClassCodes.includes(classCode)) {
-          throw new Error(`${lineNo}행: 분류코드 값이 올바르지 않습니다. (${classCode})`);
-        }
-
-        const requiredFields = [
-          "관리시트",
-          "작업유형",
-          "세부작업유형",
-          "작업명",
-          "작업단계",
-          "원문 위험요인",
-          "사고유형",
-          "사고시나리오",
-          "안전대책",
-          "표준 안전대책명",
-          "통제 적정성"
-        ];
-
+        // 필수 필드 검증
         for (const field of requiredFields) {
-          if (!String(obj[field] || "").trim()) {
+          const val = String(obj[field] || "").trim();
+          if (!val) {
             throw new Error(`${lineNo}행: 필수값 누락 - ${field}`);
           }
         }
 
-        const controlAdequacy = String(obj["통제 적정성"] || "").trim();
-        if (!allowedControlAdequacy.includes(controlAdequacy)) {
-          throw new Error(`${lineNo}행: 통제 적정성 값이 올바르지 않습니다. (${controlAdequacy})`);
+        // 통제 적정성 검증 (자동 정규화 후)
+        const controlAdequacy = normalizeControlAdequacy(obj["통제 적정성"]);
+        if (!ALLOWED_CONTROL_ADEQUACY.includes(controlAdequacy)) {
+          throw new Error(
+            `${lineNo}행: 통제 적정성 값이 올바르지 않습니다. (원본: "${obj["통제 적정성"]}" → 정규화: "${controlAdequacy}")\n` +
+            `허용값: ${ALLOWED_CONTROL_ADEQUACY.join(", ")}`
+          );
         }
 
+        // ⭐ 위험도 검증 (자동 정규화 후)
+        const riskLevel = normalizeRiskLevel(obj["위험도"]);
+        if (!ALLOWED_RISK_LEVELS.includes(riskLevel)) {
+          throw new Error(
+            `${lineNo}행: 위험도 값이 올바르지 않습니다. (원본: "${obj["위험도"]}" → 정규화: "${riskLevel}")\n` +
+            `허용값: ${ALLOWED_RISK_LEVELS.join(", ")}`
+          );
+        }
+
+        // ID 자동 생성
         const jsaId = buildJsaId(no, classCode);
         const rowNo = 1;
         const version = 1;
@@ -305,15 +677,19 @@
         const effectiveDate = getToday();
         const docId = buildDocId(jsaId, rowNo);
 
+        // 매핑 객체 생성
         return {
+          // 관리 필드 (자동)
           docId: docId,
           jsaId: jsaId,
+          no: no,
           rowNo: rowNo,
           version: version,
           status: status,
           changeReason: changeReason,
           effectiveDate: effectiveDate,
-          no: no,
+          
+          // 데이터 필드 (사용자 입력)
           classCode: classCode,
           sheet: String(obj["관리시트"] || "").trim(),
           workType: String(obj["작업유형"] || "").trim(),
@@ -327,14 +703,18 @@
           scenario: String(obj["사고시나리오"] || "").trim(),
           detailedMeasures: String(obj["안전대책"] || "").trim(),
           standardMeasures: String(obj["표준 안전대책명"] || "").trim(),
-          controlAdequacy: controlAdequacy,
+          controlAdequacy: controlAdequacy,  // 정규화 값 저장
+          riskLevel: riskLevel,               // ⭐ 정규화 값 저장
           remark: String(obj["비고"] || "").trim(),
+          
+          // 출처 필드
           sourceType: "excel-import",
           sourceFile: "jsa_upload.xlsx",
           isProduction: true
         };
       });
 
+      // 6. 내부 중복 docId 검증
       const docIdSet = new Set();
       for (const row of parsedRows) {
         if (docIdSet.has(row.docId)) {
@@ -346,26 +726,92 @@
       return parsedRows;
     }
 
+    // ═══════════════════════════════════════════════
+    // 미리보기 렌더링
+    // 
+    // 위험도·통제 적정성을 색상 배지로 표시
+    // ═══════════════════════════════════════════════
     function renderPreview(rows) {
       const previewRows = rows.slice(0, PREVIEW_LIMIT);
 
-      document.getElementById("previewSummary").innerHTML = `
-        <strong>파싱 결과</strong><br>
+      // 위험도 통계
+      const riskStats = {
+        저위험: 0,
+        중위험: 0,
+        고위험: 0,
+        매우고위험: 0,
+        판정불가: 0
+      };
+      
+      // 통제 적정성 통계
+      const ctrlStats = {
+        "○": 0,
+        "△": 0,
+        "×": 0
+      };
+      
+      // 분류코드 통계
+      const classStats = {};
+      
+      rows.forEach(row => {
+        if (riskStats[row.riskLevel] !== undefined) {
+          riskStats[row.riskLevel]++;
+        }
+        if (ctrlStats[row.controlAdequacy] !== undefined) {
+          ctrlStats[row.controlAdequacy]++;
+        }
+        if (!classStats[row.classCode]) classStats[row.classCode] = 0;
+        classStats[row.classCode]++;
+      });
+
+      // 요약 HTML 생성
+      let summaryHtml = `
+        <strong>📋 파싱 결과</strong><br>
         - 총 행 수: <span class="mono">${rows.length}</span>건<br>
         - 미리보기 표시: 상위 <span class="mono">${previewRows.length}</span>건<br>
-        - 내부 자동 생성: <span class="mono">jsaId / rowNo / version / 상태값</span>
+        - 자동 생성 필드: <span class="mono">no, jsaId, rowNo, version, 상태값</span><br>
+        <br>
+        <strong>📊 위험도 분포</strong><br>
       `;
+      
+      Object.entries(riskStats).forEach(([level, count]) => {
+        if (count > 0) {
+          const cls = getRiskBadgeClass(level);
+          const pct = ((count / rows.length) * 100).toFixed(1);
+          summaryHtml += `- <span class="risk-badge ${cls}">${level}</span> ${count}건 (${pct}%)<br>`;
+        }
+      });
+      
+      summaryHtml += `<br><strong>⚖️ 통제 적정성 분포</strong><br>`;
+      Object.entries(ctrlStats).forEach(([symbol, count]) => {
+        if (count > 0) {
+          const cls = getControlClass(symbol);
+          const pct = ((count / rows.length) * 100).toFixed(1);
+          summaryHtml += `- <span class="${cls}">${symbol}</span> ${count}건 (${pct}%)<br>`;
+        }
+      });
+      
+      summaryHtml += `<br><strong>🏷️ 분류코드 분포</strong><br>`;
+      const sortedClasses = Object.entries(classStats).sort((a, b) => b[1] - a[1]);
+      sortedClasses.forEach(([code, count]) => {
+        summaryHtml += `- <span class="mono">${code}</span> ${count}건 `;
+      });
 
+      document.getElementById("previewSummary").innerHTML = summaryHtml;
+
+      // 테이블 HTML 생성
       let html = `
+        <div style="overflow-x:auto;">
         <table class="preview-table">
           <thead>
             <tr>
               <th>No</th>
               <th>분류코드</th>
+              <th>작업유형</th>
               <th>작업명</th>
-              <th>작업단계</th>
-              <th>원문 위험요인</th>
-              <th>통제 적정성</th>
+              <th>사고유형</th>
+              <th>통제</th>
+              <th>위험도</th>
               <th>자동생성 jsaId</th>
             </tr>
           </thead>
@@ -373,23 +819,67 @@
       `;
 
       previewRows.forEach(row => {
+        const riskCls = getRiskBadgeClass(row.riskLevel);
+        const ctrlCls = getControlClass(row.controlAdequacy);
+        
         html += `
           <tr>
             <td>${escapeHtml(row.no)}</td>
-            <td>${escapeHtml(row.classCode)}</td>
+            <td><span class="mono">${escapeHtml(row.classCode)}</span></td>
+            <td>${escapeHtml(row.workType)}</td>
             <td>${escapeHtml(row.workName)}</td>
-            <td>${escapeHtml(row.workStage)}</td>
-            <td>${escapeHtml(row.originalHazard)}</td>
-            <td>${escapeHtml(row.controlAdequacy)}</td>
-            <td>${escapeHtml(row.jsaId)}</td>
+            <td>${escapeHtml(row.accidentType)}</td>
+            <td><span class="${ctrlCls}" style="font-size:16px;">${escapeHtml(row.controlAdequacy)}</span></td>
+            <td><span class="risk-badge ${riskCls}">${escapeHtml(row.riskLevel)}</span></td>
+            <td><span class="mono">${escapeHtml(row.jsaId)}</span></td>
           </tr>
         `;
       });
 
-      html += `</tbody></table>`;
+      html += `</tbody></table></div>`;
+      
+      // 20건 초과 시 안내
+      if (rows.length > PREVIEW_LIMIT) {
+        html += `
+          <div class="hint" style="margin-top:8px;text-align:center;">
+            💡 상위 ${PREVIEW_LIMIT}건만 표시됩니다. 
+            전체 ${rows.length}건은 업로드 시 처리됩니다.
+          </div>
+        `;
+      }
+      
       document.getElementById("previewArea").innerHTML = html;
     }
 
+    // ═══════════════════════════════════════════════
+    // 위험도 → CSS 클래스
+    // ═══════════════════════════════════════════════
+    function getRiskBadgeClass(riskLevel) {
+      const map = {
+        "저위험": "risk-low",
+        "중위험": "risk-med",
+        "고위험": "risk-high",
+        "매우고위험": "risk-critical",
+        "판정불가": "risk-na"
+      };
+      return map[riskLevel] || "risk-na";
+    }
+
+    // ═══════════════════════════════════════════════
+    // 통제 적정성 → CSS 클래스
+    // ═══════════════════════════════════════════════
+    function getControlClass(symbol) {
+      const map = {
+        "○": "ctrl-ok",
+        "△": "ctrl-warn",
+        "×": "ctrl-no"
+      };
+      return map[symbol] || "";
+    }
+
+    // ═══════════════════════════════════════════════
+    // 엑셀 파일 읽기
+    // ═══════════════════════════════════════════════
     async function readExcelFileRows() {
       const input = document.getElementById("excelFile");
       const file = input.files[0];
@@ -411,6 +901,11 @@
       return rows;
     }
 
+    // ═══════════════════════════════════════════════
+    // 붙여넣기 데이터 파싱
+    // 
+    // 엑셀에서 복사한 TSV 형식 처리
+    // ═══════════════════════════════════════════════
     function readPastedRows() {
       const text = document.getElementById("pasteInput").value.trim();
 
@@ -440,40 +935,92 @@
       return rows;
     }
 
+    // ═══════════════════════════════════════════════
+    // 미리보기 액션: 엑셀 파일
+    // ═══════════════════════════════════════════════
     async function previewExcelFile() {
       try {
         setStatus("엑셀 파일 읽는 중...", "warn");
         const rawRows = await readExcelFileRows();
-        const parsedRows = validateAndMapRows(rawRows);
+        const parsedRows = await validateAndMapRows(rawRows);
         parsedRowsCache = parsedRows;
         renderPreview(parsedRows);
-        setStatus(`파일 미리보기 완료: ${parsedRows.length}건`, "ok");
+        setStatus(`✅ 파일 미리보기 완료: ${parsedRows.length}건`, "ok");
       } catch (e) {
         console.error(e);
-        setStatus("파일 미리보기 실패: " + e.message, "err");
+        setStatus("❌ 파일 미리보기 실패: " + e.message, "err");
+        alert("미리보기 실패:\n\n" + e.message);
       }
     }
 
+    // ═══════════════════════════════════════════════
+    // 미리보기 액션: 붙여넣기
+    // ═══════════════════════════════════════════════
     async function previewPastedData() {
       try {
         setStatus("붙여넣기 데이터 읽는 중...", "warn");
         const rawRows = readPastedRows();
-        const parsedRows = validateAndMapRows(rawRows);
+        const parsedRows = await validateAndMapRows(rawRows);
         parsedRowsCache = parsedRows;
         renderPreview(parsedRows);
-        setStatus(`붙여넣기 미리보기 완료: ${parsedRows.length}건`, "ok");
+        setStatus(`✅ 붙여넣기 미리보기 완료: ${parsedRows.length}건`, "ok");
       } catch (e) {
         console.error(e);
-        setStatus("붙여넣기 미리보기 실패: " + e.message, "err");
+        setStatus("❌ 붙여넣기 미리보기 실패: " + e.message, "err");
+        alert("미리보기 실패:\n\n" + e.message);
       }
     }
 
+    // ═══════════════════════════════════════════════
+    // 초기화 액션
+    // ═══════════════════════════════════════════════
+    function clearAll() {
+      if (parsedRowsCache.length > 0) {
+        if (!confirm("파싱된 데이터가 있습니다.\n초기화하시겠습니까?")) {
+          return;
+        }
+      }
+      
+      document.getElementById("excelFile").value = "";
+      document.getElementById("pasteInput").value = "";
+      document.getElementById("previewSummary").innerHTML = "아직 데이터가 없습니다.";
+      document.getElementById("previewArea").innerHTML = "-";
+      setStatus("", "");
+      parsedRowsCache = [];
+    }
+    // ═══════════════════════════════════════════════
+    // 업로드 실행 함수
+    // 
+    // Firestore에 신규 데이터만 삽입
+    // 기존 docId는 스킵 (덮어쓰기 방지)
+    // ═══════════════════════════════════════════════
     async function uploadRows(rows) {
       if (!rows || !rows.length) {
         throw new Error("업로드 대상 데이터가 없습니다.");
       }
 
-      if (!confirm(`총 ${rows.length}건을 Firestore에 업로드하시겠습니까?\n기존 docId는 스킵됩니다.`)) {
+      // 위험도 분포 요약
+      const riskSummary = {};
+      rows.forEach(r => {
+        riskSummary[r.riskLevel] = (riskSummary[r.riskLevel] || 0) + 1;
+      });
+      
+      let riskSummaryText = "";
+      Object.entries(riskSummary).forEach(([level, count]) => {
+        riskSummaryText += `  - ${level}: ${count}건\n`;
+      });
+
+      // 확인 다이얼로그
+      const confirmMsg = 
+        `총 ${rows.length}건을 Firestore에 업로드합니다.\n\n` +
+        `📊 위험도 분포:\n${riskSummaryText}\n` +
+        `⚠️ 주의사항:\n` +
+        `- 기존 docId는 스킵됩니다 (덮어쓰기 없음).\n` +
+        `- 컬렉션: jsaDatabase\n\n` +
+        `계속하시겠습니까?`;
+
+      if (!confirm(confirmMsg)) {
+        setStatus("업로드가 취소되었습니다.", "warn");
         return;
       }
 
@@ -482,6 +1029,11 @@
       let insertedCount = 0;
       let skippedCount = 0;
       let failedCount = 0;
+      const failedItems = [];
+
+      // 진행상황 표시를 위한 배치 크기
+      const BATCH_SIZE = 10;
+      let processed = 0;
 
       for (const row of rows) {
         try {
@@ -490,57 +1042,114 @@
 
           if (docSnap.exists) {
             skippedCount++;
-            continue;
+          } else {
+            // Firestore 저장
+            await docRef.set({
+              ...row,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            insertedCount++;
           }
-
-          await docRef.set({
-            ...row,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          insertedCount++;
         } catch (rowError) {
           console.error("행 업로드 실패:", row.docId, rowError);
           failedCount++;
+          failedItems.push({
+            docId: row.docId,
+            no: row.no,
+            workName: row.workName,
+            error: rowError.message
+          });
+        }
+
+        // 진행상황 업데이트 (10건마다)
+        processed++;
+        if (processed % BATCH_SIZE === 0 || processed === rows.length) {
+          setStatus(
+            `업로드 진행: ${processed}/${rows.length} ` +
+            `(신규 ${insertedCount} / 스킵 ${skippedCount} / 실패 ${failedCount})`,
+            "warn"
+          );
         }
       }
 
+      // 최종 결과
+      const resultCls = failedCount > 0 ? "warn" : "ok";
+      const resultIcon = failedCount > 0 ? "⚠️" : "✅";
+      
       setStatus(
-        `업로드 완료: 신규 ${insertedCount}건 / 중복 스킵 ${skippedCount}건 / 실패 ${failedCount}건`,
-        failedCount > 0 ? "warn" : "ok"
+        `${resultIcon} 업로드 완료: 신규 ${insertedCount}건 / 중복 스킵 ${skippedCount}건 / 실패 ${failedCount}건`,
+        resultCls
       );
+
+      // 실패 항목이 있으면 상세 표시
+      if (failedItems.length > 0) {
+        console.error("실패 항목:", failedItems);
+        let failMsg = `업로드 실패 ${failedItems.length}건:\n\n`;
+        failedItems.slice(0, 5).forEach(item => {
+          failMsg += `- No ${item.no}: ${item.workName}\n  ${item.error}\n\n`;
+        });
+        if (failedItems.length > 5) {
+          failMsg += `... 외 ${failedItems.length - 5}건 (콘솔 확인)`;
+        }
+        alert(failMsg);
+      } else if (insertedCount > 0) {
+        // 성공 메시지
+        setTimeout(() => {
+          alert(
+            `✅ 업로드 완료\n\n` +
+            `- 신규 저장: ${insertedCount}건\n` +
+            `- 중복 스킵: ${skippedCount}건\n\n` +
+            `Firestore 컬렉션: jsaDatabase`
+          );
+        }, 100);
+      }
     }
 
+    // ═══════════════════════════════════════════════
+    // 엑셀 파일 업로드 (미리보기 + 업로드)
+    // ═══════════════════════════════════════════════
     async function uploadFromExcelFile() {
       try {
+        setStatus("엑셀 파일 읽는 중...", "warn");
         const rawRows = await readExcelFileRows();
-        const rows = validateAndMapRows(rawRows);
+        const rows = await validateAndMapRows(rawRows);
         parsedRowsCache = rows;
         renderPreview(rows);
         await uploadRows(rows);
       } catch (e) {
         console.error(e);
-        setStatus("파일 업로드 실패: " + e.message, "err");
+        setStatus("❌ 파일 업로드 실패: " + e.message, "err");
+        alert("업로드 실패:\n\n" + e.message);
       }
     }
 
+    // ═══════════════════════════════════════════════
+    // 붙여넣기 업로드 (미리보기 + 업로드)
+    // ═══════════════════════════════════════════════
     async function uploadFromPastedData() {
       try {
+        setStatus("붙여넣기 데이터 읽는 중...", "warn");
         const rawRows = readPastedRows();
-        const rows = validateAndMapRows(rawRows);
+        const rows = await validateAndMapRows(rawRows);
         parsedRowsCache = rows;
         renderPreview(rows);
         await uploadRows(rows);
       } catch (e) {
         console.error(e);
-        setStatus("붙여넣기 업로드 실패: " + e.message, "err");
+        setStatus("❌ 붙여넣기 업로드 실패: " + e.message, "err");
+        alert("업로드 실패:\n\n" + e.message);
       }
     }
 
+    // ═══════════════════════════════════════════════
+    // Firestore 문서 → 템플릿 형식 변환
+    // 
+    // 다운로드 시 사용
+    // 17열 순서에 맞춰 매핑
+    // ═══════════════════════════════════════════════
     function mapRowToTemplateObject(row) {
       return {
-        "No": row.no ?? "",
         "분류코드": row.classCode ?? "",
         "관리시트": row.sheet ?? "",
         "작업유형": row.workType ?? "",
@@ -555,63 +1164,152 @@
         "안전대책": row.detailedMeasures ?? "",
         "표준 안전대책명": row.standardMeasures ?? "",
         "통제 적정성": row.controlAdequacy ?? "",
+        "위험도": row.riskLevel ?? "",     // ⭐ 신규
         "비고": row.remark ?? ""
       };
     }
 
+    // ═══════════════════════════════════════════════
+    // 엑셀 파일 생성 & 다운로드
+    // ═══════════════════════════════════════════════
     function downloadWorkbook(filename, dataRows) {
-      const worksheet = XLSX.utils.json_to_sheet(dataRows, { header: TEMPLATE_HEADERS });
+      const worksheet = XLSX.utils.json_to_sheet(dataRows, {
+        header: TEMPLATE_HEADERS
+      });
+      
+      // 열 너비 자동 조정 (선택)
+      const colWidths = TEMPLATE_HEADERS.map(h => {
+        if (h === "안전대책" || h === "표준 안전대책명") return { wch: 40 };
+        if (h === "원문 위험요인" || h === "사고시나리오") return { wch: 30 };
+        if (h === "작업명" || h === "비고") return { wch: 20 };
+        return { wch: 12 };
+      });
+      worksheet["!cols"] = colWidths;
+      
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "JSA");
       XLSX.writeFile(workbook, filename);
     }
 
+    // ═══════════════════════════════════════════════
+    // 엑셀 템플릿 다운로드
+    // 
+    // 빈 템플릿 + 예시 1행 제공
+    // ═══════════════════════════════════════════════
     function downloadTemplateXLSX() {
-      const emptyRow = [{
-        "No": "",
-        "분류코드": "",
-        "관리시트": "",
-        "작업유형": "",
-        "세부작업유형": "",
-        "작업명": "",
-        "작업단계": "",
-        "사용장비·공구": "",
-        "사용물질·에너지": "",
-        "원문 위험요인": "",
-        "사고유형": "",
-        "사고시나리오": "",
-        "안전대책": "",
-        "표준 안전대책명": "",
-        "통제 적정성": "",
-        "비고": ""
-      }];
+      // 빈 행 + 예시 행 제공
+      const templateRows = [
+        // 빈 행
+        {
+          "분류코드": "",
+          "관리시트": "",
+          "작업유형": "",
+          "세부작업유형": "",
+          "작업명": "",
+          "작업단계": "",
+          "사용장비·공구": "",
+          "사용물질·에너지": "",
+          "원문 위험요인": "",
+          "사고유형": "",
+          "사고시나리오": "",
+          "안전대책": "",
+          "표준 안전대책명": "",
+          "통제 적정성": "",
+          "위험도": "",
+          "비고": ""
+        },
+        // 예시 행 (참고용)
+        {
+          "분류코드": "WRK",
+          "관리시트": "원문",
+          "작업유형": "정비",
+          "세부작업유형": "전기설비 점검",
+          "작업명": "판넬 프로그램 점검",
+          "작업단계": "점검",
+          "사용장비·공구": "전기판넬",
+          "사용물질·에너지": "1. 전기에너지",
+          "원문 위험요인": "시운전 중 판넬 충전부 접촉 감전 위험",
+          "사고유형": "감전",
+          "사고시나리오": "전원 미차단 감전 가능",
+          "안전대책": "1. 판넬 도어 확인 / 2. [법령] 전원 차단 / 3. [사내] ILS 실시 / 4. [AI] 무전압 확인",
+          "표준 안전대책명": "1. 판넬 도어 확인 / 2. 전원 차단 / 3. ILS 실시 / 4. 무전압 확인",
+          "통제 적정성": "○",
+          "위험도": "중위험",
+          "비고": "예시행 / 삭제 후 사용"
+        }
+      ];
 
-      downloadWorkbook(`jsa_template_${getDateStamp()}.xlsx`, emptyRow);
-      setStatus("엑셀 템플릿 다운로드 완료", "ok");
+      downloadWorkbook(`jsa_template_v2_${getDateStamp()}.xlsx`, templateRows);
+      setStatus("✅ 엑셀 템플릿 다운로드 완료 (17열)", "ok");
     }
 
+    // ═══════════════════════════════════════════════
+    // 전체 DB 엑셀 다운로드
+    // 
+    // Firestore 조회 → No 순 정렬 → 엑셀 저장
+    // ═══════════════════════════════════════════════
     async function downloadAllXLSX() {
       try {
         setStatus("전체 DB 엑셀 다운로드 중...", "warn");
 
         const snap = await db.collection(COLLECTION_NAME).get();
+        
+        if (snap.empty) {
+          setStatus("⚠️ Firestore에 데이터가 없습니다.", "warn");
+          alert("Firestore의 jsaDatabase 컬렉션이 비어있습니다.\n먼저 데이터를 업로드해주세요.");
+          return;
+        }
+
         const rows = snap.docs.map(doc => doc.data());
 
+        // No 기준 오름차순 정렬
         rows.sort((a, b) => {
           const aNo = Number(a.no || 0);
           const bNo = Number(b.no || 0);
           return aNo - bNo;
         });
 
-        const mappedRows = rows.map(row => mapRowToTemplateObject(row));
-        downloadWorkbook(`jsa_all_${getDateStamp()}.xlsx`, mappedRows);
+        // 위험도 분포 통계 (다운로드 전 표시)
+        const riskStats = {};
+        rows.forEach(r => {
+          const level = r.riskLevel || "미분류";
+          riskStats[level] = (riskStats[level] || 0) + 1;
+        });
 
-        setStatus(`전체 DB 엑셀 다운로드 완료: ${mappedRows.length}건`, "ok");
+        const mappedRows = rows.map(row => mapRowToTemplateObject(row));
+        downloadWorkbook(`jsa_all_v2_${getDateStamp()}.xlsx`, mappedRows);
+
+        // 결과 요약
+        let summary = `✅ 전체 DB 엑셀 다운로드 완료: ${mappedRows.length}건\n\n`;
+        summary += "📊 위험도 분포:\n";
+        Object.entries(riskStats).forEach(([level, count]) => {
+          const pct = ((count / mappedRows.length) * 100).toFixed(1);
+          summary += `  - ${level}: ${count}건 (${pct}%)\n`;
+        });
+
+        setStatus(`✅ 다운로드 완료: ${mappedRows.length}건`, "ok");
+        console.log(summary);
+        
       } catch (e) {
         console.error(e);
-        setStatus("전체 DB 엑셀 다운로드 실패: " + e.message, "err");
+        setStatus("❌ 전체 DB 다운로드 실패: " + e.message, "err");
+        alert("다운로드 실패:\n\n" + e.message);
       }
     }
+
+    // ═══════════════════════════════════════════════
+    // 페이지 로드 시 초기 상태
+    // ═══════════════════════════════════════════════
+    window.addEventListener("DOMContentLoaded", function() {
+      console.log("JSA DB 관리자 v2 로드 완료");
+      console.log("- 컬렉션:", COLLECTION_NAME);
+      console.log("- 컬럼 수:", TEMPLATE_HEADERS.length);
+      console.log("- 위험도 허용값:", ALLOWED_RISK_LEVELS.join(", "));
+      console.log("- 통제 적정성 허용값:", ALLOWED_CONTROL_ADEQUACY.join(", "));
+      
+      setStatus("", "");
+    });
+
   </script>
 </body>
 </html>
