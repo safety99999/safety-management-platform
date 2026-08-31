@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#003C7E">
 <title>안전작업허가서 (PTW)</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="styles/device-frame.css?v=3">
 
-<!-- ═══════════════════════════════════════════════════
-     🧪 APP MODE 시스템 (2026-08-31 신규)
-     ═══════════════════════════════════════════════════ -->
+<!-- 🧪 APP MODE 시스템 -->
 <script>
+
 (function(){
   var urlMode = new URLSearchParams(location.search).get('mode');
   if(urlMode === 'test' || urlMode === 'prod'){
@@ -1085,14 +1085,58 @@ body{
   window.firebaseApp.PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
   console.log("[허가서 Firebase] 사용할 컬렉션:", window.firebaseApp.PERMIT_COLLECTION);
   
-  console.log("[허가서 Firebase] 초기화 완료 - window.firebaseApp 사용 가능");
- 
+   console.log("[허가서 Firebase] 초기화 완료 - window.firebaseApp 사용 가능");
+</script>
+
+<!-- ═══════════════════════════════════════════════════
+     🌫️ 페이지 전환 페이드아웃 트리거 (v1.0)
+     - 링크 클릭 시 페이드아웃 후 이동
+     - 앱 간 이동 시 부드러운 전환
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
 </script>
 </head>
+
 <body>
-<div class="app">
+<div class="phone-frame">
+  <div class="phone-screen">
+    <div class="app">
 
 <nav class="topnav">
+
   <div class="topnav-l">
     <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
     <div class="topnav-title" id="topnavTitle">안전작업허가서</div>
@@ -3969,5 +4013,9 @@ document.addEventListener('keydown', function(e){
 });
 </script>
 
+    </div><!-- /.app -->
+  </div><!-- /.phone-screen -->
+</div><!-- /.phone-frame -->
 </body>
 </html>
+
