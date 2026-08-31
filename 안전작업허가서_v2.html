@@ -913,6 +913,69 @@ body{
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* ═══════════════════════════════════════
+   인쇄용 스타일 (허가서 A4 출력)
+   PC 프레임/불필요 UI 제거
+   ═══════════════════════════════════════ */
+@media print {
+  body {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .app {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    background: white !important;
+  }
+  
+  /* 인쇄 시 숨김 요소 */
+  .topnav,
+  .progress-wrap,
+  .btn-row,
+  .toast-wrap,
+  .custom-confirm-overlay,
+  .reason-overlay,
+  .mode-grid,
+  .welcome-hero,
+  .home-btn,
+  .back-btn,
+  .sig-clear,
+  .wo-manual-toggle {
+    display: none !important;
+  }
+  
+  /* 인쇄 시에도 표시할 요소 강제 표시 */
+  .screen {
+    display: block !important;
+    page-break-inside: avoid;
+  }
+  
+  .form-section,
+  .cl-section,
+  .summary-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+    margin-bottom: 12px;
+  }
+  
+  /* 서명 캔버스는 흰 배경 유지 */
+  .sig-canvas {
+    border: 1px solid #333 !important;
+    background: white !important;
+  }
+  
+  /* 링크 색상 정리 */
+  a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+}
+
 </style>
 
 <!-- ═══════════════════════════════════════
