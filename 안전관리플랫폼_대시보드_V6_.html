@@ -1960,7 +1960,36 @@ function updateDBUI(){
   setTxt('dbCount',on?allWorks.length+'건':'-');
 }
 function refreshAll(){
-  // ⭐ 캐시 무효화로 강제 재조회
+  // ⭐ 사용량 폭증 방지를 위한 확인 다이얼로그 (2026-09-01)
+  var confirmMessage = 'Firestore에서 최신 데이터를 다시 불러옵니다.\n\n' +
+                      '📊 예상 조회량:\n' +
+                      '• 작업DB: 약 700 reads\n' +
+                      '• 허가서: 약 5 reads\n\n' +
+                      '평소에는 30분 캐시가 자동 갱신됩니다.\n' +
+                      '정말 지금 새로고침하시겠습니까?';
+  
+  if(typeof showCustomConfirm === 'function'){
+    showCustomConfirm({
+      icon: '↻',
+      title: '데이터 새로고침',
+      message: confirmMessage,
+      okText: '새로고침',
+      okType: 'warn'
+    }, function(ok){
+      if(!ok) return;
+      executeRefresh();
+    });
+  } else {
+    // fallback: 브라우저 기본 confirm
+    if(!confirm(confirmMessage)) return;
+    executeRefresh();
+  }
+}
+
+function executeRefresh(){
+  console.log('[refreshAll] 강제 새로고침 시작');
+  
+  // 캐시 무효화
   localStorage.removeItem('workDbLastSync');
   localStorage.removeItem('permitsLastSync');
   
@@ -1978,6 +2007,7 @@ function refreshAll(){
   
   showToast('새로고침 완료 (Firestore 재조회)','success');
 }
+
 
 
 function clearDB(){
@@ -4433,7 +4463,7 @@ const PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
 
 async function loadPermitsFromFirestore(){
   try{
-    const CACHE_TTL_MS = 2 * 60 * 1000;  // ⭐ 허가서는 2분 캐시 (더 자주 갱신)
+    const CACHE_TTL_MS = 10 * 60 * 1000;  // ⭐ 10분 캐시 (2026-09-01 사용량 최적화)
     const cacheTimeRaw = localStorage.getItem('permitsLastSync');
     const cacheTime = cacheTimeRaw ? parseInt(cacheTimeRaw, 10) : 0;
     const cacheAge = Date.now() - cacheTime;
@@ -4508,7 +4538,8 @@ async function workDbLoadFromFirestore(retryCount){
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 2000;
   const TIMEOUT_MS = 20000;
-  const CACHE_TTL_MS = 5 * 60 * 1000;  // ⭐ 5분 캐시
+  const CACHE_TTL_MS = 30 * 60 * 1000;  // ⭐ 30분 캐시 (2026-09-01 사용량 최적화)
+
   
   try{
     // ⭐ 캐시 우선 확인 (Firebase 사용량 96% 감소)
@@ -5048,7 +5079,7 @@ window.openInspSheetFromWork = function(workId, event){
     }
   }, 350);
 };
-                        // ← 🎯 여기 (이 빈 줄 위치에 추가)
+              
 
 window.openRiskEditModal = function(workId, event){
   if(event){
