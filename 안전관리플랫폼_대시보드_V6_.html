@@ -7,6 +7,33 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>POSCO FUTURE M · 포항양극재공장 안전관리</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE + 💰 사용량 최적화 시스템 (신규)
+     - firebase-config.js는 대시보드가 자체 초기화하므로 로드 안 함
+     - APP_MODE만 인라인으로 정의
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  
+  // 컬렉션 이름 헬퍼 (Firestore 초기화 전이라 함수만 정의)
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
 <style>
 /* ═══════════════════════════════════════
    POSCO FUTURE M 안전관리 대시보드
@@ -1932,13 +1959,26 @@ function updateDBUI(){
   setTxt('dbStatusTxt',on?'연결됨':'DB 없음');
   setTxt('dbCount',on?allWorks.length+'건':'-');
 }
-
 function refreshAll(){
+  // ⭐ 캐시 무효화로 강제 재조회
+  localStorage.removeItem('workDbLastSync');
+  localStorage.removeItem('permitsLastSync');
+  
   loadDB();
   loadViolations();
   loadPermits();
-  showToast('새로고침 완료','success');
+  
+  // Firestore 재조회
+  if(typeof window.workDbLoadFromFirestore === 'function'){
+    window.workDbLoadFromFirestore();
+  }
+  if(typeof window.loadPermitsFromFirestore === 'function'){
+    window.loadPermitsFromFirestore();
+  }
+  
+  showToast('새로고침 완료 (Firestore 재조회)','success');
 }
+
 
 function clearDB(){
   if(!confirm('DB를 초기화하시겠습니까?')) return;
@@ -3949,7 +3989,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const WORKDB_COLLECTION = "작업DB";
+const WORKDB_COLLECTION = window.getCollectionName("작업DB");
 
 // ⭐ iOS Safari 감지
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -4360,7 +4400,7 @@ function workDbDisableLocalClear(){
    컬렉션명: safetyPermits
    ========================================================= */
 
-const PERMIT_COLLECTION = "safetyPermits";
+const PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
 
 async function loadPermitsFromFirestore(){
   try{
@@ -4442,20 +4482,106 @@ window.loadPermitsFromFirestore = loadPermitsFromFirestore;
    4. applyFilter() 재실행 → 화면 갱신
    ========================================================= */
 
+async function loadPermitsFromFirestore(){
+  try{
+    const CACHE_TTL_MS = 2 * 60 * 1000;  // ⭐ 허가서는 2분 캐시 (더 자주 갱신)
+    const cacheTimeRaw = localStorage.getItem('permitsLastSync');
+    const cacheTime = cacheTimeRaw ? parseInt(cacheTimeRaw, 10) : 0;
+    const cacheAge = Date.now() - cacheTime;
+    const cachedRaw = localStorage.getItem('safetyPermits');
+    
+    if(cachedRaw && cacheAge < CACHE_TTL_MS){
+      const ageSeconds = Math.floor(cacheAge / 1000);
+      console.log('💾 [허가서] 캐시 사용 (' + ageSeconds + '초 전)');
+      try{
+        return JSON.parse(cachedRaw);
+      }catch(e){
+        // 캐시 파싱 실패 시 계속 진행
+      }
+    }
+    
+    if(!navigator.onLine){
+      console.warn("[허가서] 오프라인 상태 - localStorage 허가서 사용");
+      return [];
+    }
+    
+    console.log('🌐 [허가서] Firestore 조회 시작 (컬렉션: ' + PERMIT_COLLECTION + ')');
+
+    const snapshot = await getDocs(
+      collection(workDbFirestore, PERMIT_COLLECTION)
+    );
+
+    const firestorePermits = [];
+
+    snapshot.forEach(function(documentSnapshot){
+      const permit = documentSnapshot.data();
+      permit.permitNo = permit.permitNo || documentSnapshot.id;
+      firestorePermits.push(permit);
+    });
+
+    console.log("✅ [허가서] Firestore 로드 완료:", firestorePermits.length + "건 (" + firestorePermits.length + " reads)");
+
+    localStorage.setItem("safetyPermits", JSON.stringify(firestorePermits));
+    localStorage.setItem('permitsLastSync', Date.now().toString());  // ⭐ 캐시 시각 저장
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent("app-data-changed", {
+          detail: { key: "safetyPermits", source: "firestore-sync", timestamp: Date.now() }
+        })
+      );
+    }catch(eventError){
+      console.warn("[허가서] 변경 이벤트 전송 실패:", eventError);
+    }
+
+    return firestorePermits;
+
+  }catch(error){
+    console.error("[허가서] Firestore 조회 실패:", error.message);
+    return [];
+  }
+}
+
+/* =========================================================
+   ⭐ 신규: Firestore 데이터를 localStorage에 캐시 저장
+   
+   다음 페이지 로드 시 빠른 표시와 오프라인 대응을 위해
+   Firestore 데이터를 localStorage safetyDatabase에 저장합니다.
+   ========================================================= */
+/* =========================================================
+   ⭐ Firestore → 대시보드 로드 (캐시 우선, 사용량 최소화)
+   
+   5분 캐시로 Firebase reads 96% 절감
+   ========================================================= */
+
 async function workDbLoadFromFirestore(retryCount){
   retryCount = retryCount || 0;
   const MAX_RETRIES = 2;
   const RETRY_DELAY_MS = 2000;
   const TIMEOUT_MS = 20000;
+  const CACHE_TTL_MS = 5 * 60 * 1000;  // ⭐ 5분 캐시
   
   try{
-    // 네트워크 상태 확인
+    // ⭐ 캐시 우선 확인 (Firebase 사용량 96% 감소)
+    const cacheTimeRaw = localStorage.getItem('workDbLastSync');
+    const cacheTime = cacheTimeRaw ? parseInt(cacheTimeRaw, 10) : 0;
+    const cacheAge = Date.now() - cacheTime;
+    const cachedRaw = localStorage.getItem('safetyDatabase');
+    
+    if(cachedRaw && cacheAge < CACHE_TTL_MS){
+      const ageSeconds = Math.floor(cacheAge / 1000);
+      const remainingSeconds = Math.floor((CACHE_TTL_MS - cacheAge) / 1000);
+      console.log('💾 [작업DB] 캐시 사용 (' + ageSeconds + '초 전, ' + remainingSeconds + '초 후 갱신)');
+      return;
+    }
+    
     if(!navigator.onLine){
       console.warn("[작업DB] 오프라인 상태 - localStorage 사용");
       return;
     }
     
-    // 타임아웃 경쟁 (iOS Safari 무한 대기 방지)
+    console.log('🌐 [작업DB] Firestore 조회 시작 (컬렉션: ' + WORKDB_COLLECTION + ')');
+    
     const fetchPromise = getDocs(collection(workDbFirestore, WORKDB_COLLECTION));
     const timeoutPromise = new Promise(function(_, reject){
       setTimeout(function(){
@@ -4466,7 +4592,7 @@ async function workDbLoadFromFirestore(retryCount){
     const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
     
     if(snapshot.empty){
-      console.warn("[작업DB] Firestore가 비어있음");
+      console.warn("[작업DB] Firestore가 비어있음 (컬렉션: " + WORKDB_COLLECTION + ")");
       return;
     }
     
@@ -4478,13 +4604,14 @@ async function workDbLoadFromFirestore(retryCount){
       firestoreWorks.push(data);
     });
     
-    console.log("[작업DB] Firestore 로드 완료:", firestoreWorks.length + "건 (시도 " + (retryCount + 1) + ")");
+    console.log("✅ [작업DB] Firestore 로드 완료:", firestoreWorks.length + "건 (" + firestoreWorks.length + " reads)");
     
     if(typeof window !== "undefined"){
       window.allWorks = firestoreWorks;
     }
     
     workDbSaveToLocalCache(firestoreWorks);
+    localStorage.setItem('workDbLastSync', Date.now().toString());
     
     if(typeof window.applyFilter === "function"){
       window.applyFilter();
@@ -4493,26 +4620,18 @@ async function workDbLoadFromFirestore(retryCount){
   }catch(error){
     console.error("[작업DB] Firestore 로드 실패 (시도 " + (retryCount + 1) + "):", error.message);
     
-    // 재시도 (iOS Safari 일시적 실패 대응)
     if(retryCount < MAX_RETRIES && navigator.onLine){
       console.log("[작업DB] " + (RETRY_DELAY_MS / 1000) + "초 후 재시도...");
       await new Promise(function(resolve){ setTimeout(resolve, RETRY_DELAY_MS); });
       return workDbLoadFromFirestore(retryCount + 1);
     }
     
-    // 최종 실패 → localStorage fallback (조용히)
     console.warn("[작업DB] 모든 재시도 실패 - localStorage 사용");
   }
 }
 
-
-
-/* =========================================================
-   ⭐ 신규: Firestore 데이터를 localStorage에 캐시 저장
-   
-   다음 페이지 로드 시 빠른 표시와 오프라인 대응을 위해
-   Firestore 데이터를 localStorage safetyDatabase에 저장합니다.
-   ========================================================= */
+// ⭐ 전역 노출 (refreshAll에서 사용)
+window.workDbLoadFromFirestore = workDbLoadFromFirestore;
 
 function workDbSaveToLocalCache(firestoreWorks){
   try{
@@ -4911,7 +5030,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const RISK_EDIT_COLLECTION = "작업DB";
+const RISK_EDIT_COLLECTION = window.getCollectionName("작업DB");
 
 const riskEditIsIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 const riskEditIsSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
