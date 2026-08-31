@@ -1947,7 +1947,10 @@ function submitDoc(){
     data.updatedBy = userName;
    
     // ⭐ v2.1: 수급인 링크에 workId도 함께 전달
-    var baseUrl = window.location.origin + window.location.pathname.replace('안전정보제공서_도급인용.html', '');
+        // URL 인코딩 대응: pathname에서 마지막 파일명만 제거
+    var pathParts = window.location.pathname.split('/');
+    pathParts.pop();
+    var baseUrl = window.location.origin + pathParts.join('/') + '/';
     data.signUrl = baseUrl + '안전정보제공서_수급인용.html' +
       '?safeinfoNo=' + encodeURIComponent(data.safeinfoNo) +
       (data.workId ? '&workId=' + encodeURIComponent(data.workId) : '');
