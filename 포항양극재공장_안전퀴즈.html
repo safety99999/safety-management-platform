@@ -1796,9 +1796,10 @@ function startQuiz(mode){
     currentQuizQuestions = wrongQuestionIndices.map(function(idx){ return questions[idx]; });
   }
   
-  showQuestion();
   goToScreen('screen-quiz');
+  showQuestion();
 }
+
 
 function showQuestion(){
   var question = currentQuizQuestions[currentQuestionIndex];
