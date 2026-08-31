@@ -3943,31 +3943,20 @@ updateWorkStatus();
               (work.riskLevel === '고위험' ? '🚨 고위험' : '⚪ 일반') +
               ')</button>';
 
-            // ⭐ 점검등록 버튼 (작업중/허가완료 상태에서만 표시) - 2026-08-31 신규
+              // ⭐ 점검등록 버튼 (작업중/허가완료 상태에서만 표시) - 2026-09-01 색상 개선
       if(work.status === '작업중' || work.status === '허가완료'){
         html += '<button type="button" ' +
                 'onclick="openInspSheetFromWork(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
                 'style="margin-top:6px;width:100%;padding:12px;' +
-                'background:linear-gradient(135deg,#B0202F,var(--stop));color:#fff;' +
+                'background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;' +
                 'border:0;border-radius:var(--r-s);' +
                 'font-family:inherit;font-size:13.5px;font-weight:800;' +
                 'cursor:pointer;letter-spacing:-.02em;' +
-                'box-shadow:0 4px 12px rgba(214,39,61,.25);">' +
-                '🚨 이 작업 점검등록' +
-                '</button>';
-        
-        // ⭐ 작업중지 버튼 (2026-09-01 신규)
-        html += '<button type="button" ' +
-                'onclick="openStopFromWork(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
-                'style="margin-top:6px;width:100%;padding:12px;' +
-                'background:linear-gradient(135deg,#8B1728,#D6273D);color:#fff;' +
-                'border:0;border-radius:var(--r-s);' +
-                'font-family:inherit;font-size:13.5px;font-weight:800;' +
-                'cursor:pointer;letter-spacing:-.02em;' +
-                'box-shadow:0 4px 12px rgba(214,39,61,.35);">' +
-                '🛑 이 작업 작업중지' +
+                'box-shadow:0 4px 12px rgba(0,60,126,.25);">' +
+                '📋 안전 점검 기록' +
                 '</button>';
       }
+
 
       html += '</div>';
 
@@ -5037,27 +5026,7 @@ window.escapeJsStringForRisk = function(str){
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r');
 };
-// ⭐ 작업 상세보기에서 점검등록 화면 열기 (2026-08-31 신규)
-window.openInspSheetFromWork = function(workId, event){
-  if(event){
-    event.stopPropagation();
-    event.preventDefault();
-  }
-  
-  // 현재 작업 목록 시트 닫기
-  if(typeof closeSheet === 'function'){
-    closeSheet('ws');
-  }
-  
-  // 점검등록 시트 열기 (workId 전달로 작업 자동 연결)
-  setTimeout(function(){
-    if(typeof openInspSheet === 'function'){
-      openInspSheet(workId);
-    } else {
-      console.error('[openInspSheetFromWork] openInspSheet 함수를 찾을 수 없음');
-    }
-  }, 350);
-};
+
 // ⭐ 작업 상세보기에서 점검등록 화면 열기 (2026-08-31 신규)
 window.openInspSheetFromWork = function(workId, event){
   if(event){
