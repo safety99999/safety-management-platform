@@ -1599,6 +1599,121 @@ body{
 }
    
 </style>
+<script>
+/* =========================================================
+   로그인 세션 및 역할 확인
+   - admin: 관리자
+   - user: 인증 사용자
+   - tester: 공개 로컬 테스터
+   ========================================================= */
+
+(function(){
+  var LOGIN_PAGE_URL = 'login.html';
+
+  function readAppSession(){
+    try{
+      var raw =
+        sessionStorage.getItem('appSession');
+
+      if(!raw){
+        return null;
+      }
+
+      var session =
+        JSON.parse(raw);
+
+      if(
+        !session ||
+        session.environment !== 'test'
+      ){
+        return null;
+      }
+
+      if(
+        session.role !== 'admin' &&
+        session.role !== 'user' &&
+        session.role !== 'tester'
+      ){
+        return null;
+      }
+
+      return session;
+    }catch(error){
+      console.warn(
+        '[세션] 세션 정보 파싱 실패:',
+        error
+      );
+
+      return null;
+    }
+  }
+
+  var session =
+    readAppSession();
+
+  if(!session){
+    console.warn(
+      '[세션] 유효한 세션 없음 - 로그인 화면으로 이동'
+    );
+
+    window.location.replace(
+      LOGIN_PAGE_URL
+    );
+
+    return;
+  }
+
+  window.APP_SESSION = session;
+
+  window.getAppRole = function(){
+    return (
+      window.APP_SESSION &&
+      window.APP_SESSION.role
+    ) || '';
+  };
+
+  window.isAdminUser = function(){
+    return (
+      window.getAppRole() === 'admin'
+    );
+  };
+
+  window.isAuthenticatedUser = function(){
+    var current =
+      window.APP_SESSION;
+
+    return Boolean(
+      current &&
+      current.accessMode ===
+        'authenticated' &&
+      (
+        current.role === 'admin' ||
+        current.role === 'user'
+      ) &&
+      current.uid
+    );
+  };
+
+  window.isPublicTester = function(){
+    return (
+      window.APP_SESSION &&
+      window.APP_SESSION.accessMode ===
+        'tester' &&
+      window.APP_SESSION.role ===
+        'tester'
+    );
+  };
+
+  console.log(
+    '[세션] 대시보드 접속:',
+    {
+      role: session.role,
+      accessMode: session.accessMode,
+      displayName: session.displayName
+    }
+  );
+})();
+</script>
 
 <script>
 /* ═══════════════════════════════════════════════════
@@ -1858,7 +1973,10 @@ body{
 <!-- ══════════════════════════════════════
      설정 페이지
      ══════════════════════════════════════ -->
-<div class="page" id="pageSettings">
+<div
+  class="page admin-only"
+  id="pageSettings"
+>
   <header class="hero">
     <div class="hero-top">
       <div class="hero-brand">
@@ -1998,7 +2116,12 @@ body{
     <span class="nav-tl">점검현황</span>
     <span class="nav-badge" id="inspBadge" style="display:none">0</span>
   </button>
-  <button class="nav-tab" id="tabSettings" onclick="goTab('settings')">
+  <button
+  class="nav-tab admin-only"
+  id="tabSettings"
+  onclick="goTab('settings')"
+>
+
     <span class="nav-ti">⚙️</span>
     <span class="nav-tl">설정</span>
   </button>
@@ -2509,11 +2632,44 @@ var photoFile = null;
 var photoPreviewUrl = '';
 
 var noticeCollapsed = false;
+function applyRoleUI(){
+  var isAdmin =
+    typeof window.isAdminUser ===
+      'function' &&
+    window.isAdminUser();
+
+  document
+    .querySelectorAll('.admin-only')
+    .forEach(function(element){
+      element.style.display =
+        isAdmin ? '' : 'none';
+    });
+
+  document.documentElement.setAttribute(
+    'data-user-role',
+    window.getAppRole
+      ? window.getAppRole()
+      : 'unknown'
+  );
+
+  console.log(
+    '[권한 UI] 적용 완료:',
+    {
+      role:
+        window.getAppRole
+          ? window.getAppRole()
+          : 'unknown',
+      adminMenuVisible:
+        isAdmin
+    }
+  );
+}
 
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
 function init(){
+  applyRoleUI();
   initTheme();
   clock();
   loadDB();
@@ -2521,6 +2677,7 @@ function init(){
   loadPermits();
   loadNotice();
 }
+
 
 function clock(){
   function tick(){
@@ -2871,11 +3028,57 @@ function openStatusSheet(filter){
 // ═══════════════════════════════════════
 // PERMITS
 // ═══════════════════════════════════════
+function getPermitLocalStorageKey(){
+  if(
+    typeof window.isPublicTester ===
+      'function' &&
+    window.isPublicTester()
+  ){
+    return 'testerSafetyPermits';
+  }
+
+  return 'safetyPermits';
+}
+
 function loadPermits(){
-  try{permits=JSON.parse(localStorage.getItem('safetyPermits')||'[]');}
-  catch(e){permits=[];}
+  var storageKey =
+    getPermitLocalStorageKey();
+
+  try{
+    var parsed =
+      JSON.parse(
+        localStorage.getItem(storageKey) ||
+        '[]'
+      );
+
+    permits =
+      Array.isArray(parsed)
+        ? parsed
+        : [];
+  }catch(error){
+    console.warn(
+      '[허가서] 로컬 자료 파싱 실패:',
+      storageKey,
+      error
+    );
+
+    permits = [];
+  }
+
+  console.log(
+    '[허가서] 로컬 자료 사용:',
+    {
+      role:
+        window.APP_SESSION &&
+        window.APP_SESSION.role,
+      storageKey: storageKey,
+      count: permits.length
+    }
+  );
+
   updateWorkStatus();
 }
+
 
 // ═══════════════════════════════════════
 // 점검 등록 폼
@@ -3344,6 +3547,25 @@ function renderInspPage(){
 // TABS
 // ═══════════════════════════════════════
 function goTab(tab){
+
+  if(
+    tab === 'settings' &&
+    (
+      typeof window.isAdminUser !==
+        'function' ||
+      !window.isAdminUser()
+    )
+  ){
+    showToast(
+      '관리자만 설정 화면을 사용할 수 있습니다.',
+      'error'
+    );
+
+    return;
+  }
+
+  ['home','inspect','settings'].forEach(function(t){
+
   ['home','inspect','settings'].forEach(function(t){
     var p=document.getElementById('page'+cap(t));if(p) p.classList.remove('active');
   });
@@ -4879,16 +5101,29 @@ updateWorkStatus();
         html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 작업종료</div>';
       }
       // ⭐ 위험등급 수정 버튼 (관리자용, 모든 작업에 표시)
-      html += '<button type="button" ' +
-              'onclick="openRiskEditModal(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
-              'style="margin-top:6px;width:100%;padding:8px;' +
-              'background:var(--sunk);color:var(--sub);' +
-              'border:1px solid var(--line);border-radius:var(--r-s);' +
-              'font-family:inherit;font-size:12px;font-weight:700;' +
-              'cursor:pointer;letter-spacing:-.01em;">' +
-              '⚙️ 위험등급 수정 (현재: ' +
-              (work.riskLevel === '고위험' ? '🚨 고위험' : '⚪ 일반') +
-              ')</button>';
+     if(
+  typeof window.isAdminUser ===
+    'function' &&
+  window.isAdminUser()
+){
+  html += '<button type="button" ' +
+          'onclick="openRiskEditModal(\'' +
+          escapeJsStringForRisk(work.workId) +
+          '\', event)" ' +
+          'style="margin-top:6px;width:100%;padding:8px;' +
+          'background:var(--sunk);color:var(--sub);' +
+          'border:1px solid var(--line);border-radius:var(--r-s);' +
+          'font-family:inherit;font-size:12px;font-weight:700;' +
+          'cursor:pointer;letter-spacing:-.01em;">' +
+          '⚙️ 위험등급 수정 (현재: ' +
+          (
+            work.riskLevel === '고위험'
+              ? '🚨 고위험'
+              : '⚪ 일반'
+          ) +
+          ')</button>';
+}
+
 
               // ⭐ 점검등록 버튼 (작업중/허가완료 상태에서만 표시) - 2026-09-01 색상 개선
       if(work.status === '작업중' || work.status === '허가완료'){
@@ -5379,8 +5614,44 @@ const PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
    ========================================================= */
 
 async function loadPermitsFromFirestore(){
+
+  /*
+   * 공개 테스터는 Firestore에 접근하지 않습니다.
+   * 테스터 허가서는 로컬 저장소만 사용합니다.
+   */
+  if(
+    typeof window.isPublicTester ===
+      'function' &&
+    window.isPublicTester()
+  ){
+    console.log(
+      '[허가서] 테스터 모드 - Firestore 조회 차단'
+    );
+
+    loadPermits();
+
+    return [];
+  }
+
+  /*
+   * 관리자 또는 인증 사용자가 아니면
+   * Firestore 업무 데이터에 접근하지 않습니다.
+   */
+  if(
+    typeof window.isAuthenticatedUser !==
+      'function' ||
+    !window.isAuthenticatedUser()
+  ){
+    console.warn(
+      '[허가서] 인증 세션 없음 - Firestore 조회 차단'
+    );
+
+    return [];
+  }
+
   try{
-    const CACHE_TTL_MS = 10 * 60 * 1000;  // ⭐ 10분 캐시 (2026-09-01 사용량 최적화)
+    const CACHE_TTL_MS =
+      10 * 60 * 1000; // ⭐ 10분 캐시 (2026-09-01 사용량 최적화)
     const cacheTimeRaw = localStorage.getItem('permitsLastSync');
     const cacheTime = cacheTimeRaw ? parseInt(cacheTimeRaw, 10) : 0;
     const cacheAge = Date.now() - cacheTime;
@@ -5433,13 +5704,21 @@ async function loadPermitsFromFirestore(){
     return firestorePermits;
 
   }catch(error){
-    console.error("[허가서] Firestore 조회 실패:", error.message);
+    console.error(
+      '[허가서] Firestore 조회 실패:',
+      error.message
+    );
+
     return [];
   }
 }
 
+window.loadPermitsFromFirestore =
+  loadPermitsFromFirestore;
+
 /* =========================================================
    ⭐ 신규: Firestore 데이터를 localStorage에 캐시 저장
+
    
    다음 페이지 로드 시 빠른 표시와 오프라인 대응을 위해
    Firestore 데이터를 localStorage safetyDatabase에 저장합니다.
@@ -5572,32 +5851,97 @@ function workDbSaveToLocalCache(firestoreWorks){
   }
 }
 function workDbInitialize(){
-  workDbCreatePanel();
-  workDbDisableLocalClear();
+
+  /*
+   * 작업DB 관리 패널은 관리자에게만 표시합니다.
+   */
+  if(
+    typeof window.isAdminUser ===
+      'function' &&
+    window.isAdminUser()
+  ){
+    workDbCreatePanel();
+    workDbDisableLocalClear();
+  }
 
   setTimeout(async function(){
-    // 작업DB 조회 실패와 허가서 조회 실패를 서로 분리
- console.log(
-  '[작업DB] 자동 Firestore 전체 조회 중단 - 기존 캐시 사용'
-);
+
+    /*
+     * 공개 테스터:
+     * Firestore를 전혀 조회하지 않고
+     * 테스터 전용 로컬 허가서만 사용합니다.
+     */
+    if(
+      typeof window.isPublicTester ===
+        'function' &&
+      window.isPublicTester()
+    ){
+      console.log(
+        '[대시보드] 테스터 모드 - Firestore 조회 없음'
+      );
+
+      loadPermits();
+
+      if(
+        typeof window.applyFilter ===
+          'function'
+      ){
+        window.applyFilter();
+      }
+
+      return;
+    }
+
+    /*
+     * 관리자·사용자:
+     * Firebase Authentication 로그인 상태에서만
+     * 허가서를 Firestore에서 조회합니다.
+     */
+    if(
+      typeof window.isAuthenticatedUser !==
+        'function' ||
+      !window.isAuthenticatedUser()
+    ){
+      console.warn(
+        '[대시보드] 인증 사용자 확인 실패 - 서버 조회 중단'
+      );
+
+      return;
+    }
+
+    /*
+     * 작업DB 전체 자동 조회는 중단 상태를 유지합니다.
+     * 현재 로컬 캐시를 사용하고,
+     * 이후 정적 JSON으로 전환합니다.
+     */
+    console.log(
+      '[작업DB] 자동 Firestore 전체 조회 중단 - 기존 캐시 사용'
+    );
 
     try{
       await loadPermitsFromFirestore();
     }catch(error){
       console.warn(
         '[허가서] Firestore 조회 실패 - 기존 캐시 사용:',
-        error.message
+        error
       );
     }
 
-    // Firestore 조회 결과를 화면에 반영
-    if(typeof window.applyFilter === 'function'){
+    loadPermits();
+
+    if(
+      typeof window.applyFilter ===
+        'function'
+    ){
       window.applyFilter();
     }
 
-    console.log('[Firestore] 작업DB·허가서 조회 처리 완료');
+    console.log(
+      '[Firestore] 역할별 대시보드 조회 처리 완료'
+    );
   }, 500);
 }
+
 
 if(document.readyState === "loading"){
   window.addEventListener("DOMContentLoaded", workDbInitialize);
@@ -6442,11 +6786,32 @@ window.openInspSheetFromWork = function(workId, event){
 };
               
 
-window.openRiskEditModal = function(workId, event){
+window.openRiskEditModal =
+  function(workId, event){
+
+  if(
+    typeof window.isAdminUser !==
+      'function' ||
+    !window.isAdminUser()
+  ){
+    if(
+      typeof window.showToast ===
+        'function'
+    ){
+      window.showToast(
+        '관리자만 위험등급을 수정할 수 있습니다.',
+        'error'
+      );
+    }
+
+    return;
+  }
+
   if(event){
     event.stopPropagation();
     event.preventDefault();
   }
+
 
   const work = (window.allWorks || []).find(function(w){
     return (w.workId || w.id) === workId;
@@ -6535,8 +6900,40 @@ window.closeRiskEditModal = function(){
 };
 
 window.submitRiskEdit = async function(){
-  const managerEl = document.getElementById('riskEditManager');
-  const managerName = managerEl ? (managerEl.value || '').trim() : '';
+
+  if(
+    typeof window.isAdminUser !== 'function' ||
+    !window.isAdminUser()
+  ){
+    if(typeof window.showToast === 'function'){
+      window.showToast(
+        '관리자만 위험등급을 수정할 수 있습니다.',
+        'error'
+      );
+    }
+
+    return;
+  }
+
+  const managerEl =
+    document.getElementById('riskEditManager');
+
+  const managerName =
+    managerEl
+      ? (managerEl.value || '').trim()
+      : '';
+
+  if(!managerName){
+    if(typeof window.showToast === 'function'){
+      window.showToast('수정자 이름을 입력하세요', 'error');
+    }
+
+    if(managerEl) managerEl.focus();
+    return;
+  }
+
+  // 이하 기존 코드 그대로 유지
+
 
   if(!managerName){
     if(typeof window.showToast === 'function'){
