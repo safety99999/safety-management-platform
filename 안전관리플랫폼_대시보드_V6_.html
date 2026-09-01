@@ -14,26 +14,44 @@
      ═══════════════════════════════════════════════════ -->
 <script>
 (function(){
-  var urlMode = new URLSearchParams(location.search).get('mode');
-  if(urlMode === 'test' || urlMode === 'prod'){
-    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
-  }
-  
-  window.APP_MODE = localStorage.getItem('appMode') || 'test';
-  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
-  
-  // 컬렉션 이름 헬퍼 (Firestore 초기화 전이라 함수만 정의)
+  window.APP_MODE = 'test';
+  window.COLLECTION_PREFIX = 'test_';
+
   window.getCollectionName = function(baseName){
     return window.COLLECTION_PREFIX + baseName;
   };
-  
+
+  window.APP_CONFIG = Object.freeze({
+    environment: 'test',
+
+    collections: {
+      users: 'users',
+      permits: 'test_safetyPermits',
+      riskResults: 'test_riskAssessmentResults'
+    },
+
+    files: {
+      persistPhotos: false,
+      persistAttachments: false,
+      persistSignatures: false
+    },
+
+    testerMode: {
+      storage: 'indexedDB',
+      allowSelfApproval: true,
+      allowFirestoreAccess: false
+    }
+  });
+
   console.log(
-    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
-    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
-    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+    '%c[APP MODE] TEST',
+    'background:#dc3545;color:white;' +
+    'padding:4px 12px;border-radius:4px;' +
+    'font-weight:bold;'
   );
 })();
 </script>
+
 <style>
 /* ═══════════════════════════════════════
    POSCO FUTURE M 안전관리 대시보드
