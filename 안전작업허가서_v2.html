@@ -1961,6 +1961,8 @@ var permitData = {
   questionReasons: {},
 
   workerSignature: null,
+  workerSignatureProvided: false,
+  workerSignatureSaved: false,
   supervisorName: '',
   supervisorPhone: '',
   supervisorEmail: '',
@@ -2720,8 +2722,11 @@ function validateStep7() {
   permitData.supervisorPhone=sp;
   permitData.supervisorEmail=se;
 
-  var canvas=document.getElementById('worker-sig');
-  permitData.workerSignature=canvas.toDataURL('image/png',0.3);
+  permitData.workerSignature = null;
+  permitData.workerSignatureProvided = true;
+  permitData.workerSignatureSaved = false;
+
+
 
   var n=new Date();
   permitData.permitNo='PTW-'+n.getFullYear()+pad(n.getMonth()+1)+pad(n.getDate())+'-'+String(Math.floor(Math.random()*1000)).padStart(3,'0');
@@ -2830,7 +2835,13 @@ function buildPermitRecord() {
     questions: permitData.questions || {},
     questionReasons: permitData.questionReasons || {},
 
-    workerSignature: permitData.workerSignature || '',
+   signatureTest: {
+  provided:
+    permitData.workerSignatureProvided === true,
+  saved: false,
+  storageMode: 'memory-only'
+},
+
     supervisorName: permitData.supervisorName || '',
     supervisorPhone: permitData.supervisorPhone || '',
     supervisorEmail: permitData.supervisorEmail || '',
@@ -3338,8 +3349,7 @@ function submitExtension(){
     showToast('승인자 서명을 해주세요','danger'); return;
   }
 
-  var canvas = document.getElementById('ext-sig-canvas');
-  extendState.approverSignature = canvas.toDataURL('image/png', 0.3);
+  extendState.approverSignature = null;
   extendState.approverName = approverName;
 
   try {
@@ -3377,7 +3387,12 @@ function submitExtension(){
         approver: true,
         content: true
       },
-      approverSignature: extendState.approverSignature,
+      signatureTest: {
+  provided: true,
+  saved: false,
+  storageMode: 'memory-only'
+},
+
       approvedBy: approverName
     };
 
