@@ -1598,9 +1598,12 @@ body{
   }
 }
 
+</style>
+
 <script>
 /* =========================================================
    로그인 세션 및 역할 확인
+
    - admin: 관리자
    - user: 인증 사용자
    - tester: 공개 로컬 테스터
@@ -6061,12 +6064,18 @@ function workDbInitialize(){
   }, 500);
 }
 
-  window.addEventListener("DOMContentLoaded", workDbInitialize);
+ }
+
+if(document.readyState === "loading"){
+  window.addEventListener(
+    "DOMContentLoaded",
+    workDbInitialize
+  );
 }else{
   workDbInitialize();
 }
 </script>
-<script>
+
 /* =========================================================
    v7.3 빠른실행 버튼 workId 전달 패치 (2026-08-29)
    
