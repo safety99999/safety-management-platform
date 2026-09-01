@@ -732,7 +732,65 @@ body{
 }
 
 /* ═══ 점검 등록 시트 세부 ═══ */
-.sev-btn.on{border-color:var(--posco);background:var(--tint)}
+.sev-btn{
+  width:100%;
+  min-width:0;
+  min-height:116px;
+  padding:14px 6px;
+  border:2px solid var(--line);
+  border-radius:var(--r-s);
+  background:var(--card);
+  color:var(--ink);
+  font-family:inherit;
+  cursor:pointer;
+  transition:
+    transform .15s,
+    border-color .15s,
+    background .15s,
+    box-shadow .15s;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  position:relative;
+  z-index:1;
+  pointer-events:auto;
+  touch-action:manipulation;
+  appearance:none;
+  -webkit-appearance:none;
+}
+
+.sev-btn:hover{
+  border-color:var(--posco);
+}
+
+.sev-btn:active{
+  transform:scale(.96);
+}
+
+.sev-btn.on,
+.sev-btn[aria-pressed="true"]{
+  border-color:var(--posco) !important;
+  background:var(--tint) !important;
+  color:var(--posco) !important;
+  box-shadow:0 0 0 3px rgba(0,103,177,.15);
+}
+
+.sev-icon{
+  display:block;
+  font-size:30px;
+  line-height:1;
+  pointer-events:none;
+}
+
+.sev-label{
+  display:block;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.2;
+  pointer-events:none;
+}
 #subBtn:disabled{background:var(--line);color:var(--faint);box-shadow:none;cursor:not-allowed}
 #subBtn:active:not(:disabled){transform:scale(.98)}
 .cl-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:8px;cursor:pointer;transition:.12s;}
@@ -1950,22 +2008,60 @@ body{
       <div style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--ink);" id="ifWName"></div>
     </div>
     
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">심각도</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-        <div onclick="selSev('중대',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink);" class="sev-btn">
-          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🔴</div>
-          <div style="font-size:13px;font-weight:800;">중대</div>
-        </div>
-        <div onclick="selSev('경미',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink);" class="sev-btn">
-          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🟡</div>
-          <div style="font-size:13px;font-weight:800;">경미</div>
-        </div>
-        <div onclick="selSev('권고',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink);" class="sev-btn">
-          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🟢</div>
-          <div style="font-size:13px;font-weight:800;">권고</div>
-        </div>
-      </div>
+<div style="margin-bottom:16px;">
+  <div style="
+    font-size:13px;
+    font-weight:800;
+    color:var(--sub);
+    margin-bottom:8px;
+    letter-spacing:.02em;
+  ">
+   위험도
+  </div>
+
+  <div
+    id="severityButtonGroup"
+    style="
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+    "
+  >
+    <button
+      type="button"
+      id="severityCritical"
+      class="sev-btn"
+      data-severity="중대"
+      aria-pressed="false"
+    >
+      <span class="sev-icon">🔴</span>
+      <span class="sev-label">중대</span>
+    </button>
+
+    <button
+      type="button"
+      id="severityMinor"
+      class="sev-btn"
+      data-severity="경미"
+      aria-pressed="false"
+    >
+      <span class="sev-icon">🟡</span>
+      <span class="sev-label">경미</span>
+    </button>
+
+    <button
+      type="button"
+      id="severityAdvice"
+      class="sev-btn"
+      data-severity="권고"
+      aria-pressed="false"
+    >
+      <span class="sev-icon">🟢</span>
+      <span class="sev-label">권고</span>
+    </button>
+  </div>
+</div>
+
     </div>
 
     <div style="margin-bottom:16px;">
@@ -2489,12 +2585,73 @@ function delCust(i){
   valForm();
 }
 
-function selSev(sev,el){
-  ifSev=sev;
-  document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('on');});
-  el.classList.add('on');
+function selSev(severity, element){
+  ifSev = severity;
+
+  document
+    .querySelectorAll(
+      '#severityButtonGroup .sev-btn'
+    )
+    .forEach(function(button){
+      button.classList.remove('on');
+      button.setAttribute(
+        'aria-pressed',
+        'false'
+      );
+    });
+
+  if(element){
+    element.classList.add('on');
+    element.setAttribute(
+      'aria-pressed',
+      'true'
+    );
+  }
+
+  console.log(
+    '[점검등록] 심각도 선택:',
+    ifSev
+  );
+
   valForm();
 }
+
+window.selSev = selSev;
+document.addEventListener(
+  'click',
+  function(event){
+    var severityButton =
+      event.target.closest(
+        '#severityButtonGroup .sev-btn'
+      );
+
+    if(!severityButton){
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    var severity =
+      severityButton.getAttribute(
+        'data-severity'
+      );
+
+    if(!severity){
+      console.warn(
+        '[점검등록] data-severity가 없습니다.'
+      );
+
+      return;
+    }
+
+    selSev(
+      severity,
+      severityButton
+    );
+  }
+);
+
 
 function onPhoto(event){
   var file =
@@ -2642,7 +2799,18 @@ function resetIF(){
   var cl=document.getElementById('custList');if(cl) cl.innerHTML='';
   var pp=document.getElementById('photoPrev');if(pp) pp.style.display='none';
   var pf=document.getElementById('photoFile');if(pf) pf.value='';
-  document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('on');});
+  document
+  .querySelectorAll(
+    '#severityButtonGroup .sev-btn'
+  )
+  .forEach(function(button){
+    button.classList.remove('on');
+    button.setAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
 }
 
 // ═══════════════════════════════════════
