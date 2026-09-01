@@ -3551,8 +3551,7 @@ function goTab(tab){
   if(
     tab === 'settings' &&
     (
-      typeof window.isAdminUser !==
-        'function' ||
+      typeof window.isAdminUser !== 'function' ||
       !window.isAdminUser()
     )
   ){
@@ -3564,27 +3563,68 @@ function goTab(tab){
     return;
   }
 
-  ['home','inspect','settings'].forEach(function(t){
+  ['home', 'inspect', 'settings'].forEach(
+    function(name){
+      var page =
+        document.getElementById(
+          'page' + cap(name)
+        );
 
-  ['home','inspect','settings'].forEach(function(t){
-    var p=document.getElementById('page'+cap(t));if(p) p.classList.remove('active');
-  });
-  ['Home','Inspect','Settings'].forEach(function(t){
-    var el=document.getElementById('tab'+t);if(el) el.classList.remove('active');
-  });
-  var page=document.getElementById('page'+cap(tab));if(page) page.classList.add('active');
-  var tabEl=document.getElementById('tab'+cap(tab));if(tabEl) tabEl.classList.add('active');
-  var appScroll = document.querySelector('.phone-frame .app');
+      if(page){
+        page.classList.remove('active');
+      }
+    }
+  );
 
-if(window.matchMedia('(min-width:768px)').matches && appScroll){
-  appScroll.scrollTo({
-    top:0,
-    behavior:'auto'
-  });
-}else{
-  window.scrollTo(0,0);
-}
+  ['Home', 'Inspect', 'Settings'].forEach(
+    function(name){
+      var tabElement =
+        document.getElementById(
+          'tab' + name
+        );
 
+      if(tabElement){
+        tabElement.classList.remove('active');
+      }
+    }
+  );
+
+  var selectedPage =
+    document.getElementById(
+      'page' + cap(tab)
+    );
+
+  if(selectedPage){
+    selectedPage.classList.add('active');
+  }
+
+  var selectedTab =
+    document.getElementById(
+      'tab' + cap(tab)
+    );
+
+  if(selectedTab){
+    selectedTab.classList.add('active');
+  }
+
+  var appScroll =
+    document.querySelector(
+      '.phone-frame .app'
+    );
+
+  if(
+    window
+      .matchMedia('(min-width:768px)')
+      .matches &&
+    appScroll
+  ){
+    appScroll.scrollTo({
+      top: 0,
+      behavior: 'auto'
+    });
+  }else{
+    window.scrollTo(0, 0);
+  }
 }
 
 // ═══════════════════════════════════════
