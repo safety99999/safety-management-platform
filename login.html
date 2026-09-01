@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
 
@@ -36,11 +36,16 @@
       --line:#DFE7EF;
 
       --done:#0E8A6B;
+      --done-bg:#EDFAF6;
+
       --stop:#D6273D;
+      --stop-bg:#FFF3F5;
+
       --warn:#B45309;
       --warn-bg:#FEF6E7;
 
       --radius:18px;
+
       --shadow:
         0 16px 45px rgba(15,29,43,.18);
     }
@@ -96,10 +101,10 @@
     .test-badge{
       width:max-content;
       margin:0 auto 12px;
-      padding:6px 12px;
+      padding:6px 13px;
 
       border-radius:999px;
-      background:#D6273D;
+      background:var(--stop);
       color:#fff;
 
       font-size:12px;
@@ -109,8 +114,10 @@
 
     .login-card{
       overflow:hidden;
+
       border:1px solid rgba(255,255,255,.5);
       border-radius:26px;
+
       background:var(--card);
       box-shadow:var(--shadow);
     }
@@ -118,6 +125,7 @@
     .login-header{
       position:relative;
       overflow:hidden;
+
       padding:30px 24px 28px;
 
       background:
@@ -133,6 +141,7 @@
 
     .login-header::after{
       content:'';
+
       position:absolute;
       right:-45px;
       bottom:-55px;
@@ -148,6 +157,8 @@
           rgba(255,255,255,.08) 0 9px,
           transparent 9px 18px
         );
+
+      pointer-events:none;
     }
 
     .login-icon{
@@ -155,6 +166,7 @@
       z-index:1;
 
       margin-bottom:10px;
+
       font-size:48px;
       line-height:1;
     }
@@ -164,6 +176,7 @@
       z-index:1;
 
       margin-bottom:4px;
+
       font-size:13px;
       font-weight:800;
       letter-spacing:.08em;
@@ -184,6 +197,7 @@
       z-index:1;
 
       margin-top:8px;
+
       font-size:14px;
       font-weight:600;
       line-height:1.55;
@@ -218,6 +232,7 @@
       margin-bottom:7px;
 
       color:var(--body);
+
       font-size:14px;
       font-weight:800;
     }
@@ -235,6 +250,7 @@
 
       font-size:16px;
       font-weight:600;
+
       outline:none;
 
       transition:
@@ -246,13 +262,43 @@
     .field-input:focus{
       border-color:var(--posco);
       background:#fff;
+
       box-shadow:
         0 0 0 4px rgba(0,103,177,.1);
+    }
+
+    .password-wrap{
+      position:relative;
+    }
+
+    .password-wrap .field-input{
+      padding-right:62px;
+    }
+
+    .password-toggle{
+      position:absolute;
+      top:50%;
+      right:8px;
+      transform:translateY(-50%);
+
+      min-width:46px;
+      height:38px;
+
+      border:0;
+      border-radius:9px;
+
+      background:transparent;
+      color:var(--sub);
+
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
     }
 
     .login-button{
       width:100%;
       min-height:54px;
+
       margin-top:4px;
       padding:14px;
 
@@ -270,6 +316,7 @@
 
       font-size:16px;
       font-weight:900;
+
       cursor:pointer;
 
       box-shadow:
@@ -294,6 +341,7 @@
       margin:20px 0;
 
       color:var(--faint);
+
       font-size:12px;
       font-weight:800;
     }
@@ -301,14 +349,17 @@
     .divider::before,
     .divider::after{
       content:'';
+
       flex:1;
       height:1px;
+
       background:var(--line);
     }
 
     .tester-button{
       width:100%;
       min-height:54px;
+
       padding:14px;
 
       border:2px solid var(--posco);
@@ -319,6 +370,7 @@
 
       font-size:16px;
       font-weight:900;
+
       cursor:pointer;
     }
 
@@ -326,10 +378,17 @@
       transform:scale(.98);
     }
 
+    .tester-button:disabled{
+      cursor:not-allowed;
+      opacity:.55;
+      transform:none;
+    }
+
     .tester-help{
       margin-top:10px;
 
       color:var(--sub);
+
       font-size:12px;
       font-weight:600;
       line-height:1.55;
@@ -338,15 +397,19 @@
 
     .status{
       display:none;
+
       margin-top:16px;
-      padding:11px 12px;
+      padding:12px 13px;
 
       border-radius:10px;
 
       font-size:13px;
       font-weight:700;
-      line-height:1.5;
+      line-height:1.55;
       text-align:center;
+
+      white-space:pre-line;
+      word-break:keep-all;
     }
 
     .status.show{
@@ -359,12 +422,12 @@
     }
 
     .status.success{
-      background:#EDFAF6;
+      background:var(--done-bg);
       color:var(--done);
     }
 
     .status.error{
-      background:#FFF3F5;
+      background:var(--stop-bg);
       color:var(--stop);
     }
 
@@ -372,9 +435,10 @@
       padding:0 20px 20px;
 
       color:var(--faint);
+
       font-size:11.5px;
       font-weight:600;
-      line-height:1.5;
+      line-height:1.55;
       text-align:center;
     }
 
@@ -391,16 +455,25 @@
         font-size:22px;
       }
     }
+
+    @media(prefers-reduced-motion:reduce){
+      *{
+        animation-duration:.01ms !important;
+        transition-duration:.01ms !important;
+      }
+    }
   </style>
 </head>
 
 <body>
   <main class="login-shell">
+
     <div class="test-badge">
       DEVELOPMENT TEST
     </div>
 
     <section class="login-card">
+
       <header class="login-header">
         <div class="login-icon">🏭</div>
 
@@ -419,34 +492,36 @@
       </header>
 
       <div class="login-body">
+
         <div class="notice">
           🧪 개발 테스트 환경입니다.<br>
           이 시스템에서 생성한 문서는 실제 작업허가로 사용할 수 없습니다.<br>
           실제 개인정보와 비공개 현장정보를 입력하지 마십시오.
         </div>
 
-        <form id="loginForm">
+        <form id="loginForm" novalidate>
+
           <div class="field">
-           <label
-  class="field-label"
-  for="loginId"
->
-  아이디
-</label>
+            <label
+              class="field-label"
+              for="loginId"
+            >
+              아이디
+            </label>
 
-<input
-  class="field-input"
-  id="loginId"
-  type="text"
-  inputmode="text"
-  autocomplete="username"
-  maxlength="30"
-  placeholder="아이디 입력"
-  autocapitalize="none"
-  spellcheck="false"
-  required
->
-
+            <input
+              class="field-input"
+              id="loginId"
+              name="loginId"
+              type="text"
+              inputmode="text"
+              autocomplete="username"
+              maxlength="30"
+              placeholder="아이디 입력"
+              autocapitalize="none"
+              spellcheck="false"
+              required
+            >
           </div>
 
           <div class="field">
@@ -457,14 +532,26 @@
               비밀번호
             </label>
 
-            <input
-              class="field-input"
-              id="loginPassword"
-              type="password"
-              autocomplete="current-password"
-              placeholder="비밀번호 입력"
-              required
-            >
+            <div class="password-wrap">
+              <input
+                class="field-input"
+                id="loginPassword"
+                name="loginPassword"
+                type="password"
+                autocomplete="current-password"
+                placeholder="비밀번호 입력"
+                required
+              >
+
+              <button
+                type="button"
+                class="password-toggle"
+                id="passwordToggle"
+                aria-label="비밀번호 표시 전환"
+              >
+                보기
+              </button>
+            </div>
           </div>
 
           <button
@@ -505,6 +592,7 @@
         사진·서명·첨부파일은 저장되지 않습니다.<br>
         테스트 종료 후 브라우저 자료를 삭제할 수 있습니다.
       </footer>
+
     </section>
   </main>
 
@@ -528,10 +616,13 @@
     import {
       getFirestore,
       doc,
-      getDoc
+      getDocFromServer
     } from
       "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
+    /*
+     * Firebase 설정
+     */
     const firebaseConfig = {
       apiKey:
         "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
@@ -552,6 +643,21 @@
         "1:96226952530:web:07e7cb286dc4e120cea68b"
     };
 
+    /*
+     * 로그인 설정
+     *
+     * 화면에 admin을 입력하면 Firebase에는
+     * admin@pfm-safety.test로 전달됩니다.
+     */
+    const AUTH_ID_DOMAIN =
+      "pfm-safety.test";
+
+    const DASHBOARD_URL =
+      "안전관리플랫폼_대시보드_V6_.html";
+
+    /*
+     * Firebase 초기화
+     */
     const firebaseApp =
       getApps().length
         ? getApp()
@@ -563,30 +669,65 @@
     const db =
       getFirestore(firebaseApp);
 
-    const DASHBOARD_URL =
-      "안전관리플랫폼_대시보드_V6_.html";
-
+    /*
+     * 화면 요소
+     */
     const loginForm =
       document.getElementById("loginForm");
 
+    const loginIdInput =
+      document.getElementById("loginId");
+
+    const loginPasswordInput =
+      document.getElementById(
+        "loginPassword"
+      );
+
     const loginButton =
-      document.getElementById("loginButton");
+      document.getElementById(
+        "loginButton"
+      );
 
     const testerButton =
-      document.getElementById("testerButton");
+      document.getElementById(
+        "testerButton"
+      );
+
+    const passwordToggle =
+      document.getElementById(
+        "passwordToggle"
+      );
 
     const statusElement =
-      document.getElementById("loginStatus");
+      document.getElementById(
+        "loginStatus"
+      );
 
+    let loginBusy = false;
+
+    /*
+     * 화면 메시지
+     */
     function showStatus(message, type){
-      statusElement.textContent = message;
+      statusElement.textContent =
+        message || "";
+
       statusElement.className =
         "status show " + (type || "info");
     }
 
+    function clearStatus(){
+      statusElement.textContent = "";
+      statusElement.className = "status";
+    }
+
     function setBusy(busy){
+      loginBusy = busy;
+
       loginButton.disabled = busy;
       testerButton.disabled = busy;
+      loginIdInput.disabled = busy;
+      loginPasswordInput.disabled = busy;
 
       loginButton.textContent =
         busy
@@ -594,6 +735,32 @@
           : "관리자·사용자 로그인";
     }
 
+    /*
+     * 아이디 정리
+     */
+    function normalizeLoginId(value){
+      return String(value || "")
+        .trim()
+        .toLowerCase();
+    }
+
+    function isValidLoginId(loginId){
+      return /^[a-z0-9._-]{3,30}$/.test(
+        loginId
+      );
+    }
+
+    function makeFirebaseEmail(loginId){
+      return (
+        loginId +
+        "@" +
+        AUTH_ID_DOMAIN
+      );
+    }
+
+    /*
+     * 앱 세션 저장
+     */
     function saveAppSession(session){
       sessionStorage.setItem(
         "appSession",
@@ -601,103 +768,183 @@
       );
     }
 
-    function translateAuthError(error){
-      const code =
-        error && error.code
-          ? error.code
-          : "";
-
-      const messageMap = {
-        "auth/invalid-email":
-          "이메일 형식을 확인해주세요.",
-
-        "auth/invalid-credential":
-          "이메일 또는 비밀번호가 올바르지 않습니다.",
-
-        "auth/user-disabled":
-          "사용이 중지된 계정입니다.",
-
-        "auth/too-many-requests":
-          "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.",
-
-        "auth/network-request-failed":
-          "네트워크 연결을 확인해주세요.",
-
-        "permission-denied":
-          "사용자 역할 정보를 조회할 권한이 없습니다."
-      };
-
-      return (
-        messageMap[code] ||
-        error.message ||
-        "로그인 중 오류가 발생했습니다."
+    function clearAppSession(){
+      sessionStorage.removeItem(
+        "appSession"
       );
     }
 
+    /*
+     * Firestore users/{UID} 서버 조회
+     */
     async function loadUserProfile(uid){
       const userReference =
         doc(db, "users", uid);
 
       const snapshot =
-        await getDoc(userReference);
+        await getDocFromServer(
+          userReference
+        );
+
+      console.log(
+        "[로그인 확인] 인증 UID:",
+        uid
+      );
+
+      console.log(
+        "[로그인 확인] Firestore 문서 ID:",
+        snapshot.id
+      );
+
+      console.log(
+        "[로그인 확인] 문서 존재:",
+        snapshot.exists()
+      );
 
       if(!snapshot.exists()){
         throw new Error(
-          "사용자 역할 정보가 등록되지 않았습니다."
+          "사용자 역할 정보가 등록되지 않았습니다.\n" +
+          "관리자에게 사용 승인을 요청해주세요."
         );
       }
 
-      return snapshot.data();
+      const profile =
+        snapshot.data();
+
+      console.log(
+        "[로그인 확인] 프로필 전체:",
+        JSON.stringify(profile)
+      );
+
+      console.log(
+        "[로그인 확인] 필드 목록:",
+        Object.keys(profile)
+      );
+
+      console.log(
+        "[로그인 확인] active 값:",
+        profile.active,
+        "유형:",
+        typeof profile.active
+      );
+
+      return profile;
     }
 
+    /*
+     * 로그인 오류를 사용자 메시지로 변경
+     */
+    function translateLoginError(error){
+      const code =
+        error && error.code
+          ? error.code
+          : "";
+
+      const errorMessages = {
+        "auth/invalid-email":
+          "로그인 아이디 형식이 올바르지 않습니다.",
+
+        "auth/invalid-credential":
+          "아이디 또는 비밀번호가 올바르지 않습니다.",
+
+        "auth/user-disabled":
+          "Firebase Authentication에서 중지된 계정입니다.",
+
+        "auth/too-many-requests":
+          "로그인 시도가 너무 많습니다.\n잠시 후 다시 시도해주세요.",
+
+        "auth/network-request-failed":
+          "네트워크 연결을 확인해주세요.",
+
+        "firestore/permission-denied":
+          "사용자 역할 정보를 조회할 권한이 없습니다.\nFirestore 보안 규칙을 확인해주세요.",
+
+        "permission-denied":
+          "사용자 역할 정보를 조회할 권한이 없습니다."
+      };
+
+      if(errorMessages[code]){
+        return errorMessages[code];
+      }
+
+      return (
+        error &&
+        error.message
+          ? error.message
+          : "로그인 중 오류가 발생했습니다."
+      );
+    }
+
+    /*
+     * 비밀번호 보기/숨기기
+     */
+    passwordToggle.addEventListener(
+      "click",
+      function(){
+        const isPassword =
+          loginPasswordInput.type ===
+          "password";
+
+        loginPasswordInput.type =
+          isPassword
+            ? "text"
+            : "password";
+
+        passwordToggle.textContent =
+          isPassword
+            ? "숨김"
+            : "보기";
+      }
+    );
+
+    /*
+     * 관리자·사용자 로그인
+     */
     loginForm.addEventListener(
       "submit",
       async function(event){
         event.preventDefault();
 
-       const loginId =
-  document
-    .getElementById("loginId")
-    .value
-    .trim()
-    .toLowerCase();
+        if(loginBusy){
+          return;
+        }
 
-const password =
-  document
-    .getElementById("loginPassword")
-    .value;
+        clearStatus();
 
-if(!loginId || !password){
-  showStatus(
-    "아이디와 비밀번호를 입력해주세요.",
-    "error"
-  );
+        const loginId =
+          normalizeLoginId(
+            loginIdInput.value
+          );
 
-  return;
-}
+        const password =
+          loginPasswordInput.value;
 
-if(!/^[a-z0-9._-]{4,30}$/.test(loginId)){
-  showStatus(
-    "아이디는 영문 소문자, 숫자, 점, 밑줄, 하이픈으로 4~30자 입력해주세요.",
-    "error"
-  );
+        if(!loginId || !password){
+          showStatus(
+            "아이디와 비밀번호를 모두 입력해주세요.",
+            "error"
+          );
 
-  return;
-}
+          return;
+        }
 
-/*
- * Firebase Authentication은 이메일 형식을 요구하므로
- * 화면 아이디에 고정 도메인을 붙여 로그인합니다.
- *
- * 아래 도메인은 Firebase 콘솔에서 계정을 생성할 때
- * 사용한 도메인과 정확히 같아야 합니다.
- */
-const AUTH_ID_DOMAIN =
-  "pfm-safety.test";
+        if(!isValidLoginId(loginId)){
+          showStatus(
+            "아이디는 영문 소문자, 숫자, 점, 밑줄, 하이픈으로\n" +
+            "3~30자 입력해주세요.",
+            "error"
+          );
 
-const email =
-  loginId + "@" + AUTH_ID_DOMAIN;
- 
+          return;
+        }
+
+        const email =
+          makeFirebaseEmail(loginId);
+
+        console.log(
+          "[로그인] Firebase 인증 계정:",
+          email
+        );
 
         setBusy(true);
 
@@ -707,39 +954,62 @@ const email =
         );
 
         try{
-          sessionStorage.removeItem(
-            "appSession"
-          );
+          clearAppSession();
 
+          /*
+           * 현재 탭을 닫으면 인증 유지 종료
+           */
           await setPersistence(
             auth,
             browserSessionPersistence
           );
 
+          /*
+           * Firebase Authentication 로그인
+           */
           const credential =
             await signInWithEmailAndPassword(
               auth,
               email,
               password
             );
-        const profile =
-  await loadUserProfile(
-    credential.user.uid
-  );
 
-console.log(
-  '[로그인 확인] 사용자 프로필:',
-  profile,
-  'active 유형:',
-  typeof profile.active
-);
+          console.log(
+            "[로그인] Authentication 성공:",
+            {
+              uid: credential.user.uid,
+              email: credential.user.email
+            }
+          );
 
-if(profile.active !== true){
-  throw new Error(
-    "사용이 중지된 계정입니다."
-  );
-}
+          /*
+           * Firestore 사용자 역할 조회
+           */
+          const profile =
+            await loadUserProfile(
+              credential.user.uid
+            );
 
+          /*
+           * 사용자 문서의 필수 필드 검증
+           */
+          if(
+            !Object.prototype.hasOwnProperty.call(
+              profile,
+              "active"
+            )
+          ){
+            throw new Error(
+              "사용자 문서에 active 필드가 없습니다.\n" +
+              "Firestore users 문서를 확인해주세요."
+            );
+          }
+
+          if(profile.active !== true){
+            throw new Error(
+              "사용이 중지된 계정입니다."
+            );
+          }
 
           if(profile.environment !== "test"){
             throw new Error(
@@ -756,22 +1026,42 @@ if(profile.active !== true){
             );
           }
 
-          saveAppSession({
+          /*
+           * 대시보드에서 사용할 세션
+           */
+          const appSession = {
             accessMode: "authenticated",
             role: profile.role,
             uid: credential.user.uid,
+
             displayName:
               profile.displayName ||
               credential.user.email ||
               "사용자",
+
             email:
-              credential.user.email || "",
-            environment: "test"
-          });
+              credential.user.email ||
+              "",
+
+            environment: "test",
+
+            loginAt:
+              new Date().toISOString()
+          };
+
+          saveAppSession(
+            appSession
+          );
+
+          console.log(
+            "[로그인] 앱 세션 저장 완료:",
+            appSession
+          );
 
           showStatus(
-            profile.displayName +
-              " 계정으로 로그인했습니다.",
+            appSession.displayName +
+            " 계정으로 로그인했습니다.\n" +
+            "대시보드로 이동합니다.",
             "success"
           );
 
@@ -779,7 +1069,7 @@ if(profile.active !== true){
             window.location.replace(
               DASHBOARD_URL
             );
-          }, 500);
+          }, 600);
 
         }catch(error){
           console.error(
@@ -789,14 +1079,17 @@ if(profile.active !== true){
 
           try{
             await signOut(auth);
-          }catch(signOutError){}
+          }catch(signOutError){
+            console.warn(
+              "[로그인] 실패 후 로그아웃 오류:",
+              signOutError
+            );
+          }
 
-          sessionStorage.removeItem(
-            "appSession"
-          );
+          clearAppSession();
 
           showStatus(
-            translateAuthError(error),
+            translateLoginError(error),
             "error"
           );
 
@@ -805,32 +1098,51 @@ if(profile.active !== true){
       }
     );
 
+    /*
+     * 테스터 로컬 체험
+     */
     testerButton.addEventListener(
       "click",
       async function(){
+
+        if(loginBusy){
+          return;
+        }
+
         setBusy(true);
+        clearStatus();
 
         try{
           /*
-           * 이전에 로그인한 Firebase 계정이 남아 있으면
-           * 반드시 로그아웃한 뒤 테스터 모드로 전환합니다.
+           * 기존 Firebase 로그인 세션 제거
            */
           await signOut(auth);
         }catch(error){
           console.warn(
-            "[테스터 모드] 로그아웃 처리:",
+            "[테스터 모드] Firebase 로그아웃:",
             error
           );
         }
 
-        saveAppSession({
+        const testerSession = {
           accessMode: "tester",
           role: "tester",
           uid: null,
           displayName: "공개 테스터",
           email: "",
-          environment: "test"
-        });
+          environment: "test",
+          loginAt:
+            new Date().toISOString()
+        };
+
+        saveAppSession(
+          testerSession
+        );
+
+        console.log(
+          "[테스터 모드] 세션 저장 완료:",
+          testerSession
+        );
 
         showStatus(
           "테스터 로컬 체험 모드로 이동합니다.",
@@ -841,7 +1153,34 @@ if(profile.active !== true){
           window.location.replace(
             DASHBOARD_URL
           );
-        }, 400);
+        }, 450);
+      }
+    );
+
+    /*
+     * 아이디 입력 시 오류 메시지 제거
+     */
+    loginIdInput.addEventListener(
+      "input",
+      clearStatus
+    );
+
+    loginPasswordInput.addEventListener(
+      "input",
+      clearStatus
+    );
+
+    /*
+     * 최초 실행
+     */
+    clearAppSession();
+
+    console.log(
+      "[로그인] 페이지 준비 완료",
+      {
+        authDomain: firebaseConfig.authDomain,
+        projectId: firebaseConfig.projectId,
+        idDomain: AUTH_ID_DOMAIN
       }
     );
   </script>
