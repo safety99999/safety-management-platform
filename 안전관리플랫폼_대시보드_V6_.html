@@ -732,33 +732,53 @@ body{
 }
 
 /* ═══ 점검 등록 시트 세부 ═══ */
+
+#ifSheet{
+  overflow:hidden;
+}
+
+#ifSheet .sheet-body{
+  display:block;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+
+/* 위험도 버튼 그룹 */
+.severity-button-group{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  width:100%;
+}
+
+/* 위험도 버튼 */
 .sev-btn{
   width:100%;
   min-width:0;
-  min-height:116px;
-  padding:14px 6px;
+  height:92px;
+  padding:12px 4px;
   border:2px solid var(--line);
   border-radius:var(--r-s);
   background:var(--card);
   color:var(--ink);
   font-family:inherit;
   cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
   transition:
     transform .15s,
     border-color .15s,
     background .15s,
     box-shadow .15s;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  position:relative;
-  z-index:1;
-  pointer-events:auto;
-  touch-action:manipulation;
   appearance:none;
   -webkit-appearance:none;
+  touch-action:manipulation;
 }
 
 .sev-btn:hover{
@@ -774,35 +794,116 @@ body{
   border-color:var(--posco) !important;
   background:var(--tint) !important;
   color:var(--posco) !important;
-  box-shadow:0 0 0 3px rgba(0,103,177,.15);
+  box-shadow:0 0 0 3px rgba(0,103,177,.12);
 }
 
 .sev-icon{
   display:block;
-  font-size:30px;
+  font-size:25px;
   line-height:1;
   pointer-events:none;
 }
 
 .sev-label{
   display:block;
-  font-size:15px;
+  color:inherit;
+  font-size:13px;
   font-weight:800;
   line-height:1.2;
   pointer-events:none;
 }
-#subBtn:disabled{background:var(--line);color:var(--faint);box-shadow:none;cursor:not-allowed}
-#subBtn:active:not(:disabled){transform:scale(.98)}
-.cl-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:8px;cursor:pointer;transition:.12s;}
-.cl-item:active{background:var(--sunk)}
-.cl-item.sel{background:var(--tint)}
-.cl-box{width:20px;height:20px;border:2px solid var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--posco);flex-shrink:0;}
-.cl-item.sel .cl-box{background:var(--posco);color:#fff;border-color:var(--posco)}
-.cl-txt{font-size:14px;font-weight:600;line-height:1.4;color:var(--ink)}
-.cl-cat{font-size:12px;font-weight:800;color:var(--posco);padding:6px 10px 4px;letter-spacing:.03em;}
-.cust-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--tint);padding:9px 11px;border-radius:8px;}
-.cust-txt{font-size:13.5px;font-weight:700;color:var(--ink)}
-.cust-del{background:none;border:0;color:var(--stop);font-size:20px;cursor:pointer;font-family:inherit;line-height:1;}
+
+/* 제출 버튼 */
+#subBtn:disabled{
+  background:var(--line) !important;
+  color:var(--faint) !important;
+  box-shadow:none !important;
+  cursor:not-allowed;
+}
+
+#subBtn:active:not(:disabled){
+  transform:scale(.98);
+}
+
+/* 점검 항목 */
+.cl-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 10px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:.12s;
+}
+
+.cl-item:active{
+  background:var(--sunk);
+}
+
+.cl-item.sel{
+  background:var(--tint);
+}
+
+.cl-box{
+  width:20px;
+  height:20px;
+  border:2px solid var(--line);
+  border-radius:5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  font-weight:800;
+  color:var(--posco);
+  flex-shrink:0;
+}
+
+.cl-item.sel .cl-box{
+  background:var(--posco);
+  color:#fff;
+  border-color:var(--posco);
+}
+
+.cl-txt{
+  font-size:14px;
+  font-weight:600;
+  line-height:1.4;
+  color:var(--ink);
+}
+
+.cl-cat{
+  font-size:12px;
+  font-weight:800;
+  color:var(--posco);
+  padding:6px 10px 4px;
+  letter-spacing:.03em;
+}
+
+.cust-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  background:var(--tint);
+  padding:9px 11px;
+  border-radius:8px;
+}
+
+.cust-txt{
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--ink);
+}
+
+.cust-del{
+  background:none;
+  border:0;
+  color:var(--stop);
+  font-size:20px;
+  cursor:pointer;
+  font-family:inherit;
+  line-height:1;
+}
 
 /* ═══ Firestore 작업DB 관리 패널 ═══ */
 .workdb-firestore-panel{
@@ -1991,140 +2092,423 @@ body{
   </div>
   <div class="sheet-body" id="wsBody"></div>
 </div>
-
 <!-- ══════════════════════════════════════
      점검 등록 시트
      ══════════════════════════════════════ -->
-<div class="overlay" id="ifOv" onclick="closeSheet('if')"></div>
+<div
+  class="overlay"
+  id="ifOv"
+  onclick="closeSheet('if')"
+></div>
+
 <div class="sheet" id="ifSheet">
   <div class="sheet-handle"></div>
+
   <div class="sheet-hdr">
     <div class="sheet-title">🚨 점검 등록</div>
-    <button class="sheet-x" onclick="closeSheet('if')" aria-label="닫기">×</button>
+
+    <button
+      type="button"
+      class="sheet-x"
+      onclick="closeSheet('if')"
+      aria-label="닫기"
+    >
+      ×
+    </button>
   </div>
+
   <div class="sheet-body">
-    <div id="ifBanner" style="display:none;background:var(--tint);border-radius:var(--r-s);padding:10px 12px;margin-bottom:14px;border-left:3px solid var(--posco);">
-      <div style="font-size:11px;font-weight:800;color:var(--posco);letter-spacing:.04em;margin-bottom:3px;">연결된 작업</div>
-      <div style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--ink);" id="ifWName"></div>
-    </div>
-    
-<div style="margin-bottom:16px;">
-  <div style="
-    font-size:13px;
-    font-weight:800;
-    color:var(--sub);
-    margin-bottom:8px;
-    letter-spacing:.02em;
-  ">
-   위험도
-  </div>
 
-  <div
-    id="severityButtonGroup"
-    style="
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:8px;
-    "
-  >
-    <button
-      type="button"
-      id="severityCritical"
-      class="sev-btn"
-      data-severity="중대"
-      aria-pressed="false"
+    <!-- 연결된 작업 -->
+    <div
+      id="ifBanner"
+      style="
+        display:none;
+        background:var(--tint);
+        border-radius:var(--r-s);
+        padding:10px 12px;
+        margin-bottom:14px;
+        border-left:3px solid var(--posco);
+      "
     >
-      <span class="sev-icon">🔴</span>
-      <span class="sev-label">중대</span>
-    </button>
+      <div
+        style="
+          font-size:11px;
+          font-weight:800;
+          color:var(--posco);
+          letter-spacing:.04em;
+          margin-bottom:3px;
+        "
+      >
+        연결된 작업
+      </div>
 
-    <button
-      type="button"
-      id="severityMinor"
-      class="sev-btn"
-      data-severity="경미"
-      aria-pressed="false"
-    >
-      <span class="sev-icon">🟡</span>
-      <span class="sev-label">경미</span>
-    </button>
-
-    <button
-      type="button"
-      id="severityAdvice"
-      class="sev-btn"
-      data-severity="권고"
-      aria-pressed="false"
-    >
-      <span class="sev-icon">🟢</span>
-      <span class="sev-label">권고</span>
-    </button>
-  </div>
-</div>
-
+      <div
+        id="ifWName"
+        style="
+          font-size:15px;
+          font-weight:800;
+          letter-spacing:-.02em;
+          color:var(--ink);
+        "
+      ></div>
     </div>
 
+    <!-- 위험도 -->
     <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">점검 항목</div>
-      <div id="clBody" style="max-height:260px;overflow-y:auto;background:var(--card);border-radius:var(--r-s);padding:6px;box-shadow:var(--sh);border:1px solid var(--line);"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <input id="custInp" placeholder="직접 입력..." style="flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14px;">
-        <button onclick="addCust()" style="padding:0 16px;border:0;border-radius:var(--r-s);background:var(--posco);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;">추가</button>
+      <div
+        style="
+          font-size:13px;
+          font-weight:800;
+          color:var(--sub);
+          margin-bottom:8px;
+          letter-spacing:.02em;
+        "
+      >
+        위험도
       </div>
-      <div id="custList" style="margin-top:8px;display:flex;flex-direction:column;gap:5px;"></div>
+
+      <div id="severityButtonGroup" class="severity-button-group">
+        <button
+          type="button"
+          id="severityCritical"
+          class="sev-btn"
+          data-severity="중대"
+          aria-pressed="false"
+          onclick="selSev('중대', this)"
+        >
+          <span class="sev-icon">🔴</span>
+          <span class="sev-label">중대</span>
+        </button>
+
+        <button
+          type="button"
+          id="severityMinor"
+          class="sev-btn"
+          data-severity="경미"
+          aria-pressed="false"
+          onclick="selSev('경미', this)"
+        >
+          <span class="sev-icon">🟡</span>
+          <span class="sev-label">경미</span>
+        </button>
+
+        <button
+          type="button"
+          id="severityAdvice"
+          class="sev-btn"
+          data-severity="권고"
+          aria-pressed="false"
+          onclick="selSev('권고', this)"
+        >
+          <span class="sev-icon">🟢</span>
+          <span class="sev-label">권고</span>
+        </button>
+      </div>
     </div>
 
+    <!-- 점검 항목 -->
     <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">사진 (선택)</div>
-      <div onclick="document.getElementById('photoFile').click()" style="background:var(--card);border:2px dashed var(--line);border-radius:var(--r-s);padding:22px;text-align:center;cursor:pointer;transition:.15s;">
-        <div style="font-size:28px;margin-bottom:5px;">📷</div>
-       <div style="font-size:13px;color:var(--sub);font-weight:700;">
-  터치하여 사진 촬영 또는 선택
-</div>
-<div style="font-size:11px;color:var(--warn);font-weight:700;margin-top:5px;">
-  개발 테스트용 · 사진은 서버나 브라우저에 저장되지 않습니다
-</div>
-
+      <div
+        style="
+          font-size:13px;
+          font-weight:800;
+          color:var(--sub);
+          margin-bottom:8px;
+          letter-spacing:.02em;
+        "
+      >
+        점검 항목
       </div>
-      <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)">
-      <div id="photoPrev" style="display:none;position:relative;border-radius:var(--r-s);overflow:hidden;margin-top:8px;">
-        <img id="photoImg" src="" alt="" style="width:100%;display:block;">
-        <button onclick="delPhoto()" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:17px;cursor:pointer;font-family:inherit;line-height:1;">×</button>
+
+      <div
+        id="clBody"
+        style="
+          max-height:260px;
+          overflow-y:auto;
+          background:var(--card);
+          border-radius:var(--r-s);
+          padding:6px;
+          box-shadow:var(--sh);
+          border:1px solid var(--line);
+        "
+      ></div>
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-top:8px;
+        "
+      >
+        <input
+          id="custInp"
+          placeholder="직접 입력..."
+          style="
+            flex:1;
+            min-width:0;
+            padding:11px 13px;
+            border:1.5px solid var(--line);
+            border-radius:var(--r-s);
+            background:var(--card);
+            color:var(--ink);
+            font-family:inherit;
+            font-size:14px;
+          "
+        >
+
+        <button
+          type="button"
+          onclick="addCust()"
+          style="
+            flex-shrink:0;
+            padding:0 16px;
+            border:0;
+            border-radius:var(--r-s);
+            background:var(--posco);
+            color:#fff;
+            font-family:inherit;
+            font-size:13px;
+            font-weight:800;
+            cursor:pointer;
+          "
+        >
+          추가
+        </button>
+      </div>
+
+      <div
+        id="custList"
+        style="
+          margin-top:8px;
+          display:flex;
+          flex-direction:column;
+          gap:5px;
+        "
+      ></div>
+    </div>
+
+    <!-- 사진 -->
+    <div style="margin-bottom:16px;">
+      <div
+        style="
+          font-size:13px;
+          font-weight:800;
+          color:var(--sub);
+          margin-bottom:8px;
+          letter-spacing:.02em;
+        "
+      >
+        사진 (선택)
+      </div>
+
+      <div
+        onclick="document.getElementById('photoFile').click()"
+        style="
+          background:var(--card);
+          border:2px dashed var(--line);
+          border-radius:var(--r-s);
+          padding:22px;
+          text-align:center;
+          cursor:pointer;
+          transition:.15s;
+        "
+      >
+        <div style="font-size:28px;margin-bottom:5px;">
+          📷
+        </div>
+
+        <div
+          style="
+            font-size:13px;
+            color:var(--sub);
+            font-weight:700;
+          "
+        >
+          터치하여 사진 촬영 또는 선택
+        </div>
+
+        <div
+          style="
+            font-size:11px;
+            color:var(--warn);
+            font-weight:700;
+            margin-top:5px;
+          "
+        >
+          개발 테스트용 · 사진은 서버나 브라우저에 저장되지 않습니다
+        </div>
+      </div>
+
+      <input
+        type="file"
+        id="photoFile"
+        accept="image/*"
+        capture="environment"
+        style="display:none"
+        onchange="onPhoto(event)"
+      >
+
+      <div
+        id="photoPrev"
+        style="
+          display:none;
+          position:relative;
+          border-radius:var(--r-s);
+          overflow:hidden;
+          margin-top:8px;
+        "
+      >
+        <img
+          id="photoImg"
+          alt="선택한 사진 미리보기"
+          style="
+            width:100%;
+            display:block;
+          "
+        >
+
+        <button
+          type="button"
+          onclick="delPhoto()"
+          aria-label="선택한 사진 삭제"
+          style="
+            position:absolute;
+            top:8px;
+            right:8px;
+            width:32px;
+            height:32px;
+            border:0;
+            border-radius:50%;
+            background:rgba(0,0,0,.65);
+            color:#fff;
+            font-size:18px;
+            cursor:pointer;
+            font-family:inherit;
+            line-height:1;
+          "
+        >
+          ×
+        </button>
       </div>
     </div>
 
+    <!-- 등록자 -->
     <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">등록자</div>
-      <select id="repRole" onchange="valForm()" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;margin-bottom:8px;">
+      <div
+        style="
+          font-size:13px;
+          font-weight:800;
+          color:var(--sub);
+          margin-bottom:8px;
+          letter-spacing:.02em;
+        "
+      >
+        등록자
+      </div>
+
+      <select
+        id="repRole"
+        onchange="valForm()"
+        style="
+          width:100%;
+          padding:12px 14px;
+          border:1.5px solid var(--line);
+          border-radius:var(--r-s);
+          background:var(--card);
+          color:var(--ink);
+          font-family:inherit;
+          font-size:14.5px;
+          font-weight:600;
+          margin-bottom:8px;
+        "
+      >
         <option value="">역할 선택</option>
         <option value="안전관리자">안전관리자</option>
         <option value="관리감독자">관리감독자</option>
         <option value="안전패트롤팀">안전패트롤팀</option>
       </select>
-      <input id="repName" placeholder="이름" oninput="valForm()" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;">
+
+      <input
+        id="repName"
+        placeholder="이름"
+        oninput="valForm()"
+        style="
+          width:100%;
+          padding:12px 14px;
+          border:1.5px solid var(--line);
+          border-radius:var(--r-s);
+          background:var(--card);
+          color:var(--ink);
+          font-family:inherit;
+          font-size:14.5px;
+          font-weight:600;
+        "
+      >
     </div>
 
-    <button id="subBtn" onclick="submitInsp()" disabled style="width:100%;padding:18px;border:0;border-radius:var(--r-s);background:var(--run);color:#fff;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:-.02em;box-shadow:0 4px 12px rgba(232,89,12,.25);transition:.15s;">
+    <!-- 제출 -->
+    <button
+      type="button"
+      id="subBtn"
+      onclick="submitInsp()"
+      disabled
+      style="
+        width:100%;
+        padding:18px;
+        border:0;
+        border-radius:var(--r-s);
+        background:var(--run);
+        color:#fff;
+        font-family:inherit;
+        font-size:16px;
+        font-weight:800;
+        cursor:pointer;
+        letter-spacing:-.02em;
+        box-shadow:0 4px 12px rgba(232,89,12,.25);
+        transition:.15s;
+      "
+    >
       ⚡ 즉시 등록
     </button>
-  <p style="text-align:center;font-size:12.5px;color:var(--sub);margin-top:12px;padding-bottom:16px;font-weight:600;">
-  개발 테스트용입니다. 점검 내용은 현재 브라우저에 저장되며 사진은 저장되지 않습니다.
-</p> 
+
+    <p
+      style="
+        text-align:center;
+        font-size:12.5px;
+        color:var(--sub);
+        margin-top:12px;
+        padding-bottom:16px;
+        font-weight:600;
+        line-height:1.55;
+      "
+    >
+      개발 테스트용입니다.<br>
+      점검 내용은 현재 브라우저에 저장되며 사진은 저장되지 않습니다.
+    </p>
+
   </div>
 </div>
+
+
 <script>
 // ═══════════════════════════════════════
 // STATE (Step 2: curFilter 삭제됨)
 // ═══════════════════════════════════════
-var allWorks=[],dispWorks=[],violations=[],permits=[];
+var allWorks = [];
+var dispWorks = [];
+var violations = [];
+var permits = [];
+
 var ifWork = null;
 var ifSev = null;
 var ifItems = [];
 var custItems = [];
-     
+
 var photoFile = null;
 var photoPreviewUrl = '';
-var noticeCollapsed=false;
+
+var noticeCollapsed = false;
 
 // ═══════════════════════════════════════
 // INIT
@@ -2588,17 +2972,7 @@ function delCust(i){
 function selSev(severity, element){
   ifSev = severity;
 
-  document
-    .querySelectorAll(
-      '#severityButtonGroup .sev-btn'
-    )
-    .forEach(function(button){
-      button.classList.remove('on');
-      button.setAttribute(
-        'aria-pressed',
-        'false'
-      );
-    });
+
 
   if(element){
     element.classList.add('on');
@@ -2609,7 +2983,7 @@ function selSev(severity, element){
   }
 
   console.log(
-    '[점검등록] 심각도 선택:',
+    '[점검등록] 위험도 선택:',
     ifSev
   );
 
@@ -2617,41 +2991,6 @@ function selSev(severity, element){
 }
 
 window.selSev = selSev;
-document.addEventListener(
-  'click',
-  function(event){
-    var severityButton =
-      event.target.closest(
-        '#severityButtonGroup .sev-btn'
-      );
-
-    if(!severityButton){
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    var severity =
-      severityButton.getAttribute(
-        'data-severity'
-      );
-
-    if(!severity){
-      console.warn(
-        '[점검등록] data-severity가 없습니다.'
-      );
-
-      return;
-    }
-
-    selSev(
-      severity,
-      severityButton
-    );
-  }
-);
-
 
 function onPhoto(event){
   var file =
@@ -2662,7 +3001,10 @@ function onPhoto(event){
     return;
   }
 
-  if(!file.type.startsWith('image/')){
+  if(
+    !file.type ||
+    file.type.indexOf('image/') !== 0
+  ){
     showToast(
       '이미지 파일만 선택할 수 있습니다.',
       'error'
@@ -2709,7 +3051,18 @@ function onPhoto(event){
   if(preview){
     preview.style.display = 'block';
   }
+
+  console.log(
+    '[점검등록] 사진 선택:',
+    {
+      type: file.type,
+      size: file.size,
+      saved: false
+    }
+  );
 }
+
+window.onPhoto = onPhoto;
 
 function delPhoto(){
   if(photoPreviewUrl){
@@ -2743,48 +3096,135 @@ function delPhoto(){
   }
 }
 
+window.delPhoto = delPhoto;
+
 function valForm(){
-  var role=(document.getElementById('repRole').value||'').trim();
-  var name=(document.getElementById('repName').value||'').trim();
-  var btn=document.getElementById('subBtn');
-  if(btn) btn.disabled=!(ifSev&&ifItems.length>0&&role&&name);
+  var roleElement =
+    document.getElementById('repRole');
+
+  var nameElement =
+    document.getElementById('repName');
+
+  var button =
+    document.getElementById('subBtn');
+
+  var role = roleElement
+    ? (roleElement.value || '').trim()
+    : '';
+
+  var name = nameElement
+    ? (nameElement.value || '').trim()
+    : '';
+
+  if(!button){
+    return;
+  }
+
+  button.disabled = !(
+    ifSev &&
+    ifItems.length > 0 &&
+    role &&
+    name
+  );
 }
+
+window.valForm = valForm;
 
 function submitInsp(){
-  var role=document.getElementById('repRole').value;
-  var name=document.getElementById('repName').value;
-  var loc='공장 전체',company='해당없음',workName='일반 점검사항',wid='general';
-  if(ifWork){
-    loc=ifWork.location||'미지정';
-    company=ifWork.company||'미지정';
-    workName=ifWork.workName;
-    wid=ifWork.id;
-  }
-  violations.push({
-    id:'SV-'+Date.now(),
-    createdAt:new Date().toISOString(),
-    reporter:{name:name,role:role},
-    workInfo:{workId:wid,workName:workName,location:loc,company:company},
-violation:{
-  severity:ifSev,
-  item:ifItems.join(', '),
-  source:wid==='general'?'일반 점검':'안전작업허가서',
-  photoTest:{
-    selected:Boolean(photoFile),
-    saved:false,
-    storageMode:'memory-only'
-  }
-},
+  var role =
+    document.getElementById('repRole').value;
 
-    correction:{status:'미시정',elapsedMinutes:0,completedAt:null}
+  var name =
+    document.getElementById('repName').value;
+
+  var location = '공장 전체';
+  var company = '해당없음';
+  var workName = '일반 점검사항';
+  var workId = 'general';
+
+  if(ifWork){
+    location =
+      ifWork.location || '미지정';
+
+    company =
+      ifWork.company || '미지정';
+
+    workName =
+      ifWork.workName || '작업명 미지정';
+
+    workId =
+      ifWork.id ||
+      ifWork.workId ||
+      'general';
+  }
+
+  var wasPhotoSelected =
+    Boolean(photoFile);
+
+  violations.push({
+    id: 'SV-' + Date.now(),
+    createdAt: new Date().toISOString(),
+
+    reporter: {
+      name: name,
+      role: role
+    },
+
+    workInfo: {
+      workId: workId,
+      workName: workName,
+      location: location,
+      company: company
+    },
+
+    violation: {
+      severity: ifSev,
+      riskLevel: ifSev,
+      item: ifItems.join(', '),
+      source:
+        workId === 'general'
+          ? '일반 점검'
+          : '안전작업허가서',
+
+      photoTest: {
+        selected: wasPhotoSelected,
+        saved: false,
+        storageMode: 'memory-only'
+      }
+    },
+
+    correction: {
+      status: '미시정',
+      elapsedMinutes: 0,
+      completedAt: null
+    },
+
+    environment: 'test',
+    isTestData: true
   });
-saveViolations();
-delPhoto();
-closeSheet('if');
-renderInspPage();
-  showToast('점검사항이 등록되었습니다','success');
-  if(ifSev==='중대') setTimeout(function(){showToast('🚨 중대 위반! 즉시 조치 바랍니다','error');},500);
+
+  saveViolations();
+
+  delPhoto();
+  closeSheet('if');
+  renderInspPage();
+
+  showToast(
+    '점검사항이 등록되었습니다.',
+    'success'
+  );
+
+  if(ifSev === '중대'){
+    setTimeout(function(){
+      showToast(
+        '🚨 중대 위험! 즉시 조치 바랍니다.',
+        'error'
+      );
+    }, 500);
+  }
 }
+
+window.submitInsp = submitInsp;
 
 function resetIF(){
   ifWork = null;
@@ -2794,24 +3234,43 @@ function resetIF(){
 
   delPhoto();
 
-  ['repRole','repName'].forEach(function(id){var el=document.getElementById(id);if(el) el.value='';});
-  var sb=document.getElementById('subBtn');if(sb) sb.disabled=true;
-  var cl=document.getElementById('custList');if(cl) cl.innerHTML='';
-  var pp=document.getElementById('photoPrev');if(pp) pp.style.display='none';
-  var pf=document.getElementById('photoFile');if(pf) pf.value='';
-  document
-  .querySelectorAll(
-    '#severityButtonGroup .sev-btn'
-  )
-  .forEach(function(button){
-    button.classList.remove('on');
-    button.setAttribute(
-      'aria-pressed',
-      'false'
-    );
-  });
+  ['repRole', 'repName'].forEach(
+    function(id){
+      var element =
+        document.getElementById(id);
 
+      if(element){
+        element.value = '';
+      }
+    }
+  );
+
+  var submitButton =
+    document.getElementById('subBtn');
+
+  if(submitButton){
+    submitButton.disabled = true;
+  }
+
+  var customList =
+    document.getElementById('custList');
+
+  if(customList){
+    customList.innerHTML = '';
+  }
+
+  document
+    .querySelectorAll('#severityButtonGroup .sev-btn')
+    .forEach(function(button){
+      button.classList.remove('on');
+      button.setAttribute(
+        'aria-pressed',
+        'false'
+      );
+    });
 }
+
+window.resetIF = resetIF;
 
 // ═══════════════════════════════════════
 // VIOLATIONS
