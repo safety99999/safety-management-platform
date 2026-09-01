@@ -1,1 +1,6122 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003C7E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>POSCO FUTURE M · 포항양극재공장 안전관리</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE + 💰 사용량 최적화 시스템 (신규)
+     - firebase-config.js는 대시보드가 자체 초기화하므로 로드 안 함
+     - APP_MODE만 인라인으로 정의
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  
+  // 컬렉션 이름 헬퍼 (Firestore 초기화 전이라 함수만 정의)
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+<style>
+/* ═══════════════════════════════════════
+   POSCO FUTURE M 안전관리 대시보드
+   Phase 1 (2026-08-26)
+   Step 2 리팩토링 (2026-08-28)
+   
+   Step 2 변경사항:
+   - 필터 UI 통합 (setFilter/curFilter 죽은 코드 제거)
+   - chip UI를 HTML 정적으로 작성 (플리커링 해소)
+   ═══════════════════════════════════════ */
+:root{
+  --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
+  --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
+  --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
+  --line:#DFE7EF;
+  --run:#E8590C; --run-bg:#FFF4EC;
+  --stop:#D6273D; --stop-bg:#FFF3F5;
+  --done:#0E8A6B; --done-bg:#EDFAF6;
+  --warn:#B45309; --warn-bg:#FEF6E7;
+  --r:18px; --r-s:14px; --r-xs:10px;
+  --sh:0 2px 10px rgba(15,29,43,.06);
+  --sh-m:0 4px 16px rgba(15,29,43,.09);
+}
+[data-theme="dark"]{
+  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
+  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
+  --faint:#5A7288; --line:#1E3145;
+  --ink:#F7FAFC;
+  --body:#E2E8F0;
+  --sub:#A0AEC0;
+  --run:#FF8A3D; --run-bg:#2A1A0E;
+  --stop:#FF5F70; --stop-bg:#2B1116;
+  --done:#3DD9AE; --done-bg:#0D2620;
+  --warn:#FBBF24; --warn-bg:#2A2010;
+  --sh:0 2px 10px rgba(0,0,0,.35); --sh-m:0 4px 16px rgba(0,0,0,.45);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
 
+body{
+  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  color:var(--ink);line-height:1.5;font-size:15px;
+  transition:background .25s,color .25s;
+  -webkit-font-smoothing:antialiased;
+  background:linear-gradient(135deg,
+    #003C7E 0%,
+    #0067B1 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+  min-height:100vh;
+}
+[data-theme="dark"] body{
+  background:linear-gradient(135deg,
+    #0A1B2E 0%,
+    #12283F 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+}
+
+.app{
+  max-width:480px;margin:0 auto;min-height:100vh;
+  position:relative;background:var(--bg);
+}
+
+@media(min-width:768px){
+  body{padding:24px 0}
+  .app{
+    min-height:calc(100vh - 48px);
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:
+      0 0 40px rgba(0,60,126,.2),
+      0 20px 60px rgba(0,0,0,.15);
+  }
+  .botnav{
+    border-radius:0 0 24px 24px;
+  }
+}
+
+.page{display:none}
+.page.active{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.main{padding:0 0 88px}
+
+/* ═══ 히어로 ═══ */
+.hero{
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;padding:22px 20px 26px;position:relative;overflow:hidden;
+  border-radius:0
+}
+.hero::after{
+  content:'';position:absolute;right:-30px;top:-30px;width:120px;height:120px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 8px,transparent 8px 16px);
+  border-radius:50%;pointer-events:none
+}
+.hero-top{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  position:relative;z-index:1
+}
+.hero-brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.hero-logo{font-size:30px;line-height:1;flex-shrink:0}
+.hero-brand-text{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.hero-brand-en{
+  font-size:12px;font-weight:700;opacity:.85;
+  letter-spacing:.05em;color:#fff;margin-bottom:2px
+}
+.hero-brand-ko{
+  font-size:18px;font-weight:800;letter-spacing:-.02em;
+  white-space:nowrap;color:#fff
+}
+.hero-tools{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.hero-clock{text-align:right;line-height:1.2}
+.hero-date{font-size:13px;font-weight:700;opacity:.85}
+.hero-time{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.icon-btn{
+  width:40px;height:40px;border:0;border-radius:11px;
+  background:rgba(255,255,255,.16);color:#fff;font-size:19px;
+  cursor:pointer;display:grid;place-items:center;transition:.15s
+}
+.icon-btn:active{transform:scale(.9);background:rgba(255,255,255,.3)}
+
+/* ═══ 필터 칩 ═══ */
+.chips{
+  display:flex;gap:6px;padding:12px 16px 0;
+  overflow-x:auto;scrollbar-width:none;
+  align-items:center;
+}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex-shrink:0;padding:8px 16px;border-radius:999px;
+  border:1.5px solid var(--line);background:var(--card);
+  color:var(--sub);font-family:inherit;font-size:13.5px;
+  font-weight:700;cursor:pointer;transition:.15s;
+  letter-spacing:-.01em
+}
+.chip.active{
+  background:var(--deep);border-color:var(--deep);
+  color:#fff;box-shadow:0 2px 6px rgba(0,60,126,.2)
+}
+.chip:active{transform:scale(.95)}
+.chip-date{
+  padding-left:14px;
+  padding-right:14px;
+}
+.chip-calendar{
+  min-width:40px;
+  height:38px;
+  padding:0 12px;
+  display:grid;
+  place-items:center;
+  font-size:14px;
+  white-space:nowrap;
+  gap:4px;
+}
+
+.chip:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+/* ⭐ picker를 캘린더 버튼 위에 완전히 겹쳐서 배치 */
+.chip-calendar-wrap{
+  position:relative;
+  display:inline-block;
+  flex-shrink:0;
+}
+.dashboard-date-picker{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+  border:0;
+  padding:0;
+  margin:0;
+  z-index:2;
+  /* iOS Safari 대응 */
+  -webkit-appearance:none;
+  appearance:none;
+  background:transparent;
+  color:transparent;
+  font-size:16px; /* iOS 자동확대 방지 */
+}
+.dashboard-date-picker::-webkit-calendar-picker-indicator{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+}
+
+
+/* ═══ 공지 배너 ═══ */
+.notice-banner{
+  margin:10px 16px 0;padding:10px 12px;background:var(--warn-bg);
+  border-radius:var(--r-s);border-left:3px solid var(--warn);
+  cursor:pointer;box-shadow:var(--sh)
+}
+.notice-banner-top{
+  display:flex;align-items:center;justify-content:space-between;gap:8px
+}
+.notice-banner-label{
+  font-size:13px;font-weight:800;color:var(--warn);
+  display:flex;align-items:center;gap:4px
+}
+.notice-banner-new{
+  background:var(--stop);color:#fff;font-size:10px;font-weight:800;
+  padding:2px 6px;border-radius:4px;letter-spacing:.03em
+}
+.notice-banner-toggle{
+  font-size:12px;font-weight:700;color:var(--warn);
+  opacity:.75;flex-shrink:0
+}
+.notice-banner-text{
+  font-size:13px;color:var(--body);margin-top:5px;
+  line-height:1.5;white-space:pre-wrap;font-weight:500;
+  max-height:80px;
+  overflow-y:auto;
+  padding-right:6px;
+}
+.notice-banner-text::-webkit-scrollbar{width:3px}
+.notice-banner-text::-webkit-scrollbar-track{background:transparent}
+.notice-banner-text::-webkit-scrollbar-thumb{
+  background:var(--warn);border-radius:2px;opacity:.5
+}
+.notice-banner.collapsed .notice-banner-text{display:none}
+
+/* ═══ 섹션 공통 ═══ */
+.sec{padding:0 16px;margin-top:14px}
+.sec-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:8px;padding:0 2px
+}
+.sec-title{
+  font-size:15px;font-weight:800;
+  letter-spacing:-.03em;color:var(--ink);
+  display:flex;align-items:center;gap:6px
+}
+.sec-cnt{
+  font-size:12px;font-weight:800;color:var(--posco);
+  background:var(--tint);padding:2px 8px;border-radius:5px;
+  font-variant-numeric:tabular-nums
+}
+.sec-more{
+  font-size:13px;color:var(--posco);font-weight:700;
+  cursor:pointer;text-decoration:none;flex-shrink:0;
+  letter-spacing:-.01em
+}
+.sec-more:active{opacity:.6}
+
+/* ═══ 작업 현황 카드 ═══ */
+.status-highlight{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;margin-bottom:8px
+}
+.status-hl-card{
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;border-radius:var(--r);
+  padding:14px 16px;cursor:pointer;
+  transition:.15s;position:relative;overflow:hidden;
+  box-shadow:var(--sh-m)
+}
+.status-hl-card:active{transform:scale(.97)}
+.status-hl-card.danger{
+  background:linear-gradient(135deg,#B0202F 0%,var(--stop) 100%);
+}
+.status-hl-card::after{
+  content:'';position:absolute;right:-20px;bottom:-20px;
+  width:80px;height:80px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 6px,transparent 6px 12px);
+  border-radius:50%;pointer-events:none
+}
+.status-hl-label{
+  font-size:14px;font-weight:800;opacity:.9;
+  letter-spacing:.03em;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+  position:relative;z-index:1
+}
+.status-hl-value{
+  font-size:44px;font-weight:800;letter-spacing:-.05em;
+  line-height:1;font-variant-numeric:tabular-nums;
+  position:relative;z-index:1
+}
+.status-hl-value small{
+  font-size:18px;font-weight:700;opacity:.8;
+  margin-left:3px;letter-spacing:0
+}
+.status-hl-card.danger .status-hl-label i{
+  animation:blink 1.5s infinite
+}
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:.4}
+}
+
+.status-detail{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:6px
+}
+.status-dt-card{
+  background:var(--card);border-radius:var(--r-s);
+  padding:14px 4px 12px;text-align:center;
+  cursor:pointer;transition:.15s;
+  box-shadow:var(--sh);border:1px solid var(--line);
+  border-top:3px solid var(--sub)
+}
+.status-dt-card:active{
+  transform:scale(.95);background:var(--sunk)
+}
+.status-dt-card.wait{border-top-color:var(--warn)}
+.status-dt-card.run{border-top-color:var(--run)}
+.status-dt-card.stop{border-top-color:var(--stop)}
+.status-dt-card.done{border-top-color:var(--done)}
+
+.status-dt-value{
+  font-size:28px;font-weight:800;letter-spacing:-.04em;
+  line-height:1;font-variant-numeric:tabular-nums;
+  margin-bottom:5px
+}
+.status-dt-card.wait .status-dt-value{color:var(--warn)}
+.status-dt-card.run .status-dt-value{color:var(--run)}
+.status-dt-card.stop .status-dt-value{color:var(--stop)}
+.status-dt-card.done .status-dt-value{color:var(--done)}
+.status-dt-value.zero{opacity:.4}
+
+.status-dt-label{
+  font-size:12.5px;font-weight:700;color:var(--sub);
+  letter-spacing:-.01em
+}
+
+/* ═══ 빠른 실행 그리드 ═══ */
+.quick-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;padding:0 16px;margin-top:10px
+}
+.qbtn{
+  background:var(--card);border-radius:var(--r);
+  padding:18px 6px 14px;text-align:center;
+  text-decoration:none;box-shadow:var(--sh);
+  transition:.15s;display:flex;flex-direction:column;
+  align-items:center;gap:10px;
+  border:1px solid var(--line)
+}
+.qbtn:active{
+  transform:scale(.96);background:var(--sunk)
+}
+.qbtn-ico{
+  width:56px;height:56px;border-radius:16px;
+  background:var(--tint);
+  display:grid;place-items:center;font-size:26px
+}
+[data-theme="dark"] .qbtn-ico{
+  background:rgba(63,169,245,.15);
+}
+.qbtn-lbl{
+  font-size:14px;font-weight:800;color:var(--body);
+  line-height:1.3;letter-spacing:-.02em
+}
+
+/* ═══ 점검현황 페이지 ═══ */
+.page-header{
+  background:var(--card);padding:16px;
+  border-bottom:1px solid var(--line)
+}
+.page-title{
+  font-size:20px;font-weight:800;
+  letter-spacing:-.03em;color:var(--ink);
+  margin-bottom:4px
+}
+.page-sub{
+  font-size:13px;color:var(--sub);font-weight:600
+}
+.insp-sum{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--line);
+  margin:12px 16px;border-radius:var(--r);
+  overflow:hidden;box-shadow:var(--sh)
+}
+.isp{background:var(--card);padding:14px 4px;text-align:center}
+.isp-v{
+  font-size:22px;font-weight:800;letter-spacing:-.04em;
+  line-height:1;font-variant-numeric:tabular-nums;
+  color:var(--ink)
+}
+.isp-v.r{color:var(--stop)}
+.isp-v.o{color:var(--warn)}
+.isp-v.g{color:var(--done)}
+.isp-l{
+  font-size:11px;font-weight:700;color:var(--sub);
+  margin-top:5px
+}
+.ic-card{
+  background:var(--card);border-radius:var(--r);
+  padding:14px;margin:0 16px 8px;
+  box-shadow:var(--sh);border:1px solid var(--line);
+  border-left:3px solid var(--sub);
+  cursor:pointer;transition:.15s
+}
+.ic-card:active{transform:scale(.99)}
+.ic-card.cr{border-left-color:var(--stop)}
+.ic-card.mn{border-left-color:var(--warn)}
+.ic-card.ad{border-left-color:var(--done)}
+.ic-top{
+  display:flex;align-items:center;gap:8px;margin-bottom:6px
+}
+.ic-sev{
+  font-size:11px;font-weight:800;padding:3px 8px;border-radius:5px;
+  background:var(--sunk);color:var(--sub)
+}
+.ic-sev.cr{background:var(--stop-bg);color:var(--stop)}
+.ic-sev.mn{background:var(--warn-bg);color:var(--warn)}
+.ic-sev.ad{background:var(--done-bg);color:var(--done)}
+.ic-time{
+  font-size:11px;color:var(--faint);
+  font-weight:700;margin-left:auto
+}
+.ic-name{
+  font-size:14px;font-weight:800;letter-spacing:-.02em;
+  line-height:1.3;margin-bottom:6px;color:var(--ink)
+}
+.ic-meta{
+  display:flex;gap:8px;font-size:12px;
+  color:var(--sub);font-weight:600;flex-wrap:wrap
+}
+.ic-status-row{
+  display:flex;align-items:center;gap:8px;
+  margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--line)
+}
+.spill{
+  font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px
+}
+.spill.d{background:var(--done-bg);color:var(--done)}
+.spill.p{background:var(--stop-bg);color:var(--stop)}
+.spill-elapsed{
+  font-size:11px;font-weight:700;color:var(--faint);margin-left:auto
+}
+
+/* ═══ 설정 페이지 ═══ */
+.sec-lbl{
+  font-size:11px;font-weight:800;color:var(--sub);
+  letter-spacing:.05em;padding:0 18px;
+  margin:16px 0 6px;text-transform:uppercase
+}
+.notice-edit,.db-area{
+  background:var(--card);border-radius:var(--r);
+  padding:14px;margin:0 16px;
+  box-shadow:var(--sh);border:1px solid var(--line)
+}
+.notice-edit-title,.db-area-title{
+  font-size:14px;font-weight:800;margin-bottom:10px;
+  letter-spacing:-.02em;color:var(--ink)
+}
+.notice-ta,.db-ta{
+  width:100%;min-height:70px;padding:10px;
+  border:1.5px solid var(--line);border-radius:var(--r-s);
+  background:var(--sunk);color:var(--ink);
+  font-family:inherit;font-size:14px;
+  resize:vertical;line-height:1.5;transition:.15s
+}
+.notice-ta:focus,.db-ta:focus{
+  outline:0;border-color:var(--posco);background:var(--card)
+}
+.notice-save-btn,.db-btn{
+  width:100%;margin-top:8px;padding:11px;
+  border:0;border-radius:var(--r-s);
+  background:var(--deep);color:#fff;
+  font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s
+}
+.notice-save-btn:active,.db-btn:active{transform:scale(.98)}
+.db-info{
+  background:var(--tint);border-radius:var(--r);
+  padding:10px 12px;margin:0 16px 8px;
+  border-left:3px solid var(--posco)
+}
+.db-info-txt{
+  font-size:12.5px;color:var(--body);
+  line-height:1.6;font-weight:500
+}
+.db-info-txt strong{font-weight:800;color:var(--posco)}
+.db-ta{
+  min-height:100px;font-size:12px;
+  font-family:ui-monospace,'SF Mono',Menlo,monospace
+}
+.sets-grp{
+  background:var(--card);border-radius:var(--r);
+  margin:0 16px;overflow:hidden;box-shadow:var(--sh);
+  border:1px solid var(--line)
+}
+.sets-item{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:13px 15px;
+  border-bottom:1px solid var(--line);
+  cursor:pointer;transition:.12s
+}
+.sets-item:last-child{border-bottom:0}
+.sets-item:active{background:var(--sunk)}
+.sets-l{display:flex;align-items:center;gap:10px;min-width:0}
+.sets-ico{font-size:18px;line-height:1;flex-shrink:0}
+.sets-name{
+  font-size:14px;font-weight:700;
+  letter-spacing:-.02em;color:var(--ink)
+}
+.sets-r{
+  font-size:13px;font-weight:700;
+  color:var(--sub);flex-shrink:0
+}
+
+/* ═══ 하단 네비 ═══ */
+.botnav{
+  position:fixed;bottom:0;left:0;right:0;z-index:60;
+  max-width:480px;margin:0 auto;background:var(--card);
+  box-shadow:0 -3px 16px rgba(15,29,43,.1);
+  display:flex;padding:10px 0 max(10px,env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+  border-radius:22px 22px 0 0
+}
+.nav-tab{
+  flex:1;background:none;border:0;font-family:inherit;
+  cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:5px;color:var(--faint);
+  position:relative;padding:8px 0;transition:.15s
+}
+.nav-ti{font-size:26px;line-height:1;transition:.18s}
+.nav-tl{font-size:13px;font-weight:800;letter-spacing:-.02em}
+.nav-tab.active{color:var(--posco)}
+.nav-tab.active .nav-ti{transform:translateY(-2px) scale(1.08)}
+.nav-tab:active .nav-ti{transform:scale(.9)}
+.nav-tab.insp-tab{color:var(--stop)}
+.nav-badge{
+  position:absolute;top:2px;right:calc(50% - 26px);
+  background:var(--stop);color:#fff;
+  font-size:11px;font-weight:800;
+  min-width:18px;height:18px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 5px;border:2px solid var(--card);
+  font-variant-numeric:tabular-nums
+}
+
+/* ═══ 바텀시트 ═══ */
+.overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.55);backdrop-filter:blur(3px);
+  z-index:80;opacity:0;pointer-events:none;transition:.25s
+}
+.overlay.active{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;bottom:0;left:50%;
+  transform:translateX(-50%) translateY(100%);
+  width:100%;max-width:480px;max-height:85vh;
+  background:var(--bg);border-radius:22px 22px 0 0;
+  z-index:90;transition:transform .3s cubic-bezier(.32,.72,0,1);
+  display:flex;flex-direction:column
+}
+.sheet.open{transform:translateX(-50%) translateY(0)}
+.sheet-handle{
+  width:36px;height:4px;background:var(--line);
+  border-radius:3px;margin:8px auto 4px;flex-shrink:0
+}
+.sheet-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:6px 16px 12px;
+  border-bottom:1px solid var(--line);flex-shrink:0;
+  background:var(--card);border-radius:22px 22px 0 0;
+  margin-top:-16px;padding-top:20px
+}
+.sheet-title{
+  font-size:17px;font-weight:800;letter-spacing:-.03em;color:var(--ink)
+}
+.sheet-x{
+  width:32px;height:32px;border:0;border-radius:50%;
+  background:var(--sunk);color:var(--sub);
+  font-size:20px;line-height:1;cursor:pointer;
+  flex-shrink:0;font-family:inherit
+}
+.sheet-x:active{transform:scale(.9)}
+.sheet-body{
+  flex:1;overflow-y:auto;padding:12px 16px 24px;
+  -webkit-overflow-scrolling:touch
+}
+
+/* ═══ 시트 내 작업 카드 ═══ */
+.work-item{
+  background:var(--card);border-radius:var(--r-s);
+  padding:12px 14px;margin-bottom:8px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--sub);
+  box-shadow:var(--sh);transition:.15s
+}
+.work-item.danger{border-left-color:var(--stop);background:var(--stop-bg)}
+.work-item.wait{border-left-color:var(--warn)}
+.work-item.run{border-left-color:var(--run)}
+.work-item.done{border-left-color:var(--done)}
+.work-item.scheduled{
+  border-left-color:var(--posco);
+}
+.work-item.ended{
+  border-left-color:var(--done);
+  opacity:.9;
+}
+.wi-top{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.wi-badge{
+  font-size:10.5px;font-weight:800;
+  padding:2px 7px;border-radius:4px;letter-spacing:.02em
+}
+.wi-badge.r{background:var(--stop);color:#fff}
+.wi-badge.g{background:var(--done);color:#fff}
+.wi-status{
+  font-size:11px;font-weight:700;margin-left:auto;
+  padding:2px 8px;border-radius:5px
+}
+.wi-status.wait{background:var(--warn-bg);color:var(--warn)}
+.wi-status.run{background:var(--run-bg);color:var(--run)}
+.wi-status.stop{background:var(--stop-bg);color:var(--stop)}
+.wi-status.done{background:var(--done-bg);color:var(--done)}
+.wi-status.scheduled{
+  background:var(--tint);
+  color:var(--posco);
+}
+.wi-status.ended{
+  background:var(--done-bg);
+  color:var(--done);
+}
+.wi-name{
+  font-size:14px;font-weight:800;color:var(--ink);
+  margin-bottom:5px;letter-spacing:-.02em;line-height:1.3
+}
+.wi-meta{
+  display:flex;gap:8px;font-size:12px;color:var(--sub);
+  margin-bottom:8px;font-weight:600;flex-wrap:wrap
+}
+.wi-btn{
+  display:block;padding:9px;text-align:center;
+  background:var(--deep);color:#fff;
+  border-radius:var(--r-s);text-decoration:none;
+  font-size:12.5px;font-weight:800;letter-spacing:-.01em;
+  transition:.15s
+}
+.wi-btn:active{transform:scale(.97);background:var(--posco)}
+.wi-btn.secondary{
+  background:var(--tint);color:var(--posco);
+  border:1px solid var(--line)
+}
+
+/* ═══ 빈 상태 ═══ */
+.empty{text-align:center;padding:32px 20px}
+.empty-ico{font-size:40px;margin-bottom:8px;opacity:.35}
+.empty-txt{
+  font-size:14px;color:var(--sub);
+  font-weight:700;line-height:1.5
+}
+
+/* ═══ 토스트 ═══ */
+.toast-wrap{
+  position:fixed;top:12px;left:50%;transform:translateX(-50%);
+  z-index:200;display:flex;flex-direction:column;gap:6px;
+  width:calc(100% - 32px);max-width:400px;pointer-events:none
+}
+.toast{
+  padding:11px 16px;border-radius:var(--r-s);
+  color:#fff;font-size:14px;font-weight:700;
+  box-shadow:0 4px 16px rgba(0,0,0,.15);
+  animation:tslide .3s cubic-bezier(.32,.72,0,1);
+  letter-spacing:-.02em;text-align:center
+}
+.toast.success{background:var(--done)}
+.toast.error{background:var(--stop)}
+.toast.info{background:var(--deep)}
+@keyframes tslide{
+  from{opacity:0;transform:translateY(-10px)}
+  to{opacity:1;transform:none}
+}
+
+/* ═══ 점검 등록 시트 세부 ═══ */
+.sev-btn.on{border-color:var(--posco);background:var(--tint)}
+#subBtn:disabled{background:var(--line);color:var(--faint);box-shadow:none;cursor:not-allowed}
+#subBtn:active:not(:disabled){transform:scale(.98)}
+.cl-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:8px;cursor:pointer;transition:.12s;}
+.cl-item:active{background:var(--sunk)}
+.cl-item.sel{background:var(--tint)}
+.cl-box{width:20px;height:20px;border:2px solid var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--posco);flex-shrink:0;}
+.cl-item.sel .cl-box{background:var(--posco);color:#fff;border-color:var(--posco)}
+.cl-txt{font-size:14px;font-weight:600;line-height:1.4;color:var(--ink)}
+.cl-cat{font-size:12px;font-weight:800;color:var(--posco);padding:6px 10px 4px;letter-spacing:.03em;}
+.cust-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--tint);padding:9px 11px;border-radius:8px;}
+.cust-txt{font-size:13.5px;font-weight:700;color:var(--ink)}
+.cust-del{background:none;border:0;color:var(--stop);font-size:20px;cursor:pointer;font-family:inherit;line-height:1;}
+
+/* ═══ Firestore 작업DB 관리 패널 ═══ */
+.workdb-firestore-panel{
+  margin:10px 16px 0;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+.workdb-firestore-title{
+  margin-bottom:6px;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+.workdb-firestore-desc{
+  margin-bottom:12px;
+  color:var(--sub);
+  font-size:12.5px;
+  font-weight:600;
+  line-height:1.55;
+}
+.workdb-count-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:10px;
+}
+.workdb-count-card{
+  padding:11px 8px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--sunk);
+  text-align:center;
+}
+.workdb-count-label{
+  margin-bottom:4px;
+  color:var(--sub);
+  font-size:11px;
+  font-weight:700;
+}
+.workdb-count-value{
+  color:var(--posco);
+  font-size:19px;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.workdb-button-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.workdb-action-btn{
+  min-height:46px;
+  padding:10px 8px;
+  border:0;
+  border-radius:11px;
+  color:#fff;
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:800;
+  line-height:1.35;
+  cursor:pointer;
+  transition:.15s;
+}
+.workdb-action-btn.sync{background:var(--done);}
+.workdb-action-btn.count{background:var(--posco);}
+.workdb-action-btn.refresh{
+  grid-column:1 / -1;
+  background:var(--sub);
+}
+.workdb-action-btn:active{transform:scale(.97);}
+.workdb-action-btn:disabled{
+  cursor:not-allowed;
+  opacity:.5;
+  transform:none;
+}
+.workdb-progress{display:none;margin-top:11px;}
+.workdb-progress.active{display:block;}
+.workdb-progress-track{
+  height:8px;
+  overflow:hidden;
+  border-radius:999px;
+  background:var(--line);
+}
+.workdb-progress-bar{
+  width:0;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--deep),var(--bright));
+  transition:width .2s ease;
+}
+.workdb-progress-text{
+  margin-top:5px;
+  color:var(--sub);
+  font-size:11.5px;
+  font-weight:700;
+  text-align:right;
+}
+.workdb-result{
+  display:none;
+  margin-top:11px;
+  padding:11px 12px;
+  border-radius:10px;
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.6;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.workdb-result.info{
+  display:block;
+  border-left:3px solid var(--posco);
+  background:var(--tint);
+  color:var(--posco);
+}
+.workdb-result.success{
+  display:block;
+  border-left:3px solid var(--done);
+  background:var(--done-bg);
+  color:var(--done);
+}
+.workdb-result.error{
+  display:block;
+  border-left:3px solid var(--stop);
+  background:var(--stop-bg);
+  color:var(--stop);
+}
+
+.selected-date-info{
+  color:var(--sub);
+  font-size:12px;
+  font-weight:700;
+}
+/* ═══════════════════════════════════════
+   커스텀 확인 다이얼로그 (v7.3 신규)
+   브라우저 기본 confirm() 대체
+   ═══════════════════════════════════════ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:500;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:340px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--ink);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{
+  background:var(--sunk);color:var(--sub);
+  border:1.5px solid var(--line);
+}
+.custom-confirm-btn-confirm{
+  background:var(--deep);color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:var(--stop);
+  box-shadow:0 4px 12px rgba(214,39,61,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:var(--warn);
+  box-shadow:0 4px 12px rgba(180,83,9,.25);
+}
+.custom-confirm-btn-confirm.success{
+  background:var(--done);
+  box-shadow:0 4px 12px rgba(14,138,107,.25);
+}
+/* ═══════════════════════════════════════
+   작업 선택 시트 UX 개선 (2026-09-01 신규)
+   ═══════════════════════════════════════ */
+
+/* 히어로 섹션 */
+.picker-hero{
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;
+  border-radius:var(--r);
+  padding:24px 20px;
+  margin-bottom:16px;
+  text-align:center;
+  position:relative;overflow:hidden;
+  box-shadow:var(--sh-m);
+}
+.picker-hero::after{
+  content:'';position:absolute;right:-30px;bottom:-30px;
+  width:120px;height:120px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 8px,transparent 8px 16px);
+  border-radius:50%;pointer-events:none;
+}
+.picker-hero-ico{
+  font-size:44px;margin-bottom:10px;line-height:1;
+  position:relative;z-index:1;
+}
+.picker-hero-title{
+  font-size:19px;font-weight:900;
+  letter-spacing:-.02em;margin-bottom:8px;
+  position:relative;z-index:1;
+}
+.picker-hero-sub{
+  font-size:13px;font-weight:600;opacity:.95;
+  line-height:1.55;position:relative;z-index:1;
+}
+
+/* 섹션 헤더 */
+.picker-section-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;padding:0 2px;
+}
+.picker-section-title{
+  font-size:14px;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;display:flex;align-items:center;gap:6px;
+}
+.picker-section-count{
+  font-size:13px;font-weight:800;color:var(--posco);
+  background:var(--tint);padding:3px 10px;border-radius:6px;
+}
+
+/* 공장별 필터 */
+.factory-filter{
+  display:flex;gap:6px;margin-bottom:10px;
+  overflow-x:auto;scrollbar-width:none;
+  padding-bottom:2px;
+}
+.factory-filter::-webkit-scrollbar{display:none;}
+.ff-btn{
+  flex-shrink:0;padding:8px 14px;border-radius:999px;
+  border:1.5px solid var(--line);background:var(--card);
+  color:var(--sub);font-family:inherit;font-size:13px;
+  font-weight:700;cursor:pointer;transition:.15s;
+  display:flex;align-items:center;gap:6px;
+  letter-spacing:-.01em;
+}
+.ff-btn:active{transform:scale(.95);}
+.ff-btn.active{
+  background:var(--deep);border-color:var(--deep);
+  color:#fff;box-shadow:0 2px 6px rgba(0,60,126,.25);
+}
+.ff-count{
+  font-size:11px;font-weight:800;
+  padding:1px 6px;border-radius:8px;
+  background:rgba(0,0,0,.08);
+}
+.ff-btn.active .ff-count{
+  background:rgba(255,255,255,.25);
+}
+.ff-btn:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+
+/* 협력사 필터 */
+.company-filter{
+  margin-bottom:12px;
+}
+.company-select{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--line);border-radius:11px;
+  background:var(--card);color:var(--ink);
+  font-family:inherit;font-size:13.5px;font-weight:700;
+  cursor:pointer;
+}
+.company-select:focus{outline:none;border-color:var(--posco);}
+
+/* 안내 배너 */
+.picker-notice{
+  background:var(--tint);border-left:3px solid var(--posco);
+  padding:10px 12px;border-radius:0 8px 8px 0;
+  font-size:12px;font-weight:600;color:var(--body);
+  line-height:1.5;margin-bottom:12px;
+}
+
+/* 컴팩트 작업 카드 */
+.work-card-compact{
+  background:var(--card);border-radius:var(--r-s);
+  padding:12px 14px;margin-bottom:8px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--sub);
+  box-shadow:var(--sh);transition:.15s;
+}
+.work-card-compact.selectable{cursor:pointer;}
+.work-card-compact.selectable:active{transform:scale(.98);}
+.work-card-compact.danger{border-left-color:var(--stop);}
+.work-card-compact.sent{border-left-color:var(--posco);opacity:.75;}
+.work-card-compact.completed{border-left-color:var(--done);opacity:.75;}
+
+.wc-top{
+  display:flex;align-items:center;gap:6px;margin-bottom:6px;
+}
+.wc-badge{
+  font-size:10.5px;font-weight:800;
+  padding:2px 7px;border-radius:4px;letter-spacing:.02em;
+}
+.wc-badge.r{background:var(--stop);color:#fff;}
+.wc-badge.g{background:var(--done);color:#fff;}
+.wc-manager{
+  font-size:11px;color:var(--sub);font-weight:700;
+  margin-left:auto;display:flex;align-items:center;gap:3px;
+}
+.wc-name{
+  font-size:13.5px;font-weight:800;color:var(--ink);
+  margin-bottom:5px;letter-spacing:-.02em;line-height:1.35;
+}
+.wc-meta{
+  display:flex;gap:8px;font-size:11.5px;color:var(--sub);
+  margin-bottom:8px;font-weight:600;flex-wrap:wrap;
+}
+
+/* 상태 뱃지 */
+.wc-status{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11.5px;font-weight:800;
+  padding:4px 10px;border-radius:6px;
+  margin-bottom:6px;
+}
+.wc-status.blue{
+  background:#EEF2FF;color:var(--deep);
+}
+.wc-status.orange{
+  background:var(--run-bg);color:var(--run);
+}
+.wc-status.green{
+  background:var(--done-bg);color:var(--done);
+}
+.wc-doc-no{
+  font-size:11px;color:var(--sub);
+  font-family:'Courier New',monospace;
+  font-weight:700;margin-bottom:8px;
+  letter-spacing:.02em;
+}
+
+/* 액션 버튼 */
+.wc-btn{
+  display:block;width:100%;padding:10px;
+  background:var(--deep);color:#fff;
+  border:none;border-radius:9px;
+  font-family:inherit;font-size:12.5px;font-weight:800;
+  cursor:pointer;letter-spacing:-.01em;
+  transition:.15s;text-align:center;
+}
+.wc-btn:active{transform:scale(.97);background:var(--posco);}
+.wc-btn.disabled{
+  background:var(--sunk);color:var(--faint);
+  cursor:not-allowed;border:1.5px dashed var(--line);
+}
+.wc-btn.disabled:active{transform:none;background:var(--sunk);}
+
+/* 빈 상태 */
+.picker-empty{
+  text-align:center;padding:32px 16px;
+  color:var(--sub);font-weight:700;
+  background:var(--card);border-radius:var(--r-s);
+  border:1.5px dashed var(--line);
+}
+.picker-empty-ico{
+  font-size:44px;opacity:.4;margin-bottom:10px;
+}
+
+
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+/* ============================================ */
+/* 📱 PHONE FRAME v2 (PC 전용, ≥768px)         */
+/* ============================================ */
+@media (min-width: 768px) {
+  body {
+    /* ⭐ 배경 비네트: 프레임 주변만 살짝 어두운 조명 효과 */
+    background: radial-gradient(ellipse at center, 
+      #e5e8ec 0%, 
+      #c8ccd2 60%, 
+      #a8adb4 100%) !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    margin: 0;
+  }
+  
+  [data-theme="dark"] body {
+    background: radial-gradient(ellipse at center, 
+      #1e2530 0%, 
+      #0f1620 60%, 
+      #050810 100%) !important;
+  }
+
+  .phone-frame {
+    position: relative;
+    width: 480px;                       /* ⭐ 400 → 480 확장 */
+    height: 820px;                      /* 살짝 확대 */
+    max-height: calc(100vh - 40px);
+    background: #1a1a1a;
+    border-radius: 52px;                /* 폭 확장에 맞춰 미세 조정 */
+    padding: 12px;
+    /* ⭐ 극적인 그림자 (공중에 뜬 느낌) */
+    box-shadow: 
+      0 40px 80px rgba(0,0,0,0.30),
+      0 20px 40px rgba(0,0,0,0.20),
+      0 8px 16px rgba(0,0,0,0.15),
+      inset 0 0 0 2px #2a2a2a,
+      inset 0 2px 8px rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+  
+  [data-theme="dark"] .phone-frame {
+    background: #2a2a2a;
+    box-shadow: 
+      0 40px 80px rgba(0,0,0,0.7),
+      0 20px 40px rgba(0,0,0,0.5),
+      0 8px 16px rgba(0,0,0,0.3),
+      inset 0 0 0 2px #444,
+      inset 0 2px 8px rgba(255,255,255,0.05);
+  }
+
+  /* ⭐ 상단 카메라 홀 제거 (::before 규칙 없음) */
+
+  /* 우측 전원 버튼 */
+  .phone-frame::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 200px;
+    width: 4px; height: 80px;
+    background: linear-gradient(90deg, #2a2a2a 0%, #555 50%, #333 100%);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 1px 0 2px rgba(0,0,0,0.3);
+  }
+
+  /* 화면 영역 */
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 40px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    /* ⭐ 스크롤바 완전 숨김 (Firefox) */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  /* ⭐ 스크롤바 완전 숨김 (Chrome/Safari) */
+  .phone-screen::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  /* 하단 제스처 바 */
+  .phone-screen::before {
+    content: '';
+    position: absolute;
+    bottom: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 4px;
+    background: rgba(0,0,0,0.28);
+    border-radius: 2px;
+    z-index: 100;
+    pointer-events: none;
+  }
+  
+  [data-theme="dark"] .phone-screen::before {
+    background: rgba(255,255,255,0.35);
+  }
+  
+    /* 프레임 안 앱 컨테이너 */
+  .phone-frame .app {
+  max-width: 100% !important;
+  min-height: 100%;
+  position: relative;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+  
+  /* ⭐ 하단 네비게이션을 프레임 안에 고정 (스크롤 무관) */
+  .phone-screen .botnav {
+    position: sticky !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 0 40px 40px;
+    z-index: 50;
+    margin-top: auto;
+  }
+  
+  /* ⭐ 페이지가 나머지 공간을 차지하도록 */
+  .phone-screen .page {
+    flex: 1 0 auto;
+  }
+  
+  /* ⭐ 제스처 바 완전 삭제 */
+  .phone-screen::before {
+    display: none !important;
+  }
+/* ⭐ PC 프레임용 바텀시트: 화면 높이 90% */
+.phone-screen .overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 80 !important;
+  background: rgba(6,17,28,.55) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.phone-screen .sheet {
+  position: absolute !important;
+  top: auto !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 90% !important;
+  max-height: 90% !important;
+  transform: translateY(100%) !important;
+  z-index: 90 !important;
+  border-radius: 22px 22px 40px 40px !important;
+  overflow: hidden !important;
+}
+
+.phone-screen .sheet.open {
+  transform: translateY(0) !important;
+}
+
+.phone-screen {
+  contain: layout;
+}
+
+
+  /* ⭐ PC 프레임 안에서 콘텐츠 여백 최적화 */
+  .phone-screen .main {
+    padding-bottom: 8px !important;
+  }
+  
+  .phone-screen .hero {
+    padding: 16px 20px 18px;
+  }
+  
+  .phone-screen .sec {
+    margin-top: 10px;
+  }
+  
+  .phone-screen .quick-grid {
+    margin-top: 6px;
+  }
+  
+  .phone-screen .qbtn {
+    padding: 14px 6px 12px;
+  }
+  
+  .phone-screen .qbtn-ico {
+    width: 50px;
+    height: 50px;
+    font-size: 23px;
+  }
+ 
+
+  /* 커스텀 다이얼로그·토스트가 프레임 안에 갇히도록 */
+  .phone-screen .custom-confirm-overlay,
+  .phone-screen .custom-alert-overlay,
+  .phone-screen .toast-container,
+  .phone-screen .toast-wrap {
+    position: absolute !important;
+  }
+}
+
+/* 모바일(<768px): 프레임 완전 무력화 */
+@media (max-width: 767px) {
+  .phone-frame { 
+    all: unset; 
+    display: block; 
+  }
+  .phone-frame::after { display: none; }
+  .phone-screen { 
+    border-radius: 0; 
+    overflow: visible; 
+    height: auto; 
+    width: auto;
+  }
+  .phone-screen::before { display: none; }
+}
+
+/* 인쇄 시 프레임 제거 */
+@media print {
+  .phone-frame {
+    all: unset !important;
+    display: block !important;
+  }
+  .phone-frame::after { display: none !important; }
+  .phone-screen {
+    border-radius: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .phone-screen::before { display: none !important; }
+}
+/* ============================================ */
+/* 📱 PHONE FRAME v2 END                        */
+/* ============================================ */
+
+/* =========================================================
+   바텀시트 중복 노출 방지
+   ========================================================= */
+.sheet{
+  visibility:hidden;
+  pointer-events:none;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear .3s;
+}
+
+.sheet.open{
+  visibility:visible;
+  pointer-events:auto;
+  transition:
+    transform .3s cubic-bezier(.32,.72,0,1),
+    visibility 0s linear 0s;
+}
+
+@media (min-width:768px){
+  .phone-screen .sheet{
+    visibility:hidden;
+    pointer-events:none;
+  }
+
+  .phone-screen .sheet.open{
+    visibility:visible;
+    pointer-events:auto;
+  }
+}
+/* =========================================================
+   PC 모바일 프레임 스크롤 구조 수정
+   phone-screen은 고정하고 app 내부만 스크롤
+   ========================================================= */
+@media (min-width:768px){
+
+  .phone-screen{
+    overflow:hidden !important;
+    background:var(--bg);
+    overscroll-behavior:none;
+  }
+
+  .phone-frame .app{
+    width:100%;
+    height:100% !important;
+    min-height:100% !important;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+
+  .phone-frame .app::-webkit-scrollbar{
+    width:0;
+    height:0;
+    display:none;
+  }
+}
+   
+</style>
+<script>
+/* ═══════════════════════════════════════════════════
+   페이지 전환 페이드아웃 트리거 (v1.0)
+   - 링크 클릭 시 페이드아웃 후 이동
+   - 대시보드 → 다른 앱 이동 시 부드러운 전환
+   ═══════════════════════════════════════════════════ */
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    // 제외 조건
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    // 외부 도메인 제외
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    // 페이드아웃 애니메이션 후 이동
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   페이지 전환 페이드아웃 트리거 (v1.0)
+   - 링크 클릭 시 페이드아웃 후 이동
+   - 대시보드 → 다른 앱 이동 시 부드러운 전환
+   ═══════════════════════════════════════════════════ */
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    // 제외 조건
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    // 외부 도메인 제외
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    // 페이드아웃 애니메이션 후 이동
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
+</script>   
+</head>
+<body>
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="app">
+      
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ══════════════════════════════════════
+     HOME 페이지
+     ══════════════════════════════════════ -->
+<div class="page active" id="pageHome">
+  
+  <!-- 히어로 -->
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">
+        <span class="hero-logo">🏭</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">POSCO FUTURE M</div>
+          <div class="hero-brand-ko">포항양극재공장 안전관리</div>
+        </div>
+      </div>
+      <div class="hero-tools">
+        <div class="hero-clock">
+          <div class="hero-date" id="navDate">-</div>
+          <div class="hero-time" id="navTime">-</div>
+        </div>
+        <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" aria-label="테마">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- 공지 배너 -->
+    <div id="noticeBanner" class="notice-banner" onclick="toggleNotice()" style="display:none;">
+      <div class="notice-banner-top">
+        <div class="notice-banner-label">
+          📢 안전 공지사항
+          <span class="notice-banner-new" id="noticeNewBadge" style="display:none;">NEW</span>
+        </div>
+        <div class="notice-banner-toggle" id="noticeToggle">접기 ▲</div>
+      </div>
+      <div class="notice-banner-text" id="noticeText"></div>
+    </div>
+
+    <!-- ⭐ Step 2 리팩토링: 필터 칩 (날짜 기반, HTML 정적 작성) -->
+    <div class="chips" id="dashboardChips">
+      <button class="chip chip-date" 
+              data-date-mode="yesterday" 
+              onclick="dashboardSetDateFilter('yesterday',this)">
+        어제
+      </button>
+      <button class="chip chip-date active" 
+              data-date-mode="today" 
+              onclick="dashboardSetDateFilter('today',this)">
+        오늘
+      </button>
+      <button class="chip chip-date" 
+              id="dashboardUpcomingButton" 
+              data-date-mode="upcoming" 
+              onclick="dashboardSetDateFilter('upcoming',this)" 
+              disabled>
+        예정 없음
+      </button>
+      <button class="chip chip-calendar" 
+              id="dashboardCalendarButton" 
+              onclick="dashboardOpenCalendar()" 
+              aria-label="날짜 선택" 
+              title="날짜 선택">
+        📅
+      </button>
+    </div>
+
+    <!-- 작업 현황 -->
+    <section class="sec">
+      <div class="sec-hdr">
+        <div class="sec-title">📈 작업 현황</div>
+        <div class="sec-more" onclick="refreshAll()">↻ 새로고침</div>
+      </div>
+      
+      <div class="status-highlight">
+        <div class="status-hl-card" onclick="openStatusSheet('all')">
+          <div class="status-hl-label"><i></i>전체</div>
+          <div class="status-hl-value">
+            <span id="cntTotal">0</span><small>건</small>
+          </div>
+        </div>
+        <div class="status-hl-card danger" onclick="openStatusSheet('danger')">
+          <div class="status-hl-label"><i></i>고위험</div>
+          <div class="status-hl-value">
+            <span id="cntDanger">0</span><small>건</small>
+          </div>
+        </div>
+      </div>
+      
+      <div class="status-detail">
+        <div class="status-dt-card wait" onclick="openStatusSheet('wait')">
+          <div class="status-dt-value" id="cntWait">0</div>
+          <div class="status-dt-label">허가전</div>
+        </div>
+        <div class="status-dt-card run" onclick="openStatusSheet('run')">
+          <div class="status-dt-value" id="cntRun">0</div>
+          <div class="status-dt-label">작업중</div>
+        </div>
+        <div class="status-dt-card stop" onclick="openStatusSheet('stop')">
+          <div class="status-dt-value" id="cntStop">0</div>
+          <div class="status-dt-label">작업중지</div>
+        </div>
+        <div class="status-dt-card done" onclick="openStatusSheet('done')">
+          <div class="status-dt-value" id="cntDone">0</div>
+          <div class="status-dt-label">작업완료</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 빠른 실행 -->
+    <section class="sec">
+      <div class="sec-hdr">
+        <div class="sec-title">⚡ 빠른 실행</div>
+      </div>
+    </section>
+    <div class="quick-grid">
+  <a href="#" onclick="qbClick('safety-info'); return false;" class="qbtn">
+    <div class="qbtn-ico">📋</div>
+    <div class="qbtn-lbl">안전정보<br>제공서</div>
+  </a>
+  <a href="#" onclick="qbClick('quiz'); return false;" class="qbtn">
+    <div class="qbtn-ico">🎯</div>
+    <div class="qbtn-lbl">출입자<br>안전퀴즈</div>
+  </a>
+ <a href="#" onclick="qbClick('risk'); return false;" class="qbtn">
+    <div class="qbtn-ico">🤖</div>
+    <div class="qbtn-lbl">AI<br>위험성평가<br><small style="font-size:9px;opacity:.7;">v3.5</small></div>
+  </a>
+
+  <a href="안전작업허가서_v2.html" class="qbtn">
+    <div class="qbtn-ico">🔐</div>
+    <div class="qbtn-lbl">작업<br>허가서</div>
+  </a>
+  <a href="#" onclick="qbClick('tbm'); return false;" class="qbtn">
+    <div class="qbtn-ico">📝</div>
+    <div class="qbtn-lbl">TBM<br>일지</div>
+  </a>
+  <a href="작업중지권_v2.html" class="qbtn" style="border-left:3px solid var(--stop);">
+   <div class="qbtn-ico">🛑</div>
+   <div class="qbtn-lbl">작업<br>중지권</div>
+ </a>
+
+</div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     점검현황 페이지
+     ══════════════════════════════════════ -->
+<div class="page" id="pageInspect">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">
+        <span class="hero-logo">📊</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">SAFETY INSPECTION</div>
+          <div class="hero-brand-ko">점검 현황</div>
+        </div>
+      </div>
+      <div class="hero-tools">
+        <div class="hero-clock">
+          <div class="hero-date">오늘</div>
+          <div class="hero-time" id="inspDatePill">-</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="page-header" style="background:transparent;border:none;padding-top:16px;">
+      <div class="page-title">등록된 점검사항 <span id="heroInspNum">0</span>건</div>
+      <div class="page-sub">오늘 등록된 점검사항입니다</div>
+    </div>
+
+    <div class="insp-sum">
+      <div class="isp">
+        <div class="isp-v" id="iT">0</div>
+        <div class="isp-l">총 점검</div>
+      </div>
+      <div class="isp">
+        <div class="isp-v r" id="iC">0</div>
+        <div class="isp-l">중대</div>
+      </div>
+      <div class="isp">
+        <div class="isp-v o" id="iM">0</div>
+        <div class="isp-l">경미</div>
+      </div>
+      <div class="isp">
+        <div class="isp-v g" id="iD">0</div>
+        <div class="isp-l">완료</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-hdr">
+        <div class="sec-title">📋 점검 목록</div>
+      </div>
+    </div>
+    <div id="inspList"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     설정 페이지
+     ══════════════════════════════════════ -->
+<div class="page" id="pageSettings">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">
+        <span class="hero-logo">⚙️</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">SETTINGS</div>
+          <div class="hero-brand-ko">설정</div>
+        </div>
+      </div>
+      <div class="hero-tools">
+        <div class="hero-clock">
+          <div class="hero-date">v7.1</div>
+          <div class="hero-time">Step 2</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <div class="sec-lbl">안전 공지사항</div>
+    <div class="notice-edit">
+      <div class="notice-edit-title">📢 홈 화면 공지 관리</div>
+      <textarea class="notice-ta" id="noticeInput" placeholder="공지사항을 입력하면 홈 화면 상단에 표시됩니다..."></textarea>
+      <button class="notice-save-btn" onclick="saveNotice()">저장 및 공지</button>
+    </div>
+
+    <div class="sec-lbl">DB 관리</div>
+    <div class="db-info">
+      <div class="db-info-txt">
+        <strong>📌 엑셀 업로드 방법</strong><br>
+        ① 긴급조치 관리대장 엑셀 열기<br>
+        ② 전체 선택 후 <strong>Ctrl+C</strong><br>
+        ③ 아래 창에 <strong>Ctrl+V</strong><br>
+        ④ 변환 및 저장 → 누적
+      </div>
+    </div>
+    <div class="db-area">
+      <div class="db-area-title">📊 엑셀 데이터 붙여넣기</div>
+      <textarea class="db-ta" id="dbPaste" placeholder="엑셀 데이터를 붙여넣기(Ctrl+V)..."></textarea>
+      <button class="db-btn" onclick="parseAndSave()">🔄 변환 및 저장</button>
+    </div>
+
+    <!-- ⭐ 위험성평가 DB 관리 (v3.5 신규) -->
+    <div class="sec-lbl">🛡️ 위험성평가 관리 (관리자)</div>
+    <div class="sets-grp">
+      <div class="sets-item" onclick="goToRiskAssessmentAdmin()">
+        <div class="sets-l">
+          <span class="sets-ico">🔧</span>
+          <span class="sets-name">위험성평가 DB 관리</span>
+        </div>
+        <span class="sets-r" style="color:var(--warn)">관리자 ›</span>
+      </div>
+      <div class="sets-item" onclick="goToRiskAssessment()">
+        <div class="sets-l">
+          <span class="sets-ico">🤖</span>
+          <span class="sets-name">위험성평가 v3.5 (매트릭스 v2.2)</span>
+        </div>
+        <span class="sets-r" style="color:var(--posco)">이동 ›</span>
+      </div>
+      <div class="sets-item" onclick="checkRiskAssessmentStatus()">
+        <div class="sets-l">
+          <span class="sets-ico">📊</span>
+          <span class="sets-name">위험성평가 DB 상태</span>
+        </div>
+        <span class="sets-r" id="radStatusText">확인 ›</span>
+      </div>
+    </div>
+
+    <div class="sec-lbl">앱 설정</div>
+    <div class="sets-grp">
+      <div class="sets-item" onclick="toggleTheme()">
+        <div class="sets-l">
+          <span class="sets-ico">🌙</span>
+          <span class="sets-name">다크 모드</span>
+        </div>
+        <span class="sets-r" id="themeStatus">끄기</span>
+      </div>
+
+      <div class="sets-item" onclick="refreshAll()">
+        <div class="sets-l">
+          <span class="sets-ico">🔄</span>
+          <span class="sets-name">데이터 새로고침</span>
+        </div>
+        <span class="sets-r" id="dbStatusTxt">확인 중</span>
+      </div>
+      <div class="sets-item">
+        <div class="sets-l">
+          <span class="sets-ico">📦</span>
+          <span class="sets-name">저장된 작업 수</span>
+        </div>
+        <span class="sets-r" id="dbCount">-</span>
+      </div>
+      <div class="sets-item" onclick="clearDB()">
+        <div class="sets-l">
+          <span class="sets-ico">🗑️</span>
+          <span class="sets-name">DB 초기화</span>
+        </div>
+        <span class="sets-r" style="color:var(--stop)">삭제 ›</span>
+      </div>
+    </div>
+
+    <div class="sec-lbl">정보</div>
+    <div class="sets-grp">
+      <div class="sets-item">
+        <div class="sets-l">
+          <span class="sets-ico">🏭</span>
+          <span class="sets-name">에너지소재생산본부</span>
+        </div>
+        <span class="sets-r">포항안전환경그룹</span>
+      </div>
+      <div class="sets-item">
+        <div class="sets-l">
+          <span class="sets-ico">📱</span>
+          <span class="sets-name">버전</span>
+        </div>
+        <span class="sets-r">v7.1 (Step2)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     하단 네비
+     ══════════════════════════════════════ -->
+<nav class="botnav">
+  <button class="nav-tab active" id="tabHome" onclick="goTab('home')">
+    <span class="nav-ti">🏠</span>
+    <span class="nav-tl">홈</span>
+  </button>
+  <button class="nav-tab insp-tab" id="tabInspReg" onclick="openInspSheet(null)">
+    <span class="nav-ti">🚨</span>
+    <span class="nav-tl">점검등록</span>
+  </button>
+  <button class="nav-tab" id="tabInspect" onclick="goTab('inspect')">
+    <span class="nav-ti">📊</span>
+    <span class="nav-tl">점검현황</span>
+    <span class="nav-badge" id="inspBadge" style="display:none">0</span>
+  </button>
+  <button class="nav-tab" id="tabSettings" onclick="goTab('settings')">
+    <span class="nav-ti">⚙️</span>
+    <span class="nav-tl">설정</span>
+  </button>
+</nav>
+</div><!-- /.app -->
+<!-- 커스텀 확인 다이얼로그 (v7.3) -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     위험등급 수정 모달 (v7.4 관리자용)
+     ══════════════════════════════════════ -->
+<div class="custom-confirm-overlay" id="riskEditOverlay">
+  <div class="custom-confirm-modal" style="max-width:380px;">
+    <div class="custom-confirm-icon">⚙️</div>
+    <div class="custom-confirm-title">위험등급 수정</div>
+    <div class="custom-confirm-message"
+         id="riskEditWorkName"
+         style="font-weight:800;color:var(--ink);margin-bottom:6px;">-</div>
+    <div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:16px;">
+      원본 판정: <span id="riskEditOriginal">-</span>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);
+                  margin-bottom:8px;letter-spacing:.02em;">변경할 등급</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button type="button"
+                onclick="riskEditSelect('고위험')"
+                id="riskEditBtnHigh"
+                style="padding:14px 6px;border:2px solid var(--line);
+                       border-radius:var(--r-s);background:var(--card);
+                       color:var(--ink);font-family:inherit;font-size:13px;
+                       font-weight:800;cursor:pointer;transition:.15s;">
+          🚨 고위험
+        </button>
+        <button type="button"
+                onclick="riskEditSelect('일반')"
+                id="riskEditBtnNormal"
+                style="padding:14px 6px;border:2px solid var(--line);
+                       border-radius:var(--r-s);background:var(--card);
+                       color:var(--ink);font-family:inherit;font-size:13px;
+                       font-weight:800;cursor:pointer;transition:.15s;">
+          ⚪ 일반
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);
+                  margin-bottom:8px;letter-spacing:.02em;">수정자 이름</div>
+      <input type="text"
+             id="riskEditManager"
+             placeholder="예: 홍길동"
+             style="width:100%;padding:11px 13px;border:1.5px solid var(--line);
+                    border-radius:var(--r-s);background:var(--card);
+                    color:var(--ink);font-family:inherit;font-size:14.5px;
+                    font-weight:600;">
+    </div>
+
+    <div class="custom-confirm-buttons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel"
+              onclick="closeRiskEditModal()">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm"
+              onclick="submitRiskEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     작업 상태별 목록 시트
+     ══════════════════════════════════════ -->
+<div class="overlay" id="wsOv" onclick="closeSheet('ws')"></div>
+<div class="sheet" id="wsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title" id="wsSheetTitle">작업 목록</div>
+    <button class="sheet-x" onclick="closeSheet('ws')" aria-label="닫기">×</button>
+  </div>
+  <div class="sheet-body" id="wsBody"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     점검 등록 시트
+     ══════════════════════════════════════ -->
+<div class="overlay" id="ifOv" onclick="closeSheet('if')"></div>
+<div class="sheet" id="ifSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title">🚨 점검 등록</div>
+    <button class="sheet-x" onclick="closeSheet('if')" aria-label="닫기">×</button>
+  </div>
+  <div class="sheet-body">
+    <div id="ifBanner" style="display:none;background:var(--tint);border-radius:var(--r-s);padding:10px 12px;margin-bottom:14px;border-left:3px solid var(--posco);">
+      <div style="font-size:11px;font-weight:800;color:var(--posco);letter-spacing:.04em;margin-bottom:3px;">연결된 작업</div>
+      <div style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--ink);" id="ifWName"></div>
+    </div>
+    
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">심각도</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div onclick="selSev('중대',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink);" class="sev-btn">
+          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🔴</div>
+          <div style="font-size:13px;font-weight:800;">중대</div>
+        </div>
+        <div onclick="selSev('경미',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink);" class="sev-btn">
+          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🟡</div>
+          <div style="font-size:13px;font-weight:800;">경미</div>
+        </div>
+        <div onclick="selSev('권고',this)" style="background:var(--card);border:2px solid var(--line);border-radius:var(--r-s);padding:14px 6px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink);" class="sev-btn">
+          <div style="font-size:24px;line-height:1;margin-bottom:4px;">🟢</div>
+          <div style="font-size:13px;font-weight:800;">권고</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">점검 항목</div>
+      <div id="clBody" style="max-height:260px;overflow-y:auto;background:var(--card);border-radius:var(--r-s);padding:6px;box-shadow:var(--sh);border:1px solid var(--line);"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input id="custInp" placeholder="직접 입력..." style="flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14px;">
+        <button onclick="addCust()" style="padding:0 16px;border:0;border-radius:var(--r-s);background:var(--posco);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;">추가</button>
+      </div>
+      <div id="custList" style="margin-top:8px;display:flex;flex-direction:column;gap:5px;"></div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">사진 (선택)</div>
+      <div onclick="document.getElementById('photoFile').click()" style="background:var(--card);border:2px dashed var(--line);border-radius:var(--r-s);padding:22px;text-align:center;cursor:pointer;transition:.15s;">
+        <div style="font-size:28px;margin-bottom:5px;">📷</div>
+        <div style="font-size:13px;color:var(--sub);font-weight:700;">터치하여 사진 촬영</div>
+      </div>
+      <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)">
+      <div id="photoPrev" style="display:none;position:relative;border-radius:var(--r-s);overflow:hidden;margin-top:8px;">
+        <img id="photoImg" src="" alt="" style="width:100%;display:block;">
+        <button onclick="delPhoto()" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:17px;cursor:pointer;font-family:inherit;line-height:1;">×</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">등록자</div>
+      <select id="repRole" onchange="valForm()" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;margin-bottom:8px;">
+        <option value="">역할 선택</option>
+        <option value="안전관리자">안전관리자</option>
+        <option value="관리감독자">관리감독자</option>
+        <option value="안전패트롤팀">안전패트롤팀</option>
+      </select>
+      <input id="repName" placeholder="이름" oninput="valForm()" style="width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-s);background:var(--card);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;">
+    </div>
+
+    <button id="subBtn" onclick="submitInsp()" disabled style="width:100%;padding:18px;border:0;border-radius:var(--r-s);background:var(--run);color:#fff;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:-.02em;box-shadow:0 4px 12px rgba(232,89,12,.25);transition:.15s;">
+      ⚡ 즉시 등록
+    </button>
+    <p style="text-align:center;font-size:12.5px;color:var(--sub);margin-top:12px;padding-bottom:16px;font-weight:600;">등록 즉시 전체 공유됩니다</p>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════
+// STATE (Step 2: curFilter 삭제됨)
+// ═══════════════════════════════════════
+var allWorks=[],dispWorks=[],violations=[],permits=[];
+var ifWork=null,ifSev=null,ifItems=[],custItems=[],photoData=null;
+var noticeCollapsed=false;
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+function init(){
+  initTheme();
+  clock();
+  loadDB();
+  loadViolations();
+  loadPermits();
+  loadNotice();
+}
+
+function clock(){
+  function tick(){
+    var n=new Date(),days=['일','월','화','수','목','금','토'];
+    setTxt('navDate',(n.getMonth()+1)+'/'+n.getDate()+' ('+days[n.getDay()]+')');
+    setTxt('navTime',pad(n.getHours())+':'+pad(n.getMinutes()));
+    setTxt('inspDatePill',(n.getMonth()+1)+'월 '+n.getDate()+'일');
+  }
+  tick();
+  setInterval(tick,1000);
+}
+
+function pad(n){return('0'+n).slice(-2);}
+function fmtDate(d){
+  d = d || new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function escHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════
+function initTheme(){
+  applyTheme(localStorage.getItem('theme')||'light');
+}
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  var b=document.getElementById('themeBtn'),s=document.getElementById('themeStatus');
+  if(b) b.textContent=t==='dark'?'☀️':'🌙';
+  if(s) s.textContent=t==='dark'?'켜기':'끄기';
+  localStorage.setItem('theme',t);
+}
+function toggleTheme(){
+  var c=document.documentElement.getAttribute('data-theme')||'light';
+  applyTheme(c==='dark'?'light':'dark');
+}
+
+// ═══════════════════════════════════════
+// NOTICE
+// ═══════════════════════════════════════
+function loadNotice(){
+  var txt=localStorage.getItem('safetyNotice')||'';
+  var savedDate=localStorage.getItem('safetyNoticeDate')||'';
+  var seenDate=localStorage.getItem('safetyNoticeSeen')||'';
+  var noticeEl=document.getElementById('noticeBanner');
+  var noticeTextEl=document.getElementById('noticeText');
+  var newBadge=document.getElementById('noticeNewBadge');
+  var inp=document.getElementById('noticeInput');
+  if(inp) inp.value=txt;
+  if(!txt){if(noticeEl) noticeEl.style.display='none';return;}
+  if(noticeEl) noticeEl.style.display='block';
+  if(noticeTextEl) noticeTextEl.textContent=txt;
+  if(newBadge) newBadge.style.display=(savedDate!==seenDate)?'inline':'none';
+  localStorage.setItem('safetyNoticeSeen',savedDate);
+}
+
+function saveNotice(){
+  var txt=(document.getElementById('noticeInput').value||'').trim();
+  localStorage.setItem('safetyNotice',txt);
+  localStorage.setItem('safetyNoticeDate',new Date().toISOString());
+  localStorage.removeItem('safetyNoticeSeen');
+  loadNotice();
+  showToast(txt?'공지사항이 등록되었습니다':'공지사항이 삭제되었습니다','success');
+}
+
+function toggleNotice(){
+  noticeCollapsed=!noticeCollapsed;
+  var banner=document.getElementById('noticeBanner');
+  var tog=document.getElementById('noticeToggle');
+  if(noticeCollapsed){
+    banner.classList.add('collapsed');
+    if(tog) tog.textContent='펼치기 ▼';
+  } else {
+    banner.classList.remove('collapsed');
+    if(tog) tog.textContent='접기 ▲';
+  }
+}
+
+// ═══════════════════════════════════════
+// DB (기본 정의 - v7.1 패치가 덮어씀)
+// ═══════════════════════════════════════
+var companies=['원준','유공엔지니어링','직영','세광','에이스테크','안전공사','남양이엔에스','태정종합건설','서원종합건설','예준산업','파즈코리아','운강건설','금강건설','포스코PR테크','PR테크','위드테크','NCH','우진환경','다산','엠엔케이','KRST대한동방','GAFF','KRST','대한동방','포스코건설','현대건설','정비섹션'];
+var HR_CATS={HR01:{name:"화재폭발",kw:["인화성","가스","용접","그라인더","화기","폭발","보일러"]},HR02:{name:"밀폐공간",kw:["밀폐","질식","산소결핍","유해가스","송기마스크"]},HR03:{name:"유해화학물질",kw:["화학","강산","강염기","부식","황산","염산"]},HR04:{name:"고소작업",kw:["고소","추락","5m","높이","사다리","비계"]},HR05:{name:"중량물",kw:["크레인","양중","인양","중량물","지게차","호이스트"]},HR06:{name:"전기작업",kw:["고압","특고압","1000v","1500v","구역정전","복전"]}};
+var STD_HAZ={'감전':['감전','누전','통전'],'화재':['화재','불꽃','인화성','가연물','화기'],'폭발':['폭발','가스누출'],'추락':['추락','떨어짐','고소'],'질식':['질식','산소부족','유해가스'],'화상':['화상','고온'],'끼임':['끼임','협착','회전체'],'낙하':['낙하','비래'],'충돌':['충돌','부딪힘'],'절단':['절단','베임']};
+var SP=[{p:['안전모','헬멧'],s:'안전모 착용'},{p:['안전화'],s:'안전화 착용'},{p:['안전대','안전벨트'],s:'안전대 착용'},{p:['방독마스크'],s:'방독마스크 착용'},{p:['보안경','고글'],s:'보안경 착용'},{p:['LOTO','loto'],s:'LOTO 실시'},{p:['작업허가서'],s:'작업허가서 발급'},{p:['화기허가서'],s:'화기허가서 발급'},{p:['소화기'],s:'소화기 배치'},{p:['화기감시자'],s:'화기감시자 배치'},{p:['환기'],s:'환기 실시'},{p:['산소농도'],s:'산소농도 측정'},{p:['신호수','유도자'],s:'신호수 배치'},{p:['접지'],s:'접지 실시'},{p:['TBM'],s:'TBM 실시'},{p:['추락방지'],s:'추락방지 조치'},{p:['정리정돈'],s:'작업장 정리정돈'},{p:['2인1조'],s:'2인1조 작업'}];
+
+// ═══════════════════════════════════════
+// loadDB STUB (Step 6-3 리팩토링)
+// ─────────────────────────────────────────
+// loadDB의 실제 정의는 v7.1 패치에 있음.
+// v7.1은 이 stub을 완전히 덮어쓰므로 실제 동작하지 않음.
+// 이 stub은 v7.1 패치 로드 전 (init 실행 시점)의 안전장치.
+// 실제 정의: v7.1 패치의 loadDB() 
+//           (workId 정식 생성 + locationDisplay 처리 등)
+// ═══════════════════════════════════════
+function loadDB(){
+  // v7.1 로드 전 임시 동작: 빈 배열로 초기화
+  console.warn('[Step 6-3 stub] loadDB 호출됨 - v7.1 미로드 상태');
+  allWorks = [];
+  updateDBUI();
+  applyFilter();
+}
+
+function locStr(l){
+  if(!l) return '';
+  return ((l.factory||'')+' '+(l.line?l.line+'라인':'')).trim();
+}
+
+function rscore(rl,cats){
+  var b=rl==='고위험'?75:30;
+  if(cats&&cats.length) b+=cats.length*5;
+  return Math.min(b,99);
+}
+
+function updateDBUI(){
+  var on=allWorks.length>0;
+  setTxt('dbStatusTxt',on?'연결됨':'DB 없음');
+  setTxt('dbCount',on?allWorks.length+'건':'-');
+}
+function refreshAll(){
+  // ⭐ 사용량 폭증 방지를 위한 확인 다이얼로그 (2026-09-01)
+  var confirmMessage = 'Firestore에서 최신 데이터를 다시 불러옵니다.\n\n' +
+                      '📊 예상 조회량:\n' +
+                      '• 작업DB: 약 700 reads\n' +
+                      '• 허가서: 약 5 reads\n\n' +
+                      '평소에는 30분 캐시가 자동 갱신됩니다.\n' +
+                      '정말 지금 새로고침하시겠습니까?';
+  
+  if(typeof showCustomConfirm === 'function'){
+    showCustomConfirm({
+      icon: '↻',
+      title: '데이터 새로고침',
+      message: confirmMessage,
+      okText: '새로고침',
+      okType: 'warn'
+    }, function(ok){
+      if(!ok) return;
+      executeRefresh();
+    });
+  } else {
+    // fallback: 브라우저 기본 confirm
+    if(!confirm(confirmMessage)) return;
+    executeRefresh();
+  }
+}
+
+function executeRefresh(){
+  console.log('[refreshAll] 강제 새로고침 시작');
+  
+  // 캐시 무효화
+  localStorage.removeItem('workDbLastSync');
+  localStorage.removeItem('permitsLastSync');
+  
+  loadDB();
+  loadViolations();
+  loadPermits();
+  
+  // Firestore 재조회
+  if(typeof window.workDbLoadFromFirestore === 'function'){
+    window.workDbLoadFromFirestore();
+  }
+  if(typeof window.loadPermitsFromFirestore === 'function'){
+    window.loadPermitsFromFirestore();
+  }
+  
+  showToast('새로고침 완료 (Firestore 재조회)','success');
+}
+
+
+
+function clearDB(){
+  if(!confirm('DB를 초기화하시겠습니까?')) return;
+  localStorage.removeItem('safetyDatabase');
+  allWorks=[];
+  dispWorks=[];
+  updateDBUI();
+  applyFilter();
+  showToast('DB 초기화 완료','info');
+}
+
+// ═══════════════════════════════════════
+// EXCEL PARSE (기본 정의 - v7.1 패치가 덮어씀)
+// ═══════════════════════════════════════
+function exDate(t){
+  if(!t) return '';
+  var m=t.match(/(\d{4})[-.](\d{1,2})[-.](\d{1,2})/);
+  return m?m[1]+'-'+pad(m[2])+'-'+pad(m[3]):'';
+}
+
+function exCo(t){
+  if(!t) return '';
+  for(var i=0;i<companies.length;i++)
+    if(t.indexOf(companies[i])>=0) return companies[i];
+  return '';
+}
+
+function pLoc(wn){
+  var m=wn.match(/(\d+)라인/)||wn.match(/(\d+)Line/i);
+  if(m){
+    var l=parseInt(m[1]);
+    return l<=3?{factory:'1공장',line:l}:l<=5?{factory:'1공장',line:l}:{factory:'2공장',line:l};
+  }
+  if(wn.indexOf('2-2')>=0) return{factory:'2공장',line:null};
+  if(wn.indexOf('2-1')>=0) return{factory:'1공장',line:null};
+  return{factory:'',line:null};
+}
+
+function dILS(wf,sf){
+  var t=(wf+' '+sf).toLowerCase();
+  return['ils','ils 실시','ils point'].some(function(k){return t.indexOf(k)>=0;})?'Y':'N';
+}
+
+function dHR(wn,sf,isH){
+  var t=(wn+' '+sf).toLowerCase();
+  var det=[];
+  for(var code in HR_CATS){
+    var cat=HR_CATS[code];
+    var cnt=cat.kw.filter(function(k){return t.indexOf(k.toLowerCase())>=0;}).length;
+    if(code==='HR06'){
+      if(cnt>=1&&isH) det.push({code:code,category:cat.name});
+    }else if(cnt>=2) det.push({code:code,category:cat.name});
+  }
+  return det;
+}
+
+function mHaz(t){
+  if(!t) return null;
+  var l=t.toLowerCase();
+  for(var h in STD_HAZ)
+    if(STD_HAZ[h].some(function(k){return l.indexOf(k)>=0;})) return h;
+  return null;
+}
+
+function sSafe(t){
+  if(!t) return null;
+  var l=t.toLowerCase();
+  for(var i=0;i<SP.length;i++)
+    if(SP[i].p.some(function(p){return l.indexOf(p.toLowerCase())>=0;})) return SP[i].s;
+  return t.length>15?t.substring(0,15):t.length>=3?t:null;
+}
+
+function pHS(st){
+  var hz=[],sm=[];
+  if(!st) return{hazards:hz,safetyMeasures:sm};
+  var items=st.replace(/(\d+)\.\s*/g,'|').replace(/[-•]\s*/g,'').split(/\||\n|;/).filter(function(s){return s.trim().length>2;});
+  items.forEach(function(item){
+    item=item.trim();
+    if(item.indexOf('→')>=0||item.indexOf('->')>=0){
+      item.split(/→|->/).forEach(function(p,i){
+        p=p.trim();if(p.length<2) return;
+        if(i===0){var h=mHaz(p);if(h&&hz.indexOf(h)<0) hz.push(h);}
+        else{var s=sSafe(p);if(s&&sm.indexOf(s)<0) sm.push(s);}
+      });
+    }else{
+      var h2=mHaz(item);if(h2&&hz.indexOf(h2)<0) hz.push(h2);
+      var s2=sSafe(item);if(s2&&sm.indexOf(s2)<0) sm.push(s2);
+    }
+  });
+  return{hazards:hz.slice(0,4),safetyMeasures:sm.slice(0,8)};
+}
+
+function sWN(wn){
+  if(!wn) return '';
+  var s=wn;
+  if(s.indexOf('>')>=0){
+    var segs=s.split('>'),skip=['ILS','지정됨','미실시','미지정'],best='';
+    for(var i=segs.length-1;i>=0;i--){
+      var seg=segs[i].trim();
+      if(seg.length<5) continue;
+      if(!skip.some(function(k){return seg.indexOf(k)>=0;})){best=seg;break;}
+    }
+    s=best||segs[0].trim();
+  }
+  ['포항양극재2-2단계공장','포항양극재2-1단계공장','포항양극재공장','포항양극재','포항 양극재 2-2 단계','포항 양극재 2-1 단계','포항 양극재','양극재공장','양극재','포스코퓨처엠','포스코'].forEach(function(r){
+    while(s.indexOf(r)>=0) s=s.replace(r,'');
+  });
+  var lp=0;
+  while(s.indexOf('[')>=0&&lp<15){
+    var bs=s.indexOf('['),be=s.indexOf(']',bs);
+    s=be>=0?s.substring(0,bs)+s.substring(be+1):s.substring(0,bs)+s.substring(bs+1);
+    lp++;
+  }
+  ['ILS 시스템 지정 완료','ILS시스템 지정됨','ILS 지정됨','ILS 실시','ILS 미실시','ILS 불필요','ILS 지정','지정됨','미실시','미지정'].forEach(function(k){
+    while(s.indexOf(k)>=0) s=s.replace(k,'');
+  });
+  s=s.replace(/\d+라인/g,'').replace(/\d+공장/g,'').replace(/\d+단계/g,'').replace(/\s+/g,' ').trim();
+  var f=0;
+  while(s.length>0&&f<8){
+    if([',','.',':','-',' '].indexOf(s[0])>=0){s=s.substring(1);f++;}
+    else break;
+  }
+  if(s.length>30) s=s.substring(0,30)+'...';
+  return s||'작업';
+}
+
+// ═══════════════════════════════════════
+// FILTER STUB (Step 3 리팩토링)
+// ─────────────────────────────────────────
+// applyFilter의 실제 정의는 v7.2 패치에 있음.
+// 이 stub은 v7.2 패치가 로드되기 전(loadDB 등이
+// applyFilter를 호출하는 시점)의 안전장치.
+// v7.2 패치 로드 후에는 window.applyFilter가 이 정의를 덮어씀.
+// ═══════════════════════════════════════
+function applyFilter(){
+  // v7.2 로드 전 임시 동작: allWorks 전체를 dispWorks로 복사
+  // v7.2 로드 후에는 이 함수가 호출되지 않음 (window.applyFilter로 대체)
+  dispWorks = (allWorks || []).slice();
+  updateWorkStatus();
+  renderInspPage();
+}
+
+// ═══════════════════════════════════════
+// updateWorkStatus STUB (Step 4 리팩토링)
+// ─────────────────────────────────────────
+// updateWorkStatus의 실제 정의는 v7.2 패치에 있음.
+// 이 stub은 v7.2 패치 로드 전 (loadDB → applyFilter →
+// updateWorkStatus 호출 시점)의 안전장치.
+// v7.2 로드 후에는 window.updateWorkStatus가 이 정의를 덮어씀.
+// ═══════════════════════════════════════
+function updateWorkStatus(){
+  // v7.2 로드 전 임시 동작: 총 건수만 표시하고 나머지는 0
+  var total = (dispWorks || []).length;
+  setTxt('cntTotal', total);
+  setTxt('cntDanger', 0);
+  setTxt('cntWait', 0);
+  setTxt('cntRun', 0);
+  setTxt('cntStop', 0);
+  setTxt('cntDone', 0);
+}
+
+// ═══════════════════════════════════════
+// openStatusSheet STUB (Step 5 리팩토링)
+// ─────────────────────────────────────────
+// openStatusSheet의 실제 정의는 v7.2 패치에 있음.
+// 이 stub은 v7.2 패치 로드 전 (거의 발생하지 않음)의 안전장치.
+// v7.2 로드 후에는 window.openStatusSheet가 이 정의를 덮어씀.
+// 실제 정의: Part 4b의 window.openStatusSheet
+// ═══════════════════════════════════════
+function openStatusSheet(filter){
+  // v7.2 로드 전 임시 동작: 아무것도 하지 않음 (사용자 클릭 무시)
+  console.warn('[Step 5 stub] openStatusSheet 호출됨 - v7.2 미로드 상태');
+}
+
+// ═══════════════════════════════════════
+// PERMITS
+// ═══════════════════════════════════════
+function loadPermits(){
+  try{permits=JSON.parse(localStorage.getItem('safetyPermits')||'[]');}
+  catch(e){permits=[];}
+  updateWorkStatus();
+}
+
+// ═══════════════════════════════════════
+// 점검 등록 폼
+// ═══════════════════════════════════════
+function openInspSheet(wid){
+  resetIF();
+  ifWork=wid?allWorks.find(function(x){return x.id===wid;}):null;
+  var ban=document.getElementById('ifBanner'),nm=document.getElementById('ifWName');
+  if(ifWork){
+    if(ban) ban.style.display='block';
+    if(nm) nm.textContent=ifWork.workName;
+    buildCL(ifWork);
+  }else{
+    if(ban) ban.style.display='none';
+    buildGenCL();
+  }
+  openSheet('if');
+}
+
+function buildCL(w){
+  var ms=(w.aiAnalysis&&w.aiAnalysis.safetyMeasures)||[];
+  var cats=ms.length?{'안전작업허가서 항목':ms}:{
+    '안전조치':['소화기 비치 확인','화기감시자 배치','환기장치 가동 확인'],
+    '보호구':['안전모 착용','안전화 착용','안전대 착용','보안경 착용']
+  };
+  renderCL(cats);
+}
+
+function buildGenCL(){
+  renderCL({
+    '정리정돈':['작업장 정리정돈 불량','폐기물 방치','자재 적재 불량'],
+    '통로/안전':['통로 확보 불량','안전표지 미부착','소화기 미비치'],
+    '기타':['기타 안전 위반사항']
+  });
+}
+
+function renderCL(cats){
+  var html='';
+  for(var cat in cats){
+    html+='<div class="cl-cat">'+escHtml(cat)+'</div>';
+    cats[cat].forEach(function(item){
+      var e=item.replace(/'/g,"\\'");
+      html+='<div class="cl-item" onclick="togCL(this,\''+e+'\')">'+
+        '<div class="cl-box"></div>' +
+        '<div class="cl-txt">'+escHtml(item)+'</div>'+
+      '</div>';
+    });
+  }
+  document.getElementById('clBody').innerHTML=html;
+}
+
+function togCL(el,item){
+  el.classList.toggle('sel');
+  var box=el.querySelector('.cl-box');
+  if(el.classList.contains('sel')){
+    box.textContent='✓';
+    if(ifItems.indexOf(item)<0) ifItems.push(item);
+  }else{
+    box.textContent='';
+    ifItems=ifItems.filter(function(i){return i!==item;});
+  }
+  valForm();
+}
+
+function addCust(){
+  var inp=document.getElementById('custInp'),t=(inp.value||'').trim();
+  if(!t) return;
+  if(custItems.indexOf(t)>=0){showToast('이미 추가된 항목','info');return;}
+  custItems.push(t);ifItems.push(t);
+  inp.value='';
+  renderCustList();
+  valForm();
+}
+
+function renderCustList(){
+  var ct=document.getElementById('custList');
+  if(!ct) return;
+  ct.innerHTML=custItems.map(function(item,i){
+    return '<div class="cust-item">' +
+      '<span class="cust-txt">✓ '+escHtml(item)+'</span>' +
+      '<button class="cust-del" onclick="delCust('+i+')">×</button>' +
+    '</div>';
+  }).join('');
+}
+
+function delCust(i){
+  var item=custItems[i];
+  custItems.splice(i,1);
+  ifItems=ifItems.filter(function(x){return x!==item;});
+  renderCustList();
+  valForm();
+}
+
+function selSev(sev,el){
+  ifSev=sev;
+  document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  valForm();
+}
+
+function onPhoto(e){
+  var f=e.target.files[0];if(!f) return;
+  var r=new FileReader();
+  r.onload=function(ev){
+    photoData=ev.target.result;
+    document.getElementById('photoImg').src=photoData;
+    document.getElementById('photoPrev').style.display='block';
+  };
+  r.readAsDataURL(f);
+}
+
+function delPhoto(){
+  photoData=null;
+  document.getElementById('photoPrev').style.display='none';
+  document.getElementById('photoFile').value='';
+}
+
+function valForm(){
+  var role=(document.getElementById('repRole').value||'').trim();
+  var name=(document.getElementById('repName').value||'').trim();
+  var btn=document.getElementById('subBtn');
+  if(btn) btn.disabled=!(ifSev&&ifItems.length>0&&role&&name);
+}
+
+function submitInsp(){
+  var role=document.getElementById('repRole').value;
+  var name=document.getElementById('repName').value;
+  var loc='공장 전체',company='해당없음',workName='일반 점검사항',wid='general';
+  if(ifWork){
+    loc=ifWork.location||'미지정';
+    company=ifWork.company||'미지정';
+    workName=ifWork.workName;
+    wid=ifWork.id;
+  }
+  violations.push({
+    id:'SV-'+Date.now(),
+    createdAt:new Date().toISOString(),
+    reporter:{name:name,role:role},
+    workInfo:{workId:wid,workName:workName,location:loc,company:company},
+    violation:{
+      severity:ifSev,
+      item:ifItems.join(', '),
+      source:wid==='general'?'일반 점검':'안전작업허가서',
+      photo:photoData
+    },
+    correction:{status:'미시정',elapsedMinutes:0,completedAt:null}
+  });
+  saveViolations();
+  closeSheet('if');
+  renderInspPage();
+  showToast('점검사항이 등록되었습니다','success');
+  if(ifSev==='중대') setTimeout(function(){showToast('🚨 중대 위반! 즉시 조치 바랍니다','error');},500);
+}
+
+function resetIF(){
+  ifWork=null;ifSev=null;ifItems=[];custItems=[];photoData=null;
+  ['repRole','repName'].forEach(function(id){var el=document.getElementById(id);if(el) el.value='';});
+  var sb=document.getElementById('subBtn');if(sb) sb.disabled=true;
+  var cl=document.getElementById('custList');if(cl) cl.innerHTML='';
+  var pp=document.getElementById('photoPrev');if(pp) pp.style.display='none';
+  var pf=document.getElementById('photoFile');if(pf) pf.value='';
+  document.querySelectorAll('.sev-btn').forEach(function(b){b.classList.remove('on');});
+}
+
+// ═══════════════════════════════════════
+// VIOLATIONS
+// ═══════════════════════════════════════
+function loadViolations(){
+  try{violations=JSON.parse(localStorage.getItem('safetyViolations')||'[]');}
+  catch(e){violations=[];}
+  renderInspPage();
+}
+
+function saveViolations(){
+  localStorage.setItem('safetyViolations',JSON.stringify(violations));
+  try{
+    window.dispatchEvent(new CustomEvent('app-data-changed',{
+      detail:{key:'safetyViolations',timestamp:Date.now()}
+    }));
+  }catch(e){}
+}
+
+function getTodayV(){
+  var t=fmtDate(new Date());
+  return violations.filter(function(v){return v.createdAt&&v.createdAt.indexOf(t)===0;});
+}
+
+function renderInspPage(){
+  var tv=getTodayV();
+  setTxt('iT',tv.length);
+  setTxt('iC',tv.filter(function(v){return v.violation.severity==='중대';}).length);
+  setTxt('iM',tv.filter(function(v){return v.violation.severity==='경미';}).length);
+  setTxt('iD',tv.filter(function(v){return v.correction.status==='완료';}).length);
+  setTxt('heroInspNum',tv.length);
+  
+  var pend=tv.filter(function(v){return v.correction.status!=='완료';});
+  var ib=document.getElementById('inspBadge');
+  if(ib){
+    if(pend.length){ib.style.display='flex';ib.textContent=pend.length;}
+    else ib.style.display='none';
+  }
+  
+  var list=document.getElementById('inspList');
+  if(!list) return;
+  
+  if(!tv.length){
+    list.innerHTML='<div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">오늘 등록된 점검사항이 없습니다.</div></div>';
+    return;
+  }
+  
+  list.innerHTML=tv.map(function(v){
+    var sc=v.violation.severity==='중대'?'cr':v.violation.severity==='경미'?'mn':'ad';
+    var time=new Date(v.createdAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    var done=v.correction.status==='완료';
+    return '<div class="ic-card '+sc+'">' +
+      '<div class="ic-top">' +
+        '<span class="ic-sev '+sc+'">'+escHtml(v.violation.severity)+'</span>' +
+        '<span class="ic-time">'+time+'</span>' +
+      '</div>' +
+      '<div class="ic-name">'+escHtml(v.violation.item)+'</div>' +
+      '<div class="ic-meta">' +
+        '<span>📍 '+escHtml(v.workInfo.location)+'</span>' +
+        '<span>🏢 '+escHtml(v.workInfo.company)+'</span>' +
+      '</div>' +
+      '<div class="ic-status-row">' +
+        '<span class="spill '+(done?'d':'p')+'">'+(done?'완료':'미시정')+'</span>' +
+        (!done?'<span class="spill-elapsed">경과 '+(v.correction.elapsedMinutes||0)+'분</span>':'') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+function goTab(tab){
+  ['home','inspect','settings'].forEach(function(t){
+    var p=document.getElementById('page'+cap(t));if(p) p.classList.remove('active');
+  });
+  ['Home','Inspect','Settings'].forEach(function(t){
+    var el=document.getElementById('tab'+t);if(el) el.classList.remove('active');
+  });
+  var page=document.getElementById('page'+cap(tab));if(page) page.classList.add('active');
+  var tabEl=document.getElementById('tab'+cap(tab));if(tabEl) tabEl.classList.add('active');
+  var appScroll = document.querySelector('.phone-frame .app');
+
+if(window.matchMedia('(min-width:768px)').matches && appScroll){
+  appScroll.scrollTo({
+    top:0,
+    behavior:'auto'
+  });
+}else{
+  window.scrollTo(0,0);
+}
+
+}
+
+// ═══════════════════════════════════════
+// SHEETS
+// ═══════════════════════════════════════
+// 바텀시트별 닫기 타이머
+var sheetCloseTimers = {};
+
+/**
+ * 다른 바텀시트를 즉시 닫습니다.
+ */
+function closeOtherSheets(currentName){
+  ['ws', 'if'].forEach(function(name){
+    if(name === currentName) return;
+
+    if(sheetCloseTimers[name]){
+      clearTimeout(sheetCloseTimers[name]);
+      sheetCloseTimers[name] = null;
+    }
+
+    var sheet = document.getElementById(name + 'Sheet');
+    var overlay = document.getElementById(name + 'Ov');
+
+    if(sheet){
+      sheet.classList.remove('open');
+
+      // 다른 시트가 새 시트 아래에서 잠시 보이지 않도록 즉시 숨김
+      sheet.style.visibility = 'hidden';
+      sheet.style.pointerEvents = 'none';
+    }
+
+    if(overlay){
+      overlay.classList.remove('active');
+    }
+  });
+}
+
+/**
+ * 지정한 바텀시트만 단독으로 엽니다.
+ */
+function openSheet(name){
+  closeOtherSheets(name);
+
+  if(sheetCloseTimers[name]){
+    clearTimeout(sheetCloseTimers[name]);
+    sheetCloseTimers[name] = null;
+  }
+
+  var overlay = document.getElementById(name + 'Ov');
+  var sheet = document.getElementById(name + 'Sheet');
+
+  if(!sheet) return;
+
+  // 이전 강제 숨김 상태 해제
+  sheet.style.visibility = '';
+  sheet.style.pointerEvents = '';
+
+  if(overlay){
+    overlay.classList.add('active');
+  }
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      sheet.classList.add('open');
+    });
+  });
+}
+
+/**
+ * 지정한 바텀시트를 닫습니다.
+ */
+function closeSheet(name){
+  if(sheetCloseTimers[name]){
+    clearTimeout(sheetCloseTimers[name]);
+  }
+
+  var sheet = document.getElementById(name + 'Sheet');
+
+  if(sheet){
+    sheet.classList.remove('open');
+  }
+
+  sheetCloseTimers[name] = setTimeout(function(){
+    var overlay = document.getElementById(name + 'Ov');
+
+    if(overlay){
+      overlay.classList.remove('active');
+    }
+
+    sheetCloseTimers[name] = null;
+  }, 320);
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg,type){
+  var wrap=document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t=document.createElement('div');
+  t.className='toast '+(type||'info');
+  t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(function(){if(t.parentNode) t.parentNode.removeChild(t);},3500);
+}
+
+// ═══════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') ['ws','if'].forEach(function(n){closeSheet(n);});
+});
+
+var custInpEl = document.getElementById('custInp');
+if(custInpEl){
+  custInpEl.addEventListener('keypress',function(e){
+    if(e.key==='Enter'){e.preventDefault();addCust();}
+  });
+}
+
+// ═══════════════════════════════════════
+// 실시간 동기화
+// ═══════════════════════════════════════
+var lastSyncUpdate = 0;
+
+window.addEventListener('storage',function(e){
+  var now=Date.now();
+  if(now - lastSyncUpdate < 500) return;
+  lastSyncUpdate = now;
+  
+  if(e.key==='safetyDatabase'){
+    setTimeout(function(){loadDB();},100);
+  }
+  if(e.key==='safetyPermits'){
+    setTimeout(function(){loadPermits();},100);
+  }
+  if(e.key==='safetyTBM'){
+    setTimeout(function(){updateWorkStatus();},100);
+  }
+  if(e.key==='safetyViolations'){
+    setTimeout(function(){loadViolations();},100);
+  }
+});
+
+window.addEventListener('app-data-changed',function(e){
+  var key=e.detail && e.detail.key;
+  if(!key) return;
+  var now=Date.now();
+  if(now - lastSyncUpdate < 500) return;
+  lastSyncUpdate = now;
+  
+  if(key==='safetyDatabase'){
+    setTimeout(function(){loadDB();},100);
+  }
+  if(key==='safetyPermits'){
+    setTimeout(function(){loadPermits();},100);
+  }
+  if(key==='safetyTBM'){
+    setTimeout(function(){updateWorkStatus();},100);
+  }
+  if(key==='safetyViolations'){
+    setTimeout(function(){loadViolations();},100);
+  }
+});
+
+// ═══════════════════════════════════════
+// 시작
+// ═══════════════════════════════════════
+init();
+</script>
+
+<script>
+/* =========================================================
+   v7.1 작업관리대장 데이터 구조 및 상태 연동 통합 패치
+   (Step 2에서는 이 부분 변경 없음 — Step 6에서 통합 예정)
+   ========================================================= */
+
+/* =========================================================
+   1. 공통 데이터 정리 함수
+   ========================================================= */
+
+function cleanCell(value){
+  return String(value == null ? '' : value)
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+}
+
+function normalizeOriginalNo(value){
+  return cleanCell(value).replace(/\s/g, '');
+}
+
+function makeWorkId(date, originalNo){
+  var normalizedDate = cleanCell(date);
+  var normalizedNo = normalizeOriginalNo(originalNo);
+  if(!normalizedDate || !normalizedNo){ return null; }
+  return normalizedDate + '_' + normalizedNo;
+}
+
+function parseWorkerCount(value){
+  var raw = cleanCell(value);
+  var match = raw.match(/\d+/);
+  if(!match){ return null; }
+  var count = parseInt(match[0], 10);
+  return isNaN(count) ? null : count;
+}
+
+function parseWorkTime(value){
+  var raw = cleanCell(value);
+  var match = raw.match(/(\d{1,2}:\d{2})\s*[~～\-]\s*(\d{1,2}:\d{2})/);
+  return {
+    raw: raw,
+    start: match ? match[1] : '',
+    end: match ? match[2] : ''
+  };
+}
+
+function normalizeMark(value){
+  var normalized = cleanCell(value).toUpperCase();
+  var trueValues = ['O','○','●','Y','YES','TRUE','실시','해당','있음','유'];
+  var falseValues = ['X','N','NO','FALSE','미실시','미해당','없음','무'];
+  if(trueValues.indexOf(normalized) >= 0){ return true; }
+  if(falseValues.indexOf(normalized) >= 0){ return false; }
+  return null;
+}
+
+function normalizeIlsExecution(value){
+  var mark = normalizeMark(value);
+  if(mark === true){ return 'Y'; }
+  if(mark === false){ return 'N'; }
+  return null;
+}
+
+function extractUrl(value){
+  var text = cleanCell(value);
+  var match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
+function toSafeNumber(value){
+  if(value === null || value === undefined || value === ''){ return null; }
+  var number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function parseDateTime(value){
+  if(!value){ return 0; }
+  if(typeof value === 'object' && typeof value.toDate === 'function'){
+    try{ return value.toDate().getTime(); }
+    catch(error){ return 0; }
+  }
+  var timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+/* =========================================================
+   2. 엑셀 복사 데이터 TSV 파서
+   ========================================================= */
+
+function parseTSV(text){
+  var rows = [];
+  var row = [];
+  var cell = '';
+  var inQuotes = false;
+  var normalizedText = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  for(var index = 0; index < normalizedText.length; index++){
+    var character = normalizedText[index];
+    var nextCharacter = normalizedText[index + 1];
+
+    if(character === '"'){
+      if(inQuotes && nextCharacter === '"'){
+        cell += '"';
+        index++;
+      }else{
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if(character === '\t' && !inQuotes){
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if(character === '\n' && !inQuotes){
+      row.push(cell);
+      var hasValue = row.some(function(value){ return cleanCell(value) !== ''; });
+      if(hasValue){ rows.push(row); }
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += character;
+  }
+
+  row.push(cell);
+  var lastRowHasValue = row.some(function(value){ return cleanCell(value) !== ''; });
+  if(lastRowHasValue){ rows.push(row); }
+  return rows;
+}
+
+/* =========================================================
+   3. 관리대장 열 정의
+   ========================================================= */
+
+var WORK_LEDGER_COLUMNS = {
+  DATE: 0,
+  ORIGINAL_NO: 1,
+  OPERATING_DEPARTMENT: 2,
+  REQUESTING_DEPARTMENT: 3,
+  LOCATION: 4,
+  WORK_ORDER_NO: 5,
+  WORK_NAME: 6,
+  WORKER_COUNT: 7,
+  WORK_TIME: 8,
+  CONTRACT_COMPANY: 9,
+  EXECUTING_COMPANY: 10,
+  WORK_MANAGER: 11,
+  CONTRACTOR_MANAGER: 12,
+  PERMIT_LOCATION: 13,
+  PERMIT_APPROVER: 14,
+  ILS_EXECUTION: 15,
+  ILS_SYSTEM_APPROVER: 16,
+  ILS_SYSTEM_LOCKER: 17,
+  EMAIL: 18,
+  REQUIRED_WORK_PLAN: 19,
+  SAFETY_ORIGINAL: 20,
+  RISK_ASSESSMENT_REFERENCE: 21,
+  OPERATING_EQUIPMENT: 22,
+  REPAIR_MANAGER_APPROVAL: 23,
+  INSPECTION_PLANT_MANAGER_APPROVAL: 24,
+  HIGH_RISK_FIRE: 25,
+  HIGH_RISK_EXPLOSION: 26,
+  HIGH_RISK_SUFFOCATION: 27,
+  HIGH_RISK_LEAKAGE: 28,
+  HIGH_RISK_OTHER: 29,
+  HIGH_RISK_MANAGER_APPROVAL: 30,
+  CORROSION_AREA_ENTRY: 31,
+  CORROSION_DEPARTMENT_APPROVAL: 32,
+  SAFETY_MONITOR_ORGANIZATION: 33,
+  SAFETY_MONITOR_NAME: 34,
+  CCTV_AVAILABLE: 35
+};
+
+/* =========================================================
+   4. 작업관리대장 파싱 함수 전체 교체
+   ========================================================= */
+
+function parseExcel(text){
+  var results = [];
+  var rows = parseTSV(text);
+  var C = WORK_LEDGER_COLUMNS;
+
+  rows.forEach(function(cols, rowIndex){
+    var date = exDate(cleanCell(cols[C.DATE]));
+    if(!date){ return; }
+
+    var originalNo = normalizeOriginalNo(cols[C.ORIGINAL_NO]);
+    if(!originalNo){
+      console.warn('NO가 없어 제외된 관리대장 행:', rowIndex + 1);
+      return;
+    }
+
+    var workId = makeWorkId(date, originalNo);
+    var workNameFull = cleanCell(cols[C.WORK_NAME]);
+    if(!workNameFull){
+      console.warn('작업명이 없어 제외된 관리대장 행:', rowIndex + 1);
+      return;
+    }
+
+    var operatingDepartment = cleanCell(cols[C.OPERATING_DEPARTMENT]);
+    var requestingDepartment = cleanCell(cols[C.REQUESTING_DEPARTMENT]);
+    var locationRaw = cleanCell(cols[C.LOCATION]);
+    var workOrderNo = cleanCell(cols[C.WORK_ORDER_NO]);
+    var workerCountRaw = cleanCell(cols[C.WORKER_COUNT]);
+    var workerCount = parseWorkerCount(workerCountRaw);
+    var workTime = parseWorkTime(cols[C.WORK_TIME]);
+    var contractCompany = cleanCell(cols[C.CONTRACT_COMPANY]);
+    var executingCompany = cleanCell(cols[C.EXECUTING_COMPANY]);
+    var company = executingCompany || contractCompany || '미지정';
+    var workManager = cleanCell(cols[C.WORK_MANAGER]);
+    var contractorManager = cleanCell(cols[C.CONTRACTOR_MANAGER]);
+    var permitLocation = cleanCell(cols[C.PERMIT_LOCATION]);
+    var permitApprover = cleanCell(cols[C.PERMIT_APPROVER]);
+    var ilsExecutionRaw = cleanCell(cols[C.ILS_EXECUTION]);
+    var ilsExecution = normalizeIlsExecution(ilsExecutionRaw);
+    var ilsSystemApprover = cleanCell(cols[C.ILS_SYSTEM_APPROVER]);
+    var ilsSystemLocker = cleanCell(cols[C.ILS_SYSTEM_LOCKER]);
+    var email = cleanCell(cols[C.EMAIL]);
+    var requiredWorkPlan = cleanCell(cols[C.REQUIRED_WORK_PLAN]);
+    var safetyOriginal = cleanCell(cols[C.SAFETY_ORIGINAL]);
+    var riskAssessmentReferenceRaw = cleanCell(cols[C.RISK_ASSESSMENT_REFERENCE]);
+
+    var sourceRiskFlags = {
+      operatingEquipment: normalizeMark(cols[C.OPERATING_EQUIPMENT]),
+      repairManagerApproval: normalizeMark(cols[C.REPAIR_MANAGER_APPROVAL]),
+      inspectionPlantManagerApproval: normalizeMark(cols[C.INSPECTION_PLANT_MANAGER_APPROVAL]),
+      fire: normalizeMark(cols[C.HIGH_RISK_FIRE]),
+      explosion: normalizeMark(cols[C.HIGH_RISK_EXPLOSION]),
+      suffocation: normalizeMark(cols[C.HIGH_RISK_SUFFOCATION]),
+      leakage: normalizeMark(cols[C.HIGH_RISK_LEAKAGE]),
+      other: normalizeMark(cols[C.HIGH_RISK_OTHER]),
+      highRiskManagerApproval: normalizeMark(cols[C.HIGH_RISK_MANAGER_APPROVAL]),
+      corrosionAreaEntry: normalizeMark(cols[C.CORROSION_AREA_ENTRY]),
+      corrosionDepartmentApproval: normalizeMark(cols[C.CORROSION_DEPARTMENT_APPROVAL])
+    };
+
+    var safetyMonitorOrganization = cleanCell(cols[C.SAFETY_MONITOR_ORGANIZATION]);
+    var safetyMonitorName = cleanCell(cols[C.SAFETY_MONITOR_NAME]);
+    var cctvAvailable = normalizeMark(cols[C.CCTV_AVAILABLE]);
+
+    var normalizedWorkNameForRisk = String(workNameFull || '')
+      .split(' ').join('')
+      .split('\n').join('')
+      .split('\r').join('')
+      .split('\t').join('');
+
+    var sourceHighRiskFromName =
+      normalizedWorkNameForRisk.indexOf('[고위험작업]') >= 0 ||
+      normalizedWorkNameForRisk.indexOf('고위험작업') >= 0;
+
+    var sourceHighRiskFromFlags = [
+      sourceRiskFlags.fire,
+      sourceRiskFlags.explosion,
+      sourceRiskFlags.suffocation,
+      sourceRiskFlags.leakage,
+      sourceRiskFlags.other
+    ].some(function(value){ return value === true; });
+
+    var combinedText = [workNameFull, safetyOriginal, requiredWorkPlan].join(' ').toLowerCase();
+    var highRiskKeywords = ['밀폐','질식','산소부족','산소결핍','유해가스','추락','폭발','감전','누출','특고압','고압','vcb','화기작업'];
+    var keywordHighRisk = highRiskKeywords.some(function(keyword){
+      return combinedText.indexOf(keyword.toLowerCase()) >= 0;
+    });
+
+    var derivedHighRiskCategories = dHR(
+      workNameFull,
+      safetyOriginal,
+      sourceHighRiskFromName || sourceHighRiskFromFlags
+    );
+
+        // ═══════════════════════════════════════════════════════
+    // 공식 고위험 판정 (문서 12.3항 준수)
+    // - 작업관리대장 원본 기준만 사용
+    // - keywordHighRisk, derivedHighRiskCategories는
+    //   위험성평가 추천용 참고 정보로만 저장 (공식 통계 제외)
+    // ═══════════════════════════════════════════════════════
+    var risk = (
+      sourceHighRiskFromName ||
+      sourceHighRiskFromFlags
+    ) ? '고위험' : '일반';
+
+    var hazardSafety = pHS(safetyOriginal);
+    var parsedLocation = pLoc(workNameFull);
+    var displayWorkName = sWN(workNameFull);
+    var ilsRequired = dILS(workNameFull, [safetyOriginal, requiredWorkPlan].join(' '));
+    var rawColumns = cols.map(function(value){ return cleanCell(value); });
+
+    results.push({
+      workId: workId,
+      originalNo: originalNo,
+      date: date,
+      sourceType: 'excel-paste',
+      sourceRowIndex: rowIndex + 1,
+      operatingDepartment: operatingDepartment,
+      requestingDepartment: requestingDepartment,
+      locationRaw: locationRaw,
+      location: {
+        raw: locationRaw,
+        factory: parsedLocation.factory || '',
+        line: parsedLocation.line == null ? null : parsedLocation.line
+      },
+      workOrderNo: workOrderNo,
+      workName: displayWorkName,
+      workNameFull: workNameFull,
+      workerCountRaw: workerCountRaw,
+      workerCount: workerCount,
+      workTimeRaw: workTime.raw,
+      workStartTime: workTime.start,
+      workEndTime: workTime.end,
+      contractCompany: contractCompany,
+      executingCompany: executingCompany,
+      company: company,
+      manager: workManager || '미지정',
+      workManager: workManager,
+      contractorManager: contractorManager,
+      permitLocation: permitLocation,
+      permitApprover: permitApprover,
+      ilsExecutionRaw: ilsExecutionRaw,
+      ilsExecution: ilsExecution,
+      ilsRequired: ilsRequired,
+      ilsSystemApprover: ilsSystemApprover,
+      ilsSystemLocker: ilsSystemLocker,
+      email: email,
+      requiredWorkPlan: requiredWorkPlan,
+      safety: safetyOriginal,
+      safetyOriginal: safetyOriginal,
+      hazards: hazardSafety.hazards,
+      safetyMeasures: hazardSafety.safetyMeasures,
+      risk: risk,
+      highRiskCategories: derivedHighRiskCategories,
+      sourceRiskFlags: sourceRiskFlags,
+      isHighRiskFromSource: sourceHighRiskFromName || sourceHighRiskFromFlags,
+      riskAssessmentReference: {
+        raw: riskAssessmentReferenceRaw,
+        url: extractUrl(riskAssessmentReferenceRaw)
+      },
+      safetyMonitor: {
+        organization: safetyMonitorOrganization,
+        name: safetyMonitorName,
+        assigned: Boolean(safetyMonitorOrganization || safetyMonitorName)
+      },
+      cctvAvailable: cctvAvailable,
+      workStatus: '등록',
+      schemaVersion: 1,
+      rawColumns: rawColumns
+    });
+  });
+
+  return results;
+}
+
+/* =========================================================
+   5. 작업관리대장 저장 함수 전체 교체
+   ========================================================= */
+
+function parseAndSave(){
+  var pasteElement = document.getElementById('dbPaste');
+  var text = pasteElement ? pasteElement.value : '';
+
+  if(!text || text.trim().length < 10){
+    showToast('작업관리대장 데이터를 붙여넣으세요.', 'info');
+    return;
+  }
+
+  try{
+    var newData = parseExcel(text);
+    if(!newData.length){
+      showToast('파싱된 데이터가 없습니다. 일자, NO, 작업명을 확인하세요.', 'error');
+      return;
+    }
+
+    var existingData = [];
+    try{
+      var existingRaw = localStorage.getItem('safetyDatabase');
+      if(existingRaw){
+        var existingDatabase = JSON.parse(existingRaw);
+        existingData = Array.isArray(existingDatabase.workHistory) ? existingDatabase.workHistory : [];
+      }
+    }catch(readError){
+      console.error('기존 작업DB 읽기 실패:', readError);
+      existingData = [];
+    }
+
+    var now = new Date().toISOString();
+    var workMap = {};
+    var addedCount = 0;
+    var updatedCount = 0;
+    var skippedCount = 0;
+
+    existingData.forEach(function(work){
+      var existingWorkId = work.workId || makeWorkId(work.date, work.originalNo);
+      if(!existingWorkId){ skippedCount++; return; }
+      workMap[existingWorkId] = Object.assign({}, work, { workId: existingWorkId });
+    });
+
+    newData.forEach(function(work){
+      if(!work.workId){ skippedCount++; return; }
+      var oldWork = workMap[work.workId];
+      if(oldWork){
+        updatedCount++;
+        workMap[work.workId] = Object.assign({}, oldWork, work, {
+          workId: work.workId,
+          createdAt: oldWork.createdAt || now,
+          updatedAt: now
+        });
+      }else{
+        addedCount++;
+        workMap[work.workId] = Object.assign({}, work, {
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+    });
+
+    var merged = Object.values(workMap).sort(function(first, second){
+      var dateCompare = String(second.date || '').localeCompare(String(first.date || ''));
+      if(dateCompare !== 0){ return dateCompare; }
+      return String(first.originalNo || '').localeCompare(
+        String(second.originalNo || ''),
+        undefined,
+        { numeric: true, sensitivity: 'base' }
+      );
+    });
+
+    var database = {
+      metadata: {
+        version: '7.1',
+        schemaVersion: 1,
+        sourceType: 'excel-paste',
+        lastUpdate: now,
+        totalCount: merged.length
+      },
+      workHistory: merged
+    };
+
+    localStorage.setItem('safetyDatabase', JSON.stringify(database));
+
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: { key: 'safetyDatabase', timestamp: Date.now() }
+      }));
+    }catch(eventError){
+      console.warn('데이터 변경 이벤트 전송 실패:', eventError);
+    }
+
+    if(pasteElement){ pasteElement.value = ''; }
+    loadDB();
+
+    var message = '✅ 신규 ' + addedCount + '건 / 갱신 ' + updatedCount + '건';
+    if(skippedCount > 0){ message += ' / 제외 ' + skippedCount + '건'; }
+    message += ' / 총 ' + merged.length + '건 저장';
+    showToast(message, 'success');
+  }catch(error){
+    console.error('작업관리대장 저장 오류:', error);
+    showToast('저장 오류: ' + error.message, 'error');
+  }
+}
+
+/* =========================================================
+   6. loadDB 정본 (Step 6-3 리팩토링에서 확정)
+   ─────────────────────────────────────────
+   이 함수가 실제 동작하는 유일한 정의입니다.
+   - 본체 script의 loadDB()는 v7.1 로드 전 안전 stub
+   - Step 6-3에서 확정
+   
+   ─────────────────────────────────────────
+   기능:
+   - localStorage safetyDatabase 읽기
+   - workId 정식 생성 (workId || makeWorkId(date, originalNo))
+   - locationDisplay 우선순위 처리
+   - allWorks 배열 재구성
+   
+   호출 순서: init() → loadDB() → applyFilter() → updateWorkStatus()
+   ========================================================= */
+
+
+function loadDB(){
+  try{
+    var raw = localStorage.getItem('safetyDatabase');
+    var database = raw ? JSON.parse(raw) : {};
+    var workHistory = Array.isArray(database.workHistory) ? database.workHistory : [];
+
+    allWorks = workHistory.map(function(work){
+      var workId = work.workId || makeWorkId(work.date, work.originalNo);
+      if(!workId){
+        console.warn('workId를 생성할 수 없어 제외된 작업:', work);
+        return null;
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // riskLevel 재계산 (문서 12.6항 준수)
+      // - 관리자 수동 수정값(work.risk)이 있으면 우선 사용
+      // - 없으면 isHighRiskFromSource 기반으로 즉석 재계산
+      // ═══════════════════════════════════════════════════════
+      var riskLevel = work.risk
+        || (work.isHighRiskFromSource ? '고위험' : '일반');
+      if(riskLevel === '중위험'){ riskLevel = '일반'; }
+
+
+      var locationObject = (work.location && typeof work.location === 'object') ? work.location : {};
+      var locationDisplay =
+        work.locationRaw ||
+        locationObject.raw ||
+        locStr(locationObject) ||
+        (typeof work.location === 'string' ? work.location : '') ||
+        '미지정';
+
+      var highRiskCategories = Array.isArray(work.highRiskCategories) ? work.highRiskCategories : [];
+      var hazards = Array.isArray(work.hazards) ? work.hazards : [];
+      var safetyMeasures = Array.isArray(work.safetyMeasures) ? work.safetyMeasures : [];
+
+      return Object.assign({}, work, {
+        id: workId,
+        workId: workId,
+        date: work.date || '',
+        originalNo: work.originalNo || '',
+        workName: work.workName || '작업',
+        workNameFull: work.workNameFull || work.workName || '',
+        locationObj: locationObject,
+        locationRaw: work.locationRaw || locationObject.raw || '',
+        location: locationDisplay,
+        riskLevel: riskLevel,
+        company: work.company || work.executingCompany || work.contractCompany || '미지정',
+        manager: work.manager || work.workManager || '미지정',
+        ilsRequired: work.ilsRequired || 'N',
+        hrCategoryNames: highRiskCategories.map(function(category){
+          if(typeof category === 'string'){ return category; }
+          return (category.category || category.name || '');
+        }).filter(Boolean),
+        hazards: hazards,
+        aiAnalysis: {
+          riskScore: rscore(riskLevel, highRiskCategories),
+          safetyMeasures: safetyMeasures
+        }
+      });
+    }).filter(function(work){ return work !== null; });
+  }catch(error){
+    console.error('작업DB 로드 실패:', error);
+    allWorks = [];
+  }
+
+  updateDBUI();
+  applyFilter();
+}
+
+/* =========================================================
+   7. localStorage 배열 공통 로드
+   ========================================================= */
+
+function loadLocalArray(key){
+  try{
+    var parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    if(Array.isArray(parsed)){ return parsed; }
+    if(parsed && typeof parsed === 'object'){
+      return Object.values(parsed).filter(function(item){
+        return (item && typeof item === 'object');
+      });
+    }
+    return [];
+  }catch(error){
+    console.error(key + ' 로드 실패:', error);
+    return [];
+  }
+}
+
+/* =========================================================
+   8. permit 연결 및 상태 호환 함수
+   ========================================================= */
+
+function getPermitWorkId(permit){
+  if(!permit){ return null; }
+  return permit.workId || permit.sourceWorkId || null;
+}
+
+function getPermitStatus(permit){
+  if(!permit){ return '대기중'; }
+  return permit.permitStatus || permit.status || '허가진행중';
+}
+
+function isPermitCompleted(permit, status){
+  if(status === '작업완료' || status === '완료'){ return true; }
+  if(permit && permit.closeout && permit.closeout.completed === true){ return true; }
+  return false;
+}
+
+function isEmergencyActive(emergency){
+  if(!emergency){ return false; }
+  var status = emergency.emergencyStatus || emergency.status || '';
+  var inactiveStatuses = ['종료','취소','해제승인','해제','완료'];
+  if(inactiveStatuses.indexOf(status) >= 0){ return false; }
+  return true;
+}
+
+/* =========================================================
+   9. permit, TBM, 긴급조치 인덱스 생성
+   ========================================================= */
+
+function buildExecutionMaps(){
+  var permitList = loadLocalArray('safetyPermits');
+  var tbmList = loadLocalArray('safetyTBM');
+  var emergencyList = loadLocalArray('emergencies');
+
+  var permitMap = {};
+  var tbmMap = {};
+  var emergencyMap = {};
+
+  permitList.forEach(function(permit){
+    var workId = getPermitWorkId(permit);
+    if(!workId){ return; }
+    var previous = permitMap[workId];
+    if(!previous){ permitMap[workId] = permit; return; }
+    var previousTime = parseDateTime(previous.updatedAt || previous.createdAt);
+    var currentTime = parseDateTime(permit.updatedAt || permit.createdAt);
+    if(currentTime >= previousTime){ permitMap[workId] = permit; }
+  });
+
+  tbmList.forEach(function(tbm){
+    if(!tbm || !tbm.permitNo){ return; }
+    var previous = tbmMap[tbm.permitNo];
+    if(!previous){ tbmMap[tbm.permitNo] = tbm; return; }
+    var previousTime = parseDateTime(previous.updatedAt || previous.createdAt || previous.tbmDate);
+    var currentTime = parseDateTime(tbm.updatedAt || tbm.createdAt || tbm.tbmDate);
+    if(currentTime >= previousTime){ tbmMap[tbm.permitNo] = tbm; }
+  });
+
+  emergencyList.forEach(function(emergency){
+    if(!emergency || !emergency.permitNo || !isEmergencyActive(emergency)){ return; }
+    var previous = emergencyMap[emergency.permitNo];
+    if(!previous){ emergencyMap[emergency.permitNo] = emergency; return; }
+    var previousTime = parseDateTime(previous.updatedAt || previous.createdAt || previous.emergencyDate);
+    var currentTime = parseDateTime(emergency.updatedAt || emergency.createdAt || emergency.emergencyDate);
+    if(currentTime >= previousTime){ emergencyMap[emergency.permitNo] = emergency; }
+  });
+
+  return { permitMap: permitMap, tbmMap: tbmMap, emergencyMap: emergencyMap };
+}
+
+/* =========================================================
+   10. 작업 실행상태 판정
+   ========================================================= */
+
+function resolveWorkExecution(work, maps){
+  var workId = work.workId || work.id;
+  var permit = maps.permitMap[workId] || null;
+  var permitNo = permit && permit.permitNo ? permit.permitNo : null;
+  var tbm = permitNo ? maps.tbmMap[permitNo] || null : null;
+  var emergency = permitNo ? maps.emergencyMap[permitNo] || null : null;
+  var status = getPermitStatus(permit);
+
+  if(isPermitCompleted(permit, status)){
+    status = '작업완료';
+  }else if(emergency || status === '작업중지'){
+    status = '작업중지';
+  }else if(status === '작업중'){
+    status = '작업중';
+  }else if(tbm){
+    status = '작업중';
+  }else if(status === '허가완료'){
+    status = '허가완료';
+  }else if(status === '허가진행중'){
+    status = '허가진행중';
+  }else if(!permit){
+    status = '대기중';
+  }
+
+  return {
+    workId: workId,
+    permit: permit,
+    permitNo: permitNo,
+    tbm: tbm,
+    emergency: emergency,
+    status: status
+  };
+}
+
+/* =========================================================
+   11. 작업 현황 카운트 함수 (Step 4: v7.2가 정본으로 덮어씀)
+   ─────────────────────────────────────────
+   ⚠️ 죽은 코드 (Dead Code) 제거됨
+   
+   기존 v7.1 정의는 v7.2 패치의 window.updateWorkStatus가
+   완전히 덮어쓰므로 실제 동작하지 않았음.
+   Step 4 리팩토링에서 삭제.
+   
+   실제 동작 정의: Part 4b의 window.updateWorkStatus
+   ========================================================= */
+
+/* =========================================================
+   12. 상태별 작업 목록 (Step 5: v7.2가 정본으로 덮어씀)
+   ─────────────────────────────────────────
+   ⚠️ 죽은 코드 (Dead Code) 제거됨
+   
+   기존 v7.1 정의(openStatusSheet, renderStatusSheet)는
+   v7.2 패치의 window.openStatusSheet + 
+   window.dashboardRenderStatusSheet가 완전히 덮어쓰므로
+   실제 동작하지 않았음. Step 5 리팩토링에서 삭제.
+   
+   실제 동작 정의:
+   - openStatusSheet: Part 4b의 window.openStatusSheet
+   - 렌더링: Part 4b의 window.dashboardRenderStatusSheet
+   ========================================================= */
+
+/* =========================================================
+   13. 설정 화면 안내 문구 자동 변경
+   ========================================================= */
+
+function updateWorkLedgerGuide(){
+  var infoElement = document.querySelector('.db-info-txt');
+  if(infoElement){
+    infoElement.innerHTML =
+      '<strong>📌 작업관리대장 가져오기</strong><br>' +
+      '① 긴급조치 작업관리대장 엑셀 열기<br>' +
+      '② 헤더와 작업 데이터를 전체 선택 후 <strong>Ctrl+C</strong><br>' +
+      '③ 아래 입력창에 <strong>Ctrl+V</strong><br>' +
+      '④ 변환 및 저장 → 기존 데이터와 병합<br>' +
+      '※ 동일한 일자와 NO는 신규 추가가 아닌 갱신 처리됩니다.';
+  }
+
+  var titleElement = document.querySelector('.db-area-title');
+  if(titleElement){ titleElement.textContent = '📊 작업관리대장 복사·붙여넣기'; }
+
+  var pasteElement = document.getElementById('dbPaste');
+  if(pasteElement){
+    pasteElement.placeholder = '작업관리대장 엑셀 범위를 복사하여 붙여넣기(Ctrl+V)...';
+  }
+}
+
+/* =========================================================
+   14. 데이터 변경 감지 보강
+   ========================================================= */
+
+window.addEventListener('storage', function(event){
+  if(event.key === 'emergencies'){
+    setTimeout(function(){ updateWorkStatus(); }, 100);
+  }
+});
+
+window.addEventListener('app-data-changed', function(event){
+  var key = event.detail && event.detail.key;
+  if(key === 'emergencies'){
+    setTimeout(function(){ updateWorkStatus(); }, 100);
+  }
+});
+
+/* =========================================================
+   15~17. 개발자 유틸 함수 (콘솔 실행용)
+   ========================================================= */
+
+window.inspectSafetyDatabase = function(){
+  var database = {};
+  try{ database = JSON.parse(localStorage.getItem('safetyDatabase') || '{}'); }
+  catch(error){ console.error('safetyDatabase JSON 파싱 실패:', error); return null; }
+
+  var workHistory = Array.isArray(database.workHistory) ? database.workHistory : [];
+  var workIdSet = new Set();
+  var duplicateWorkIds = [];
+  var missingWorkIds = [];
+  var missingWorkNames = [];
+  var missingLocations = [];
+
+  workHistory.forEach(function(work, index){
+    var workId = work.workId || makeWorkId(work.date, work.originalNo);
+    if(!workId){ missingWorkIds.push(index); }
+    else if(workIdSet.has(workId)){ duplicateWorkIds.push(workId); }
+    else{ workIdSet.add(workId); }
+    if(!work.workNameFull && !work.workName){ missingWorkNames.push(workId || index); }
+    var hasLocation = Boolean(
+      work.locationRaw || (work.location && (work.location.raw || work.location.factory))
+    );
+    if(!hasLocation){ missingLocations.push(workId || index); }
+  });
+
+  var result = {
+    metadata: database.metadata || {},
+    totalCount: workHistory.length,
+    missingWorkIdCount: missingWorkIds.length,
+    duplicateWorkIdCount: duplicateWorkIds.length,
+    missingWorkNameCount: missingWorkNames.length,
+    missingLocationCount: missingLocations.length,
+    missingWorkIds: missingWorkIds,
+    duplicateWorkIds: duplicateWorkIds,
+    missingWorkNames: missingWorkNames,
+    missingLocations: missingLocations,
+    firstWork: workHistory[0] || null
+  };
+
+  console.log('작업관리대장 검사 결과:', result);
+  console.table([
+    { item: '전체 작업', count: result.totalCount },
+    { item: 'workId 누락', count: result.missingWorkIdCount },
+    { item: 'workId 중복', count: result.duplicateWorkIdCount },
+    { item: '작업명 누락', count: result.missingWorkNameCount },
+    { item: '작업장소 누락', count: result.missingLocationCount }
+  ]);
+  return result;
+};
+
+window.inspectPastedColumns = function(){
+  var pasteElement = document.getElementById('dbPaste');
+  if(!pasteElement){ console.error('dbPaste 입력창을 찾을 수 없습니다.'); return null; }
+  var rows = parseTSV(pasteElement.value);
+  var firstDataRow = rows.find(function(row){
+    return Boolean(exDate(cleanCell(row[0])));
+  });
+  if(!firstDataRow){ console.warn('일자로 시작하는 작업 데이터 행을 찾지 못했습니다.'); return null; }
+  var result = firstDataRow.map(function(value, index){
+    return { index: index, value: cleanCell(value) };
+  });
+  console.table(result);
+  return result;
+};
+
+window.backupSafetyDatabase = function(){
+  var raw = localStorage.getItem('safetyDatabase');
+  if(!raw){ console.warn('백업할 safetyDatabase가 없습니다.'); return null; }
+  var now = new Date();
+  var backupKey = 'safetyDatabase_backup_' +
+    now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '_' +
+    pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+  localStorage.setItem(backupKey, raw);
+  console.log('작업DB 백업 완료:', backupKey);
+  showToast('작업DB 백업 완료', 'success');
+  return backupKey;
+};
+
+/* =========================================================
+   18. 패치 적용 및 화면 갱신
+   ========================================================= */
+
+updateWorkLedgerGuide();
+loadDB();
+loadPermits();
+updateWorkStatus();
+
+</script>
+<script>
+/* =========================================================
+   대시보드 날짜 필터 및 작업상태 표시 최종 패치 v7.2
+   
+   ⭐ Step 2 리팩토링 (2026-08-28)
+   변경사항:
+   - chip UI는 HTML 정적으로 이동 (플리커링 해소)
+   - dashboardCreateDateControls()가 picker 생성만 수행
+   - dashboardUpdateUpcomingButton() 헬퍼 신설
+   - applyFilter() 내부의 예정 버튼 갱신 로직 헬퍼로 위임
+
+   필터:
+   - 어제 / 오늘 / 예정: 오늘 이후 가장 가까운 작업일 / 캘린더
+
+   표시 상태:
+   - 과거 작업: 작업종료
+   - 오늘 작업: 실제 permit/TBM/긴급조치 상태
+   - 미래 작업: 예정
+   ========================================================= */
+
+(function(){
+  var dashboardDateMode = 'today';
+  var dashboardSelectedDate = '';
+  var dashboardUpcomingDate = '';
+
+  var DAY_NAMES = ['일','월','화','수','목','금','토'];
+
+  function dashboardDateText(dateString){
+    if(!dateString){ return ''; }
+    var parts = dateString.split('-');
+    if(parts.length !== 3){ return dateString; }
+    var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if(isNaN(date.getTime())){ return dateString; }
+    return Number(parts[1]) + '/' + Number(parts[2]) + '(' + DAY_NAMES[date.getDay()] + ')';
+  }
+
+  function dashboardDateLongText(dateString){
+    if(!dateString){ return ''; }
+    var parts = dateString.split('-');
+    if(parts.length !== 3){ return dateString; }
+    var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if(isNaN(date.getTime())){ return dateString; }
+    return Number(parts[1]) + '월 ' + Number(parts[2]) + '일(' + DAY_NAMES[date.getDay()] + ')';
+  }
+
+  function dashboardYesterday(){
+    var date = new Date();
+    date.setDate(date.getDate() - 1);
+    return fmtDate(date);
+  }
+
+  function dashboardFindUpcomingDate(){
+    var today = fmtDate(new Date());
+    var dates = [];
+    (allWorks || []).forEach(function(work){
+      var workDate = work.date || '';
+      if(workDate > today && dates.indexOf(workDate) < 0){
+        dates.push(workDate);
+      }
+    });
+    dates.sort();
+    return dates.length ? dates[0] : '';
+  }
+
+  function dashboardGetTargetDate(){
+    if(dashboardDateMode === 'yesterday'){ return dashboardYesterday(); }
+    if(dashboardDateMode === 'upcoming'){ return dashboardUpcomingDate; }
+    if(dashboardDateMode === 'custom'){ return dashboardSelectedDate; }
+    return fmtDate(new Date());
+  }
+
+  function dashboardUpdateSectionTitle(){
+    var title = document.querySelector('#pageHome .sec .sec-title');
+    if(!title){ return; }
+
+    var targetDate = dashboardGetTargetDate();
+    var today = fmtDate(new Date());
+
+    if(dashboardDateMode === 'yesterday'){
+      title.textContent = '📈 어제 작업 결과';
+      return;
+    }
+    if(dashboardDateMode === 'today'){
+      title.textContent = '📈 오늘 작업 현황';
+      return;
+    }
+    if(dashboardDateMode === 'upcoming'){
+      title.textContent = dashboardUpcomingDate
+        ? '📅 ' + dashboardDateLongText(dashboardUpcomingDate) + ' 예정 작업'
+        : '📅 예정 작업 없음';
+      return;
+    }
+    if(targetDate < today){
+      title.textContent = '📅 ' + dashboardDateLongText(targetDate) + ' 종료 작업';
+    }else if(targetDate > today){
+      title.textContent = '📅 ' + dashboardDateLongText(targetDate) + ' 예정 작업';
+    }else{
+      title.textContent = '📈 오늘 작업 현황';
+    }
+  }
+
+  function dashboardUpdateStatusLabels(){
+    var labels = document.querySelectorAll('.status-dt-label');
+    if(labels.length < 4){ return; }
+    labels[0].textContent = '허가전';
+    labels[1].textContent = '작업중';
+    labels[2].textContent = '작업중지';
+
+    var targetDate = dashboardGetTargetDate();
+    var today = fmtDate(new Date());
+    if(targetDate > today){
+      labels[3].textContent = '예정';
+    }else{
+      labels[3].textContent = '작업종료';
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     ⭐ Step 2 리팩토링: 예정 버튼 라벨 업데이트 헬퍼
+     (기존 applyFilter 내부에 인라인으로 있던 로직을 분리)
+     ═══════════════════════════════════════════════════════ */
+  function dashboardUpdateUpcomingButton(){
+    var upcomingButton = document.getElementById('dashboardUpcomingButton');
+    if(!upcomingButton){ return; }
+    
+    if(dashboardUpcomingDate){
+      upcomingButton.disabled = false;
+      upcomingButton.textContent = '예정 · ' + dashboardDateText(dashboardUpcomingDate);
+    }else{
+      upcomingButton.disabled = true;
+      upcomingButton.textContent = '예정 없음';
+    }
+  }
+
+    /* ═══════════════════════════════════════════════════════
+     ⭐ [최종수정] picker를 캘린더 버튼 위에 투명하게 겹쳐서 배치
+     사용자가 캘린더 아이콘을 클릭하면 실제로는 picker를 클릭하게 됨
+     → 모든 브라우저에서 100% 팝업이 열림
+     ═══════════════════════════════════════════════════════ */
+  function dashboardCreateDateControls(){
+    dashboardUpcomingDate = dashboardFindUpcomingDate();
+    dashboardUpdateUpcomingButton();
+
+    // 기존 picker 및 wrapper 제거
+    var oldPicker = document.getElementById('dashboardDatePicker');
+    if(oldPicker){ oldPicker.remove(); }
+
+    var calendarButton = document.getElementById('dashboardCalendarButton');
+    if(!calendarButton){ return; }
+
+    // ⭐ 캘린더 버튼을 wrapper로 감싸기 (position:relative 컨텍스트 필요)
+    if(!calendarButton.parentNode.classList.contains('chip-calendar-wrap')){
+      var wrap = document.createElement('span');
+      wrap.className = 'chip-calendar-wrap';
+      calendarButton.parentNode.insertBefore(wrap, calendarButton);
+      wrap.appendChild(calendarButton);
+    }
+
+    // ⭐ picker 생성 후 wrapper 안에 배치
+    var picker = document.createElement('input');
+    picker.type = 'date';
+    picker.id = 'dashboardDatePicker';
+    picker.className = 'dashboard-date-picker';
+    picker.value = fmtDate(new Date());
+
+    picker.addEventListener('change', function(){
+      if(!picker.value){ return; }
+      dashboardSelectedDate = picker.value;
+      dashboardDateMode = 'custom';
+
+      document.querySelectorAll('#pageHome .chip').forEach(function(chip){
+        chip.classList.remove('active');
+      });
+
+      calendarButton.classList.add('active');
+      // ⭐ picker는 wrapper의 자식이므로 innerHTML 변경해도 안전
+      calendarButton.innerHTML = '📅 ' + dashboardDateText(dashboardSelectedDate);
+
+      applyFilter();
+    });
+
+    // ⭐ wrapper 안에 picker 추가 (버튼 위에 투명하게 겹침)
+    calendarButton.parentNode.appendChild(picker);
+
+    // ⭐ 캘린더 버튼의 onclick 속성 제거
+    // (이제 picker가 클릭을 직접 받음 - CSS z-index:2로 위에 있음)
+    calendarButton.removeAttribute('onclick');
+  }
+
+
+
+    window.dashboardSetDateFilter = function(mode, button){
+    if(mode === 'upcoming' && !dashboardUpcomingDate){
+      showToast('등록된 예정 작업이 없습니다.', 'info');
+      return;
+    }
+
+    dashboardDateMode = mode;
+    if(mode !== 'custom'){ dashboardSelectedDate = ''; }
+
+    document.querySelectorAll('#pageHome .chip').forEach(function(chip){
+      chip.classList.remove('active');
+    });
+    if(button){ button.classList.add('active'); }
+
+    // ⭐ [수정] 캘린더 버튼을 원래 아이콘 상태로 복원 + active 해제
+    var calendarButton = document.getElementById('dashboardCalendarButton');
+    if(calendarButton){
+      calendarButton.innerHTML = '📅';
+      calendarButton.classList.remove('active');
+    }
+
+    applyFilter();
+  };
+
+
+  window.dashboardOpenCalendar = function(){
+    // ⭐ picker가 버튼 위에 투명하게 겹쳐있으므로
+    // 사용자가 버튼을 클릭하면 자동으로 picker가 클릭됨
+    // 이 함수는 호환성을 위해 남겨둠 (외부에서 호출 시 대비)
+    var picker = document.getElementById('dashboardDatePicker');
+    if(!picker){ return; }
+    try{
+      if(typeof picker.showPicker === 'function'){
+        picker.showPicker();
+      }else{
+        picker.focus();
+        picker.click();
+      }
+    }catch(err){
+      picker.focus();
+      picker.click();
+    }
+  };
+
+
+  window.dashboardGetDisplayStatus = function(work, execution){
+    var today = fmtDate(new Date());
+    var workDate = work.date || '';
+
+    if(workDate < today){ return '작업종료'; }
+    if(workDate > today){ return '예정'; }
+
+    var status = execution ? execution.status : '대기중';
+    if(status === '작업완료' || status === '완료'){ return '작업종료'; }
+    if(status === '작업중지'){ return '작업중지'; }
+    if(status === '작업중'){ return '작업중'; }
+    if(status === '허가완료'){ return '허가완료'; }
+    return '허가전';
+  };
+   /* ═══════════════════════════════════════════════════════
+     ⭐ applyFilter 정본 (Step 3 리팩토링에서 확정)
+     
+     이 함수가 실제 동작하는 유일한 정의입니다.
+     본체 script의 applyFilter()는 v7.2 로드 전 안전 stub이며,
+     이 정의로 덮어써져 대체됩니다.
+     
+     Step 2 변경: 예정 버튼 갱신을 헬퍼 함수 호출로 대체
+     Step 3 변경: 정본 확정 및 주석 강화
+     ═══════════════════════════════════════════════════════ */
+
+  window.applyFilter = function(){
+    dashboardUpcomingDate = dashboardFindUpcomingDate();
+    dashboardUpdateUpcomingButton();  // ⭐ 헬퍼 호출 (기존: 인라인 if/else)
+
+    var targetDate = dashboardGetTargetDate();
+
+    if(!targetDate){
+      dispWorks = [];
+    }else{
+      dispWorks = allWorks.filter(function(work){
+        return work.date === targetDate;
+      });
+    }
+
+    dashboardUpdateSectionTitle();
+    dashboardUpdateStatusLabels();
+    updateWorkStatus();
+    renderInspPage();
+  };
+
+  /* ═══════════════════════════════════════════════════════
+     ⭐ updateWorkStatus 정본 (Step 4 리팩토링에서 확정)
+     
+     이 함수가 실제 동작하는 유일한 정의입니다.
+     - 본체 script의 updateWorkStatus()는 v7.2 로드 전 안전 stub
+     - v7.1 패치의 updateWorkStatus()는 Step 4에서 삭제됨 (죽은 코드)
+     
+     ─────────────────────────────────────────
+     상태 판정 로직 (2단계):
+     
+     1단계) resolveWorkExecution() [Part 3b]
+       permit / TBM / emergency 데이터로 실행 상태 결정
+       우선순위: 작업완료 > 작업중지 > 작업중 > 허가완료 
+                > 허가진행중 > 대기중
+     
+     2단계) dashboardGetDisplayStatus() [Part 4a]
+       1단계 결과 + 작업 날짜로 표시 상태 결정
+       - 과거 날짜 → 작업종료
+       - 미래 날짜 → 예정
+       - 오늘 날짜 → 1단계 결과 그대로
+     
+     ─────────────────────────────────────────
+     카운트 매핑:
+       cntDone  = 작업종료 + 예정 (날짜별 종료/예정 합산)
+       cntStop  = 작업중지
+       cntRun   = 작업중 + 허가완료
+       cntWait  = 허가전 (그 외)
+       cntDanger = riskLevel이 '고위험'인 작업
+     ═══════════════════════════════════════════════════════ */
+  window.updateWorkStatus = function(){
+
+    var maps = buildExecutionMaps();
+    var countWait = 0, countRun = 0, countStop = 0, countEnded = 0, countDanger = 0;
+
+    dispWorks.forEach(function(work){
+      if(work.riskLevel === '고위험'){ countDanger++; }
+      var execution = resolveWorkExecution(work, maps);
+      var displayStatus = dashboardGetDisplayStatus(work, execution);
+
+      if(displayStatus === '작업종료'){ countEnded++; }
+      else if(displayStatus === '예정'){ countEnded++; }
+      else if(displayStatus === '작업중지'){ countStop++; }
+      else if(displayStatus === '작업중' || displayStatus === '허가완료'){ countRun++; }
+      else{ countWait++; }
+    });
+
+    setTxt('cntTotal', dispWorks.length);
+    setTxt('cntDanger', countDanger);
+    setTxt('cntWait', countWait);
+    setTxt('cntRun', countRun);
+    setTxt('cntStop', countStop);
+    setTxt('cntDone', countEnded);
+
+    ['cntWait','cntRun','cntStop','cntDone'].forEach(function(id){
+      var element = document.getElementById(id);
+      if(!element){ return; }
+      var value = parseInt(element.textContent, 10) || 0;
+      element.classList.toggle('zero', value === 0);
+    });
+  };
+
+
+  /* ═══════════════════════════════════════════════════════
+     ⭐ openStatusSheet 정본 (Step 5 리팩토링에서 확정)
+     
+     이 함수가 실제 동작하는 유일한 정의입니다.
+     - 본체 script의 openStatusSheet()는 v7.2 로드 전 안전 stub
+     - v7.1 패치의 openStatusSheet()는 Step 5에서 삭제됨 (죽은 코드)
+     
+     ─────────────────────────────────────────
+     필터별 표시 규칙:
+     
+       'wait'    → status === '허가전'
+       'run'     → status === '허가완료' 또는 '작업중'
+       'stop'    → status === '작업중지'
+       'done'    → status === '작업종료' 또는 '예정'
+                   (미래 날짜면 타이틀은 "📅 예정 작업"으로 변경)
+       'danger'  → riskLevel === '고위험' (상태 무관)
+       'all'     → 전체
+     
+     ─────────────────────────────────────────
+     status 값의 출처:
+       dashboardGetDisplayStatus(work, execution)의 반환값
+       (2단계 판정: 실행상태 + 날짜 → 표시상태)
+     
+     렌더링 위임:
+       dashboardRenderStatusSheet(filtered, filter)
+     ═══════════════════════════════════════════════════════ */
+  window.openStatusSheet = function(filter){
+
+    var maps = buildExecutionMaps();
+
+    var enriched = dispWorks.map(function(work){
+      var execution = resolveWorkExecution(work, maps);
+      return {
+        workId: work.workId || work.id,
+        workDate: work.date || '',
+        workName: work.workName || '미지정',
+        company: work.company || '미지정',
+        location: work.location || work.locationRaw || '미지정',
+        riskLevel: work.riskLevel || '일반',
+        status: dashboardGetDisplayStatus(work, execution),
+        permit: execution.permit,
+        permitNo: execution.permitNo,
+        tbm: execution.tbm,
+        emergency: execution.emergency
+      };
+    });
+
+    var filtered = [];
+    var title = '작업 목록';
+
+    if(filter === 'wait'){
+      filtered = enriched.filter(function(work){ return work.status === '허가전'; });
+      title = '🟡 허가전 작업';
+    }else if(filter === 'run'){
+      filtered = enriched.filter(function(work){
+        return work.status === '허가완료' || work.status === '작업중';
+      });
+      title = '🟠 작업중';
+    }else if(filter === 'stop'){
+      filtered = enriched.filter(function(work){ return work.status === '작업중지'; });
+      title = '🔴 작업중지';
+    }else if(filter === 'done'){
+      filtered = enriched.filter(function(work){
+        return work.status === '작업종료' || work.status === '예정';
+      });
+      title = dashboardGetTargetDate() > fmtDate(new Date())
+        ? '📅 예정 작업'
+        : '🟢 작업종료';
+    }else if(filter === 'danger'){
+      filtered = enriched.filter(function(work){ return work.riskLevel === '고위험'; });
+      title = '🚨 고위험 작업';
+    }else{
+      filtered = enriched;
+      title = '📋 전체 작업';
+    }
+
+    var titleElement = document.getElementById('wsSheetTitle');
+    if(titleElement){
+      titleElement.innerHTML = title +
+        ' <span style="background:var(--tint);color:var(--posco);font-size:12px;font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
+        filtered.length + '건</span>';
+    }
+
+    dashboardRenderStatusSheet(filtered, filter);
+    openSheet('ws');
+  };
+
+  window.dashboardRenderStatusSheet = function(works, filter){
+    var body = document.getElementById('wsBody');
+    if(!body){ return; }
+
+    if(!works.length){
+      body.innerHTML =
+        '<div class="empty">' +
+          '<div class="empty-ico">📭</div>' +
+          '<div class="empty-txt">해당 작업이 없습니다.</div>' +
+        '</div>';
+      return;
+    }
+
+    var today = fmtDate(new Date());
+    var html = '';
+
+    works.forEach(function(work){
+      var isDanger = work.riskLevel === '고위험';
+      var itemClass = 'work-item';
+      var statusClass = 'wait';
+      var statusEmoji = '⏳';
+
+      if(work.status === '예정'){
+        itemClass += ' scheduled';
+        statusClass = 'scheduled';
+        statusEmoji = '📅';
+      }else if(work.status === '작업종료'){
+        itemClass += ' ended';
+        statusClass = 'ended';
+        statusEmoji = '✔️';
+      }else if(work.status === '작업중지'){
+        itemClass += ' stop';
+        statusClass = 'stop';
+        statusEmoji = '🛑';
+      }else if(work.status === '작업중' || work.status === '허가완료'){
+        itemClass += ' run';
+        statusClass = 'run';
+        statusEmoji = work.status === '작업중' ? '🔄' : '✅';
+      }else{
+        itemClass += ' wait';
+      }
+
+      html += '<div class="' + itemClass + '">';
+      html += '<div class="wi-top">';
+      html += '<span class="wi-badge ' + (isDanger ? 'r' : 'g') + '">' +
+              (isDanger ? '고위험' : '일반') + '</span>';
+      html += '<span class="wi-status ' + statusClass + '">' +
+              statusEmoji + ' ' + escHtml(work.status) + '</span>';
+      html += '</div>';
+      html += '<div class="wi-name">' + escHtml(work.workName) + '</div>';
+      html += '<div class="wi-meta">' +
+              '<span>📅 ' + escHtml(dashboardDateText(work.workDate)) + '</span>' +
+              '<span>📍 ' + escHtml(work.location) + '</span>' +
+              '<span>🏢 ' + escHtml(work.company) + '</span>' +
+              '</div>';
+
+      if(work.workDate === today && work.status === '허가전'){
+        html += '<a href="안전작업허가서_v2.html?workId=' +
+                encodeURIComponent(work.workId) +
+                '" class="wi-btn">🔐 허가서 신청 →</a>';
+      }else if(work.workDate === today && work.status === '허가완료'){
+        html += '<a href="TBM_v2.html?permitNo=' +
+                encodeURIComponent(work.permitNo || '') +
+                '" class="wi-btn">📝 TBM 작성 →</a>';
+      }else if(work.workDate === today && work.status === '작업중'){
+        html += '<a href="TBM_v2.html?permitNo=' +
+                encodeURIComponent(work.permitNo || '') +
+                '" class="wi-btn secondary">📝 TBM 보기 →</a>';
+      }else if(work.status === '작업중지'){
+        html += '<div class="wi-btn secondary" style="cursor:default;">🛑 작업중지 상태</div>';
+      }else if(work.status === '예정'){
+        html += '<div class="wi-btn secondary" style="cursor:default;">📅 예정 작업 · 당일 허가 가능</div>';
+      }else{
+        html += '<div class="wi-btn secondary" style="cursor:default;">✔️ 작업종료</div>';
+      }
+      // ⭐ 위험등급 수정 버튼 (관리자용, 모든 작업에 표시)
+      html += '<button type="button" ' +
+              'onclick="openRiskEditModal(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
+              'style="margin-top:6px;width:100%;padding:8px;' +
+              'background:var(--sunk);color:var(--sub);' +
+              'border:1px solid var(--line);border-radius:var(--r-s);' +
+              'font-family:inherit;font-size:12px;font-weight:700;' +
+              'cursor:pointer;letter-spacing:-.01em;">' +
+              '⚙️ 위험등급 수정 (현재: ' +
+              (work.riskLevel === '고위험' ? '🚨 고위험' : '⚪ 일반') +
+              ')</button>';
+
+              // ⭐ 점검등록 버튼 (작업중/허가완료 상태에서만 표시) - 2026-09-01 색상 개선
+      if(work.status === '작업중' || work.status === '허가완료'){
+        html += '<button type="button" ' +
+                'onclick="openInspSheetFromWork(\'' + escapeJsStringForRisk(work.workId) + '\', event)" ' +
+                'style="margin-top:6px;width:100%;padding:12px;' +
+                'background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;' +
+                'border:0;border-radius:var(--r-s);' +
+                'font-family:inherit;font-size:13.5px;font-weight:800;' +
+                'cursor:pointer;letter-spacing:-.02em;' +
+                'box-shadow:0 4px 12px rgba(0,60,126,.25);">' +
+                '📋 안전 점검 기록' +
+                '</button>';
+      }
+
+
+      html += '</div>';
+
+
+
+    });
+
+    body.innerHTML = html;
+  };
+
+  function dashboardInitializeDateFilter(){
+    dashboardDateMode = 'today';
+    dashboardSelectedDate = '';
+    dashboardUpcomingDate = dashboardFindUpcomingDate();
+
+    dashboardCreateDateControls();
+    applyFilter();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', dashboardInitializeDateFilter);
+  }else{
+    dashboardInitializeDateFilter();
+  }
+})();
+</script>
+<script type="module">
+/* =========================================================
+   대시보드 Firestore 작업DB 최종 관리 패치 v1.2
+   (Step 2에서는 변경 없음)
+   ========================================================= */
+import {
+  initializeApp,
+  getApps,
+  getApp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+
+import {
+  getFirestore,
+  initializeFirestore,
+  collection,
+  doc,
+  getDocs,
+  getCountFromServer,
+  writeBatch,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const WORKDB_COLLECTION = window.getCollectionName("작업DB");
+
+// ⭐ iOS Safari 감지
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const needsLongPolling = isIOS || isSafari;
+
+console.log("[Firestore] 환경 감지:", {
+  isIOS: isIOS,
+  isSafari: isSafari,
+  longPolling: needsLongPolling
+});
+
+
+
+const workDbFirebaseConfig = {
+  apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+  authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+  projectId: "safety-management-platfo-5f413",
+  storageBucket: "safety-management-platfo-5f413.appspot.com",
+  messagingSenderId: "96226952530",
+  appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+};
+
+const workDbFirebaseApp = getApps().length ? getApp() : initializeApp(workDbFirebaseConfig);
+
+// ⭐ iOS Safari는 initializeFirestore + long polling으로 초기화 (필수)
+let workDbFirestore;
+try{
+  if(needsLongPolling){
+    workDbFirestore = initializeFirestore(workDbFirebaseApp, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false
+    });
+    console.log("[Firestore] iOS/Safari 모드로 초기화 (long polling)");
+  }else{
+    workDbFirestore = getFirestore(workDbFirebaseApp);
+    console.log("[Firestore] 표준 모드로 초기화");
+  }
+}catch(initError){
+  // 이미 초기화된 경우 (재실행 등)
+  console.warn("[Firestore] 초기화 재시도:", initError.message);
+  workDbFirestore = getFirestore(workDbFirebaseApp);
+}
+
+let workDbBusy = false;
+
+function workDbClean(value){
+  return String(value == null ? "" : value).trim();
+}
+
+function workDbMakeId(work){
+  if(!work){ return ""; }
+  if(work.workId){ return workDbClean(work.workId); }
+  const date = workDbClean(work.date);
+  const originalNo = workDbClean(work.originalNo).split(" ").join("");
+  if(!date || !originalNo){ return ""; }
+  return date + "_" + originalNo;
+}
+
+function workDbIsValidId(workId){
+  const value = workDbClean(workId);
+  if(!value){ return false; }
+  if(value.indexOf("/") >= 0){ return false; }
+  return true;
+}
+
+function workDbCreateMigrationId(){
+  const now = new Date();
+  return [
+    "WORKDB",
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0")
+  ].join("-");
+}
+
+function workDbClone(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function workDbGetLocalHistory(){
+  const raw = localStorage.getItem("safetyDatabase");
+  if(!raw){ return []; }
+  let database;
+  try{ database = JSON.parse(raw); }
+  catch(error){ throw new Error("safetyDatabase JSON을 읽을 수 없습니다."); }
+  return Array.isArray(database.workHistory) ? database.workHistory : [];
+}
+
+function workDbGetUniqueWorks(){
+  const sourceWorks = workDbGetLocalHistory();
+  const workMap = new Map();
+  const errors = [];
+
+  sourceWorks.forEach(function(work, index){
+    const workId = workDbMakeId(work);
+    if(!workDbIsValidId(workId)){
+      errors.push({ index: index, workId: workId, errorCode: "WORK_ID_INVALID" });
+      return;
+    }
+    workMap.set(workId, Object.assign({}, work, { workId: workId }));
+  });
+
+  return {
+    sourceCount: sourceWorks.length,
+    works: Array.from(workMap.values()),
+    errors: errors
+  };
+}
+
+function workDbNormalizeForFirestore(sourceWork, migrationId){
+  const workId = workDbMakeId(sourceWork);
+  if(!workDbIsValidId(workId)){ throw new Error("WORK_ID_INVALID"); }
+
+  const normalized = workDbClone(sourceWork);
+  normalized.workId = workId;
+  normalized.sourceType = normalized.sourceType || "excel-paste";
+  normalized.workStatus = normalized.workStatus || normalized.status || "등록";
+  normalized.schemaVersion = Number(normalized.schemaVersion || 1);
+  normalized.migrationId = migrationId;
+  normalized.migrationSource = "legacy-localstorage";
+  normalized.legacyKey = "safetyDatabase.workHistory";
+  normalized.migratedAt = serverTimestamp();
+
+  delete normalized.rawColumns;
+  delete normalized.id;
+
+  return normalized;
+}
+
+function workDbCreatePanel(){
+  const oldPanel = document.getElementById("workDbFirestorePanel");
+  if(oldPanel){ oldPanel.remove(); }
+
+  const dbArea = document.querySelector(".db-area");
+  if(!dbArea){
+    console.warn("[작업DB] 대시보드 DB 관리 영역을 찾지 못했습니다.");
+    return;
+  }
+
+  const panel = document.createElement("div");
+  panel.id = "workDbFirestorePanel";
+  panel.className = "workdb-firestore-panel";
+
+  panel.innerHTML =
+    '<div class="workdb-firestore-title">☁️ Firestore 작업DB 관리</div>' +
+    '<div class="workdb-firestore-desc">작업관리대장의 로컬 데이터와 Firestore 작업DB를 확인하고, Firestore에 없는 신규 작업을 동기화합니다.</div>' +
+    '<div class="workdb-count-grid">' +
+      '<div class="workdb-count-card">' +
+        '<div class="workdb-count-label">localStorage</div>' +
+        '<div class="workdb-count-value" id="workDbLocalCount">-</div>' +
+      '</div>' +
+      '<div class="workdb-count-card">' +
+        '<div class="workdb-count-label">Firestore 작업DB</div>' +
+        '<div class="workdb-count-value" id="workDbRemoteCount">-</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="workdb-button-grid">' +
+      '<button class="workdb-action-btn sync" id="workDbSyncButton">☁️ 작업DB 신규 동기화</button>' +
+      '<button class="workdb-action-btn count" id="workDbCountButton">🔎 작업DB 건수 확인</button>' +
+      '<button class="workdb-action-btn refresh" id="workDbRefreshButton">↻ 로컬 건수 새로고침</button>' +
+    '</div>' +
+    '<div class="workdb-progress" id="workDbProgress">' +
+      '<div class="workdb-progress-track">' +
+        '<div class="workdb-progress-bar" id="workDbProgressBar"></div>' +
+      '</div>' +
+      '<div class="workdb-progress-text" id="workDbProgressText">0%</div>' +
+    '</div>' +
+    '<div class="workdb-result" id="workDbResult"></div>';
+
+  dbArea.insertAdjacentElement("afterend", panel);
+
+  document.getElementById("workDbSyncButton").addEventListener("click", workDbSynchronize);
+  document.getElementById("workDbCountButton").addEventListener("click", workDbCheckCount);
+  document.getElementById("workDbRefreshButton").addEventListener("click", workDbRefreshLocalCount);
+
+  workDbRefreshLocalCount();
+}
+
+function workDbSetText(id, value){
+  const element = document.getElementById(id);
+  if(element){ element.textContent = value; }
+}
+
+function workDbShowResult(message, type){
+  const result = document.getElementById("workDbResult");
+  if(!result){ return; }
+  result.className = "workdb-result " + (type || "info");
+  result.textContent = message;
+}
+
+function workDbSetProgress(current, total){
+  const wrapper = document.getElementById("workDbProgress");
+  const bar = document.getElementById("workDbProgressBar");
+  const text = document.getElementById("workDbProgressText");
+  if(!wrapper || !bar || !text){ return; }
+
+  if(total <= 0){
+    wrapper.classList.remove("active");
+    bar.style.width = "0%";
+    text.textContent = "0%";
+    return;
+  }
+
+  const percentage = Math.min(100, Math.round(current / total * 100));
+  wrapper.classList.add("active");
+  bar.style.width = percentage + "%";
+  text.textContent = current + " / " + total + " (" + percentage + "%)";
+}
+
+function workDbSetBusy(busy){
+  workDbBusy = busy;
+  ["workDbSyncButton", "workDbCountButton", "workDbRefreshButton"].forEach(function(id){
+    const button = document.getElementById(id);
+    if(button){ button.disabled = busy; }
+  });
+}
+
+function workDbRefreshLocalCount(){
+  try{
+    const localResult = workDbGetUniqueWorks();
+    workDbSetText("workDbLocalCount", localResult.works.length + "건");
+    workDbShowResult(
+      "로컬 원본: " + localResult.sourceCount + "건\n" +
+      "유효 workId: " + localResult.works.length + "건\n" +
+      "workId 오류: " + localResult.errors.length + "건",
+      localResult.errors.length ? "error" : "info"
+    );
+  }catch(error){
+    workDbShowResult(error.message, "error");
+  }
+}
+
+async function workDbGetExistingIds(){
+  const snapshot = await getDocs(collection(workDbFirestore, WORKDB_COLLECTION));
+  const existingIds = new Set();
+  snapshot.forEach(function(documentSnapshot){
+    existingIds.add(documentSnapshot.id);
+  });
+  return existingIds;
+}
+
+async function workDbSynchronize(){
+  if(workDbBusy){ return; }
+
+  let localResult;
+  try{ localResult = workDbGetUniqueWorks(); }
+  catch(error){ workDbShowResult(error.message, "error"); return; }
+
+  if(!localResult.works.length){
+    workDbShowResult("동기화할 작업관리대장 데이터가 없습니다.", "error");
+    return;
+  }
+
+  const confirmed = confirm(
+    "로컬 작업관리대장을 Firestore 작업DB와 동기화합니다.\n\n" +
+    "로컬 데이터: " + localResult.works.length + "건\n" +
+    "workId 오류: " + localResult.errors.length + "건\n\n" +
+    "기존 workId 문서는 유지하고 신규 문서만 저장합니다.\n" +
+    "계속하시겠습니까?"
+  );
+  if(!confirmed){ return; }
+
+  workDbSetBusy(true);
+  workDbSetProgress(0, localResult.works.length);
+  const migrationId = workDbCreateMigrationId();
+
+  let successCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+
+  try{
+    workDbShowResult("Firestore 작업DB의 기존 문서를 확인하고 있습니다.", "info");
+    const existingIds = await workDbGetExistingIds();
+    const uploadTargets = [];
+
+    localResult.works.forEach(function(work){
+      const workId = workDbMakeId(work);
+      if(!workDbIsValidId(workId)){ errorCount++; return; }
+      if(existingIds.has(workId)){ skipCount++; return; }
+      uploadTargets.push(work);
+    });
+
+    if(!uploadTargets.length){
+      workDbSetProgress(localResult.works.length, localResult.works.length);
+      workDbShowResult(
+        "작업DB 동기화 완료\n" +
+        "신규 저장: 0건\n" +
+        "기존 문서 유지: " + skipCount + "건\n" +
+        "오류: " + errorCount + "건\n\n" +
+        "추가로 반영할 신규 작업이 없습니다.",
+        errorCount ? "error" : "success"
+      );
+      return;
+    }
+
+    const batchSize = 400;
+    for(let start = 0; start < uploadTargets.length; start += batchSize){
+      const chunk = uploadTargets.slice(start, start + batchSize);
+      const batch = writeBatch(workDbFirestore);
+      let chunkCount = 0;
+
+      chunk.forEach(function(work){
+        try{
+          const normalized = workDbNormalizeForFirestore(work, migrationId);
+          const documentReference = doc(workDbFirestore, WORKDB_COLLECTION, normalized.workId);
+          batch.set(documentReference, normalized);
+          chunkCount++;
+        }catch(error){ errorCount++; }
+      });
+
+      if(chunkCount > 0){
+        await batch.commit();
+        successCount += chunkCount;
+      }
+
+      workDbSetProgress(
+        Math.min(localResult.works.length, successCount + skipCount + errorCount),
+        localResult.works.length
+      );
+    }
+
+    workDbShowResult(
+      "작업DB 동기화 완료\n" +
+      "신규 저장: " + successCount + "건\n" +
+      "기존 문서 유지: " + skipCount + "건\n" +
+      "오류: " + errorCount + "건\n" +
+      "migrationId: " + migrationId,
+      errorCount ? "error" : "success"
+    );
+  }catch(error){
+    console.error("[작업DB] Firestore 동기화 실패:", error);
+    workDbShowResult(
+      "Firestore 작업DB 동기화 실패\n" + error.message +
+      "\n\nFirestore Rules와 인터넷 연결을 확인하세요.",
+      "error"
+    );
+  }finally{
+    workDbSetBusy(false);
+  }
+}
+
+async function workDbCheckCount(){
+  if(workDbBusy){ return; }
+  workDbSetBusy(true);
+
+  try{
+    workDbShowResult("Firestore 작업DB 건수를 확인하고 있습니다.", "info");
+    const countSnapshot = await getCountFromServer(
+      collection(workDbFirestore, WORKDB_COLLECTION)
+    );
+    const firestoreCount = countSnapshot.data().count;
+    const localResult = workDbGetUniqueWorks();
+
+    workDbSetText("workDbLocalCount", localResult.works.length + "건");
+    workDbSetText("workDbRemoteCount", firestoreCount + "건");
+
+    const countMatched = localResult.works.length === firestoreCount;
+    workDbShowResult(
+      "건수 확인 완료\n" +
+      "localStorage: " + localResult.works.length + "건\n" +
+      "Firestore 작업DB: " + firestoreCount + "건\n" +
+      "건수 일치: " + (countMatched ? "예" : "아니오"),
+      countMatched ? "success" : "info"
+    );
+  }catch(error){
+    console.error("[작업DB] 건수 확인 실패:", error);
+    workDbShowResult(
+      "Firestore 작업DB 건수 확인 실패\n" + error.message +
+      "\n\nFirestore Rules 게시 여부를 확인하세요.",
+      "error"
+    );
+  }finally{
+    workDbSetBusy(false);
+  }
+}
+
+function workDbDisableLocalClear(){
+  window.clearDB = function(){
+    if(typeof window.showToast === "function"){
+      window.showToast(
+        "현재 작업DB 운영 중입니다. Firestore 조회 전환 전까지 로컬 DB를 초기화할 수 없습니다.",
+        "info"
+      );
+    }else{
+      alert("현재 작업DB 운영 중입니다. Firestore 조회 전환 전까지 로컬 DB를 초기화할 수 없습니다.");
+    }
+  };
+
+  const clearItem = document.querySelector('.sets-item[onclick="clearDB()"]');
+  if(!clearItem){ return; }
+
+  const name = clearItem.querySelector(".sets-name");
+  const right = clearItem.querySelector(".sets-r");
+
+  if(name){ name.textContent = "로컬 DB 초기화"; }
+  if(right){
+    right.textContent = "사용 중지";
+    right.style.color = "var(--faint)";
+  }
+  clearItem.title = "Firestore 조회 전환 완료 전까지 비활성화된 기능입니다.";
+}
+/* =========================================================
+   안전작업허가서 Firestore 조회 연동
+   컬렉션명: safetyPermits
+   ========================================================= */
+
+const PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
+   
+/* =========================================================
+   ⭐ 신규: Firestore → 대시보드 로드 (2026-08-28)
+   
+   페이지 로드 시 Firestore 작업DB (703건)를 조회하여
+   대시보드에 표시합니다.
+   
+   흐름:
+   1. Firestore 작업DB 컬렉션 전체 조회
+   2. allWorks 전역 변수 갱신
+   3. localStorage에도 캐시 저장 (다음 로드 시 빠름, 오프라인 대응)
+   4. applyFilter() 재실행 → 화면 갱신
+   ========================================================= */
+
+async function loadPermitsFromFirestore(){
+  try{
+    const CACHE_TTL_MS = 10 * 60 * 1000;  // ⭐ 10분 캐시 (2026-09-01 사용량 최적화)
+    const cacheTimeRaw = localStorage.getItem('permitsLastSync');
+    const cacheTime = cacheTimeRaw ? parseInt(cacheTimeRaw, 10) : 0;
+    const cacheAge = Date.now() - cacheTime;
+    const cachedRaw = localStorage.getItem('safetyPermits');
+    
+    if(cachedRaw && cacheAge < CACHE_TTL_MS){
+      const ageSeconds = Math.floor(cacheAge / 1000);
+      console.log('💾 [허가서] 캐시 사용 (' + ageSeconds + '초 전)');
+      try{
+        return JSON.parse(cachedRaw);
+      }catch(e){
+        // 캐시 파싱 실패 시 계속 진행
+      }
+    }
+    
+    if(!navigator.onLine){
+      console.warn("[허가서] 오프라인 상태 - localStorage 허가서 사용");
+      return [];
+    }
+    
+    console.log('🌐 [허가서] Firestore 조회 시작 (컬렉션: ' + PERMIT_COLLECTION + ')');
+
+    const snapshot = await getDocs(
+      collection(workDbFirestore, PERMIT_COLLECTION)
+    );
+
+    const firestorePermits = [];
+
+    snapshot.forEach(function(documentSnapshot){
+      const permit = documentSnapshot.data();
+      permit.permitNo = permit.permitNo || documentSnapshot.id;
+      firestorePermits.push(permit);
+    });
+
+    console.log("✅ [허가서] Firestore 로드 완료:", firestorePermits.length + "건 (" + firestorePermits.length + " reads)");
+
+    localStorage.setItem("safetyPermits", JSON.stringify(firestorePermits));
+    localStorage.setItem('permitsLastSync', Date.now().toString());  // ⭐ 캐시 시각 저장
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent("app-data-changed", {
+          detail: { key: "safetyPermits", source: "firestore-sync", timestamp: Date.now() }
+        })
+      );
+    }catch(eventError){
+      console.warn("[허가서] 변경 이벤트 전송 실패:", eventError);
+    }
+
+    return firestorePermits;
+
+  }catch(error){
+    console.error("[허가서] Firestore 조회 실패:", error.message);
+    return [];
+  }
+}
+
+/* =========================================================
+   ⭐ 신규: Firestore 데이터를 localStorage에 캐시 저장
+   
+   다음 페이지 로드 시 빠른 표시와 오프라인 대응을 위해
+   Firestore 데이터를 localStorage safetyDatabase에 저장합니다.
+   ========================================================= */
+/* =========================================================
+   ⭐ Firestore → 대시보드 로드 (캐시 우선, 사용량 최소화)
+   
+   5분 캐시로 Firebase reads 96% 절감
+   ========================================================= */
+
+async function workDbLoadFromFirestore(retryCount){
+  retryCount = retryCount || 0;
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY_MS = 2000;
+  const TIMEOUT_MS = 20000;
+  const CACHE_TTL_MS = 30 * 60 * 1000;  // ⭐ 30분 캐시 (2026-09-01 사용량 최적화)
+
+  
+  try{
+    // ⭐ 캐시 우선 확인 (Firebase 사용량 96% 감소)
+    const cacheTimeRaw = localStorage.getItem('workDbLastSync');
+    const cacheTime = cacheTimeRaw ? parseInt(cacheTimeRaw, 10) : 0;
+    const cacheAge = Date.now() - cacheTime;
+    const cachedRaw = localStorage.getItem('safetyDatabase');
+    
+    if(cachedRaw && cacheAge < CACHE_TTL_MS){
+      const ageSeconds = Math.floor(cacheAge / 1000);
+      const remainingSeconds = Math.floor((CACHE_TTL_MS - cacheAge) / 1000);
+      console.log('💾 [작업DB] 캐시 사용 (' + ageSeconds + '초 전, ' + remainingSeconds + '초 후 갱신)');
+      return;
+    }
+    
+    if(!navigator.onLine){
+      console.warn("[작업DB] 오프라인 상태 - localStorage 사용");
+      return;
+    }
+    
+    console.log('🌐 [작업DB] Firestore 조회 시작 (컬렉션: ' + WORKDB_COLLECTION + ')');
+    
+    const fetchPromise = getDocs(collection(workDbFirestore, WORKDB_COLLECTION));
+    const timeoutPromise = new Promise(function(_, reject){
+      setTimeout(function(){
+        reject(new Error("Firestore 요청 타임아웃 (" + (TIMEOUT_MS / 1000) + "초)"));
+      }, TIMEOUT_MS);
+    });
+    
+    const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+    
+    if(snapshot.empty){
+      console.warn("[작업DB] Firestore가 비어있음 (컬렉션: " + WORKDB_COLLECTION + ")");
+      return;
+    }
+    
+    const firestoreWorks = [];
+    snapshot.forEach(function(documentSnapshot){
+      const data = documentSnapshot.data();
+      data.workId = data.workId || documentSnapshot.id;
+      delete data.migratedAt;
+      firestoreWorks.push(data);
+    });
+    
+    console.log("✅ [작업DB] Firestore 로드 완료:", firestoreWorks.length + "건 (" + firestoreWorks.length + " reads)");
+    
+    if(typeof window !== "undefined"){
+      window.allWorks = firestoreWorks;
+    }
+    
+    workDbSaveToLocalCache(firestoreWorks);
+    localStorage.setItem('workDbLastSync', Date.now().toString());
+    
+    if(typeof window.applyFilter === "function"){
+      window.applyFilter();
+    }
+    
+  }catch(error){
+    console.error("[작업DB] Firestore 로드 실패 (시도 " + (retryCount + 1) + "):", error.message);
+    
+    if(retryCount < MAX_RETRIES && navigator.onLine){
+      console.log("[작업DB] " + (RETRY_DELAY_MS / 1000) + "초 후 재시도...");
+      await new Promise(function(resolve){ setTimeout(resolve, RETRY_DELAY_MS); });
+      return workDbLoadFromFirestore(retryCount + 1);
+    }
+    
+    console.warn("[작업DB] 모든 재시도 실패 - localStorage 사용");
+  }
+}
+
+// ⭐ 전역 노출 (refreshAll에서 사용)
+window.workDbLoadFromFirestore = workDbLoadFromFirestore;
+
+function workDbSaveToLocalCache(firestoreWorks){
+  try{
+    const database = {
+      metadata: {
+        version: "7.2",
+        schemaVersion: 1,
+        sourceType: "firestore-sync",
+        lastUpdate: new Date().toISOString(),
+        totalCount: firestoreWorks.length,
+        syncedFromFirestore: true,
+        syncedAt: new Date().toISOString()
+      },
+      workHistory: firestoreWorks
+    };
+    
+    localStorage.setItem("safetyDatabase", JSON.stringify(database));
+    
+    console.log(
+      "[작업DB] localStorage 캐시 저장 완료:",
+      firestoreWorks.length + "건"
+    );
+    
+    // 다른 탭에도 알림
+    try{
+      window.dispatchEvent(
+        new CustomEvent("app-data-changed", {
+          detail: {
+            key: "safetyDatabase",
+            source: "firestore-sync",
+            timestamp: Date.now()
+          }
+        })
+      );
+    }catch(eventError){
+      // 이벤트 실패는 무시 (조회는 성공했으므로)
+    }
+    
+  }catch(error){
+    console.error("[작업DB] localStorage 캐시 저장 실패:", error);
+    // 캐시 실패는 조용히 무시 (Firestore 데이터는 이미 window.allWorks에 있음)
+  }
+}
+function workDbInitialize(){
+  workDbCreatePanel();
+  workDbDisableLocalClear();
+
+  setTimeout(async function(){
+    // 작업DB 조회 실패와 허가서 조회 실패를 서로 분리
+    try{
+      await workDbLoadFromFirestore();
+    }catch(error){
+      console.warn(
+        '[작업DB] Firestore 조회 실패 - 기존 캐시 사용:',
+        error.message
+      );
+    }
+
+    try{
+      await loadPermitsFromFirestore();
+    }catch(error){
+      console.warn(
+        '[허가서] Firestore 조회 실패 - 기존 캐시 사용:',
+        error.message
+      );
+    }
+
+    // Firestore 조회 결과를 화면에 반영
+    if(typeof window.applyFilter === 'function'){
+      window.applyFilter();
+    }
+
+    console.log('[Firestore] 작업DB·허가서 조회 처리 완료');
+  }, 500);
+}
+
+if(document.readyState === "loading"){
+  window.addEventListener("DOMContentLoaded", workDbInitialize);
+}else{
+  workDbInitialize();
+}
+</script>
+<script>
+/* =========================================================
+   v7.3 빠른실행 버튼 workId 전달 패치 (2026-08-29)
+   
+   목적:
+   - "빠른실행" 6개 버튼 클릭 시 오늘 확정 작업 선택 후 이동
+   - 선택된 작업의 workId를 URL 파라미터로 다음 앱에 전달
+   
+   동작:
+   1. 버튼 클릭 → qbClick(appType)
+   2. 오늘 확정 작업 조회
+      - 0건: workId 없이 진입 확인
+      - 1건: 자동 선택 후 이동
+      - 2건+: 바텀시트로 사용자 선택
+   3. 선택 후: 파일명.html?workId=XXX 로 이동
+   
+   파일명은 변경하지 않음 (기존 파일 그대로 사용)
+   ========================================================= */
+
+(function(){
+  
+  // ═══════════════════════════════════════
+  // 앱 타입 → 파일명 매핑
+  // ═══════════════════════════════════════
+var APP_URLS = {
+  'quiz':        '포항양극재공장_안전퀴즈.html',
+  'safety-info': '안전정보제공서_도급인용.html',
+  'tbm':         'TBM_v2.html',
+  'risk':        '위험성평가_v2.html'  //
+};
+  
+  var APP_LABELS = {
+    'quiz':        '🎯 안전퀴즈',
+    'safety-info': '📋 안전정보 제공서',
+    'tbm':         '📝 TBM 일지',
+    'risk':        '🤖 위험성평가'
+  };
+  
+  // ═══════════════════════════════════════
+  // 메인 함수: 빠른실행 버튼 클릭 처리
+  // ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// ⭐ 안전정보제공서 상태 조회
+// ═══════════════════════════════════════════════════
+window.getWorkSafetyInfoStatus = function(workId){
+  try{
+    var docs = JSON.parse(
+      localStorage.getItem('safetyProvisions') || '[]'
+    );
+
+    var linked = docs.find(function(d){
+      return d && d.workId === workId;
+    });
+
+    if(!linked) return null;
+
+    return {
+      status: linked.status || '발행완료',
+      safeinfoNo: linked.safeinfoNo || '',
+      createdAt: linked.createdAt || '',
+      subEmail: linked.subcontractorEmail || '',
+      subcontractor: linked.subcontractor || ''
+    };
+  }catch(e){
+    console.warn('[getWorkSafetyInfoStatus] 오류:', e);
+    return null;
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// ⭐ 안전퀴즈 상태 조회
+// 같은 workId의 가장 최근 제출 기록을 기준으로 판정
+// ═══════════════════════════════════════════════════
+window.getWorkQuizStatus = function(workId){
+
+  try{
+    var quizzes = JSON.parse(
+      localStorage.getItem('safetyQuizzes') || '[]'
+    );
+
+    var linked = quizzes.filter(function(q){
+      return q && q.workId === workId;
+    });
+
+    if(!linked.length) return null;
+
+    linked.sort(function(a, b){
+      var aTime = new Date(
+        a.completedAt || a.createdAt || 0
+      ).getTime();
+
+      var bTime = new Date(
+        b.completedAt || b.createdAt || 0
+      ).getTime();
+
+      return bTime - aTime;
+    });
+
+    var latest = linked[0];
+
+    var completed = (
+      latest.passed === true &&
+      latest.status === '합격' &&
+      !!latest.signature &&
+      !!latest.completedAt
+    );
+
+    return {
+      completed: completed,
+      passed: latest.passed === true,
+      status: latest.status || '',
+      quizId: latest.quizId || '',
+      respondent: latest.respondent || latest.name || '',
+      score: latest.score,
+      totalQuestions: latest.totalQuestions || 13,
+      completedAt: latest.completedAt || latest.createdAt || ''
+    };
+  }catch(e){
+    console.warn('[getWorkQuizStatus] 오류:', e);
+    return null;
+  }
+};
+
+
+// ⭐ 필터 상태 저장
+window._workPickerFilter = {
+  factory: 'all',
+  company: 'all',
+  works: [],
+  ctx: null
+};
+
+    
+  window.qbClick = function(appType){
+    var targetUrl = APP_URLS[appType];
+    var appLabel = APP_LABELS[appType] || '앱';
+    
+    if(!targetUrl){
+      console.warn('[qbClick] 알 수 없는 앱 타입:', appType);
+      return;
+    }
+    
+    // 오늘 확정 작업 조회
+    var today = fmtDate(new Date());
+    var todayWorks = (window.allWorks || []).filter(function(w){
+      return w.date === today;
+    });
+    
+    console.log('[qbClick] 앱:', appType, '오늘 작업:', todayWorks.length + '건');
+    
+       // 케이스 1: 오늘 작업 0건
+    if(todayWorks.length === 0){
+      showCustomConfirm({
+        icon: '⚠️',
+        title: '오늘 확정 작업 없음',
+        message: appLabel + '(으)로 이동합니다.\n오늘 확정된 작업이 없어\n빈 양식으로 열립니다.',
+        okText: '이동',
+        okType: 'warn'
+      }, function(ok){
+        if(ok) window.location.href = targetUrl;
+      });
+      return;
+    }
+    
+    // 케이스 2: 오늘 작업 1건 (자동 선택)
+    if(todayWorks.length === 1){
+      var work = todayWorks[0];
+      var workId = work.workId || work.id;
+      showToast('✅ 오늘 작업 자동 선택: ' + (work.workName || '작업'), 'success');
+      setTimeout(function(){
+        window.location.href = targetUrl + '?workId=' + encodeURIComponent(workId);
+      }, 500);
+      return;
+    }
+    
+    // 케이스 3: 오늘 작업 2건 이상 (바텀시트로 선택)
+    openWorkPickerSheet(todayWorks, appType, appLabel, targetUrl);
+  };
+  
+   // ═══════════════════════════════════════════════════
+  // 작업 선택 바텀시트 (2026-09-01 UX 개선)
+  // - 히어로 섹션 추가
+  // - 공장별/협력사별 필터
+  // - 안전정보제공서 상태 표시
+  // - 이미 발송된 작업 재선택 방지
+  // ═══════════════════════════════════════════════════
+  function openWorkPickerSheet(works, appType, appLabel, targetUrl){
+    var titleEl = document.getElementById('wsSheetTitle');
+    var body = document.getElementById('wsBody');
+    
+    if(!titleEl || !body){
+      console.error('[qbClick] wsSheet 요소를 찾을 수 없음');
+      return;
+    }
+    
+    // 필터 상태 초기화
+    window._workPickerFilter = {
+      factory: 'all',
+      company: 'all',
+      works: works,
+      ctx: {
+        appType: appType,
+        appLabel: appLabel,
+        targetUrl: targetUrl
+      }
+    };
+    
+    // 시트 제목
+    titleEl.innerHTML = 
+      appLabel + ' 작업 선택 ' +
+      '<span style="background:var(--tint);color:var(--posco);font-size:12px;' +
+      'font-weight:800;padding:2px 8px;border-radius:5px;margin-left:6px;">' +
+      works.length + '건</span>';
+    
+    // 시트 본문 렌더링
+    renderWorkPickerSheet();
+    
+    // 컨텍스트 저장 (pickWork에서 사용)
+    window._workPickerContext = {
+      appType: appType,
+      appLabel: appLabel,
+      targetUrl: targetUrl
+    };
+    
+    openSheet('ws');
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 시트 본문 렌더링 (필터 적용)
+  // ═══════════════════════════════════════════════════
+  function renderWorkPickerSheet(){
+    var body = document.getElementById('wsBody');
+    var state = window._workPickerFilter;
+    if(!body || !state) return;
+    
+    var works = state.works || [];
+    var appType = state.ctx.appType;
+    var appLabel = state.ctx.appLabel;
+    
+    // 공장별 카운트
+    var factoryCounts = {
+      'all': works.length,
+      '1공장': 0,
+      '2공장': 0,
+      '기타': 0
+    };
+    
+    works.forEach(function(w){
+      var loc = getWorkFactory(w);
+      if(factoryCounts[loc] !== undefined){
+        factoryCounts[loc]++;
+      } else {
+        factoryCounts['기타']++;
+      }
+    });
+    
+    // 협력사 목록 추출
+    var companies = ['all'];
+    works.forEach(function(w){
+      var comp = w.company || w.executingCompany || '';
+      if(comp && companies.indexOf(comp) < 0) companies.push(comp);
+    });
+    
+    // 필터 적용
+    var filtered = works.filter(function(w){
+      // 공장 필터
+      if(state.factory !== 'all'){
+        var wLoc = getWorkFactory(w);
+        if(wLoc !== state.factory) return false;
+      }
+      // 협력사 필터
+      if(state.company !== 'all'){
+        var wComp = w.company || w.executingCompany || '';
+        if(wComp !== state.company) return false;
+      }
+      return true;
+    });
+    
+    // HTML 렌더링
+    var html = '';
+    
+    // 1. 히어로 섹션
+    html += 
+      '<div class="picker-hero">' +
+        '<div class="picker-hero-ico">' + getAppIcon(appType) + '</div>' +
+        '<div class="picker-hero-title">' + escHtml(appLabel) + ' 작업 선택</div>' +
+        '<div class="picker-hero-sub">' + getAppDescription(appType) + '</div>' +
+      '</div>';
+    
+    // 2. 섹션 헤더
+    html += 
+      '<div class="picker-section-hdr">' +
+        '<div class="picker-section-title">📅 오늘 작업 목록</div>' +
+        '<div class="picker-section-count">' + filtered.length + '건</div>' +
+      '</div>';
+    
+    // 3. 공장 필터
+    html += '<div class="factory-filter">';
+    ['all', '1공장', '2공장', '기타'].forEach(function(f){
+      var isActive = state.factory === f;
+      var count = factoryCounts[f];
+      var isDisabled = count === 0 && f !== 'all';
+      var label = f === 'all' ? '전체' : f;
+      html += 
+        '<button class="ff-btn' + (isActive ? ' active' : '') + '" ' +
+        (isDisabled ? 'disabled ' : '') +
+        'onclick="setFactoryFilter(\'' + f + '\')">' +
+          escHtml(label) +
+          '<span class="ff-count">' + count + '</span>' +
+        '</button>';
+    });
+    html += '</div>';
+    
+    // 4. 협력사 필터
+    html += '<div class="company-filter">';
+    html += '<select class="company-select" onchange="setCompanyFilter(this.value)">';
+    companies.forEach(function(c){
+      var label = c === 'all' ? '🏢 전체 협력사' : '🏢 ' + c;
+      var selected = state.company === c ? ' selected' : '';
+      html += '<option value="' + escHtml(c) + '"' + selected + '>' + escHtml(label) + '</option>';
+    });
+    html += '</select>';
+    html += '</div>';
+    
+    // 5. 안내 배너 (안전정보제공서일 때만)
+       if(appType === 'quiz'){
+      html +=
+        '<div class="picker-notice">' +
+          '💡 합격·서명·제출까지 완료한 작업은 ' +
+          '<strong>비활성화</strong>됩니다. ' +
+          '불합격 또는 미완료 작업은 다시 응시할 수 있습니다.' +
+        '</div>';
+    }
+
+    // 6. 작업 카드 목록
+    if(filtered.length === 0){
+      html += 
+        '<div class="picker-empty">' +
+          '<div class="picker-empty-ico">📭</div>' +
+          '<div>해당 조건의 작업이 없습니다.</div>' +
+        '</div>';
+    } else {
+      filtered.forEach(function(w){
+        html += renderWorkCard(w, appType);
+      });
+    }
+    
+    body.innerHTML = html;
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 작업 카드 렌더링 (상태 반영)
+  // ═══════════════════════════════════════════════════
+  function renderWorkCard(w, appType){
+    var workId = w.workId || w.id;
+    var isDanger = w.riskLevel === '고위험';
+    var workName = w.workName || '작업명 미지정';
+    var location = w.location || w.locationRaw || '위치 미지정';
+    var company = w.company || '협력사 미지정';
+    var manager = w.manager || w.workManager || w.contractorManager || '';
+    var workTime = w.workTimeRaw || '';
+    
+       // 앱별 완료 상태 조회
+    var safetyStatus = null;
+    var quizStatus = null;
+
+    if(appType === 'safety-info'){
+      safetyStatus = window.getWorkSafetyInfoStatus(workId);
+    }
+
+    if(appType === 'quiz'){
+      quizStatus = window.getWorkQuizStatus(workId);
+    }
+
+    // 합격·서명·제출까지 완료한 퀴즈만 재선택 방지
+    var quizCompleted = !!(
+      quizStatus && quizStatus.completed
+    );
+
+    var selectionBlocked = !!safetyStatus || quizCompleted;
+
+        var cardClass = 'work-card-compact';
+
+    if(isDanger) cardClass += ' danger';
+
+    if(!selectionBlocked){
+      cardClass += ' selectable';
+    }
+
+    if(safetyStatus && safetyStatus.status === '발행완료'){
+      cardClass += ' sent';
+    }
+
+    if(
+      safetyStatus &&
+      (
+        safetyStatus.status === '수급인확인' ||
+        safetyStatus.status === '서명완료'
+      )
+    ){
+      cardClass += ' completed';
+    }
+
+    if(quizCompleted){
+      cardClass += ' completed';
+    }
+
+  
+    
+    var html = '';
+    
+        if(selectionBlocked){
+      // 완료된 작업은 클릭 비활성화
+      html += '<div class="' + cardClass + '">';
+    } else {
+      // 미완료 또는 불합격 작업은 선택 가능
+      html += '<div class="' + cardClass +
+        '" onclick="pickWork(\'' +
+        escapeJsString(workId) +
+        '\')">';
+    }
+
+    
+    // 상단: 뱃지 + 담당자
+    html += '<div class="wc-top">';
+    html += '<span class="wc-badge ' + (isDanger ? 'r' : 'g') + '">' + (isDanger ? '고위험' : '일반') + '</span>';
+    if(manager){
+      html += '<span class="wc-manager">👤 ' + escHtml(manager) + '</span>';
+    }
+    html += '</div>';
+    
+    // 작업명
+    html += '<div class="wc-name">' + escHtml(workName) + '</div>';
+    
+    // 메타 정보
+    html += '<div class="wc-meta">';
+    html += '<span>📍 ' + escHtml(location) + '</span>';
+    html += '<span>🏢 ' + escHtml(company) + '</span>';
+    if(workTime){
+      html += '<span>⏰ ' + escHtml(workTime) + '</span>';
+    }
+    html += '</div>';
+    
+    // 앱별 상태 표시
+    if(safetyStatus){
+      var statusInfo = getStatusInfo(safetyStatus.status);
+
+      html += '<div class="wc-status ' +
+        statusInfo.class + '">' +
+        statusInfo.icon + ' ' +
+        statusInfo.label + '</div>';
+
+      html += '<div class="wc-doc-no">📄 ' +
+        escHtml(safetyStatus.safeinfoNo || '-') +
+        '</div>';
+
+      html += '<div class="wc-btn disabled">' +
+        '🚫 이미 발송된 작업</div>';
+
+    } else if(quizCompleted){
+      html += '<div class="wc-status green">' +
+        '✅ 안전퀴즈 완료</div>';
+
+      html += '<div class="wc-doc-no">' +
+        '🎯 ' + escHtml(quizStatus.quizId || '-') +
+        (quizStatus.respondent
+          ? ' · ' + escHtml(quizStatus.respondent)
+          : '') +
+        '</div>';
+
+      html += '<div class="wc-btn disabled">' +
+        '✅ 응시 완료</div>';
+
+    } else if(quizStatus && !quizStatus.completed){
+      // 기존 기록이 있으나 완료 조건을 충족하지 못한 경우
+      html += '<div class="wc-status orange">' +
+        (quizStatus.passed
+          ? '🟠 서약·서명 완료 필요'
+          : '🔄 재응시 필요') +
+        '</div>';
+
+      if(quizStatus.quizId){
+        html += '<div class="wc-doc-no">🎯 ' +
+          escHtml(quizStatus.quizId) +
+          '</div>';
+      }
+
+      html += '<div class="wc-btn">' +
+        '🔄 안전퀴즈 계속 진행 →</div>';
+
+    } else {
+      html += '<div class="wc-btn">' +
+        '✅ 이 작업으로 진행 →</div>';
+    }
+
+    
+    html += '</div>';
+    
+    return html;
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 헬퍼 함수들
+  // ═══════════════════════════════════════════════════
+  function getWorkFactory(w){
+    var raw = (w.location || '') + ' ' + (w.locationRaw || '') + ' ' + (w.workNameFull || '');
+    raw = raw.toLowerCase();
+    
+    if(w.location && typeof w.location === 'object' && w.location.factory){
+      var f = w.location.factory;
+      if(f.indexOf('1공장') >= 0) return '1공장';
+      if(f.indexOf('2공장') >= 0) return '2공장';
+    }
+    
+    if(raw.indexOf('2-2') >= 0 || raw.indexOf('2공장') >= 0) return '2공장';
+    if(raw.indexOf('1공장') >= 0 || raw.indexOf('2-1') >= 0) return '1공장';
+    return '기타';
+  }
+  
+  function getAppIcon(appType){
+    var icons = {
+      'safety-info': '📋',
+      'quiz': '🎯',
+      'tbm': '📝',
+      'risk': '🤖'
+    };
+    return icons[appType] || '📄';
+  }
+  
+  function getAppDescription(appType){
+    var descriptions = {
+      'safety-info': '작업관리대장에 등록된 오늘 작업에서<br>안전정보를 제공할 작업을 선택하세요.',
+      'quiz': '작업자가 안전퀴즈를 응시할<br>작업을 선택하세요.',
+      'tbm': 'TBM 일지를 작성할<br>작업을 선택하세요.',
+      'risk': '위험성평가를 진행할<br>작업을 선택하세요.'
+    };
+    return descriptions[appType] || '진행할 작업을 선택하세요.';
+  }
+  
+  function getStatusInfo(status){
+    var map = {
+      '발행완료': { class:'blue', icon:'🔵', label:'수급인 수신 대기중' },
+      '수급인확인': { class:'orange', icon:'🟠', label:'수급인 확인중' },
+      '서명완료': { class:'green', icon:'✅', label:'서명 완료' }
+    };
+    return map[status] || { class:'blue', icon:'📨', label:status };
+  }
+  
+  // ═══════════════════════════════════════════════════
+  // 필터 변경 함수 (전역 노출)
+  // ═══════════════════════════════════════════════════
+  window.setFactoryFilter = function(factory){
+    window._workPickerFilter.factory = factory;
+    renderWorkPickerSheet();
+  };
+  
+  window.setCompanyFilter = function(company){
+    window._workPickerFilter.company = company;
+    renderWorkPickerSheet();
+  };
+
+  
+  // ═══════════════════════════════════════
+  // 작업 선택 시 이동 처리
+  // ═══════════════════════════════════════
+window.pickWork = function(workId){
+  var ctx = window._workPickerContext;
+  if(!ctx || !ctx.targetUrl){
+    console.warn('[pickWork] 컨텍스트 정보 없음');
+    return;
+  }
+  
+  // ⭐ 안전정보제공서 재선택 방지 (2026-09-01 신규)
+  if(ctx.appType === 'safety-info'){
+    var status = window.getWorkSafetyInfoStatus(workId);
+    if(status){
+      var statusInfo = {
+        '발행완료': '수급인 수신 대기중',
+        '수급인확인': '수급인 확인중',
+        '서명완료': '서명 완료'
+      };
+      showCustomAlert({
+        icon: '📄',
+        title: '이미 발송된 작업',
+        message: '이 작업에는 이미 안전정보제공서가 발송되었습니다.\n\n' +
+                 '문서번호: ' + status.safeinfoNo + '\n' +
+                 '상태: ' + (statusInfo[status.status] || status.status) + '\n\n' +
+                 '중복 발송을 방지합니다.',
+        okText: '확인',
+        okType: 'warn'
+      });
+      return;
+    }
+  }
+  
+  var appLabel = ctx.appLabel || '앱';
+  var targetUrl = ctx.targetUrl;
+  
+  // 시트 닫기
+  closeSheet('ws');
+  
+  // 잠깐 대기 후 이동 (시트 닫히는 애니메이션 시간)
+  setTimeout(function(){
+    showToast('✅ ' + appLabel + '(으)로 이동합니다', 'success');
+    setTimeout(function(){
+      window.location.href = targetUrl + '?workId=' + encodeURIComponent(workId);
+    }, 400);
+  }, 350);
+  
+  // 컨텍스트 정리
+  window._workPickerContext = null;
+};
+
+
+  // ═══════════════════════════════════════
+  // JavaScript 문자열 이스케이프 (workId 안전 처리)
+  // ═══════════════════════════════════════
+  function escapeJsString(str){
+    return String(str || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+  // ═══════════════════════════════════════
+  // 커스텀 확인 다이얼로그 (브라우저 confirm 대체)
+  // ═══════════════════════════════════════
+  var customConfirmCallback = null;
+  
+  /**
+   * 커스텀 확인 다이얼로그 표시
+   * @param {Object} options - { icon, title, message, okText, cancelText, okType }
+   * @param {function} callback - 결과 콜백 (true=확인, false=취소)
+   */
+  window.showCustomConfirm = function(options, callback){
+    var opts = typeof options === 'string' 
+      ? { message: options } 
+      : (options || {});
+    
+    var iconEl = document.getElementById('customConfirmIcon');
+    var titleEl = document.getElementById('customConfirmTitle');
+    var messageEl = document.getElementById('customConfirmMessage');
+    var okBtn = document.getElementById('customConfirmOk');
+    var overlay = document.getElementById('customConfirmOverlay');
+    
+    if(!overlay){
+      console.warn('[showCustomConfirm] 다이얼로그 요소 없음. 기본 confirm 사용');
+      var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+      if(callback) callback(result);
+      return;
+    }
+    
+    if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+    if(titleEl) titleEl.textContent = opts.title || '확인';
+    if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+    
+    if(okBtn){
+      okBtn.textContent = opts.okText || '확인';
+      okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+      if(opts.okType === 'danger') okBtn.classList.add('danger');
+      else if(opts.okType === 'warn') okBtn.classList.add('warn');
+      else if(opts.okType === 'success') okBtn.classList.add('success');
+    }
+    
+    customConfirmCallback = callback || function(){};
+    overlay.classList.add('active');
+  };
+
+    // ═══════════════════════════════════════
+  // 커스텀 알림 (버튼 1개, 알림 전용)
+  // ═══════════════════════════════════════
+  window.showCustomAlert = function(options, callback){
+    var opts = typeof options === 'string' 
+      ? { message: options } 
+      : (options || {});
+    
+    // 알림 전용 옵션
+    opts.okText = opts.okText || '확인';
+    
+    // showCustomConfirm 재사용
+    showCustomConfirm(opts, callback);
+    
+    // 취소 버튼 숨기기 (알림이므로 확인만 필요)
+    setTimeout(function(){
+      var buttonsEl = document.getElementById('customConfirmButtons');
+      if(buttonsEl){
+        var cancelBtn = buttonsEl.querySelector('.custom-confirm-btn-cancel');
+        if(cancelBtn){
+          cancelBtn.style.display = 'none';
+        }
+      }
+    }, 10);
+    
+    // 다이얼로그 닫힐 때 취소 버튼 복원
+    var originalClose = window.customConfirmClose;
+    var alertClose = function(result){
+      var cancelBtn = document.querySelector('.custom-confirm-btn-cancel');
+      if(cancelBtn) cancelBtn.style.display = '';
+      originalClose(result);
+    };
+  };   
+  
+  window.customConfirmClose = function(result){
+    var overlay = document.getElementById('customConfirmOverlay');
+    if(overlay) overlay.classList.remove('active');
+    
+    var cb = customConfirmCallback;
+    customConfirmCallback = null;
+    if(typeof cb === 'function'){
+      setTimeout(function(){ cb(result); }, 150);
+    }
+  };
+  
+  // ESC로 취소, 오버레이 클릭으로 취소
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var overlay = document.getElementById('customConfirmOverlay');
+      if(overlay && overlay.classList.contains('active')){
+        customConfirmClose(false);
+      }
+    }
+  });
+  
+  document.addEventListener('DOMContentLoaded', function(){
+    var overlay = document.getElementById('customConfirmOverlay');
+    if(overlay){
+      overlay.addEventListener('click', function(e){
+        if(e.target === overlay) customConfirmClose(false);
+      });
+    }
+  });
+  
+  console.log('[v7.3] 빠른실행 workId 전달 패치 로드 완료');
+})();
+</script>
+
+<script type="module">
+/* =========================================================
+   v7.4 위험등급 수동 수정 패치 (2026-08-30)
+
+   목적:
+   - 관리자가 작업의 위험등급(고위험/일반)을 수동으로 수정
+   - 엑셀 담당자 실수, 작업 취소 등으로 인한 오류 정정용
+   - 시스템(작업관리대장 서버) 도입 전 임시 조치
+
+   저장 방식: 단순 덮어쓰기
+   - work.risk, work.riskLevel 두 필드만 변경
+   - localStorage safetyDatabase 갱신
+   - Firestore 작업DB/{workId} 갱신
+   - app-data-changed 이벤트 발행
+   ========================================================= */
+
+import {
+  initializeApp,
+  getApps,
+  getApp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+
+import {
+  getFirestore,
+  initializeFirestore,
+  doc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const RISK_EDIT_COLLECTION = window.getCollectionName("작업DB");
+
+const riskEditIsIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const riskEditIsSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const riskEditNeedsLongPolling = riskEditIsIOS || riskEditIsSafari;
+
+const riskEditFirebaseConfig = {
+  apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+  authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+  projectId: "safety-management-platfo-5f413",
+  storageBucket: "safety-management-platfo-5f413.appspot.com",
+  messagingSenderId: "96226952530",
+  appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+};
+
+const riskEditApp = getApps().length ? getApp() : initializeApp(riskEditFirebaseConfig);
+
+let riskEditDb;
+try{
+  if(riskEditNeedsLongPolling){
+    riskEditDb = initializeFirestore(riskEditApp, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false
+    });
+  }else{
+    riskEditDb = getFirestore(riskEditApp);
+  }
+}catch(initError){
+  riskEditDb = getFirestore(riskEditApp);
+}
+
+let riskEditContext = {
+  workId: null,
+  workName: '',
+  currentRisk: '',
+  originalRisk: '',
+  selectedRisk: ''
+};
+
+window.escapeJsStringForRisk = function(str){
+  return String(str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+};
+
+// ⭐ 작업 상세보기에서 점검등록 화면 열기 (2026-08-31 신규)
+window.openInspSheetFromWork = function(workId, event){
+  if(event){
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  // 현재 작업 목록 시트 닫기
+  if(typeof closeSheet === 'function'){
+    closeSheet('ws');
+  }
+  
+  // 점검등록 시트 열기 (workId 전달로 작업 자동 연결)
+  setTimeout(function(){
+    if(typeof openInspSheet === 'function'){
+      openInspSheet(workId);
+    } else {
+      console.error('[openInspSheetFromWork] openInspSheet 함수를 찾을 수 없음');
+    }
+  }, 350);
+};
+              
+
+window.openRiskEditModal = function(workId, event){
+  if(event){
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  const work = (window.allWorks || []).find(function(w){
+    return (w.workId || w.id) === workId;
+  });
+
+  if(!work){
+    if(typeof window.showToast === 'function'){
+      window.showToast('작업 정보를 찾을 수 없습니다', 'error');
+    }
+    return;
+  }
+
+  const currentRisk = work.riskLevel || work.risk || '일반';
+  const originalRisk = work.isHighRiskFromSource ? '고위험' : '일반';
+
+  riskEditContext = {
+    workId: workId,
+    workName: work.workName || '작업명 미지정',
+    currentRisk: currentRisk,
+    originalRisk: originalRisk,
+    selectedRisk: currentRisk
+  };
+
+  const nameEl = document.getElementById('riskEditWorkName');
+  const originalEl = document.getElementById('riskEditOriginal');
+  const managerEl = document.getElementById('riskEditManager');
+
+  if(nameEl) nameEl.textContent = riskEditContext.workName;
+  if(originalEl){
+    originalEl.textContent = originalRisk;
+    originalEl.style.color = originalRisk === '고위험' ? 'var(--stop)' : 'var(--sub)';
+  }
+  if(managerEl) managerEl.value = '';
+
+  riskEditUpdateButtons(currentRisk);
+
+  const overlay = document.getElementById('riskEditOverlay');
+  if(overlay) overlay.classList.add('active');
+};
+
+window.riskEditSelect = function(risk){
+  riskEditContext.selectedRisk = risk;
+  riskEditUpdateButtons(risk);
+};
+
+function riskEditUpdateButtons(selectedRisk){
+  const btnHigh = document.getElementById('riskEditBtnHigh');
+  const btnNormal = document.getElementById('riskEditBtnNormal');
+
+  if(btnHigh){
+    if(selectedRisk === '고위험'){
+      btnHigh.style.background = 'var(--stop-bg)';
+      btnHigh.style.borderColor = 'var(--stop)';
+      btnHigh.style.color = 'var(--stop)';
+    }else{
+      btnHigh.style.background = 'var(--card)';
+      btnHigh.style.borderColor = 'var(--line)';
+      btnHigh.style.color = 'var(--ink)';
+    }
+  }
+
+  if(btnNormal){
+    if(selectedRisk === '일반'){
+      btnNormal.style.background = 'var(--tint)';
+      btnNormal.style.borderColor = 'var(--posco)';
+      btnNormal.style.color = 'var(--posco)';
+    }else{
+      btnNormal.style.background = 'var(--card)';
+      btnNormal.style.borderColor = 'var(--line)';
+      btnNormal.style.color = 'var(--ink)';
+    }
+  }
+}
+
+window.closeRiskEditModal = function(){
+  const overlay = document.getElementById('riskEditOverlay');
+  if(overlay) overlay.classList.remove('active');
+
+  riskEditContext = {
+    workId: null,
+    workName: '',
+    currentRisk: '',
+    originalRisk: '',
+    selectedRisk: ''
+  };
+};
+
+window.submitRiskEdit = async function(){
+  const managerEl = document.getElementById('riskEditManager');
+  const managerName = managerEl ? (managerEl.value || '').trim() : '';
+
+  if(!managerName){
+    if(typeof window.showToast === 'function'){
+      window.showToast('수정자 이름을 입력하세요', 'error');
+    }
+    if(managerEl) managerEl.focus();
+    return;
+  }
+
+  if(!riskEditContext.workId){
+    if(typeof window.showToast === 'function'){
+      window.showToast('작업 정보 오류', 'error');
+    }
+    return;
+  }
+
+  if(riskEditContext.selectedRisk === riskEditContext.currentRisk){
+    if(typeof window.showToast === 'function'){
+      window.showToast('변경 사항이 없습니다', 'info');
+    }
+    window.closeRiskEditModal();
+    return;
+  }
+
+  const workId = riskEditContext.workId;
+  const newRisk = riskEditContext.selectedRisk;
+
+  try{
+    const raw = localStorage.getItem('safetyDatabase');
+    if(raw){
+      const database = JSON.parse(raw);
+      if(Array.isArray(database.workHistory)){
+        const targetIndex = database.workHistory.findIndex(function(w){
+          return (w.workId || '') === workId;
+        });
+        if(targetIndex >= 0){
+          database.workHistory[targetIndex].risk = newRisk;
+          database.workHistory[targetIndex].riskLevel = newRisk;
+          database.workHistory[targetIndex].updatedAt = new Date().toISOString();
+          database.workHistory[targetIndex].updatedBy = managerName;
+          localStorage.setItem('safetyDatabase', JSON.stringify(database));
+        }
+      }
+    }
+
+    if(Array.isArray(window.allWorks)){
+      const memoryTarget = window.allWorks.find(function(w){
+        return (w.workId || w.id) === workId;
+      });
+      if(memoryTarget){
+        memoryTarget.risk = newRisk;
+        memoryTarget.riskLevel = newRisk;
+      }
+    }
+
+    if(navigator.onLine){
+      try{
+        const docRef = doc(riskEditDb, RISK_EDIT_COLLECTION, workId);
+        await updateDoc(docRef, {
+          risk: newRisk,
+          riskLevel: newRisk,
+          updatedAt: new Date().toISOString(),
+          updatedBy: managerName
+        });
+        console.log('[위험등급 수정] Firestore 갱신 완료:', workId, '→', newRisk);
+      }catch(fsError){
+        console.warn('[위험등급 수정] Firestore 갱신 실패 (로컬은 저장됨):', fsError.message);
+      }
+    }else{
+      console.warn('[위험등급 수정] 오프라인 - localStorage만 갱신');
+    }
+
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: {
+          key: 'safetyDatabase',
+          workId: workId,
+          source: 'risk-edit',
+          timestamp: Date.now()
+        }
+      }));
+    }catch(eventError){}
+
+    if(typeof window.applyFilter === 'function'){
+      window.applyFilter();
+    }
+
+    window.closeRiskEditModal();
+
+    if(typeof window.showToast === 'function'){
+      const emoji = newRisk === '고위험' ? '🚨' : '⚪';
+      window.showToast(
+        '✅ 위험등급이 ' + emoji + ' ' + newRisk + '(으)로 변경되었습니다',
+        'success'
+      );
+    }
+
+  }catch(error){
+    console.error('[위험등급 수정] 오류:', error);
+    if(typeof window.showToast === 'function'){
+      window.showToast('저장 중 오류: ' + error.message, 'error');
+    }
+  }
+};
+
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    const overlay = document.getElementById('riskEditOverlay');
+    if(overlay && overlay.classList.contains('active')){
+      window.closeRiskEditModal();
+    }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  const overlay = document.getElementById('riskEditOverlay');
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) window.closeRiskEditModal();
+    });
+  }
+});
+
+console.log('[v7.4] 위험등급 수동 수정 패치 로드 완료');
+</script>
+       
+ </div>
+</div>  
+ <script>
+/* =========================================================
+   위험성평가 v3.5 연동 스크립트 (2026-09-03)
+   
+   기능:
+   - 대시보드에서 위험성평가 v3.5로 이동
+   - 관리자 페이지 진입 (?mode=admin)
+   - 위험성평가 DB 상태 확인
+   ========================================================= */
+
+/**
+ * 위험성평가 관리자 페이지로 이동
+ */
+window.goToRiskAssessmentAdmin = function(){
+  showCustomConfirm({
+    icon: '🔧',
+    title: '관리자 페이지 진입',
+    message: '위험성평가 DB 관리 페이지로 이동합니다.\n\n' +
+             '⚠️ 관리자 전용 기능입니다.\n' +
+             '· TSV 업로드/다운로드\n' +
+             '· 컬렉션 건수 확인\n' +
+             '· 위험도 오버라이드\n\n' +
+             '계속하시겠습니까?',
+    okText: '진입',
+    okType: 'warn'
+  }, function(ok){
+    if(!ok) return;
+    
+    // sessionStorage에 관리자 모드 설정
+    sessionStorage.setItem('adminMode', 'true');
+    
+    // URL 파라미터로 관리자 모드 진입
+    window.location.href = '위험성평가_v2.html?mode=admin';
+  });
+};
+
+/**
+ * 위험성평가 v3.5 일반 사용자 페이지로 이동
+ */
+window.goToRiskAssessment = function(){
+  window.location.href = '위험성평가_v2.html';
+};
+
+/**
+ * 위험성평가 DB 상태 확인
+ */
+window.checkRiskAssessmentStatus = async function(){
+  var statusEl = document.getElementById('radStatusText');
+  if(statusEl){
+    statusEl.textContent = '확인 중...';
+    statusEl.style.color = 'var(--sub)';
+  }
+  
+  try {
+    // Firebase가 이미 초기화되어 있어야 함
+    if(typeof firebase === 'undefined' || !firebase.apps.length){
+      throw new Error('Firebase 미초기화');
+    }
+    
+    var fs = firebase.firestore();
+    
+    // 컬렉션명 결정 (test_ 또는 없음)
+    var appMode = localStorage.getItem('appMode') || 'test';
+    var radCollection = (appMode === 'test' ? 'test_' : '') + 'riskAssessmentDB';
+    var raCollection = (appMode === 'test' ? 'test_' : '') + '위험성평가';
+    
+    // 병렬 조회
+    var results = await Promise.all([
+      fs.collection(radCollection).get(),
+      fs.collection('jsaDatabase').get(),
+      fs.collection(raCollection).get()
+    ]);
+    
+    var radCount = results[0].size;
+    var jsaCount = results[1].size;
+    var raCount = results[2].size;
+    
+    var message = '📊 위험성평가 DB 현황\n\n' +
+                  '· 위험성평가DB (RAD): ' + radCount + '건\n' +
+                  '· JSA_DB (참조): ' + jsaCount + '건\n' +
+                  '· 실제 평가 기록: ' + raCount + '건\n\n' +
+                  '컬렉션:\n' +
+                  '· ' + radCollection + '\n' +
+                  '· jsaDatabase\n' +
+                  '· ' + raCollection;
+    
+    if(statusEl){
+      statusEl.textContent = 'RAD: ' + radCount + ' | JSA: ' + jsaCount;
+      statusEl.style.color = 'var(--done)';
+    }
+    
+    showCustomConfirm({
+      icon: '📊',
+      title: '위험성평가 DB 상태',
+      message: message,
+      okText: '관리자 페이지',
+      cancelText: '닫기',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) goToRiskAssessmentAdmin();
+    });
+    
+  } catch(error){
+    console.error('상태 확인 실패:', error);
+    
+    if(statusEl){
+      statusEl.textContent = '❌ 오류';
+      statusEl.style.color = 'var(--stop)';
+    }
+    
+    if(typeof showToast === 'function'){
+      showToast('상태 확인 실패: ' + error.message, 'error');
+    }
+  }
+};
+
+/**
+ * 페이지 로드 시 위험성평가 v3.5 미리 상태 확인 (선택)
+ */
+(function initRiskAssessmentIntegration(){
+  // 대시보드 로드 후 조용히 캐시된 정보 표시
+  setTimeout(function(){
+    try {
+      var radCache = localStorage.getItem('risk_assessment_db_v35');
+      var jsaCache = localStorage.getItem('jsa_database_v3');
+      var statusEl = document.getElementById('radStatusText');
+      
+      if(!statusEl) return;
+      
+      var radCount = radCache ? JSON.parse(radCache).length : 0;
+      var jsaCount = jsaCache ? JSON.parse(jsaCache).length : 0;
+      
+      if(radCount > 0 || jsaCount > 0){
+        statusEl.textContent = 'RAD:' + radCount + ' | JSA:' + jsaCount;
+        statusEl.style.color = radCount > 0 ? 'var(--done)' : 'var(--warn)';
+      } else {
+        statusEl.textContent = '캐시 없음';
+        statusEl.style.color = 'var(--sub)';
+      }
+    } catch(e){
+      // 조용히 무시
+    }
+  }, 1000);
+})();
+
+console.log('[대시보드] 위험성평가 v3.5 연동 스크립트 로드 완료');
+</script>
+    
+</body>
+</html>
