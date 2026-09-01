@@ -722,17 +722,24 @@ const email =
               email,
               password
             );
+        const profile =
+  await loadUserProfile(
+    credential.user.uid
+  );
 
-          const profile =
-            await loadUserProfile(
-              credential.user.uid
-            );
+console.log(
+  '[로그인 확인] 사용자 프로필:',
+  profile,
+  'active 유형:',
+  typeof profile.active
+);
 
-          if(profile.active !== true){
-            throw new Error(
-              "사용이 중지된 계정입니다."
-            );
-          }
+if(profile.active !== true){
+  throw new Error(
+    "사용이 중지된 계정입니다."
+  );
+}
+
 
           if(profile.environment !== "test"){
             throw new Error(
