@@ -1,412 +1,433 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#0b0b0d" />
-<title>안전관리 플랫폼 로그인 (TEST)</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003C7E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>POSCO FUTURE M · 안전관리 로그인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+<!-- ═══════════════════════════════════════
+     APP MODE (대시보드와 동일)
+     ═══════════════════════════════════════ -->
+<script>
+(function(){
+  window.APP_MODE = 'test';
+  window.COLLECTION_PREFIX = 'test_';
+  console.log(
+    '%c[APP MODE] TEST',
+    'background:#dc3545;color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
 
 <style>
-/* =========================================================
-   0. 기본 리셋
-   ========================================================= */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* ═══════════════════════════════════════
+   대시보드와 완전히 동일한 CSS 변수
+   ═══════════════════════════════════════ */
+:root{
+  --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
+  --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
+  --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
+  --line:#DFE7EF;
+  --warn:#B45309; --warn-bg:#FEF6E7;
+  --stop:#D6273D; --stop-bg:#FFF3F5;
+  --done:#0E8A6B; --done-bg:#EDFAF6;
+  --r:18px; --r-s:14px; --r-xs:10px;
+  --sh:0 2px 10px rgba(15,29,43,.06);
+  --sh-m:0 4px 16px rgba(15,29,43,.09);
+}
+[data-theme="dark"]{
+  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
+  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
+  --faint:#5A7288; --line:#1E3145;
+  --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
+  --warn:#FBBF24; --warn-bg:#2A2010;
+  --stop:#FF5F70; --stop-bg:#2B1116;
+  --done:#3DD9AE; --done-bg:#0D2620;
+  --sh:0 2px 10px rgba(0,0,0,.35); --sh-m:0 4px 16px rgba(0,0,0,.45);
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-               "Noto Sans KR", "Malgun Gothic", sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+
+body{
+  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  color:var(--ink);line-height:1.5;font-size:15px;
+  -webkit-font-smoothing:antialiased;
+  background:linear-gradient(135deg,
+    #003C7E 0%,
+    #0067B1 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+  min-height:100vh;
+}
+[data-theme="dark"] body{
+  background:linear-gradient(135deg,
+    #0A1B2E 0%,
+    #12283F 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
 }
 
-body {
-  background: #0b0b0d;
-  color: #f4f4f5;
-  overflow: hidden;
+/* .app: 대시보드와 동일 */
+.app{
+  max-width:480px;margin:0 auto;min-height:100vh;
+  position:relative;background:var(--bg);
+  display:flex;flex-direction:column;
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: inherit;
+@media(min-width:768px){
+  body{padding:24px 0}
+  .app{
+    min-height:calc(100vh - 48px);
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:
+      0 0 40px rgba(0,60,126,.2),
+      0 20px 60px rgba(0,0,0,.15);
+  }
 }
 
-input {
-  font-family: inherit;
+/* ═══════════════════════════════════════
+   로그인 콘텐츠 영역
+   ═══════════════════════════════════════ */
+.login-hero{
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;padding:36px 24px 44px;position:relative;overflow:hidden;
+  text-align:center;
+}
+.login-hero::after{
+  content:'';position:absolute;right:-40px;top:-40px;width:160px;height:160px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 8px,transparent 8px 16px);
+  border-radius:50%;pointer-events:none;
+}
+.login-hero::before{
+  content:'';position:absolute;left:-30px;bottom:-30px;width:120px;height:120px;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 6px,transparent 6px 12px);
+  border-radius:50%;pointer-events:none;
+}
+.dev-badge{
+  display:inline-block;padding:5px 14px;background:rgba(220,53,69,.9);
+  color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;
+  border-radius:999px;margin-bottom:16px;position:relative;z-index:1;
+}
+.login-logo{
+  font-size:56px;line-height:1;margin-bottom:12px;
+  position:relative;z-index:1;
+}
+.login-brand-en{
+  font-size:13px;font-weight:700;opacity:.9;letter-spacing:.06em;
+  margin-bottom:4px;position:relative;z-index:1;
+}
+.login-brand-ko{
+  font-size:22px;font-weight:800;letter-spacing:-.02em;
+  margin-bottom:6px;position:relative;z-index:1;
+}
+.login-brand-sub{
+  font-size:13px;font-weight:600;opacity:.85;
+  position:relative;z-index:1;
 }
 
-/* =========================================================
-   1. PC용 휴대폰 프레임 (대시보드와 동일 컨셉)
-   ========================================================= */
-.phone-frame {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(1200px 800px at 50% 50%, #1a1a1f 0%, #0b0b0d 60%, #000 100%);
-  padding: 24px;
+/* 폼 영역 */
+.login-body{
+  flex:1;padding:20px 20px 24px;
+  display:flex;flex-direction:column;gap:14px;
 }
 
-.phone-screen {
-  position: relative;
-  width: 390px;
-  height: 780px;
-  max-height: calc(100vh - 48px);
-  background: #111114;
-  border-radius: 44px;
-  border: 2px solid #2a2a30;
-  box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 6px #000;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+.warn-banner{
+  background:var(--warn-bg);border-left:3px solid var(--warn);
+  border-radius:0 var(--r-s) var(--r-s) 0;
+  padding:11px 13px;
+}
+.warn-banner-title{
+  font-size:12px;font-weight:800;color:var(--warn);
+  margin-bottom:4px;letter-spacing:.02em;
+}
+.warn-banner-text{
+  font-size:12px;color:var(--body);font-weight:600;
+  line-height:1.5;
 }
 
-/* 상단 노치 (장식) */
-.phone-screen::before {
-  content: "";
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120px;
-  height: 26px;
-  background: #000;
-  border-radius: 20px;
-  z-index: 10;
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{
+  font-size:12.5px;font-weight:800;color:var(--sub);
+  padding-left:2px;letter-spacing:.02em;
+}
+.field-wrap{position:relative;display:flex;align-items:center;}
+.field input{
+  width:100%;padding:14px 14px;
+  border:1.5px solid var(--line);border-radius:var(--r-s);
+  background:var(--card);color:var(--ink);
+  font-family:inherit;font-size:15px;font-weight:600;
+  outline:none;transition:.15s;
+}
+.field input:focus{
+  border-color:var(--posco);background:var(--card);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
+}
+.field input::placeholder{color:var(--faint);font-weight:500}
+
+.pw-toggle{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  padding:8px 12px;background:transparent;border:0;
+  color:var(--sub);font-size:12px;font-weight:700;
+  cursor:pointer;border-radius:8px;font-family:inherit;
+}
+.pw-toggle:active{background:var(--sunk)}
+
+.btn-login{
+  margin-top:6px;padding:15px;
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;border:0;border-radius:var(--r-s);
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;
+  box-shadow:0 4px 14px rgba(0,60,126,.25);
+  transition:.15s;
+}
+.btn-login:hover:not(:disabled){filter:brightness(1.05)}
+.btn-login:active:not(:disabled){transform:scale(.98)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
+
+.divider{
+  display:flex;align-items:center;gap:10px;
+  margin:6px 0;color:var(--faint);font-size:11px;font-weight:700;
+}
+.divider::before,.divider::after{
+  content:"";flex:1;height:1px;background:var(--line);
 }
 
-/* =========================================================
-   2. 로그인 셸 (실제 콘텐츠 영역)
-   ========================================================= */
-.login-shell {
-  flex: 1;
-  overflow-y: auto;
-  padding: 60px 28px 28px;
-  background: linear-gradient(180deg, #14141a 0%, #0f0f13 100%);
-  color: #f4f4f5;
-  display: flex;
-  flex-direction: column;
+.btn-tester{
+  padding:13px;background:var(--card);
+  border:1.5px solid var(--posco);border-radius:var(--r-s);
+  color:var(--posco);
+  font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;
+  transition:.15s;
+}
+.btn-tester:hover{background:var(--tint)}
+.btn-tester:active{transform:scale(.98)}
+
+.msg{
+  min-height:0;padding:0 12px;
+  font-size:12.5px;border-radius:10px;
+  display:none;line-height:1.5;font-weight:600;
+}
+.msg.error{
+  display:block;background:var(--stop-bg);color:var(--stop);
+  border:1px solid rgba(214,39,61,.2);
+  padding:10px 12px;
+}
+.msg.info{
+  display:block;background:var(--tint);color:var(--posco);
+  border:1px solid rgba(0,103,177,.2);
+  padding:10px 12px;
 }
 
-/* 브랜드 영역 */
-.brand {
-  text-align: center;
-  margin-bottom: 32px;
+.foot{
+  padding:18px 20px 24px;text-align:center;
+  font-size:11px;color:var(--sub);line-height:1.7;
+  font-weight:600;border-top:1px solid var(--line);
+  background:var(--sunk);
 }
+.foot strong{color:var(--posco);font-weight:800}
 
-.brand-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  margin-bottom: 14px;
-}
-
-.brand-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 6px;
-  color: #ffffff;
-}
-
-.brand-sub {
-  font-size: 13px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-/* 폼 */
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #d4d4d8;
-  padding-left: 2px;
-}
-
-.field-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.field input {
-  width: 100%;
-  padding: 14px 14px;
-  background: #1c1c22;
-  border: 1px solid #2f2f38;
-  border-radius: 12px;
-  color: #f4f4f5;
-  font-size: 15px;
-  outline: none;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.field input:focus {
-  border-color: #6366f1;
-  background: #1f1f27;
-}
-
-.field input::placeholder {
-  color: #6b7280;
-}
-
-/* 비밀번호 보기 토글 */
-.pw-toggle {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 6px 10px;
-  font-size: 12px;
-  color: #a1a1aa;
-  border-radius: 8px;
-}
-
-.pw-toggle:hover {
-  background: #2a2a33;
-  color: #fff;
-}
-
-/* 로그인 버튼 */
-.btn-login {
-  margin-top: 8px;
-  padding: 14px;
-  background: linear-gradient(180deg, #4f46e5 0%, #4338ca 100%);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  border-radius: 12px;
-  transition: transform 0.05s, filter 0.15s;
-}
-
-.btn-login:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
-
-.btn-login:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn-login:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* 구분선 */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 22px 0 14px;
-  color: #6b7280;
-  font-size: 11px;
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #2a2a30;
-}
-
-/* 테스터 진입 버튼 */
-.btn-tester {
-  padding: 12px;
-  background: #1c1c22;
-  border: 1px solid #2f2f38;
-  border-radius: 12px;
-  color: #d4d4d8;
-  font-size: 14px;
-  font-weight: 600;
-  transition: background 0.15s;
-}
-
-.btn-tester:hover {
-  background: #26262d;
-}
-
-/* 오류·안내 메시지 */
-.msg {
-  min-height: 20px;
-  margin-top: 10px;
-  padding: 10px 12px;
-  font-size: 12.5px;
-  border-radius: 10px;
-  display: none;
-  line-height: 1.5;
-}
-
-.msg.error {
-  display: block;
-  background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.msg.info {
-  display: block;
-  background: rgba(59, 130, 246, 0.12);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-/* 하단 안내 */
-.foot {
-  margin-top: auto;
-  padding-top: 24px;
-  text-align: center;
-  font-size: 11px;
-  color: #6b7280;
-  line-height: 1.6;
-}
-
-.foot .warn {
-  color: #fbbf24;
-  font-weight: 600;
-}
-
-/* =========================================================
-   3. 실제 모바일 대응 — 검은 프레임 제거
-   ========================================================= */
-@media (max-width: 640px) {
+/* ═══════════════════════════════════════
+   📱 PHONE FRAME v2 (대시보드와 100% 동일)
+   ═══════════════════════════════════════ */
+@media (min-width: 768px) {
   body {
-    overflow: auto;
-    background: #0f0f13;
+    background: radial-gradient(ellipse at center,
+      #e5e8ec 0%,
+      #c8ccd2 60%,
+      #a8adb4 100%) !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    margin: 0;
+  }
+
+  [data-theme="dark"] body {
+    background: radial-gradient(ellipse at center,
+      #1e2530 0%,
+      #0f1620 60%,
+      #050810 100%) !important;
   }
 
   .phone-frame {
-    position: static;
-    padding: 0;
-    background: none;
-    display: block;
-    min-height: 100vh;
+    position: relative;
+    width: 480px;
+    height: 820px;
+    max-height: calc(100vh - 40px);
+    background: #1a1a1a;
+    border-radius: 52px;
+    padding: 12px;
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.30),
+      0 20px 40px rgba(0,0,0,0.20),
+      0 8px 16px rgba(0,0,0,0.15),
+      inset 0 0 0 2px #2a2a2a,
+      inset 0 2px 8px rgba(255,255,255,0.05);
+    flex-shrink: 0;
+  }
+
+  [data-theme="dark"] .phone-frame {
+    background: #2a2a2a;
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.7),
+      0 20px 40px rgba(0,0,0,0.5),
+      0 8px 16px rgba(0,0,0,0.3),
+      inset 0 0 0 2px #444,
+      inset 0 2px 8px rgba(255,255,255,0.05);
+  }
+
+  /* 우측 전원 버튼 */
+  .phone-frame::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 200px;
+    width: 4px; height: 80px;
+    background: linear-gradient(90deg, #2a2a2a 0%, #555 50%, #333 100%);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 1px 0 2px rgba(0,0,0,0.3);
   }
 
   .phone-screen {
     width: 100%;
-    height: auto;
-    min-height: 100vh;
-    max-height: none;
+    height: 100%;
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg);
+  }
+
+  .phone-frame .app {
+    max-width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .phone-frame .app::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+/* 모바일: 프레임 완전 무력화 */
+@media (max-width: 767px) {
+  .phone-frame {
+    all: unset;
+    display: block;
+  }
+  .phone-frame::after { display: none; }
+  .phone-screen {
     border-radius: 0;
-    border: none;
-    box-shadow: none;
-  }
-
-  .phone-screen::before {
-    display: none; /* 노치 제거 */
-  }
-
-  .login-shell {
-    padding: 40px 22px 28px;
+    overflow: visible;
+    height: auto;
+    width: auto;
+    background: transparent;
   }
 }
 </style>
 </head>
 <body>
 
+<!-- 대시보드와 동일한 프레임 구조 -->
 <div class="phone-frame">
   <div class="phone-screen">
-    <main class="login-shell">
+    <div class="app">
 
-      <div class="brand">
-        <span class="brand-badge">DEV · TEST</span>
-        <h1 class="brand-title">안전관리 플랫폼</h1>
-        <p class="brand-sub">개발 테스트용 · 실제 작업허가 효력 없음</p>
-      </div>
+      <!-- 히어로 -->
+      <header class="login-hero">
+        <div class="dev-badge">DEVELOPMENT TEST</div>
+        <div class="login-logo">🏭</div>
+        <div class="login-brand-en">POSCO FUTURE M</div>
+        <div class="login-brand-ko">안전관리 플랫폼</div>
+        <div class="login-brand-sub">포항양극재공장 · 개발 테스트 버전</div>
+      </header>
 
-      <form class="login-form" id="loginForm" autocomplete="off">
-        <div class="field">
-          <label for="userId">아이디</label>
-          <div class="field-input-wrap">
-            <input
-              type="text"
-              id="userId"
-              name="userId"
-              placeholder="예: admin"
-              autocapitalize="off"
-              autocorrect="off"
-              spellcheck="false"
-            />
+      <!-- 로그인 폼 -->
+      <div class="login-body">
+
+        <div class="warn-banner">
+          <div class="warn-banner-title">🧪 개발 테스트 환경입니다</div>
+          <div class="warn-banner-text">
+            이 시스템에서 생성된 문서는 실제 작업허가로 사용할 수 없습니다.<br>
+            실제 개인정보와 비공개 현장정보를 입력하지 마십시오.
           </div>
         </div>
 
-        <div class="field">
-          <label for="userPw">비밀번호</label>
-          <div class="field-input-wrap">
-            <input
-              type="password"
-              id="userPw"
-              name="userPw"
-              placeholder="비밀번호"
-            />
-            <button type="button" class="pw-toggle" id="pwToggle">보기</button>
+        <form id="loginForm" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="field">
+            <label for="userId">아이디</label>
+            <div class="field-wrap">
+              <input
+                type="text" id="userId" name="userId"
+                placeholder="아이디 입력"
+                autocapitalize="off" autocorrect="off" spellcheck="false"
+              />
+            </div>
           </div>
-        </div>
 
-        <button type="submit" class="btn-login" id="btnLogin">
-          로그인
+          <div class="field">
+            <label for="userPw">비밀번호</label>
+            <div class="field-wrap">
+              <input type="password" id="userPw" name="userPw" placeholder="비밀번호 입력" />
+              <button type="button" class="pw-toggle" id="pwToggle">보기</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-login" id="btnLogin">
+            관리자·사용자 로그인
+          </button>
+
+          <div class="msg" id="loginMsg"></div>
+        </form>
+
+        <div class="divider">또는</div>
+
+        <button type="button" class="btn-tester" id="btnTester">
+          🧪 테스터로 체험하기
         </button>
 
-        <div class="msg" id="loginMsg"></div>
-      </form>
-
-      <div class="divider">또는</div>
-
-      <button type="button" class="btn-tester" id="btnTester">
-        로그인 없이 테스터로 체험하기
-      </button>
-
-      <div class="foot">
-        <div class="warn">⚠ 개발 테스트 환경</div>
-        <div>실제 개인정보 · 사진 · 서명 입력 금지</div>
-        <div>Firestore 컬렉션: <code>test_*</code></div>
+        <div style="text-align:center;font-size:11.5px;color:var(--sub);font-weight:600;line-height:1.6;margin-top:2px;">
+          로그인하지 않고 앱 기능을 체험합니다.<br>
+          테스터 자료는 다른 사용자에게 공유되지 않습니다.
+        </div>
       </div>
 
-    </main>
-  </div>
-</div>
+      <!-- 하단 정보 -->
+      <div class="foot">
+        사진·서명·첨부파일은 저장되지 않습니다.<br>
+        테스트 종료 후 브라우저 자료를 삭제할 수 있습니다.
+      </div>
 
-<!-- =========================================================
-     Firebase SDK (compat 방식 - 기존 코드와 동일 스타일)
-     ========================================================= -->
+    </div><!-- /.app -->
+  </div><!-- /.phone-screen -->
+</div><!-- /.phone-frame -->
+
+<!-- Firebase SDK (compat, 대시보드와 동일 스타일) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 
 <script>
 /* =========================================================
-   Firebase 설정 (기존 firebase-config.js 값과 동일)
+   Firebase 설정 (사용자 제공 값 그대로)
    ========================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
@@ -418,7 +439,6 @@ const firebaseConfig = {
   measurementId: "G-KNK5ECRCX5"
 };
 
-/* Firebase 초기화 (중복 초기화 방지) */
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -426,26 +446,13 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-/* 기존 대시보드와 동일한 Firestore 설정 유지
-   (Edge/사내망 WebChannel 실패 대응) */
 try {
   db.settings({
     experimentalForceLongPolling: true,
     merge: true
   });
-} catch (e) {
-  /* 이미 사용된 경우 무시 */
-}
+} catch (e) { /* 이미 사용된 경우 무시 */ }
 
-/* 인수인계서 3.2 - 테스트 모드 고정 */
-window.APP_MODE = 'test';
-window.COLLECTION_PREFIX = 'test_';
-console.log(
-  '%c[APP MODE] TEST',
-  'background:#dc3545;color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
-);
-
-/* 인수인계서 3.3 - 고정 도메인 유지 */
 const AUTH_ID_DOMAIN = "pfm-safety.test";
 
 /* =========================================================
@@ -459,20 +466,15 @@ const $msg      = document.getElementById("loginMsg");
 const $pwToggle = document.getElementById("pwToggle");
 const $tester   = document.getElementById("btnTester");
 
-/* =========================================================
-   유틸
-   ========================================================= */
 function showMsg(text, type){
   $msg.textContent = text;
   $msg.className = "msg " + (type || "error");
 }
-
 function clearMsg(){
   $msg.textContent = "";
   $msg.className = "msg";
   $msg.style.display = "none";
 }
-
 function toEmail(rawId){
   const id = (rawId || "").trim();
   if(!id) return "";
@@ -480,9 +482,7 @@ function toEmail(rawId){
   return id + "@" + AUTH_ID_DOMAIN;
 }
 
-/* =========================================================
-   비밀번호 보기 / 숨기기
-   ========================================================= */
+/* 비밀번호 보기/숨기기 */
 $pwToggle.addEventListener("click", () => {
   if($pw.type === "password"){
     $pw.type = "text";
@@ -494,7 +494,8 @@ $pwToggle.addEventListener("click", () => {
 });
 
 /* =========================================================
-   로그인 처리 (인수인계서 3.3 / 3.4 / 3.5 유지)
+   로그인 처리
+   (대시보드가 읽는 세션키: 'appSession')
    ========================================================= */
 $form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -509,19 +510,16 @@ $form.addEventListener("submit", async (e) => {
   }
 
   const email = toEmail(rawId);
-
   $btn.disabled = true;
   $btn.textContent = "로그인 중...";
 
   try{
-    /* 로그인 지속 - 브라우저 세션 유지 */
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     const cred = await auth.signInWithEmailAndPassword(email, pw);
     const user = cred.user;
     console.log("[로그인] Authentication 성공:", user.uid);
 
-    /* Firestore users/{uid} 역할 문서 확인 */
     const userSnap = await db.collection("users").doc(user.uid).get();
     console.log("[로그인] users 문서 존재:", userSnap.exists);
 
@@ -532,31 +530,25 @@ $form.addEventListener("submit", async (e) => {
     }
 
     const data = userSnap.data();
-    console.log(
-      "[로그인] active:", data.active,
-      "role:", data.role,
-      "env:", data.environment
-    );
+    console.log("[로그인] active:", data.active, "role:", data.role, "env:", data.environment);
 
     if(data.active !== true){
       showMsg("비활성 계정입니다.", "error");
       await auth.signOut();
       return;
     }
-
     if(data.environment !== "test"){
       showMsg("테스트 환경 계정이 아닙니다.", "error");
       await auth.signOut();
       return;
     }
-
     if(data.role !== "admin" && data.role !== "user"){
       showMsg("허용되지 않은 역할입니다.", "error");
       await auth.signOut();
       return;
     }
 
-    /* 세션 저장 (인수인계서 3.5 형태 유지) */
+    /* ⚠️ 대시보드는 sessionStorage['appSession']을 읽음 */
     const session = {
       accessMode: "authenticated",
       role: data.role,
@@ -565,12 +557,13 @@ $form.addEventListener("submit", async (e) => {
       email: user.email || email,
       environment: "test"
     };
-    sessionStorage.setItem("APP_SESSION", JSON.stringify(session));
+    sessionStorage.setItem("appSession", JSON.stringify(session));
     console.log("[로그인] 앱 세션 저장 완료");
 
     showMsg("로그인 성공. 대시보드로 이동합니다.", "info");
     setTimeout(() => {
-      location.href = "index.html";
+      /* 대시보드 파일명이 다르면 여기만 변경 */
+      location.href = "안전관리플랫폼_대시보드_V6_.html";
     }, 300);
 
   }catch(err){
@@ -580,27 +573,23 @@ $form.addEventListener("submit", async (e) => {
       case "auth/invalid-credential":
       case "auth/wrong-password":
       case "auth/user-not-found":
-        text = "아이디 또는 비밀번호가 올바르지 않습니다.";
-        break;
+        text = "아이디 또는 비밀번호가 올바르지 않습니다."; break;
       case "auth/too-many-requests":
-        text = "로그인 시도가 많습니다. 잠시 후 다시 시도하세요.";
-        break;
+        text = "로그인 시도가 많습니다. 잠시 후 다시 시도하세요."; break;
       case "auth/network-request-failed":
-        text = "네트워크 오류가 발생했습니다.";
-        break;
+        text = "네트워크 오류가 발생했습니다."; break;
       case "auth/invalid-email":
-        text = "아이디 형식이 올바르지 않습니다.";
-        break;
+        text = "아이디 형식이 올바르지 않습니다."; break;
     }
     showMsg(text, "error");
   }finally{
     $btn.disabled = false;
-    $btn.textContent = "로그인";
+    $btn.textContent = "관리자·사용자 로그인";
   }
 });
 
 /* =========================================================
-   테스터 진입 (인수인계서 3.5 형태 유지)
+   테스터 진입
    ========================================================= */
 $tester.addEventListener("click", () => {
   const testerSession = {
@@ -611,12 +600,16 @@ $tester.addEventListener("click", () => {
     email: "",
     environment: "test"
   };
-  sessionStorage.setItem("APP_SESSION", JSON.stringify(testerSession));
+  sessionStorage.setItem("appSession", JSON.stringify(testerSession));
   console.log("[테스터] 로컬 세션 생성 완료");
-  location.href = "index.html";
+  location.href = "안전관리플랫폼_대시보드_V6_.html";
 });
 
-console.log("🔧 login.html 로드 완료");
+console.log("[로그인] 페이지 준비 완료", {
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  idDomain: AUTH_ID_DOMAIN
+});
 </script>
 
 </body>
