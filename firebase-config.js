@@ -1,434 +1,8 @@
-<!DOCTYPE html>
-<html lang="ko" data-theme="light">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#003C7E">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>POSCO FUTURE M · 안전관리 로그인</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+// ============================================
+// Firebase 설정 (모든 페이지에서 사용)
+// ============================================
 
-<!-- ═══════════════════════════════════════
-     APP MODE (대시보드와 동일)
-     ═══════════════════════════════════════ -->
-<script>
-(function(){
-  window.APP_MODE = 'test';
-  window.COLLECTION_PREFIX = 'test_';
-  console.log(
-    '%c[APP MODE] TEST',
-    'background:#dc3545;color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
-  );
-})();
-</script>
-
-<style>
-/* ═══════════════════════════════════════
-   대시보드와 완전히 동일한 CSS 변수
-   ═══════════════════════════════════════ */
-:root{
-  --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
-  --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
-  --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
-  --line:#DFE7EF;
-  --warn:#B45309; --warn-bg:#FEF6E7;
-  --stop:#D6273D; --stop-bg:#FFF3F5;
-  --done:#0E8A6B; --done-bg:#EDFAF6;
-  --r:18px; --r-s:14px; --r-xs:10px;
-  --sh:0 2px 10px rgba(15,29,43,.06);
-  --sh-m:0 4px 16px rgba(15,29,43,.09);
-}
-[data-theme="dark"]{
-  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
-  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
-  --faint:#5A7288; --line:#1E3145;
-  --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
-  --warn:#FBBF24; --warn-bg:#2A2010;
-  --stop:#FF5F70; --stop-bg:#2B1116;
-  --done:#3DD9AE; --done-bg:#0D2620;
-  --sh:0 2px 10px rgba(0,0,0,.35); --sh-m:0 4px 16px rgba(0,0,0,.45);
-}
-
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
-
-body{
-  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  color:var(--ink);line-height:1.5;font-size:15px;
-  -webkit-font-smoothing:antialiased;
-  background:linear-gradient(135deg,
-    #003C7E 0%,
-    #0067B1 45%,
-    var(--bg) 45%,
-    var(--bg) 100%);
-  background-attachment:fixed;
-  min-height:100vh;
-}
-[data-theme="dark"] body{
-  background:linear-gradient(135deg,
-    #0A1B2E 0%,
-    #12283F 45%,
-    var(--bg) 45%,
-    var(--bg) 100%);
-  background-attachment:fixed;
-}
-
-/* .app: 대시보드와 동일 */
-.app{
-  max-width:480px;margin:0 auto;min-height:100vh;
-  position:relative;background:var(--bg);
-  display:flex;flex-direction:column;
-}
-
-@media(min-width:768px){
-  body{padding:24px 0}
-  .app{
-    min-height:calc(100vh - 48px);
-    border-radius:24px;
-    overflow:hidden;
-    box-shadow:
-      0 0 40px rgba(0,60,126,.2),
-      0 20px 60px rgba(0,0,0,.15);
-  }
-}
-
-/* ═══════════════════════════════════════
-   로그인 콘텐츠 영역
-   ═══════════════════════════════════════ */
-.login-hero{
-  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
-  color:#fff;padding:36px 24px 44px;position:relative;overflow:hidden;
-  text-align:center;
-}
-.login-hero::after{
-  content:'';position:absolute;right:-40px;top:-40px;width:160px;height:160px;
-  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 8px,transparent 8px 16px);
-  border-radius:50%;pointer-events:none;
-}
-.login-hero::before{
-  content:'';position:absolute;left:-30px;bottom:-30px;width:120px;height:120px;
-  background:repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 6px,transparent 6px 12px);
-  border-radius:50%;pointer-events:none;
-}
-.dev-badge{
-  display:inline-block;padding:5px 14px;background:rgba(220,53,69,.9);
-  color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;
-  border-radius:999px;margin-bottom:16px;position:relative;z-index:1;
-}
-.login-logo{
-  font-size:56px;line-height:1;margin-bottom:12px;
-  position:relative;z-index:1;
-}
-.login-brand-en{
-  font-size:13px;font-weight:700;opacity:.9;letter-spacing:.06em;
-  margin-bottom:4px;position:relative;z-index:1;
-}
-.login-brand-ko{
-  font-size:22px;font-weight:800;letter-spacing:-.02em;
-  margin-bottom:6px;position:relative;z-index:1;
-}
-.login-brand-sub{
-  font-size:13px;font-weight:600;opacity:.85;
-  position:relative;z-index:1;
-}
-
-/* 폼 영역 */
-.login-body{
-  flex:1;padding:20px 20px 24px;
-  display:flex;flex-direction:column;gap:14px;
-}
-
-.warn-banner{
-  background:var(--warn-bg);border-left:3px solid var(--warn);
-  border-radius:0 var(--r-s) var(--r-s) 0;
-  padding:11px 13px;
-}
-.warn-banner-title{
-  font-size:12px;font-weight:800;color:var(--warn);
-  margin-bottom:4px;letter-spacing:.02em;
-}
-.warn-banner-text{
-  font-size:12px;color:var(--body);font-weight:600;
-  line-height:1.5;
-}
-
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{
-  font-size:12.5px;font-weight:800;color:var(--sub);
-  padding-left:2px;letter-spacing:.02em;
-}
-.field-wrap{position:relative;display:flex;align-items:center;}
-.field input{
-  width:100%;padding:14px 14px;
-  border:1.5px solid var(--line);border-radius:var(--r-s);
-  background:var(--card);color:var(--ink);
-  font-family:inherit;font-size:15px;font-weight:600;
-  outline:none;transition:.15s;
-}
-.field input:focus{
-  border-color:var(--posco);background:var(--card);
-  box-shadow:0 0 0 3px rgba(0,103,177,.1);
-}
-.field input::placeholder{color:var(--faint);font-weight:500}
-
-.pw-toggle{
-  position:absolute;right:8px;top:50%;transform:translateY(-50%);
-  padding:8px 12px;background:transparent;border:0;
-  color:var(--sub);font-size:12px;font-weight:700;
-  cursor:pointer;border-radius:8px;font-family:inherit;
-}
-.pw-toggle:active{background:var(--sunk)}
-
-.btn-login{
-  margin-top:6px;padding:15px;
-  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 100%);
-  color:#fff;border:0;border-radius:var(--r-s);
-  font-family:inherit;font-size:15px;font-weight:800;
-  cursor:pointer;letter-spacing:-.02em;
-  box-shadow:0 4px 14px rgba(0,60,126,.25);
-  transition:.15s;
-}
-.btn-login:hover:not(:disabled){filter:brightness(1.05)}
-.btn-login:active:not(:disabled){transform:scale(.98)}
-.btn-login:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
-
-.divider{
-  display:flex;align-items:center;gap:10px;
-  margin:6px 0;color:var(--faint);font-size:11px;font-weight:700;
-}
-.divider::before,.divider::after{
-  content:"";flex:1;height:1px;background:var(--line);
-}
-
-.btn-tester{
-  padding:13px;background:var(--card);
-  border:1.5px solid var(--posco);border-radius:var(--r-s);
-  color:var(--posco);
-  font-family:inherit;font-size:14px;font-weight:800;
-  cursor:pointer;letter-spacing:-.02em;
-  transition:.15s;
-}
-.btn-tester:hover{background:var(--tint)}
-.btn-tester:active{transform:scale(.98)}
-
-.msg{
-  min-height:0;padding:0 12px;
-  font-size:12.5px;border-radius:10px;
-  display:none;line-height:1.5;font-weight:600;
-}
-.msg.error{
-  display:block;background:var(--stop-bg);color:var(--stop);
-  border:1px solid rgba(214,39,61,.2);
-  padding:10px 12px;
-}
-.msg.info{
-  display:block;background:var(--tint);color:var(--posco);
-  border:1px solid rgba(0,103,177,.2);
-  padding:10px 12px;
-}
-
-.foot{
-  padding:18px 20px 24px;text-align:center;
-  font-size:11px;color:var(--sub);line-height:1.7;
-  font-weight:600;border-top:1px solid var(--line);
-  background:var(--sunk);
-}
-.foot strong{color:var(--posco);font-weight:800}
-
-/* ═══════════════════════════════════════
-   📱 PHONE FRAME v2 (대시보드와 100% 동일)
-   ═══════════════════════════════════════ */
-@media (min-width: 768px) {
-  body {
-    background: radial-gradient(ellipse at center,
-      #e5e8ec 0%,
-      #c8ccd2 60%,
-      #a8adb4 100%) !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 20px;
-    margin: 0;
-  }
-
-  [data-theme="dark"] body {
-    background: radial-gradient(ellipse at center,
-      #1e2530 0%,
-      #0f1620 60%,
-      #050810 100%) !important;
-  }
-
-  .phone-frame {
-    position: relative;
-    width: 480px;
-    height: 820px;
-    max-height: calc(100vh - 40px);
-    background: #1a1a1a;
-    border-radius: 52px;
-    padding: 12px;
-    box-shadow:
-      0 40px 80px rgba(0,0,0,0.30),
-      0 20px 40px rgba(0,0,0,0.20),
-      0 8px 16px rgba(0,0,0,0.15),
-      inset 0 0 0 2px #2a2a2a,
-      inset 0 2px 8px rgba(255,255,255,0.05);
-    flex-shrink: 0;
-  }
-
-  [data-theme="dark"] .phone-frame {
-    background: #2a2a2a;
-    box-shadow:
-      0 40px 80px rgba(0,0,0,0.7),
-      0 20px 40px rgba(0,0,0,0.5),
-      0 8px 16px rgba(0,0,0,0.3),
-      inset 0 0 0 2px #444,
-      inset 0 2px 8px rgba(255,255,255,0.05);
-  }
-
-  /* 우측 전원 버튼 */
-  .phone-frame::after {
-    content: '';
-    position: absolute;
-    right: -3px; top: 200px;
-    width: 4px; height: 80px;
-    background: linear-gradient(90deg, #2a2a2a 0%, #555 50%, #333 100%);
-    border-radius: 0 3px 3px 0;
-    box-shadow: 1px 0 2px rgba(0,0,0,0.3);
-  }
-
-  .phone-screen {
-    width: 100%;
-    height: 100%;
-    border-radius: 40px;
-    overflow: hidden;
-    position: relative;
-    background: var(--bg);
-  }
-
-  .phone-frame .app {
-    max-width: 100% !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .phone-frame .app::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-  }
-}
-
-/* 모바일: 프레임 완전 무력화 */
-@media (max-width: 767px) {
-  .phone-frame {
-    all: unset;
-    display: block;
-  }
-  .phone-frame::after { display: none; }
-  .phone-screen {
-    border-radius: 0;
-    overflow: visible;
-    height: auto;
-    width: auto;
-    background: transparent;
-  }
-}
-</style>
-</head>
-<body>
-
-<!-- 대시보드와 동일한 프레임 구조 -->
-<div class="phone-frame">
-  <div class="phone-screen">
-    <div class="app">
-
-      <!-- 히어로 -->
-      <header class="login-hero">
-        <div class="dev-badge">DEVELOPMENT TEST</div>
-        <div class="login-logo">🏭</div>
-        <div class="login-brand-en">POSCO FUTURE M</div>
-        <div class="login-brand-ko">안전관리 플랫폼</div>
-        <div class="login-brand-sub">포항양극재공장 · 개발 테스트 버전</div>
-      </header>
-
-      <!-- 로그인 폼 -->
-      <div class="login-body">
-
-        <div class="warn-banner">
-          <div class="warn-banner-title">🧪 개발 테스트 환경입니다</div>
-          <div class="warn-banner-text">
-            이 시스템에서 생성된 문서는 실제 작업허가로 사용할 수 없습니다.<br>
-            실제 개인정보와 비공개 현장정보를 입력하지 마십시오.
-          </div>
-        </div>
-
-        <form id="loginForm" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;">
-          <div class="field">
-            <label for="userId">아이디</label>
-            <div class="field-wrap">
-              <input
-                type="text" id="userId" name="userId"
-                placeholder="아이디 입력"
-                autocapitalize="off" autocorrect="off" spellcheck="false"
-              />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="userPw">비밀번호</label>
-            <div class="field-wrap">
-              <input type="password" id="userPw" name="userPw" placeholder="비밀번호 입력" />
-              <button type="button" class="pw-toggle" id="pwToggle">보기</button>
-            </div>
-          </div>
-
-          <button type="submit" class="btn-login" id="btnLogin">
-            관리자·사용자 로그인
-          </button>
-
-          <div class="msg" id="loginMsg"></div>
-        </form>
-
-        <div class="divider">또는</div>
-
-        <button type="button" class="btn-tester" id="btnTester">
-          🧪 테스터로 체험하기
-        </button>
-
-        <div style="text-align:center;font-size:11.5px;color:var(--sub);font-weight:600;line-height:1.6;margin-top:2px;">
-          로그인하지 않고 앱 기능을 체험합니다.<br>
-          테스터 자료는 다른 사용자에게 공유되지 않습니다.
-        </div>
-      </div>
-
-      <!-- 하단 정보 -->
-      <div class="foot">
-        사진·서명·첨부파일은 저장되지 않습니다.<br>
-        테스트 종료 후 브라우저 자료를 삭제할 수 있습니다.
-      </div>
-
-    </div><!-- /.app -->
-  </div><!-- /.phone-screen -->
-</div><!-- /.phone-frame -->
-
-<!-- Firebase SDK (compat, 대시보드와 동일 스타일) -->
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-
-<script>
-/* =========================================================
-   Firebase 설정 (사용자 제공 값 그대로)
-   ========================================================= */
+// Firebase 프로젝트 설정값
 const firebaseConfig = {
   apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
   authDomain: "safety-management-platfo-5f413.firebaseapp.com",
@@ -439,178 +13,238 @@ const firebaseConfig = {
   measurementId: "G-KNK5ECRCX5"
 };
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
 
+// Firebase 서비스 초기화
 const auth = firebase.auth();
-const db   = firebase.firestore();
+const db = firebase.firestore();
+db.settings({
+  experimentalForceLongPolling: true,  // WebChannel 실패 대응 (Edge/사내망)
+  merge: true
+});
 
-try {
-  db.settings({
-    experimentalForceLongPolling: true,
-    merge: true
-  });
-} catch (e) { /* 이미 사용된 경우 무시 */ }
+const storage = firebase.storage();
 
-const AUTH_ID_DOMAIN = "pfm-safety.test";
+// 현재 로그인한 사용자 정보
+let currentUser = null;
 
-/* =========================================================
-   DOM
-   ========================================================= */
-const $form     = document.getElementById("loginForm");
-const $id       = document.getElementById("userId");
-const $pw       = document.getElementById("userPw");
-const $btn      = document.getElementById("btnLogin");
-const $msg      = document.getElementById("loginMsg");
-const $pwToggle = document.getElementById("pwToggle");
-const $tester   = document.getElementById("btnTester");
-
-function showMsg(text, type){
-  $msg.textContent = text;
-  $msg.className = "msg " + (type || "error");
-}
-function clearMsg(){
-  $msg.textContent = "";
-  $msg.className = "msg";
-  $msg.style.display = "none";
-}
-function toEmail(rawId){
-  const id = (rawId || "").trim();
-  if(!id) return "";
-  if(id.includes("@")) return id;
-  return id + "@" + AUTH_ID_DOMAIN;
-}
-
-/* 비밀번호 보기/숨기기 */
-$pwToggle.addEventListener("click", () => {
-  if($pw.type === "password"){
-    $pw.type = "text";
-    $pwToggle.textContent = "숨김";
-  }else{
-    $pw.type = "password";
-    $pwToggle.textContent = "보기";
+// 사용자 로그인 상태 모니터링
+auth.onAuthStateChanged((user) => {
+  currentUser = user;
+  console.log('사용자 상태 변경:', user ? user.email : '로그아웃됨');
+  
+  if (user) {
+    console.log('✅ 로그인됨:', user.email);
+    updateLoginUI(true, user);
+  } else {
+    console.log('❌ 로그아웃됨');
+    updateLoginUI(false);
   }
 });
 
-/* =========================================================
-   로그인 처리
-   (대시보드가 읽는 세션키: 'appSession')
-   ========================================================= */
-$form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  clearMsg();
-
-  const rawId = $id.value.trim();
-  const pw    = $pw.value;
-
-  if(!rawId || !pw){
-    showMsg("아이디와 비밀번호를 입력하세요.", "error");
-    return;
+// 기본 함수들
+async function signUpWithEmail(email, password, displayName = '사용자') {
+  try {
+    const result = await auth.createUserWithEmailAndPassword(email, password);
+    await result.user.updateProfile({ displayName: displayName });
+    console.log('✅ 회원가입 성공:', email);
+    return result.user;
+  } catch (error) {
+    console.error('❌ 회원가입 실패:', error.message);
+    alert('회원가입 실패: ' + error.message);
+    return null;
   }
+}
 
-  const email = toEmail(rawId);
-  $btn.disabled = true;
-  $btn.textContent = "로그인 중...";
-
-  try{
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-    const cred = await auth.signInWithEmailAndPassword(email, pw);
-    const user = cred.user;
-    console.log("[로그인] Authentication 성공:", user.uid);
-
-    const userSnap = await db.collection("users").doc(user.uid).get();
-    console.log("[로그인] users 문서 존재:", userSnap.exists);
-
-    if(!userSnap.exists){
-      showMsg("등록되지 않은 계정입니다. 관리자에게 문의하세요.", "error");
-      await auth.signOut();
-      return;
-    }
-
-    const data = userSnap.data();
-    console.log("[로그인] active:", data.active, "role:", data.role, "env:", data.environment);
-
-    if(data.active !== true){
-      showMsg("비활성 계정입니다.", "error");
-      await auth.signOut();
-      return;
-    }
-    if(data.environment !== "test"){
-      showMsg("테스트 환경 계정이 아닙니다.", "error");
-      await auth.signOut();
-      return;
-    }
-    if(data.role !== "admin" && data.role !== "user"){
-      showMsg("허용되지 않은 역할입니다.", "error");
-      await auth.signOut();
-      return;
-    }
-
-    /* ⚠️ 대시보드는 sessionStorage['appSession']을 읽음 */
-    const session = {
-      accessMode: "authenticated",
-      role: data.role,
-      uid: user.uid,
-      displayName: data.displayName || "",
-      email: user.email || email,
-      environment: "test"
-    };
-    sessionStorage.setItem("appSession", JSON.stringify(session));
-    console.log("[로그인] 앱 세션 저장 완료");
-
-    showMsg("로그인 성공. 대시보드로 이동합니다.", "info");
-    setTimeout(() => {
-      /* 대시보드 파일명이 다르면 여기만 변경 */
-      location.href = "안전관리플랫폼_대시보드_V6_.html";
-    }, 300);
-
-  }catch(err){
-    console.error("[로그인 오류]", err);
-    let text = "로그인에 실패했습니다.";
-    switch(err.code){
-      case "auth/invalid-credential":
-      case "auth/wrong-password":
-      case "auth/user-not-found":
-        text = "아이디 또는 비밀번호가 올바르지 않습니다."; break;
-      case "auth/too-many-requests":
-        text = "로그인 시도가 많습니다. 잠시 후 다시 시도하세요."; break;
-      case "auth/network-request-failed":
-        text = "네트워크 오류가 발생했습니다."; break;
-      case "auth/invalid-email":
-        text = "아이디 형식이 올바르지 않습니다."; break;
-    }
-    showMsg(text, "error");
-  }finally{
-    $btn.disabled = false;
-    $btn.textContent = "관리자·사용자 로그인";
+async function signInWithEmail(email, password) {
+  try {
+    const result = await auth.signInWithEmailAndPassword(email, password);
+    console.log('✅ 로그인 성공:', email);
+    return result.user;
+  } catch (error) {
+    console.error('❌ 로그인 실패:', error.message);
+    alert('로그인 실패: ' + error.message);
+    return null;
   }
-});
+}
 
-/* =========================================================
-   테스터 진입
-   ========================================================= */
-$tester.addEventListener("click", () => {
-  const testerSession = {
-    accessMode: "tester",
-    role: "tester",
-    uid: null,
-    displayName: "공개 테스터",
-    email: "",
-    environment: "test"
-  };
-  sessionStorage.setItem("appSession", JSON.stringify(testerSession));
-  console.log("[테스터] 로컬 세션 생성 완료");
-  location.href = "안전관리플랫폼_대시보드_V6_.html";
-});
+async function signOut() {
+  try {
+    await auth.signOut();
+    console.log('✅ 로그아웃 성공');
+    return true;
+  } catch (error) {
+    console.error('❌ 로그아웃 실패:', error.message);
+    return false;
+  }
+}
 
-console.log("[로그인] 페이지 준비 완료", {
-  authDomain: firebaseConfig.authDomain,
-  projectId: firebaseConfig.projectId,
-  idDomain: AUTH_ID_DOMAIN
-});
-</script>
+async function saveData(collectionName, data, docId = null) {
+  try {
+    if (docId) {
+      await db.collection(collectionName).doc(docId).set(data, { merge: true });
+      console.log(`✅ 데이터 저장 (${collectionName}/${docId})`);
+      return docId;
+    } else {
+      const docRef = await db.collection(collectionName).add({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      console.log(`✅ 데이터 저장 (${collectionName}/${docRef.id})`);
+      return docRef.id;
+    }
+  } catch (error) {
+    console.error(`❌ 데이터 저장 실패:`, error.message);
+    alert('데이터 저장 실패: ' + error.message);
+    return null;
+  }
+}
 
-</body>
-</html>
+async function getData(collectionName, docId = null) {
+  try {
+    if (docId) {
+      const doc = await db.collection(collectionName).doc(docId).get();
+      if (doc.exists) {
+        console.log(`✅ 데이터 조회 (${collectionName}/${docId})`);
+        return doc.data();
+      } else {
+        console.log(`⚠️ 문서 없음 (${collectionName}/${docId})`);
+        return null;
+      }
+    } else {
+      const snapshot = await db.collection(collectionName).get();
+      const data = [];
+      snapshot.forEach(doc => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+      console.log(`✅ 데이터 조회 (${collectionName}): ${data.length}개`);
+      return data;
+    }
+  } catch (error) {
+    console.error(`❌ 데이터 조회 실패:`, error.message);
+    return null;
+  }
+}
+
+async function getTodayPermits() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const snapshot = await db.collection('작업허가')
+      .where('날짜', '>=', today)
+      .get();
+    
+    const permits = [];
+    snapshot.forEach(doc => {
+      permits.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log(`✅ 오늘 작업 허가: ${permits.length}개`);
+    return permits;
+  } catch (error) {
+    console.error('❌ 오늘 작업 허가 조회 실패:', error.message);
+    return [];
+  }
+}
+
+function updateLoginUI(isLoggedIn, user = null) {
+  if (typeof onLoginStatusChanged === 'function') {
+    onLoginStatusChanged(isLoggedIn, user);
+  }
+}
+
+async function syncLocalStorageToFirebase() {
+  try {
+    if (!currentUser) {
+      alert('로그인 후 이용해주세요.');
+      return false;
+    }
+    
+    const safetyDatabase = localStorage.getItem('safetyDatabase');
+    const permitDatabase = localStorage.getItem('permitDatabase');
+    const tbmDatabase = localStorage.getItem('tbmDatabase');
+    
+    if (safetyDatabase) {
+      const data = JSON.parse(safetyDatabase);
+      await saveData('작업DB', { data }, currentUser.uid + '_작업DB');
+      console.log('✅ 작업 DB 동기화 완료');
+    }
+    
+    if (permitDatabase) {
+      const data = JSON.parse(permitDatabase);
+      await saveData('작업허가', { data }, currentUser.uid + '_작업허가');
+      console.log('✅ 작업 허가 DB 동기화 완료');
+    }
+    
+    if (tbmDatabase) {
+      const data = JSON.parse(tbmDatabase);
+      await saveData('TBM', { data }, currentUser.uid + '_TBM');
+      console.log('✅ TBM DB 동기화 완료');
+    }
+    
+    alert('✅ 모든 데이터가 Firebase에 동기화되었습니다!');
+    return true;
+  } catch (error) {
+    console.error('❌ 동기화 실패:', error.message);
+    alert('동기화 실패: ' + error.message);
+    return false;
+  }
+}
+
+async function syncFirebaseToLocalStorage() {
+  try {
+    if (!currentUser) {
+      alert('로그인 후 이용해주세요.');
+      return false;
+    }
+    
+    const workData = await getData('작업DB', currentUser.uid + '_작업DB');
+    const permitData = await getData('작업허가', currentUser.uid + '_작업허가');
+    const tbmData = await getData('TBM', currentUser.uid + '_TBM');
+    
+    if (workData?.data) {
+      localStorage.setItem('safetyDatabase', JSON.stringify(workData.data));
+    }
+    if (permitData?.data) {
+      localStorage.setItem('permitDatabase', JSON.stringify(permitData.data));
+    }
+    if (tbmData?.data) {
+      localStorage.setItem('tbmDatabase', JSON.stringify(tbmData.data));
+    }
+    
+    alert('✅ Firebase 데이터가 로컬에 복원되었습니다!');
+    return true;
+  } catch (error) {
+    console.error('❌ 복원 실패:', error.message);
+    alert('복원 실패: ' + error.message);
+    return false;
+  }
+}
+
+// ============================================
+// 🧪 테스트/운영 모드 전환 시스템
+// ============================================
+
+// 모드 결정 (URL > localStorage > 기본값)
+const urlMode = new URLSearchParams(location.search).get('mode');
+if (urlMode === 'test' || urlMode === 'prod') {
+  localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+}
+
+window.APP_MODE = localStorage.getItem('appMode') || 'test';  // 기본값: test
+window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+
+// 편의 헬퍼: firestore().collection() 대신 사용
+window.getCollection = function(name) {
+  return firebase.firestore().collection(window.COLLECTION_PREFIX + name);
+};
+
+console.log(
+  `%c[APP MODE] ${window.APP_MODE.toUpperCase()}`,
+  `background:${window.APP_MODE==='test'?'#dc3545':'#28a745'};color:white;padding:4px 12px;border-radius:4px;font-weight:bold;`
+);
+
+console.log('🔧 Firebase 설정 로드 완료');
