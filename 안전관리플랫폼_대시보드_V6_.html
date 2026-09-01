@@ -1982,7 +1982,13 @@ body{
       <div style="font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;letter-spacing:.02em;">사진 (선택)</div>
       <div onclick="document.getElementById('photoFile').click()" style="background:var(--card);border:2px dashed var(--line);border-radius:var(--r-s);padding:22px;text-align:center;cursor:pointer;transition:.15s;">
         <div style="font-size:28px;margin-bottom:5px;">📷</div>
-        <div style="font-size:13px;color:var(--sub);font-weight:700;">터치하여 사진 촬영</div>
+       <div style="font-size:13px;color:var(--sub);font-weight:700;">
+  터치하여 사진 촬영 또는 선택
+</div>
+<div style="font-size:11px;color:var(--warn);font-weight:700;margin-top:5px;">
+  개발 테스트용 · 사진은 서버나 브라우저에 저장되지 않습니다
+</div>
+
       </div>
       <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(event)">
       <div id="photoPrev" style="display:none;position:relative;border-radius:var(--r-s);overflow:hidden;margin-top:8px;">
@@ -2005,7 +2011,9 @@ body{
     <button id="subBtn" onclick="submitInsp()" disabled style="width:100%;padding:18px;border:0;border-radius:var(--r-s);background:var(--run);color:#fff;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:-.02em;box-shadow:0 4px 12px rgba(232,89,12,.25);transition:.15s;">
       ⚡ 즉시 등록
     </button>
-    <p style="text-align:center;font-size:12.5px;color:var(--sub);margin-top:12px;padding-bottom:16px;font-weight:600;">등록 즉시 전체 공유됩니다</p>
+  <p style="text-align:center;font-size:12.5px;color:var(--sub);margin-top:12px;padding-bottom:16px;font-weight:600;">
+  개발 테스트용입니다. 점검 내용은 현재 브라우저에 저장되며 사진은 저장되지 않습니다.
+</p> 
   </div>
 </div>
 <script>
@@ -2013,7 +2021,13 @@ body{
 // STATE (Step 2: curFilter 삭제됨)
 // ═══════════════════════════════════════
 var allWorks=[],dispWorks=[],violations=[],permits=[];
-var ifWork=null,ifSev=null,ifItems=[],custItems=[],photoData=null;
+var ifWork = null;
+var ifSev = null;
+var ifItems = [];
+var custItems = [];
+     
+var photoFile = null;
+var photoPreviewUrl = '';
 var noticeCollapsed=false;
 
 // ═══════════════════════════════════════
@@ -2482,21 +2496,94 @@ function selSev(sev,el){
   valForm();
 }
 
-function onPhoto(e){
-  var f=e.target.files[0];if(!f) return;
-  var r=new FileReader();
-  r.onload=function(ev){
-    photoData=ev.target.result;
-    document.getElementById('photoImg').src=photoData;
-    document.getElementById('photoPrev').style.display='block';
-  };
-  r.readAsDataURL(f);
+function onPhoto(event){
+  var file =
+    event.target.files &&
+    event.target.files[0];
+
+  if(!file){
+    return;
+  }
+
+  if(!file.type.startsWith('image/')){
+    showToast(
+      '이미지 파일만 선택할 수 있습니다.',
+      'error'
+    );
+
+    event.target.value = '';
+    return;
+  }
+
+  var maxFileSize =
+    10 * 1024 * 1024;
+
+  if(file.size > maxFileSize){
+    showToast(
+      '사진은 10MB 이하만 선택할 수 있습니다.',
+      'error'
+    );
+
+    event.target.value = '';
+    return;
+  }
+
+  if(photoPreviewUrl){
+    URL.revokeObjectURL(
+      photoPreviewUrl
+    );
+  }
+
+  photoFile = file;
+
+  photoPreviewUrl =
+    URL.createObjectURL(file);
+
+  var image =
+    document.getElementById('photoImg');
+
+  var preview =
+    document.getElementById('photoPrev');
+
+  if(image){
+    image.src = photoPreviewUrl;
+  }
+
+  if(preview){
+    preview.style.display = 'block';
+  }
 }
 
 function delPhoto(){
-  photoData=null;
-  document.getElementById('photoPrev').style.display='none';
-  document.getElementById('photoFile').value='';
+  if(photoPreviewUrl){
+    URL.revokeObjectURL(
+      photoPreviewUrl
+    );
+  }
+
+  photoFile = null;
+  photoPreviewUrl = '';
+
+  var image =
+    document.getElementById('photoImg');
+
+  var preview =
+    document.getElementById('photoPrev');
+
+  var input =
+    document.getElementById('photoFile');
+
+  if(image){
+    image.removeAttribute('src');
+  }
+
+  if(preview){
+    preview.style.display = 'none';
+  }
+
+  if(input){
+    input.value = '';
+  }
 }
 
 function valForm(){
@@ -2521,23 +2608,35 @@ function submitInsp(){
     createdAt:new Date().toISOString(),
     reporter:{name:name,role:role},
     workInfo:{workId:wid,workName:workName,location:loc,company:company},
-    violation:{
-      severity:ifSev,
-      item:ifItems.join(', '),
-      source:wid==='general'?'일반 점검':'안전작업허가서',
-      photo:photoData
-    },
+violation:{
+  severity:ifSev,
+  item:ifItems.join(', '),
+  source:wid==='general'?'일반 점검':'안전작업허가서',
+  photoTest:{
+    selected:Boolean(photoFile),
+    saved:false,
+    storageMode:'memory-only'
+  }
+},
+
     correction:{status:'미시정',elapsedMinutes:0,completedAt:null}
   });
-  saveViolations();
-  closeSheet('if');
-  renderInspPage();
+saveViolations();
+delPhoto();
+closeSheet('if');
+renderInspPage();
   showToast('점검사항이 등록되었습니다','success');
   if(ifSev==='중대') setTimeout(function(){showToast('🚨 중대 위반! 즉시 조치 바랍니다','error');},500);
 }
 
 function resetIF(){
-  ifWork=null;ifSev=null;ifItems=[];custItems=[];photoData=null;
+  ifWork = null;
+  ifSev = null;
+  ifItems = [];
+  custItems = [];
+
+  delPhoto();
+
   ['repRole','repName'].forEach(function(id){var el=document.getElementById(id);if(el) el.value='';});
   var sb=document.getElementById('subBtn');if(sb) sb.disabled=true;
   var cl=document.getElementById('custList');if(cl) cl.innerHTML='';
