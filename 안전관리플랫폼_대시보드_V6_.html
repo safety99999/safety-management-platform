@@ -1597,8 +1597,7 @@ body{
     display:none;
   }
 }
-   
-</style>
+
 <script>
 /* =========================================================
    로그인 세션 및 역할 확인
@@ -3175,7 +3174,17 @@ function delCust(i){
 function selSev(severity, element){
   ifSev = severity;
 
-
+  document
+    .querySelectorAll(
+      '#severityButtonGroup .sev-btn'
+    )
+    .forEach(function(button){
+      button.classList.remove('on');
+      button.setAttribute(
+        'aria-pressed',
+        'false'
+      );
+    });
 
   if(element){
     element.classList.add('on');
@@ -3194,6 +3203,7 @@ function selSev(severity, element){
 }
 
 window.selSev = selSev;
+
 
 function onPhoto(event){
   var file =
@@ -5215,6 +5225,10 @@ import {
   getApps,
   getApp
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 import {
   getFirestore,
@@ -5252,6 +5266,57 @@ const workDbFirebaseConfig = {
 };
 
 const workDbFirebaseApp = getApps().length ? getApp() : initializeApp(workDbFirebaseConfig);
+const dashboardAuth =
+  getAuth(workDbFirebaseApp);
+
+function waitForDashboardAuth(){
+  return new Promise(function(resolve){
+    var completed = false;
+
+    var unsubscribe =
+      onAuthStateChanged(
+        dashboardAuth,
+
+        function(user){
+          if(completed){
+            return;
+          }
+
+          completed = true;
+          unsubscribe();
+
+          console.log(
+            '[Firebase Auth] 대시보드 인증 확인:',
+            user
+              ? {
+                  uid: user.uid,
+                  email: user.email
+                }
+              : null
+          );
+
+          resolve(user);
+        },
+
+        function(error){
+          if(completed){
+            return;
+          }
+
+          completed = true;
+          unsubscribe();
+
+          console.error(
+            '[Firebase Auth] 인증 상태 확인 실패:',
+            error
+          );
+
+          resolve(null);
+        }
+      );
+  });
+}
+       
 
 // ⭐ iOS Safari는 initializeFirestore + long polling으로 초기화 (필수)
 let workDbFirestore;
@@ -5892,12 +5957,8 @@ function workDbSaveToLocalCache(firestoreWorks){
 }
 function workDbInitialize(){
 
-  /*
-   * 작업DB 관리 패널은 관리자에게만 표시합니다.
-   */
   if(
-    typeof window.isAdminUser ===
-      'function' &&
+    typeof window.isAdminUser === 'function' &&
     window.isAdminUser()
   ){
     workDbCreatePanel();
@@ -5907,13 +5968,10 @@ function workDbInitialize(){
   setTimeout(async function(){
 
     /*
-     * 공개 테스터:
-     * Firestore를 전혀 조회하지 않고
-     * 테스터 전용 로컬 허가서만 사용합니다.
+     * 테스터는 Firestore를 사용하지 않습니다.
      */
     if(
-      typeof window.isPublicTester ===
-        'function' &&
+      typeof window.isPublicTester === 'function' &&
       window.isPublicTester()
     ){
       console.log(
@@ -5922,10 +5980,7 @@ function workDbInitialize(){
 
       loadPermits();
 
-      if(
-        typeof window.applyFilter ===
-          'function'
-      ){
+      if(typeof window.applyFilter === 'function'){
         window.applyFilter();
       }
 
@@ -5933,31 +5988,57 @@ function workDbInitialize(){
     }
 
     /*
-     * 관리자·사용자:
-     * Firebase Authentication 로그인 상태에서만
-     * 허가서를 Firestore에서 조회합니다.
+     * 관리자·사용자는 Firebase Authentication
+     * 상태가 복원될 때까지 기다립니다.
      */
-    if(
-      typeof window.isAuthenticatedUser !==
-        'function' ||
-      !window.isAuthenticatedUser()
-    ){
+    const firebaseUser =
+      await waitForDashboardAuth();
+
+    if(!firebaseUser){
       console.warn(
-        '[대시보드] 인증 사용자 확인 실패 - 서버 조회 중단'
+        '[대시보드] Firebase 인증 없음 - 로그인 화면 이동'
       );
 
+      sessionStorage.removeItem('appSession');
+      window.location.replace('login.html');
       return;
     }
 
+    const appSession =
+      window.APP_SESSION;
+
+    if(
+      !appSession ||
+      appSession.accessMode !== 'authenticated' ||
+      appSession.uid !== firebaseUser.uid
+    ){
+      console.warn(
+        '[대시보드] 앱 세션과 Firebase UID가 일치하지 않습니다.'
+      );
+
+      sessionStorage.removeItem('appSession');
+      window.location.replace('login.html');
+      return;
+    }
+
+    console.log(
+      '[대시보드] 인증 사용자 확인 완료:',
+      {
+        uid: firebaseUser.uid,
+        role: appSession.role
+      }
+    );
+
     /*
-     * 작업DB 전체 자동 조회는 중단 상태를 유지합니다.
-     * 현재 로컬 캐시를 사용하고,
-     * 이후 정적 JSON으로 전환합니다.
+     * 작업DB 전체 자동 조회는 계속 중단합니다.
      */
     console.log(
       '[작업DB] 자동 Firestore 전체 조회 중단 - 기존 캐시 사용'
     );
 
+    /*
+     * 허가서만 Firestore에서 조회합니다.
+     */
     try{
       await loadPermitsFromFirestore();
     }catch(error){
@@ -5969,21 +6050,17 @@ function workDbInitialize(){
 
     loadPermits();
 
-    if(
-      typeof window.applyFilter ===
-        'function'
-    ){
+    if(typeof window.applyFilter === 'function'){
       window.applyFilter();
     }
 
     console.log(
       '[Firestore] 역할별 대시보드 조회 처리 완료'
     );
+
   }, 500);
 }
 
-
-if(document.readyState === "loading"){
   window.addEventListener("DOMContentLoaded", workDbInitialize);
 }else{
   workDbInitialize();
@@ -6973,15 +7050,6 @@ window.submitRiskEdit = async function(){
   }
 
   // 이하 기존 코드 그대로 유지
-
-
-  if(!managerName){
-    if(typeof window.showToast === 'function'){
-      window.showToast('수정자 이름을 입력하세요', 'error');
-    }
-    if(managerEl) managerEl.focus();
-    return;
-  }
 
   if(!riskEditContext.workId){
     if(typeof window.showToast === 'function'){
