@@ -462,6 +462,115 @@
         transition-duration:.01ms !important;
       }
     }
+ 
+/* =========================================================
+   📱 검은 휴대폰 프레임 (PC 전용, 대시보드와 동일 스타일)
+   추가일: 2026-09-02
+   목적: PC에서 로그인 화면을 검은 프레임 안에 표시
+   ========================================================= */
+@media (min-width: 768px) {
+
+  html {
+    background: radial-gradient(ellipse at center,
+      #e5e8ec 0%,
+      #c8ccd2 60%,
+      #a8adb4 100%) !important;
+    min-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* 검은 휴대폰 프레임 본체 */
+  .phone-frame {
+    display: block !important;
+    position: relative !important;
+    width: 480px !important;
+    height: 820px !important;
+    max-height: calc(100vh - 40px) !important;
+    background: #1a1a1a !important;
+    border-radius: 52px !important;
+    padding: 12px !important;
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.30),
+      0 20px 40px rgba(0,0,0,0.20),
+      0 8px 16px rgba(0,0,0,0.15),
+      inset 0 0 0 2px #2a2a2a,
+      inset 0 2px 8px rgba(255,255,255,0.05) !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* 우측 전원 버튼 (장식) */
+  .phone-frame::after {
+    content: '' !important;
+    position: absolute !important;
+    right: -3px !important;
+    top: 200px !important;
+    width: 4px !important;
+    height: 80px !important;
+    background: linear-gradient(90deg, #2a2a2a 0%, #555 50%, #333 100%) !important;
+    border-radius: 0 3px 3px 0 !important;
+    box-shadow: 1px 0 2px rgba(0,0,0,0.3) !important;
+    z-index: 10 !important;
+  }
+
+  /* 프레임 안쪽 화면 */
+  .phone-screen {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 40px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #ffffff !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .phone-screen::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+  }
+}
+
+/* 모바일에서는 프레임 완전 제거 */
+@media (max-width: 767px) {
+  .phone-frame {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .phone-frame::after {
+    display: none;
+  }
+  .phone-screen {
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+    overflow: visible;
+  }
+}
+   
   </style>
 </head>
 
