@@ -7539,8 +7539,26 @@ import {
       btn.disabled = true;
 
       try{
-        const docs = await fetchCollection(WORK_COLLECTION);
+        // ⭐ 작업DB는 localStorage에서 직접 읽음 (Firestore 대신)
+        // 이유: 이미 캐시되어 있고, Firestore 대량 조회 시 hang 문제 발생
+        log('localStorage에서 작업DB 읽는 중...');
+        const raw = localStorage.getItem('safetyDatabase');
+        if(!raw){
+          throw new Error('localStorage에 작업DB가 없습니다. 대시보드를 먼저 로드하세요.');
+        }
+        const database = JSON.parse(raw);
+        const workHistory = Array.isArray(database.workHistory) ? database.workHistory : [];
+        if(!workHistory.length){
+          throw new Error('작업DB가 비어있습니다');
+        }
+        // Firestore와 동일한 형식으로 변환 (id 필드 추가)
+        const docs = workHistory.map(function(w){
+          return Object.assign({ id: w.workId || '' }, w);
+        });
+        log('로드 완료: ' + docs.length + '건 (localStorage에서)');
+
         const payload = {
+
           schemaVersion: SCHEMA_VERSION_WORK,
           collection: WORK_COLLECTION,
           environment: 'test',
@@ -7634,10 +7652,7 @@ import {
 })();
 </script>
 
-
 </body>
 </html>
 
-</body>
-</html>
  
