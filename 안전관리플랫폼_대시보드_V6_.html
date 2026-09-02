@@ -7363,10 +7363,11 @@ console.log('[v7.4] 위험등급 수동 수정 패치 로드 완료');
 })();
 </script>
 
+
 <script type="module">
 /* =========================================================
-   📦 GitHub 정적 JSON 내보내기 (2026-09-03 신규)
-   목적: Firestore → JSON 스냅샷 다운로드
+   📦 GitHub 정적 JSON 내보내기 (2026-09-03 신규 v2)
+   - long polling 강제 (대량 조회 안정성)
    ========================================================= */
 
 import {
@@ -7389,10 +7390,6 @@ import {
   const RISK_COLLECTION = window.getCollectionName("riskAssessmentDB");
   const WORK_COLLECTION = window.getCollectionName("작업DB");
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const needsLongPolling = isIOS || isSafari;
-
   const firebaseConfig = {
     apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
     authDomain: "safety-management-platfo-5f413.firebaseapp.com",
@@ -7404,30 +7401,16 @@ import {
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-  // ⭐ 대시보드가 이미 초기화한 Firestore 인스턴스 재사용
-  //    (그렇지 않으면 대량 조회 시 WebChannel 실패 발생)
-  //    Windows Chrome/Edge에서도 long polling 강제 적용
-  let db;
-  try{
-    db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      useFetchStreams: false
-    });
-    console.log('[JSON 내보내기] Firestore long polling 모드 초기화');
-  }catch(initError){
-    // 이미 초기화된 경우 → 기존 인스턴스 재사용
-    db = getFirestore(app);
-    console.log('[JSON 내보내기] Firestore 기존 인스턴스 재사용:', initError.message);
-  }
-
+  // 대시보드가 이미 initializeFirestore()로 long polling 인스턴스를 만들었으므로
+  // 여기서는 getFirestore(app)으로 그 인스턴스를 재사용
+  const db = getFirestore(app);
+  console.log('[JSON 내보내기] 대시보드 Firestore 인스턴스 재사용');
 
   const exportedFiles = { risk: null, work: null };
 
-  const $status = () => document.getElementById('jsonExportStatus');
-
   function log(msg){
     console.log('[JSON 내보내기]', msg);
-    const el = $status();
+    const el = document.getElementById('jsonExportStatus');
     if(el){
       el.style.display = 'block';
       el.textContent += msg + '\n';
@@ -7435,7 +7418,7 @@ import {
   }
 
   function clearLog(){
-    const el = $status();
+    const el = document.getElementById('jsonExportStatus');
     if(el){
       el.textContent = '';
       el.style.display = 'block';
@@ -7468,13 +7451,13 @@ import {
     if(!window.isAdminUser || !window.isAdminUser()){
       throw new Error('관리자 권한이 필요합니다');
     }
-    log('🌐 ' + collectionName + ' 조회 시작...');
+    log('조회 시작: ' + collectionName);
     const snapshot = await getDocs(collection(db, collectionName));
     const docs = [];
     snapshot.forEach(docSnap => {
       docs.push({ id: docSnap.id, ...docSnap.data() });
     });
-    log('✅ ' + collectionName + ' 로드 완료: ' + docs.length + '건 (' + docs.length + ' reads)');
+    log('로드 완료: ' + docs.length + '건 (' + docs.length + ' reads)');
     return docs;
   }
 
@@ -7486,10 +7469,7 @@ import {
 
   function bindRiskExport(){
     const btn = document.getElementById('btnExportRiskDb');
-    if(!btn){
-      console.warn('[JSON 내보내기] btnExportRiskDb 요소를 찾을 수 없음');
-      return;
-    }
+    if(!btn) return;
 
     btn.addEventListener('click', async () => {
       if(!window.isAdminUser || !window.isAdminUser()){
@@ -7509,9 +7489,7 @@ import {
           collection: RISK_COLLECTION,
           environment: 'test',
           exportedAt: new Date().toISOString(),
-          exportedBy: (sessionStorage.getItem('userName') ||
-                       (window.APP_SESSION && window.APP_SESSION.displayName) ||
-                       'admin'),
+          exportedBy: (sessionStorage.getItem('userName') || 'admin'),
           count: docs.length,
           data: docs
         };
@@ -7529,19 +7507,16 @@ import {
         };
 
         updateCount('risk', docs.length);
-        log('📥 다운로드 완료');
-        log('   크기: ' + (text.length / 1024).toFixed(1) + ' KB');
-        log('   SHA256: ' + hash.substring(0, 16) + '...');
+        log('다운로드 완료');
+        log('크기: ' + (text.length / 1024).toFixed(1) + ' KB');
+        log('SHA256: ' + hash.substring(0, 16) + '...');
 
         if(typeof window.showToast === 'function'){
-          window.showToast('✅ ' + filename + ' 다운로드 완료', 'success');
+          window.showToast('위험성평가 DB 다운로드 완료', 'success');
         }
       }catch(err){
-        log('❌ 오류: ' + err.message);
+        log('오류: ' + err.message);
         console.error(err);
-        if(typeof window.showToast === 'function'){
-          window.showToast('오류: ' + err.message, 'error');
-        }
       }finally{
         btn.disabled = false;
       }
@@ -7550,10 +7525,7 @@ import {
 
   function bindWorkExport(){
     const btn = document.getElementById('btnExportWorkDb');
-    if(!btn){
-      console.warn('[JSON 내보내기] btnExportWorkDb 요소를 찾을 수 없음');
-      return;
-    }
+    if(!btn) return;
 
     btn.addEventListener('click', async () => {
       if(!window.isAdminUser || !window.isAdminUser()){
@@ -7573,9 +7545,7 @@ import {
           collection: WORK_COLLECTION,
           environment: 'test',
           exportedAt: new Date().toISOString(),
-          exportedBy: (sessionStorage.getItem('userName') ||
-                       (window.APP_SESSION && window.APP_SESSION.displayName) ||
-                       'admin'),
+          exportedBy: (sessionStorage.getItem('userName') || 'admin'),
           count: docs.length,
           data: docs
         };
@@ -7593,19 +7563,16 @@ import {
         };
 
         updateCount('work', docs.length);
-        log('📥 다운로드 완료');
-        log('   크기: ' + (text.length / 1024).toFixed(1) + ' KB');
-        log('   SHA256: ' + hash.substring(0, 16) + '...');
+        log('다운로드 완료');
+        log('크기: ' + (text.length / 1024).toFixed(1) + ' KB');
+        log('SHA256: ' + hash.substring(0, 16) + '...');
 
         if(typeof window.showToast === 'function'){
-          window.showToast('✅ ' + filename + ' 다운로드 완료', 'success');
+          window.showToast('작업DB 다운로드 완료', 'success');
         }
       }catch(err){
-        log('❌ 오류: ' + err.message);
+        log('오류: ' + err.message);
         console.error(err);
-        if(typeof window.showToast === 'function'){
-          window.showToast('오류: ' + err.message, 'error');
-        }
       }finally{
         btn.disabled = false;
       }
@@ -7614,21 +7581,17 @@ import {
 
   function bindManifestExport(){
     const btn = document.getElementById('btnExportManifest');
-    if(!btn){
-      console.warn('[JSON 내보내기] btnExportManifest 요소를 찾을 수 없음');
-      return;
-    }
+    if(!btn) return;
 
     btn.addEventListener('click', () => {
       clearLog();
 
       if(!exportedFiles.risk || !exportedFiles.work){
-        log('⚠️ 먼저 1️⃣ 2️⃣ 를 실행하세요.');
-        log('  ├─ risk: ' + (exportedFiles.risk ? '✅' : '❌ 미실행'));
-        log('  └─ work: ' + (exportedFiles.work ? '✅' : '❌ 미실행'));
-
+        log('먼저 1번 2번을 실행하세요');
+        log('  risk: ' + (exportedFiles.risk ? 'OK' : '미실행'));
+        log('  work: ' + (exportedFiles.work ? 'OK' : '미실행'));
         if(typeof window.showToast === 'function'){
-          window.showToast('먼저 1️⃣ 2️⃣ 를 실행하세요', 'error');
+          window.showToast('먼저 1번 2번을 실행하세요', 'error');
         }
         return;
       }
@@ -7637,9 +7600,7 @@ import {
         manifestVersion: 1,
         environment: 'test',
         generatedAt: new Date().toISOString(),
-        generatedBy: (sessionStorage.getItem('userName') ||
-                      (window.APP_SESSION && window.APP_SESSION.displayName) ||
-                      'admin'),
+        generatedBy: (sessionStorage.getItem('userName') || 'admin'),
         repository: 'safety99999/safety-management-platform',
         files: {
           riskAssessmentDB: exportedFiles.risk,
@@ -7648,20 +7609,12 @@ import {
       };
 
       downloadJson('db-manifest.json', manifest);
-
-      log('✅ db-manifest.json 생성 완료');
+      log('manifest 생성 완료');
       log('');
-      log('📌 다음 단계:');
-      log('  1. 다운로드된 3개 파일을 확인');
-      log('     ├─ ' + exportedFiles.risk.filename);
-      log('     ├─ ' + exportedFiles.work.filename);
-      log('     └─ db-manifest.json');
-      log('  2. GitHub 저장소 assets/data/ 폴더에 업로드');
-      log('  3. git commit -m "chore: DB 스냅샷 갱신"');
-      log('  4. git push');
+      log('다음 단계: GitHub assets/data/ 폴더에 3개 파일 커밋');
 
       if(typeof window.showToast === 'function'){
-        window.showToast('✅ manifest 생성 완료', 'success');
+        window.showToast('manifest 생성 완료', 'success');
       }
     });
   }
@@ -7680,6 +7633,7 @@ import {
   }
 })();
 </script>
+
 
 </body>
 </html>
