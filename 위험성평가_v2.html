@@ -122,15 +122,53 @@ button{cursor:pointer;}
   overflow-x:hidden;
 }
 
+/* PC 화면: 대시보드와 동일한 모바일 기기 프레임 */
 @media(min-width:768px){
-  body{padding:24px 0 max(24px,env(safe-area-inset-bottom));}
+  body{
+    min-height:100vh;
+    padding:24px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
   .app{
-    min-height:calc(100vh - 48px);
-    border-radius:24px;
-    box-shadow:0 0 40px rgba(0,60,126,.2),0 20px 60px rgba(0,0,0,.15);
-    overflow:hidden;
+    width:480px;
+    max-width:480px;
+
+    height:min(820px,calc(100vh - 48px));
+    min-height:0;
+    margin:0;
+
+    border:12px solid #111820;
+    border-radius:52px;
+
+    background:var(--bg);
+
+    box-shadow:
+      0 0 0 2px rgba(255,255,255,.08),
+      0 0 40px rgba(0,60,126,.24),
+      0 24px 70px rgba(0,0,0,.3);
+
+    overflow-x:hidden;
+    overflow-y:auto;
+
+    scrollbar-width:none;
+    overscroll-behavior:contain;
+  }
+
+  .app::-webkit-scrollbar{
+    display:none;
+    width:0;
+    height:0;
+  }
+
+  .topnav{
+    border-radius:38px 38px 0 0;
   }
 }
+
 
 .topnav{
   position:sticky;
