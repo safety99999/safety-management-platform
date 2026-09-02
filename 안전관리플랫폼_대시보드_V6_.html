@@ -7363,6 +7363,324 @@ console.log('[v7.4] 위험등급 수동 수정 패치 로드 완료');
 })();
 </script>
 
+<script type="module">
+/* =========================================================
+   📦 GitHub 정적 JSON 내보내기 (2026-09-03 신규)
+   목적: Firestore → JSON 스냅샷 다운로드
+   ========================================================= */
+
+import {
+  initializeApp,
+  getApps,
+  getApp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+
+import {
+  getFirestore,
+  initializeFirestore,
+  collection,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+(function(){
+  const SCHEMA_VERSION_RISK = 35;
+  const SCHEMA_VERSION_WORK = 1;
+
+  const RISK_COLLECTION = window.getCollectionName("riskAssessmentDB");
+  const WORK_COLLECTION = window.getCollectionName("작업DB");
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const needsLongPolling = isIOS || isSafari;
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+    projectId: "safety-management-platfo-5f413",
+    storageBucket: "safety-management-platfo-5f413.appspot.com",
+    messagingSenderId: "96226952530",
+    appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+  };
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+  let db;
+  try{
+    if(needsLongPolling){
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+      });
+    }else{
+      db = getFirestore(app);
+    }
+  }catch(e){
+    db = getFirestore(app);
+  }
+
+  const exportedFiles = { risk: null, work: null };
+
+  const $status = () => document.getElementById('jsonExportStatus');
+
+  function log(msg){
+    console.log('[JSON 내보내기]', msg);
+    const el = $status();
+    if(el){
+      el.style.display = 'block';
+      el.textContent += msg + '\n';
+    }
+  }
+
+  function clearLog(){
+    const el = $status();
+    if(el){
+      el.textContent = '';
+      el.style.display = 'block';
+    }
+  }
+
+  async function sha256(text){
+    const buf = new TextEncoder().encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  function downloadJson(filename, obj){
+    const text = JSON.stringify(obj, null, 2);
+    const blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return text;
+  }
+
+  async function fetchCollection(collectionName){
+    if(!window.isAdminUser || !window.isAdminUser()){
+      throw new Error('관리자 권한이 필요합니다');
+    }
+    log('🌐 ' + collectionName + ' 조회 시작...');
+    const snapshot = await getDocs(collection(db, collectionName));
+    const docs = [];
+    snapshot.forEach(docSnap => {
+      docs.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    log('✅ ' + collectionName + ' 로드 완료: ' + docs.length + '건 (' + docs.length + ' reads)');
+    return docs;
+  }
+
+  function updateCount(target, count){
+    const id = target === 'risk' ? 'jsonExportRiskCount' : 'jsonExportWorkCount';
+    const el = document.getElementById(id);
+    if(el) el.textContent = count + '건';
+  }
+
+  function bindRiskExport(){
+    const btn = document.getElementById('btnExportRiskDb');
+    if(!btn){
+      console.warn('[JSON 내보내기] btnExportRiskDb 요소를 찾을 수 없음');
+      return;
+    }
+
+    btn.addEventListener('click', async () => {
+      if(!window.isAdminUser || !window.isAdminUser()){
+        if(typeof window.showToast === 'function'){
+          window.showToast('관리자만 사용할 수 있습니다', 'error');
+        }
+        return;
+      }
+
+      clearLog();
+      btn.disabled = true;
+
+      try{
+        const docs = await fetchCollection(RISK_COLLECTION);
+        const payload = {
+          schemaVersion: SCHEMA_VERSION_RISK,
+          collection: RISK_COLLECTION,
+          environment: 'test',
+          exportedAt: new Date().toISOString(),
+          exportedBy: (sessionStorage.getItem('userName') ||
+                       (window.APP_SESSION && window.APP_SESSION.displayName) ||
+                       'admin'),
+          count: docs.length,
+          data: docs
+        };
+
+        const filename = 'risk-assessment-db.v' + SCHEMA_VERSION_RISK + '.json';
+        const text = downloadJson(filename, payload);
+        const hash = await sha256(text);
+
+        exportedFiles.risk = {
+          filename: filename,
+          schemaVersion: SCHEMA_VERSION_RISK,
+          count: docs.length,
+          size: text.length,
+          sha256: hash
+        };
+
+        updateCount('risk', docs.length);
+        log('📥 다운로드 완료');
+        log('   크기: ' + (text.length / 1024).toFixed(1) + ' KB');
+        log('   SHA256: ' + hash.substring(0, 16) + '...');
+
+        if(typeof window.showToast === 'function'){
+          window.showToast('✅ ' + filename + ' 다운로드 완료', 'success');
+        }
+      }catch(err){
+        log('❌ 오류: ' + err.message);
+        console.error(err);
+        if(typeof window.showToast === 'function'){
+          window.showToast('오류: ' + err.message, 'error');
+        }
+      }finally{
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function bindWorkExport(){
+    const btn = document.getElementById('btnExportWorkDb');
+    if(!btn){
+      console.warn('[JSON 내보내기] btnExportWorkDb 요소를 찾을 수 없음');
+      return;
+    }
+
+    btn.addEventListener('click', async () => {
+      if(!window.isAdminUser || !window.isAdminUser()){
+        if(typeof window.showToast === 'function'){
+          window.showToast('관리자만 사용할 수 있습니다', 'error');
+        }
+        return;
+      }
+
+      clearLog();
+      btn.disabled = true;
+
+      try{
+        const docs = await fetchCollection(WORK_COLLECTION);
+        const payload = {
+          schemaVersion: SCHEMA_VERSION_WORK,
+          collection: WORK_COLLECTION,
+          environment: 'test',
+          exportedAt: new Date().toISOString(),
+          exportedBy: (sessionStorage.getItem('userName') ||
+                       (window.APP_SESSION && window.APP_SESSION.displayName) ||
+                       'admin'),
+          count: docs.length,
+          data: docs
+        };
+
+        const filename = 'work-database.test.json';
+        const text = downloadJson(filename, payload);
+        const hash = await sha256(text);
+
+        exportedFiles.work = {
+          filename: filename,
+          schemaVersion: SCHEMA_VERSION_WORK,
+          count: docs.length,
+          size: text.length,
+          sha256: hash
+        };
+
+        updateCount('work', docs.length);
+        log('📥 다운로드 완료');
+        log('   크기: ' + (text.length / 1024).toFixed(1) + ' KB');
+        log('   SHA256: ' + hash.substring(0, 16) + '...');
+
+        if(typeof window.showToast === 'function'){
+          window.showToast('✅ ' + filename + ' 다운로드 완료', 'success');
+        }
+      }catch(err){
+        log('❌ 오류: ' + err.message);
+        console.error(err);
+        if(typeof window.showToast === 'function'){
+          window.showToast('오류: ' + err.message, 'error');
+        }
+      }finally{
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function bindManifestExport(){
+    const btn = document.getElementById('btnExportManifest');
+    if(!btn){
+      console.warn('[JSON 내보내기] btnExportManifest 요소를 찾을 수 없음');
+      return;
+    }
+
+    btn.addEventListener('click', () => {
+      clearLog();
+
+      if(!exportedFiles.risk || !exportedFiles.work){
+        log('⚠️ 먼저 1️⃣ 2️⃣ 를 실행하세요.');
+        log('  ├─ risk: ' + (exportedFiles.risk ? '✅' : '❌ 미실행'));
+        log('  └─ work: ' + (exportedFiles.work ? '✅' : '❌ 미실행'));
+
+        if(typeof window.showToast === 'function'){
+          window.showToast('먼저 1️⃣ 2️⃣ 를 실행하세요', 'error');
+        }
+        return;
+      }
+
+      const manifest = {
+        manifestVersion: 1,
+        environment: 'test',
+        generatedAt: new Date().toISOString(),
+        generatedBy: (sessionStorage.getItem('userName') ||
+                      (window.APP_SESSION && window.APP_SESSION.displayName) ||
+                      'admin'),
+        repository: 'safety99999/safety-management-platform',
+        files: {
+          riskAssessmentDB: exportedFiles.risk,
+          workDatabase: exportedFiles.work
+        }
+      };
+
+      downloadJson('db-manifest.json', manifest);
+
+      log('✅ db-manifest.json 생성 완료');
+      log('');
+      log('📌 다음 단계:');
+      log('  1. 다운로드된 3개 파일을 확인');
+      log('     ├─ ' + exportedFiles.risk.filename);
+      log('     ├─ ' + exportedFiles.work.filename);
+      log('     └─ db-manifest.json');
+      log('  2. GitHub 저장소 assets/data/ 폴더에 업로드');
+      log('  3. git commit -m "chore: DB 스냅샷 갱신"');
+      log('  4. git push');
+
+      if(typeof window.showToast === 'function'){
+        window.showToast('✅ manifest 생성 완료', 'success');
+      }
+    });
+  }
+
+  function initExportUI(){
+    bindRiskExport();
+    bindWorkExport();
+    bindManifestExport();
+    console.log('[JSON 내보내기] 관리자 도구 로드 완료');
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initExportUI);
+  }else{
+    initExportUI();
+  }
+})();
+</script>
+
+</body>
+</html>
+
 </body>
 </html>
  
