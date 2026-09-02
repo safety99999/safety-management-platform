@@ -1,0 +1,23 @@
+{
+  "manifestVersion": 1,
+  "environment": "test",
+  "generatedAt": "2026-09-02T08:20:55.252Z",
+  "generatedBy": "테스트 관리자",
+  "repository": "safety99999/safety-management-platform",
+  "files": {
+    "riskAssessmentDB": {
+      "filename": "risk-assessment-db.v35.json",
+      "schemaVersion": 35,
+      "count": 215,
+      "size": 209519,
+      "sha256": "4f67564943fbf48551f1434886af6df6748cdd1943cdb88231a6d514653de698"
+    },
+    "workDatabase": {
+      "filename": "work-database.test.json",
+      "schemaVersion": 1,
+      "count": 735,
+      "size": 2110027,
+      "sha256": "c8e6b856c74325788728c71707afe36e48c916de62139def802a32947f4e2def"
+    }
+  }
+}
