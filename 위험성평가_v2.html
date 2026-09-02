@@ -2776,36 +2776,6 @@ function searchRiskDatabase(workName, workType, workDescription){
 // 17. 심각도 및 위험도 판정
 // ═══════════════════════════════════════════════════════
 
-function getSeverity(accidentType){
-  var text = String(accidentType || '').trim();
-  if(!text || text === '판정불가'){ return '판정불가'; }
-
-  var normalized = compactText(text);
-
-  var orderedKeys = Object.keys(SEVERITY_MAP).sort(function(first, second){
-    var severityDifference =
-      (SEVERITY_ORDER[SEVERITY_MAP[second]] || 0) -
-      (SEVERITY_ORDER[SEVERITY_MAP[first]] || 0);
-    if(severityDifference !== 0){ return severityDifference; }
-    return compactText(second).length - compactText(first).length;
-  });
-
-  var maximumSeverity = 0;
-  orderedKeys.forEach(function(key){
-    var normalizedKey = compactText(key);
-    if(normalizedKey && normalized.indexOf(normalizedKey) >= 0){
-      maximumSeverity = Math.max(maximumSeverity,
-        SEVERITY_ORDER[SEVERITY_MAP[key]] || 0);
-    }
-  });
-
-  if(maximumSeverity === 0){
-    console.warn('⚠️ 미등록 사고유형:', accidentType);
-    return '판정불가';
-  }
-
-  return SEVERITY_ORDER_REVERSE[maximumSeverity] || '판정불가';
-}
 
 function getSeverity(accidentType){
   var text = String(accidentType || '').trim();
@@ -3097,26 +3067,20 @@ function evaluateReferenceRisk(searchResult){
 }
 
 
-  if(severity === '판정불가'){
-    return {
-      valid:false, invalidReason:'사고유형 심각도 미등록',
-      item:item, tier:searchResult.tier, relevance:searchResult.relevance,
-      severity:severity, controlAdequacy:control, baseLevel:'판정불가',
-      finalLevel:'판정불가', adjustments:[]
-    };
-  }
-
-  var baseLevel = calculateMatrixRisk(control, severity);
-  var adjustment = applyRiskAdjustments(baseLevel, item.accidentType,
-    riskData.workProfile, item.classCode, control);
-
+function evaluateReferenceRisk(searchResult){
+  ...
   return {
     valid:true, invalidReason:'',
-    item:item, tier:searchResult.tier, relevance:searchResult.relevance,
-    severity:severity, controlAdequacy:control, baseLevel:baseLevel,
-    finalLevel:adjustment.level, adjustments:adjustment.adjustments
+    ...
+    fallbackUsed:false
   };
 }
+
+function buildReferenceDetail(judgment){
+  return {
+    docId: judgment.item.docId || judgment.item.id || '',
+    ...
+
 
 function buildReferenceDetail(judgment){
   return {
