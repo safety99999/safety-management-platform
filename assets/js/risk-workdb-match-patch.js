@@ -1,29 +1,28 @@
 /* ============================================================
- * risk-workdb-match-patch.js v1.0.0
- * 위험성평가 작업DB 실제 매칭 보완
+ * risk-workdb-match-patch.js v2.0.0
+ * 위험성평가 작업DB 비차단 검토
  *
- * 전제:
- * 1. db-loader.js가 먼저 로드되어 있어야 함
- * 2. 위험성평가_v2.html 본체가 먼저 실행되어 있어야 함
- * 3. risk-judgment-patch.js가 먼저 로드되어 있어야 함
+ * 원칙
+ * - 위험성평가 본체 분석을 먼저 완료
+ * - 작업DB는 분석 완료 후 별도로 검토
+ * - 핵심 판정 함수를 덮어쓰지 않음
+ * - 작업DB 오류가 평가 화면을 막지 않음
  *
- * 적용:
- * - 정적 작업DB 735건 로드
- * - workId 정확 일치
- * - 작업명·유형·설명·회사·장소 유사 매칭
- * - 실제 매칭 결과 화면 표시
- * - 작업DB 위험등급을 작성자 직접판정 참고값으로 제공
- * - 저장 객체에 workDatabaseReference 추가
+ * 작업DB 해석
+ * - 고위험: 내부 프로세스를 거친 신뢰 가능한 고위험 분류
+ * - 일반: 저위험으로 변환하지 않음
+ *
+ * 자동 보완
+ * - 작업DB 정확 일치 고위험 → 고위험 근거로 반영
+ * - 위험성평가 DB 등록 위험도·통제값 → 보조판정
+ * - 근거가 충분하면 자동판정
+ * - 위험도 또는 통제값이 부족하면 작성자 직접판정에 사전 선택
  * ============================================================ */
 
 (function(global){
   'use strict';
 
-  var PATCH_VERSION = '1.0.0';
-
-  var STRONG_MATCH_SCORE = 80;
-  var CANDIDATE_MATCH_SCORE = 60;
-  var MAX_VISIBLE_MATCHES = 3;
+  var PATCH_VERSION = '2.0.0';
 
   var workDatabase = [];
 
@@ -36,17 +35,16 @@
   };
 
   var workDatabaseLoadPromise = null;
-  var currentWorkDatabaseMatches = [];
-  var selectedWorkDatabaseMatch = null;
+  var currentReviewToken = 0;
+
+  var currentMatches = [];
+  var selectedMatch = null;
 
   function log(){
-    var args =
-      Array.prototype.slice.call(
-        arguments
-      );
+    var args = Array.prototype.slice.call(arguments);
 
     args.unshift(
-      '[risk-workdb-match]'
+      '[risk-workdb-v2]'
     );
 
     console.log.apply(
@@ -56,13 +54,10 @@
   }
 
   function warn(){
-    var args =
-      Array.prototype.slice.call(
-        arguments
-      );
+    var args = Array.prototype.slice.call(arguments);
 
     args.unshift(
-      '[risk-workdb-match]'
+      '[risk-workdb-v2]'
     );
 
     console.warn.apply(
@@ -85,21 +80,7 @@
       .replace(/'/g, '&#039;');
   }
 
-  function normalizeText(value){
-    if(
-      typeof global.normalizeText ===
-      'function'
-    ){
-      return global.normalizeText(value);
-    }
-
-    return String(value || '')
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function compactText(value){
+  function compact(value){
     if(
       typeof global.compactText ===
       'function'
@@ -107,31 +88,26 @@
       return global.compactText(value);
     }
 
-    return normalizeText(value)
+    return String(value || '')
+      .toLowerCase()
+      .replace(/패널/g, '판넬')
+      .replace(/\s+/g, '')
       .replace(/[^0-9a-z가-힣]/g, '');
   }
 
-  function calculateSimilarity(
-    first,
-    second
-  ){
+  function similarity(first, second){
     if(
-      typeof global
-        .calculateTextSimilarity ===
+      typeof global.calculateTextSimilarity ===
       'function'
     ){
-      return global
-        .calculateTextSimilarity(
-          first,
-          second
-        );
+      return global.calculateTextSimilarity(
+        first,
+        second
+      );
     }
 
-    var firstText =
-      compactText(first);
-
-    var secondText =
-      compactText(second);
+    var firstText = compact(first);
+    var secondText = compact(second);
 
     if(
       !firstText ||
@@ -163,46 +139,43 @@
     return 0;
   }
 
-  function normalizeRiskLevel(value){
+  function normalizeRisk(value){
     if(
       global.riskJudgmentPatch &&
-      typeof global
-        .riskJudgmentPatch
+      typeof global.riskJudgmentPatch
         .normalizeRiskLevel ===
         'function'
     ){
-      return global
-        .riskJudgmentPatch
+      return global.riskJudgmentPatch
         .normalizeRiskLevel(value);
     }
 
-    var raw =
-      String(value || '')
-        .trim()
-        .replace(/\s+/g, '');
+    var text = String(value || '')
+      .trim()
+      .replace(/\s+/g, '');
 
     if(
-      raw === '저' ||
-      raw === '저위험' ||
-      raw === '낮음'
+      text === '저' ||
+      text === '저위험' ||
+      text === '낮음'
     ){
       return '저위험';
     }
 
     if(
-      raw === '중' ||
-      raw === '중위험' ||
-      raw === '보통'
+      text === '중' ||
+      text === '중위험' ||
+      text === '보통'
     ){
       return '중위험';
     }
 
     if(
-      raw === '고' ||
-      raw === '고위험' ||
-      raw === '높음' ||
-      raw === '매우고위험' ||
-      raw === '매우높음'
+      text === '고' ||
+      text === '고위험' ||
+      text === '매우고위험' ||
+      text === '높음' ||
+      text === '매우높음'
     ){
       return '고위험';
     }
@@ -210,50 +183,84 @@
     return '';
   }
 
-  function getRiskOrder(value){
+  function normalizeControl(value){
+    if(
+      global.riskJudgmentPatch &&
+      typeof global.riskJudgmentPatch
+        .normalizeControlValue ===
+        'function'
+    ){
+      return global.riskJudgmentPatch
+        .normalizeControlValue(value);
+    }
+
+    var raw = String(value || '').trim();
+
+    var text = raw
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[()]/g, '');
+
+    if(
+      raw === '○' ||
+      text === 'o' ||
+      text === '0' ||
+      text === '적정' ||
+      text === '양호' ||
+      text === '적합'
+    ){
+      return '○';
+    }
+
+    if(
+      raw === '△' ||
+      text === '보완' ||
+      text === '보완필요' ||
+      text === '일부보완' ||
+      text === '주의'
+    ){
+      return '△';
+    }
+
+    if(
+      raw === '×' ||
+      raw === '✕' ||
+      text === 'x' ||
+      text === '미흡' ||
+      text === '부적정' ||
+      text === '부적합'
+    ){
+      return '×';
+    }
+
+    return '';
+  }
+
+  function riskOrder(value){
     var order = {
       '저위험': 1,
       '중위험': 2,
       '고위험': 3
     };
 
-    return (
-      order[
-        normalizeRiskLevel(value)
-      ] || 0
-    );
+    return order[
+      normalizeRisk(value)
+    ] || 0;
   }
 
-  function getHigherRisk(
-    first,
-    second
-  ){
-    var firstRisk =
-      normalizeRiskLevel(first);
+  function controlOrder(value){
+    var order = {
+      '○': 1,
+      '△': 2,
+      '×': 3
+    };
 
-    var secondRisk =
-      normalizeRiskLevel(second);
-
-    if(!firstRisk){
-      return secondRisk;
-    }
-
-    if(!secondRisk){
-      return firstRisk;
-    }
-
-    return (
-      getRiskOrder(secondRisk) >
-      getRiskOrder(firstRisk)
-        ? secondRisk
-        : firstRisk
-    );
+    return order[
+      normalizeControl(value)
+    ] || 0;
   }
 
-  function firstValue(
-    object,
-    keys
-  ){
+  function firstValue(object, keys){
     object = object || {};
 
     for(
@@ -261,8 +268,7 @@
       index < keys.length;
       index++
     ){
-      var value =
-        object[keys[index]];
+      var value = object[keys[index]];
 
       if(
         value !== undefined &&
@@ -276,197 +282,177 @@
     return '';
   }
 
-  function getWorkName(work){
-    return firstValue(
-      work,
-      [
-        'workName',
-        'workNameFull',
-        'name',
-        'title',
-        '작업명'
-      ]
-    );
-  }
-
-  function getWorkDescription(work){
-    return firstValue(
-      work,
-      [
-        'workDescription',
-        'workDetail',
-        'description',
-        'workDesc',
-        'safety',
-        'detail',
-        '작업내용',
-        '상세내용'
-      ]
-    );
-  }
-
-  function getWorkType(work){
-    return firstValue(
-      work,
-      [
-        'workType',
-        'type',
-        'category',
-        '작업유형',
-        '작업분류'
-      ]
-    );
-  }
-
-  function getWorkCompany(work){
-    return firstValue(
-      work,
-      [
-        'company',
-        'companyName',
-        'contractorCompany',
-        'vendor',
-        '협력사'
-      ]
-    );
-  }
-
-  function getWorkLocation(work){
-    var location =
-      firstValue(
-        work,
-        [
-          'location',
-          'workLocation',
-          'place',
-          'factory',
-          '작업장소'
-        ]
-      );
-
-    if(
-      location &&
-      typeof location === 'object'
-    ){
-      return [
-        location.factory || '',
-        location.line || '',
-        location.area || '',
-        location.detail || ''
-      ]
-        .join(' ')
-        .trim();
-    }
-
-    return String(location || '');
-  }
-
-  function getWorkDate(work){
-    return String(
-      firstValue(
-        work,
-        [
-          'date',
-          'workDate',
-          'startDate',
-          '작업일'
-        ]
-      ) || ''
-    );
-  }
-
-  function getWorkOriginalNumber(work){
-    return String(
-      firstValue(
-        work,
-        [
-          'originalNo',
-          'workNo',
-          'number',
-          'no'
-        ]
-      ) || ''
-    );
-  }
-
   function getWorkId(work){
-    var directId =
-      firstValue(
-        work,
-        [
-          'workId',
-          'id',
-          'docId'
-        ]
-      );
+    var directId = firstValue(
+      work,
+      [
+        'workId',
+        'id',
+        'docId'
+      ]
+    );
 
     if(directId){
       return String(directId);
     }
 
-    var date =
-      getWorkDate(work);
+    var date = firstValue(
+      work,
+      [
+        'date',
+        'workDate',
+        'startDate'
+      ]
+    );
 
-    var originalNumber =
-      getWorkOriginalNumber(work);
+    var originalNo = firstValue(
+      work,
+      [
+        'originalNo',
+        'workNo',
+        'number',
+        'no'
+      ]
+    );
 
-    if(date && originalNumber){
+    if(date && originalNo){
       return (
-        date +
+        String(date) +
         '_' +
-        originalNumber
+        String(originalNo)
       );
     }
 
     return '';
   }
 
-  function getWorkRisk(work){
-    var original =
+  function getWorkName(work){
+    return String(
       firstValue(
         work,
         [
-          'riskLevel',
-          'risk',
-          'overallRisk',
-          'riskGrade',
-          '위험등급',
-          '위험도'
+          'workName',
+          'workNameFull',
+          'name',
+          'title'
         ]
-      );
+      ) || ''
+    );
+  }
+
+  function getWorkFullName(work){
+    return String(
+      firstValue(
+        work,
+        [
+          'workNameFull',
+          'workName',
+          'workDescription',
+          'workDetail',
+          'safetyOriginal'
+        ]
+      ) || ''
+    );
+  }
+
+  function getCompany(work){
+    return String(
+      firstValue(
+        work,
+        [
+          'company',
+          'executingCompany',
+          'contractCompany',
+          'subcontractCompany'
+        ]
+      ) || ''
+    );
+  }
+
+  function getLocation(work){
+    var value = firstValue(
+      work,
+      [
+        'location',
+        'locationRaw',
+        'permitLocation'
+      ]
+    );
+
+    if(
+      value &&
+      typeof value === 'object'
+    ){
+      return [
+        value.factory || '',
+        value.line || '',
+        value.area || '',
+        value.detail || ''
+      ]
+        .join(' ')
+        .trim();
+    }
+
+    return String(value || '');
+  }
+
+  function getWorkRiskInfo(work){
+    var risk = String(
+      firstValue(
+        work,
+        [
+          'risk',
+          'riskLevel',
+          'overallRisk'
+        ]
+      ) || ''
+    ).trim();
+
+    var highRiskFlag =
+      work &&
+      work.isHighRiskFromSource === true;
+
+    var isHigh =
+      highRiskFlag ||
+      risk === '고위험' ||
+      risk === '매우고위험';
 
     return {
-      original:
-        String(original || '').trim(),
-
-      normalized:
-        normalizeRiskLevel(original)
+      original: risk,
+      isHigh: isHigh,
+      label:
+        isHigh
+          ? '고위험'
+          : (
+              risk === '일반'
+                ? '일반'
+                : risk
+            )
     };
   }
 
-  async function loadWorkDatabase(
-    forceRefresh
-  ){
+  async function loadWorkDatabase(){
     if(
-      workDatabaseLoadPromise &&
-      !forceRefresh
+      Array.isArray(workDatabase) &&
+      workDatabase.length > 0
     ){
+      return workDatabase;
+    }
+
+    if(workDatabaseLoadPromise){
       return workDatabaseLoadPromise;
     }
 
+    workDatabaseState.status = 'loading';
+    workDatabaseState.error = '';
+
     workDatabaseLoadPromise =
       (async function(){
-        workDatabaseState.status =
-          'loading';
-
-        workDatabaseState.error = '';
-
         try {
           if(
             !global.staticDbLoader ||
-            typeof global
-              .staticDbLoader
-              .load !== 'function'
+            typeof global.staticDbLoader.load !==
+              'function'
           ){
             throw new Error(
               '정적 DB 로더를 사용할 수 없습니다.'
@@ -475,11 +461,7 @@
 
           var result =
             await global.staticDbLoader.load(
-              'workDatabase',
-              {
-                forceRefresh:
-                  Boolean(forceRefresh)
-              }
+              'workDatabase'
             );
 
           var payload =
@@ -499,27 +481,25 @@
 
           if(!rows){
             throw new Error(
-              '작업DB 정적 JSON의 data 배열을 찾을 수 없습니다.'
+              '작업DB data 배열을 찾을 수 없습니다.'
             );
           }
-
-          var manifestCount =
-            Number(result.count || 0);
 
           if(
-            manifestCount > 0 &&
-            manifestCount !== rows.length
+            Number(result.count || 0) > 0 &&
+            Number(result.count) !==
+              rows.length
           ){
             throw new Error(
-              '작업DB manifest 건수와 실제 건수가 다릅니다. manifest: ' +
-              manifestCount +
-              ', 실제: ' +
-              rows.length
+              '작업DB 건수 불일치: manifest ' +
+              result.count +
+              '건 / 실제 ' +
+              rows.length +
+              '건'
             );
           }
 
-          workDatabase =
-            rows.slice();
+          workDatabase = rows.slice();
 
           workDatabaseState = {
             status: 'loaded',
@@ -533,17 +513,8 @@
           };
 
           log(
-            '✅ 작업DB 로드 완료',
-            {
-              source:
-                workDatabaseState.source,
-              count:
-                workDatabase.length,
-              filename:
-                result.filename,
-              sha256:
-                result.sha256
-            }
+            '작업DB 준비 완료',
+            workDatabaseState
           );
 
           return workDatabase;
@@ -563,28 +534,22 @@
               new Date().toISOString()
           };
 
-          console.error(
-            '[risk-workdb-match] 작업DB 로드 실패:',
+          warn(
+            '작업DB 로드 실패 — 본체 평가는 계속됩니다.',
             error
           );
 
           return [];
+        } finally {
+          workDatabaseLoadPromise = null;
         }
       })();
 
-    try {
-      return await workDatabaseLoadPromise;
-    } finally {
-      workDatabaseLoadPromise = null;
-    }
+    return workDatabaseLoadPromise;
   }
 
-  function calculateWorkMatch(
-    work,
-    current
-  ){
-    var workId =
-      getWorkId(work);
+  function calculateMatch(work, current){
+    var workId = getWorkId(work);
 
     if(
       current.workId &&
@@ -601,36 +566,84 @@
       };
     }
 
+    var workDate = String(
+      firstValue(
+        work,
+        [
+          'date',
+          'workDate',
+          'startDate'
+        ]
+      ) || ''
+    );
+
+    var workOriginalNo = String(
+      firstValue(
+        work,
+        [
+          'originalNo',
+          'workNo'
+        ]
+      ) || ''
+    );
+
+    var combinedId =
+      workDate && workOriginalNo
+        ? (
+            workDate +
+            '_' +
+            workOriginalNo
+          )
+        : '';
+
+    if(
+      current.workId &&
+      combinedId &&
+      String(current.workId) ===
+        combinedId
+    ){
+      return {
+        score: 98,
+        method: 'date-originalNo-exact',
+        reasons: [
+          '작업일자·원본번호 일치'
+        ]
+      };
+    }
+
     var score = 0;
     var reasons = [];
 
-    var workName =
-      String(getWorkName(work) || '');
+    var currentName = String(
+      current.workName || ''
+    );
 
-    var currentName =
-      String(current.workName || '');
+    var databaseName =
+      getWorkName(work);
 
-    var nameSimilarity =
-      calculateSimilarity(
-        currentName,
-        workName
-      );
+    var currentNameKey =
+      compact(currentName);
+
+    var databaseNameKey =
+      compact(databaseName);
 
     if(
-      compactText(currentName) &&
-      compactText(currentName) ===
-        compactText(workName)
+      currentNameKey &&
+      currentNameKey ===
+        databaseNameKey
     ){
-      score += 55;
+      score += 60;
 
       reasons.push(
         '작업명 정확 일치'
       );
     } else {
-      var nameScore =
-        Math.round(
-          nameSimilarity * 40
-        );
+      var nameScore = Math.round(
+        similarity(
+          currentName,
+          databaseName
+        ) * 45
+      );
 
       score += nameScore;
 
@@ -641,70 +654,32 @@
       }
     }
 
-    var currentType =
-      String(current.workType || '');
-
-    var workType =
-      String(getWorkType(work) || '');
-
-    if(
-      compactText(currentType) &&
-      compactText(currentType) ===
-        compactText(workType)
-    ){
-      score += 15;
-
-      reasons.push(
-        '작업유형 일치'
-      );
-    } else if(
-      currentType &&
-      workType &&
-      calculateSimilarity(
-        currentType,
-        workType
-      ) >= 0.6
-    ){
-      score += 9;
-
-      reasons.push(
-        '작업유형 유사'
-      );
-    }
-
-    var descriptionSimilarity =
-      calculateSimilarity(
+    var detailScore = Math.round(
+      similarity(
         current.workDescription || '',
-        getWorkDescription(work)
-      );
+        getWorkFullName(work)
+      ) * 15
+    );
 
-    var descriptionScore =
-      Math.round(
-        descriptionSimilarity * 15
-      );
+    score += detailScore;
 
-    score += descriptionScore;
-
-    if(descriptionScore >= 7){
+    if(detailScore >= 7){
       reasons.push(
-        '작업내용 유사'
+        '상세 작업내용 유사'
       );
     }
 
     var currentCompany =
-      compactText(
-        current.company || ''
-      );
+      compact(current.company);
 
-    var workCompany =
-      compactText(
-        getWorkCompany(work)
-      );
+    var databaseCompany =
+      compact(getCompany(work));
 
     if(
       currentCompany &&
-      workCompany &&
-      currentCompany === workCompany
+      databaseCompany &&
+      currentCompany ===
+        databaseCompany
     ){
       score += 10;
 
@@ -714,25 +689,21 @@
     }
 
     var currentLocation =
-      compactText(
-        current.location || ''
-      );
+      compact(current.location);
 
-    var workLocation =
-      compactText(
-        getWorkLocation(work)
-      );
+    var databaseLocation =
+      compact(getLocation(work));
 
     if(
       currentLocation &&
-      workLocation &&
+      databaseLocation &&
       (
         currentLocation ===
-          workLocation ||
+          databaseLocation ||
         currentLocation.indexOf(
-          workLocation
+          databaseLocation
         ) >= 0 ||
-        workLocation.indexOf(
+        databaseLocation.indexOf(
           currentLocation
         ) >= 0
       )
@@ -749,22 +720,21 @@
         Math.min(99, score),
 
       method:
-        score >= STRONG_MATCH_SCORE
+        score >= 80
           ? 'similar-strong'
           : 'similar-candidate',
 
-      reasons:
-        reasons
+      reasons: reasons
     };
   }
 
-  function findWorkDatabaseMatches(){
+  function findMatches(){
     if(
       !global.riskData ||
       !Array.isArray(workDatabase)
     ){
-      currentWorkDatabaseMatches = [];
-      selectedWorkDatabaseMatch = null;
+      currentMatches = [];
+      selectedMatch = null;
 
       return [];
     }
@@ -775,9 +745,6 @@
 
       workName:
         global.riskData.workName || '',
-
-      workType:
-        global.riskData.workType || '',
 
       workDescription:
         global.riskData
@@ -796,69 +763,44 @@
           .trim()
     };
 
-    var matches =
+    currentMatches =
       workDatabase
         .map(function(work, index){
           var match =
-            calculateWorkMatch(
+            calculateMatch(
               work,
               current
             );
 
-          var risk =
-            getWorkRisk(work);
+          var riskInfo =
+            getWorkRiskInfo(work);
 
           return {
-            index:
-              index,
-
-            work:
-              work,
-
+            rowIndex: index,
             workId:
               getWorkId(work),
-
             workName:
-              String(
-                getWorkName(work) || ''
-              ),
-
-            workType:
-              String(
-                getWorkType(work) || ''
-              ),
-
+              getWorkName(work),
             company:
-              String(
-                getWorkCompany(work) || ''
-              ),
-
+              getCompany(work),
             location:
-              String(
-                getWorkLocation(work) || ''
-              ),
-
-            sourceRiskLevel:
-              risk.original,
-
-            normalizedRiskLevel:
-              risk.normalized,
-
+              getLocation(work),
             score:
               match.score,
-
             method:
               match.method,
-
             reasons:
-              match.reasons
+              match.reasons,
+            riskOriginal:
+              riskInfo.original,
+            riskLabel:
+              riskInfo.label,
+            isHighRisk:
+              riskInfo.isHigh
           };
         })
         .filter(function(match){
-          return (
-            match.score >=
-            CANDIDATE_MATCH_SCORE
-          );
+          return match.score >= 60;
         })
         .sort(function(first, second){
           if(
@@ -870,170 +812,397 @@
             );
           }
 
-          return (
-            getRiskOrder(
-              second.normalizedRiskLevel
-            ) -
-            getRiskOrder(
-              first.normalizedRiskLevel
-            )
-          );
+          if(
+            first.isHighRisk !==
+            second.isHighRisk
+          ){
+            return first.isHighRisk
+              ? -1
+              : 1;
+          }
+
+          return 0;
         })
-        .slice(
-          0,
-          MAX_VISIBLE_MATCHES
-        );
+        .slice(0, 3);
 
-    currentWorkDatabaseMatches =
-      matches;
-
-    selectedWorkDatabaseMatch =
-      matches.find(function(match){
+    selectedMatch =
+      currentMatches.find(function(match){
         return (
-          match.score >=
-            STRONG_MATCH_SCORE &&
-          Boolean(
-            match.normalizedRiskLevel
-          )
+          match.score >= 80
         );
       }) || null;
 
-    global.riskData
-      .workDatabaseReference =
-      selectedWorkDatabaseMatch
-        ? {
-            matched: true,
-
-            method:
-              selectedWorkDatabaseMatch
-                .method,
-
-            score:
-              selectedWorkDatabaseMatch
-                .score,
-
-            workId:
-              selectedWorkDatabaseMatch
-                .workId,
-
-            workName:
-              selectedWorkDatabaseMatch
-                .workName,
-
-            workType:
-              selectedWorkDatabaseMatch
-                .workType,
-
-            sourceRiskLevel:
-              selectedWorkDatabaseMatch
-                .sourceRiskLevel,
-
-            normalizedRiskLevel:
-              selectedWorkDatabaseMatch
-                .normalizedRiskLevel,
-
-            reasons:
-              selectedWorkDatabaseMatch
-                .reasons.slice(),
-
-            source:
-              workDatabaseState.source,
-
-            matchedAt:
-              new Date().toISOString()
-          }
-        : {
-            matched: false,
-            source:
-              workDatabaseState.source,
-            candidateCount:
-              matches.length,
-            matchedAt:
-              new Date().toISOString()
-          };
-
-    log(
-      '작업DB 매칭 결과',
-      {
-        selected:
-          selectedWorkDatabaseMatch,
-        candidates:
-          currentWorkDatabaseMatches
-      }
-    );
-
-    return matches;
+    return currentMatches;
   }
 
-  function applyWorkDatabaseJudgment(){
-    if(
-      !global.riskData ||
-      !selectedWorkDatabaseMatch
-    ){
+  function buildRiskDbEvidence(){
+    var results =
+      Array.isArray(
+        global.currentSearchResults
+      )
+        ? global.currentSearchResults
+        : [];
+
+    var riskVotes = {
+      '저위험': 0,
+      '중위험': 0,
+      '고위험': 0
+    };
+
+    var controlVotes = {
+      '○': 0,
+      '△': 0,
+      '×': 0
+    };
+
+    var validRiskCount = 0;
+    var validControlCount = 0;
+    var maximumRelevance = 0;
+
+    results.forEach(function(result){
+      var relevance = Math.max(
+        1,
+        Number(result.relevance || 0)
+      );
+
+      maximumRelevance = Math.max(
+        maximumRelevance,
+        relevance
+      );
+
+      var item = result.item || {};
+
+      var risk =
+        normalizeRisk(
+          item.riskLevel
+        );
+
+      if(risk){
+        riskVotes[risk] += relevance;
+        validRiskCount++;
+      }
+
+      var control =
+        normalizeControl(
+          item.controlAdequacy
+        );
+
+      if(control){
+        controlVotes[control] +=
+          relevance;
+
+        validControlCount++;
+      }
+    });
+
+    function selectVote(votes, orderFunction){
+      var selected = '';
+      var selectedScore = -1;
+
+      Object.keys(votes)
+        .forEach(function(value){
+          var score = votes[value];
+
+          if(score > selectedScore){
+            selected = value;
+            selectedScore = score;
+            return;
+          }
+
+          if(
+            score === selectedScore &&
+            orderFunction(value) >
+              orderFunction(selected)
+          ){
+            selected = value;
+          }
+        });
+
+      return selectedScore > 0
+        ? selected
+        : '';
+    }
+
+    var risk = selectVote(
+      riskVotes,
+      riskOrder
+    );
+
+    var control = selectVote(
+      controlVotes,
+      controlOrder
+    );
+
+    return {
+      risk: risk,
+      control: control,
+      validRiskCount:
+        validRiskCount,
+      validControlCount:
+        validControlCount,
+      maximumRelevance:
+        maximumRelevance,
+      riskVotes:
+        riskVotes,
+      controlVotes:
+        controlVotes
+    };
+  }
+
+  function selectAuthorRisk(risk){
+    if(!risk){
       return;
     }
 
-    var workRisk =
-      selectedWorkDatabaseMatch
-        .normalizedRiskLevel;
+    var input = document.querySelector(
+      'input[name="authorRiskLevel"]' +
+      '[value="' +
+      risk +
+      '"]'
+    );
 
-    if(!workRisk){
+    if(input){
+      input.checked = true;
+    }
+  }
+
+  function selectAuthorControl(control){
+    if(!control){
       return;
     }
 
-    var automaticValid =
+    var input = document.querySelector(
+      'input[name="authorControlLevel"]' +
+      '[value="' +
+      control +
+      '"]'
+    );
+
+    if(input){
+      input.checked = true;
+    }
+  }
+
+  function updateWorkDbReasonCheckbox(
+    available
+  ){
+    var checkbox =
+      document.querySelector(
+        'input[name="authorReason"]' +
+        '[value="WORK_DB_RISK"]'
+      );
+
+    if(!checkbox){
+      return;
+    }
+
+    var label =
+      checkbox.closest(
+        '.author-reason'
+      );
+
+    checkbox.disabled =
+      !available;
+
+    if(!available){
+      checkbox.checked = false;
+
+      if(label){
+        label.style.opacity = '.45';
+        label.title =
+          '신뢰 가능한 작업DB 위험등급 매칭이 없습니다.';
+      }
+
+      return;
+    }
+
+    if(label){
+      label.style.opacity = '1';
+      label.title =
+        '작업DB의 실제 매칭 결과가 확인되었습니다.';
+    }
+  }
+
+  function applyIntegratedDecision(
+    riskEvidence
+  ){
+    if(!global.riskData){
+      return;
+    }
+
+    var originalAutomaticValid =
       global.riskData
         .automaticJudgmentValid ===
         true;
 
-    var automaticRisk =
-      normalizeRiskLevel(
+    var currentRisk =
+      normalizeRisk(
         global.riskData
           .finalRiskLevel
       );
 
-    /*
-     * 자동판정이 없는 경우 작업DB 위험도를
-     * 작성자 직접판정의 사전 추천값으로 제공합니다.
-     */
-    if(!automaticValid){
-      var existingFallback =
-        normalizeRiskLevel(
-          global.riskData
-            .databaseFallbackRisk
-        );
+    var currentControl =
+      normalizeControl(
+        global.riskData
+          .finalControlAdequacy
+      );
 
-      var suggestedRisk =
-        getHigherRisk(
-          existingFallback,
-          workRisk
-        );
+    var exactHighRisk =
+      Boolean(
+        selectedMatch &&
+        (
+          selectedMatch.method ===
+            'workId-exact' ||
+          selectedMatch.method ===
+            'date-originalNo-exact'
+        ) &&
+        selectedMatch.isHighRisk
+      );
 
-      global.riskData
-        .databaseFallbackRisk =
-        suggestedRisk;
+    var suggestedRisk = '';
 
-      global.riskData
-        .workDatabaseFallbackRisk =
-        workRisk;
+    var suggestedControl =
+      currentControl ||
+      riskEvidence.control;
 
-      global.riskData
-        .authorJudgmentRequired =
-        true;
+    var method = '';
+    var reasons = [];
 
-      global.riskData
-        .judgmentMethod =
-        existingFallback
-          ? 'combined-fallback-pending-author'
-          : 'workdb-fallback-pending-author';
+    if(exactHighRisk){
+      suggestedRisk = '고위험';
 
+      method =
+        'internal-workdb-high';
+
+      reasons.push(
+        '내부 작업DB 고위험 분류와 정확 일치'
+      );
+    } else if(
+      originalAutomaticValid &&
+      currentRisk &&
+      currentControl
+    ){
+      /*
+       * 기존 자동 매트릭스 결과가 유효하면
+       * 그대로 유지합니다.
+       */
+      suggestedRisk = currentRisk;
+      suggestedControl = currentControl;
+
+      method =
+        global.riskData
+          .judgmentMethod ||
+        'auto';
+
+      reasons.push(
+        '위험성평가 DB 매트릭스 판정'
+      );
+    } else if(
+      riskEvidence.risk
+    ){
+      suggestedRisk =
+        riskEvidence.risk;
+
+      method =
+        'riskdb-registered-fallback';
+
+      reasons.push(
+        '위험성평가 DB 등록 위험도 ' +
+        riskEvidence.validRiskCount +
+        '건 종합'
+      );
+    }
+
+    if(
+      exactHighRisk &&
+      currentRisk &&
+      riskOrder(currentRisk) >
+        riskOrder(suggestedRisk)
+    ){
+      suggestedRisk =
+        currentRisk;
+    }
+
+    global.riskData
+      .workDatabaseReference =
+      selectedMatch
+        ? {
+            matched: true,
+            workId:
+              selectedMatch.workId,
+            workName:
+              selectedMatch.workName,
+            method:
+              selectedMatch.method,
+            score:
+              selectedMatch.score,
+            riskOriginal:
+              selectedMatch.riskOriginal,
+            riskLabel:
+              selectedMatch.riskLabel,
+            isHighRisk:
+              selectedMatch.isHighRisk,
+            reasons:
+              selectedMatch.reasons.slice(),
+            source:
+              workDatabaseState.source,
+            reviewedAt:
+              new Date().toISOString()
+          }
+        : {
+            matched: false,
+            candidateCount:
+              currentMatches.length,
+            source:
+              workDatabaseState.source,
+            reviewedAt:
+              new Date().toISOString()
+          };
+
+    global.riskData
+      .integratedJudgment = {
+        suggestedRisk:
+          suggestedRisk,
+        suggestedControl:
+          suggestedControl,
+        method:
+          method,
+        reasons:
+          reasons,
+        riskDbEvidence:
+          riskEvidence,
+        workDbHighRiskExact:
+          exactHighRisk,
+        calculatedAt:
+          new Date().toISOString()
+      };
+
+    var sufficient =
+      Boolean(
+        suggestedRisk &&
+        suggestedControl
+      );
+
+    if(sufficient){
       global.riskData
         .finalRiskLevel =
         suggestedRisk;
 
       global.riskData
         .finalControlAdequacy =
-        '';
+        suggestedControl;
+
+      global.riskData
+        .judgmentMethod =
+        method;
+
+      global.riskData
+        .automaticJudgmentValid =
+        true;
+
+      global.riskData
+        .authorJudgmentRequired =
+        false;
 
       if(
         global.riskData
@@ -1046,78 +1215,119 @@
 
         global.riskData
           .autoJudgment
+          .controlAdequacy =
+          suggestedControl;
+
+        global.riskData
+          .autoJudgment
+          .basis =
+          reasons.join(' · ');
+
+        global.riskData
+          .autoJudgment
           .matrixCalculation =
-          '작성자 판단 필요';
-
-        global.riskData
-          .autoJudgment
-          .basis =
-          '유효한 자동 매트릭스 판정이 없어 작업DB 기존 위험등급을 참고값으로 제시했습니다. 작성자의 현장 확인이 필요합니다.';
+          method ===
+            'internal-workdb-high'
+            ? '내부 작업DB 고위험 정확 일치'
+            : 'DB 등록값 기반 보조판정';
       }
+
+      updateWorkDbReasonCheckbox(
+        exactHighRisk
+      );
 
       return;
     }
 
     /*
-     * 자동판정과 작업DB 위험등급이 다르면
-     * 작성자가 최종 결과를 확인하도록 합니다.
-     */
-    if(
-      automaticRisk &&
-      automaticRisk !== workRisk
-    ){
-      global.riskData
-        .authorJudgmentRequired =
-        true;
-
-      global.riskData
-        .databaseFallbackRisk =
-        getHigherRisk(
-          automaticRisk,
-          workRisk
-        );
-
-      global.riskData
-        .workDatabaseFallbackRisk =
-        workRisk;
-
-      global.riskData
-        .judgmentMethod =
-        'auto-workdb-conflict-pending-author';
-
-      if(
-        global.riskData
-          .autoJudgment
-      ){
-        global.riskData
-          .autoJudgment
-          .basis =
-          (
-            global.riskData
-              .autoJudgment
-              .basis || ''
-          ) +
-          ' · 작업DB 기존 위험등급(' +
-          workRisk +
-          ')과 차이가 있어 작성자 확인이 필요합니다.';
-      }
-
-      return;
-    }
-
-    /*
-     * 자동판정과 작업DB가 같으면
-     * 자동판정을 그대로 유지합니다.
+     * 위험도 또는 통제 수준 중 하나만 확보된 경우
+     * 작성자 직접판정 화면에 사전 선택합니다.
      */
     global.riskData
-      .workDatabaseFallbackRisk =
-      workRisk;
+      .automaticJudgmentValid =
+      false;
+
+    global.riskData
+      .authorJudgmentRequired =
+      true;
+
+    global.riskData
+      .judgmentMethod =
+      suggestedRisk
+        ? 'integrated-suggestion-pending-author'
+        : 'author-direct-required';
+
+    if(suggestedRisk){
+      global.riskData
+        .databaseFallbackRisk =
+        suggestedRisk;
+
+      global.riskData
+        .finalRiskLevel =
+        suggestedRisk;
+    }
+
+    if(suggestedControl){
+      global.riskData
+        .finalControlAdequacy =
+        suggestedControl;
+    } else {
+      global.riskData
+        .finalControlAdequacy =
+        '';
+    }
+
+    selectAuthorRisk(
+      suggestedRisk
+    );
+
+    selectAuthorControl(
+      suggestedControl
+    );
+
+    updateWorkDbReasonCheckbox(
+      exactHighRisk
+    );
+  }
+
+  function sourceLabel(source){
+    var labels = {
+      pages: 'GitHub Pages',
+      raw: 'GitHub Raw',
+      indexeddb: 'IndexedDB 캐시',
+      static: '정적 DB'
+    };
+
+    return (
+      labels[source] ||
+      source ||
+      '확인 불가'
+    );
+  }
+
+  function matchMethodLabel(method){
+    var labels = {
+      'workId-exact':
+        '작업번호 정확 일치',
+      'date-originalNo-exact':
+        '작업일자·원본번호 일치',
+      'similar-strong':
+        '유사 작업 강한 일치',
+      'similar-candidate':
+        '유사 작업 후보'
+    };
+
+    return (
+      labels[method] ||
+      method ||
+      '유사 매칭'
+    );
   }
 
   function injectStyles(){
     if(
       document.getElementById(
-        'workDatabaseMatchPatchStyle'
+        'riskWorkDbV2Style'
       )
     ){
       return;
@@ -1129,10 +1339,10 @@
       );
 
     style.id =
-      'workDatabaseMatchPatchStyle';
+      'riskWorkDbV2Style';
 
     style.textContent = [
-      '.workdb-review-panel{',
+      '.workdb-v2-panel{',
       'display:none;',
       'margin-bottom:9px;',
       'padding:12px;',
@@ -1142,22 +1352,25 @@
       'box-shadow:var(--shadow);',
       '}',
 
-      '.workdb-review-panel.active{',
+      '.workdb-v2-panel.active{',
       'display:block;',
       '}',
 
-      '.workdb-review-title{',
+      '.workdb-v2-header{',
       'display:flex;',
       'align-items:center;',
       'justify-content:space-between;',
       'gap:8px;',
       'margin-bottom:8px;',
+      '}',
+
+      '.workdb-v2-title{',
       'color:var(--posco);',
       'font-size:13px;',
       'font-weight:900;',
       '}',
 
-      '.workdb-source-badge{',
+      '.workdb-v2-source{',
       'padding:3px 7px;',
       'border-radius:6px;',
       'background:var(--tint);',
@@ -1166,7 +1379,7 @@
       'font-weight:850;',
       '}',
 
-      '.workdb-match-card{',
+      '.workdb-v2-card{',
       'margin-bottom:6px;',
       'padding:9px;',
       'border:1px solid var(--line);',
@@ -1174,12 +1387,12 @@
       'background:var(--sunk);',
       '}',
 
-      '.workdb-match-card.strong{',
+      '.workdb-v2-card.selected{',
       'border-color:var(--done);',
       'background:var(--done-bg);',
       '}',
 
-      '.workdb-match-name{',
+      '.workdb-v2-name{',
       'margin-bottom:4px;',
       'color:var(--ink);',
       'font-size:11.5px;',
@@ -1187,7 +1400,7 @@
       'line-height:1.4;',
       '}',
 
-      '.workdb-match-meta{',
+      '.workdb-v2-meta{',
       'display:flex;',
       'gap:5px;',
       'flex-wrap:wrap;',
@@ -1196,7 +1409,7 @@
       'font-weight:700;',
       '}',
 
-      '.workdb-risk-badge{',
+      '.workdb-v2-risk{',
       'padding:2px 6px;',
       'border-radius:5px;',
       'background:var(--warn-bg);',
@@ -1204,21 +1417,16 @@
       'font-weight:900;',
       '}',
 
-      '.workdb-match-note{',
+      '.workdb-v2-risk.high{',
+      'background:var(--stop-bg);',
+      'color:var(--stop);',
+      '}',
+
+      '.workdb-v2-note{',
       'margin-top:7px;',
       'color:var(--sub);',
       'font-size:10px;',
       'font-weight:650;',
-      'line-height:1.45;',
-      '}',
-
-      '.workdb-no-match{',
-      'padding:9px;',
-      'border-radius:8px;',
-      'background:var(--sunk);',
-      'color:var(--sub);',
-      'font-size:10.5px;',
-      'font-weight:700;',
       'line-height:1.45;',
       '}'
     ].join('');
@@ -1226,10 +1434,10 @@
     document.head.appendChild(style);
   }
 
-  function injectWorkDatabasePanel(){
+  function injectPanel(){
     if(
       document.getElementById(
-        'workDatabaseReviewPanel'
+        'workDbV2Panel'
       )
     ){
       return;
@@ -1255,10 +1463,10 @@
       );
 
     panel.id =
-      'workDatabaseReviewPanel';
+      'workDbV2Panel';
 
     panel.className =
-      'workdb-review-panel';
+      'workdb-v2-panel';
 
     if(authorPanel){
       authorPanel.parentNode.insertBefore(
@@ -1273,78 +1481,32 @@
     }
   }
 
-  function getMatchMethodLabel(method){
-    var labels = {
-      'workId-exact':
-        '작업번호 정확 일치',
-
-      'similar-strong':
-        '유사 작업 강한 일치',
-
-      'similar-candidate':
-        '유사 작업 후보'
-    };
-
-    return labels[method] ||
-      method ||
-      '유사 매칭';
-  }
-
-  function renderWorkDatabasePanel(){
+  function renderPanel(){
     var panel =
       document.getElementById(
-        'workDatabaseReviewPanel'
+        'workDbV2Panel'
       );
 
     if(!panel){
       return;
     }
 
-    /*
-     * 2단계 분석을 진행했을 때만 표시합니다.
-     */
-    var hasAssessmentInput =
-      Boolean(
-        global.riskData &&
-        (
-          global.riskData.workName ||
-          global.riskData.workId
-        )
-      );
-
-    panel.classList.toggle(
-      'active',
-      hasAssessmentInput
-    );
-
-    if(!hasAssessmentInput){
-      return;
-    }
-
-    var sourceLabels = {
-      pages: 'GitHub Pages',
-      raw: 'GitHub Raw',
-      indexeddb: 'IndexedDB 캐시',
-      static: '정적 DB'
-    };
-
-    var sourceLabel =
-      sourceLabels[
-        workDatabaseState.source
-      ] ||
-      workDatabaseState.source ||
-      '확인 불가';
+    panel.classList.add('active');
 
     var html =
-      '<div class="workdb-review-title">' +
-        '<span>📋 작업DB 검토 결과</span>' +
-        '<span class="workdb-source-badge">' +
+      '<div class="workdb-v2-header">' +
+        '<div class="workdb-v2-title">' +
+          '📋 작업DB 검토 결과' +
+        '</div>' +
+        '<div class="workdb-v2-source">' +
           escapeHtml(
             workDatabaseState.count +
             '건 · ' +
-            sourceLabel
+            sourceLabel(
+              workDatabaseState.source
+            )
           ) +
-        '</span>' +
+        '</div>' +
       '</div>';
 
     if(
@@ -1352,54 +1514,43 @@
       'error'
     ){
       html +=
-        '<div class="workdb-no-match">' +
-          '작업DB를 불러오지 못했습니다.<br>' +
-          escapeHtml(
-            workDatabaseState.error
-          ) +
+        '<div class="workdb-v2-note">' +
+          '작업DB 검토에 실패했지만 위험성평가는 정상적으로 계속할 수 있습니다.' +
         '</div>';
 
       panel.innerHTML = html;
-      updateWorkDatabaseReasonOption();
-
       return;
     }
 
-    if(
-      currentWorkDatabaseMatches.length ===
-      0
-    ){
+    if(currentMatches.length === 0){
       html +=
-        '<div class="workdb-no-match">' +
-          '현재 작업과 충분히 유사한 작업DB 자료를 찾지 못했습니다. ' +
-          '작업DB 위험등급은 직접판정 근거로 사용되지 않습니다.' +
+        '<div class="workdb-v2-note">' +
+          '현재 작업과 충분히 유사한 작업DB 자료를 찾지 못했습니다.' +
         '</div>';
 
       panel.innerHTML = html;
-      updateWorkDatabaseReasonOption();
-
       return;
     }
 
-    currentWorkDatabaseMatches
-      .forEach(function(match, index){
-        var strong =
-          selectedWorkDatabaseMatch &&
-          match.index ===
-            selectedWorkDatabaseMatch.index;
+    currentMatches.forEach(
+      function(match, index){
+        var selected =
+          selectedMatch &&
+          selectedMatch.rowIndex ===
+            match.rowIndex;
 
         html +=
-          '<div class="workdb-match-card' +
+          '<div class="workdb-v2-card' +
           (
-            strong
-              ? ' strong'
+            selected
+              ? ' selected'
               : ''
           ) +
           '">' +
 
-            '<div class="workdb-match-name">' +
+            '<div class="workdb-v2-name">' +
               (
-                strong
+                selected
                   ? '✅ '
                   : (
                       index + 1
@@ -1412,257 +1563,197 @@
               ) +
             '</div>' +
 
-            '<div class="workdb-match-meta">' +
+            '<div class="workdb-v2-meta">' +
               '<span>' +
                 escapeHtml(
-                  getMatchMethodLabel(
+                  matchMethodLabel(
                     match.method
                   )
                 ) +
               '</span>' +
 
               '<span>일치도 ' +
-                escapeHtml(match.score) +
+                escapeHtml(
+                  match.score
+                ) +
                 '점</span>' +
 
-              (
-                match.normalizedRiskLevel
-                  ? (
-                      '<span class="workdb-risk-badge">' +
-                        '기존 위험등급 ' +
-                        escapeHtml(
-                          match.normalizedRiskLevel
-                        ) +
-                      '</span>'
-                    )
-                  : (
-                      '<span>위험등급 없음</span>'
-                    )
-              ) +
+              '<span class="workdb-v2-risk' +
+                (
+                  match.isHighRisk
+                    ? ' high'
+                    : ''
+                ) +
+              '">' +
+                '내부 분류 ' +
+                escapeHtml(
+                  match.riskLabel ||
+                  '미분류'
+                ) +
+              '</span>' +
             '</div>' +
 
           '</div>';
-      });
+      }
+    );
 
-    if(selectedWorkDatabaseMatch){
+    if(
+      selectedMatch &&
+      selectedMatch.isHighRisk &&
+      (
+        selectedMatch.method ===
+          'workId-exact' ||
+        selectedMatch.method ===
+          'date-originalNo-exact'
+      )
+    ){
       html +=
-        '<div class="workdb-match-note">' +
-          '초록색 자료가 작업DB의 주요 참고자료입니다. ' +
-          '기존 위험등급은 자동 확정값이 아니며 작성자가 현장조건과 통제 수준을 확인해 최종 판단해야 합니다.' +
+        '<div class="workdb-v2-note">' +
+          '내부 프로세스를 거친 고위험 작업과 정확히 일치하여 고위험 근거로 반영했습니다.' +
         '</div>';
     } else {
       html +=
-        '<div class="workdb-match-note">' +
-          '유사 후보는 확인되었지만 80점 이상의 강한 일치 자료가 없어 작업DB 위험등급을 자동 참고값으로 적용하지 않았습니다.' +
+        '<div class="workdb-v2-note">' +
+          '작업DB의 일반 분류는 저위험을 의미하지 않으며, 위험성평가 DB와 함께 참고합니다.' +
         '</div>';
     }
 
     panel.innerHTML = html;
-
-    updateWorkDatabaseReasonOption();
   }
 
-  function updateWorkDatabaseReasonOption(){
-    var checkbox =
-      document.querySelector(
-        'input[name="authorReason"]' +
-        '[value="WORK_DB_RISK"]'
-      );
+  async function reviewCurrentAssessment(){
+    var token =
+      ++currentReviewToken;
 
-    if(!checkbox){
+    if(
+      !global.riskData ||
+      !global.riskData.workName
+    ){
       return;
     }
 
-    var label =
-      checkbox.closest(
-        '.author-reason'
+    injectPanel();
+
+    var panel =
+      document.getElementById(
+        'workDbV2Panel'
       );
 
-    var available =
-      Boolean(
-        selectedWorkDatabaseMatch &&
-        selectedWorkDatabaseMatch
-          .normalizedRiskLevel
-      );
+    if(panel){
+      panel.classList.add('active');
 
-    checkbox.disabled =
-      !available;
+      panel.innerHTML =
+        '<div class="workdb-v2-header">' +
+          '<div class="workdb-v2-title">' +
+            '📋 작업DB 검토 결과' +
+          '</div>' +
+        '</div>' +
+        '<div class="workdb-v2-note">' +
+          '기존 평가 화면과 별도로 작업DB를 검토하고 있습니다.' +
+        '</div>';
+    }
 
-    if(!available){
-      checkbox.checked = false;
+    await loadWorkDatabase();
 
-      if(label){
-        label.style.opacity = '.45';
-        label.title =
-          '80점 이상의 작업DB 위험등급 매칭 자료가 없습니다.';
-      }
-
+    if(token !== currentReviewToken){
       return;
     }
 
-    if(label){
-      label.style.opacity = '1';
-      label.title =
-        '실제 작업DB 매칭 결과가 확인되었습니다.';
-    }
+    findMatches();
+
+    var riskEvidence =
+      buildRiskDbEvidence();
+
+    applyIntegratedDecision(
+      riskEvidence
+    );
+
+    renderPanel();
 
     /*
-     * 작업DB fallback 또는 충돌 확인 상태에서는
-     * 실제 참고 근거이므로 자동 선택합니다.
+     * 여기서 기존 renderJudgment 함수를 덮어쓰지 않습니다.
+     * 한 번만 호출하여 변경된 결과를 화면에 반영합니다.
      */
     if(
-      global.riskData &&
-      (
-        global.riskData.judgmentMethod ===
-          'workdb-fallback-pending-author' ||
-        global.riskData.judgmentMethod ===
-          'combined-fallback-pending-author' ||
-        global.riskData.judgmentMethod ===
-          'auto-workdb-conflict-pending-author'
-      )
+      typeof global.renderJudgment ===
+      'function'
     ){
-      checkbox.checked = true;
+      global.renderJudgment();
     }
+
+    if(
+      global.riskJudgmentPatch &&
+      typeof global.riskJudgmentPatch
+        .renderAuthorJudgmentPanel ===
+        'function'
+    ){
+      global.riskJudgmentPatch
+        .renderAuthorJudgmentPanel();
+    }
+
+    log(
+      '비차단 작업DB 검토 완료',
+      {
+        selected:
+          selectedMatch,
+        evidence:
+          riskEvidence,
+        finalRisk:
+          global.riskData
+            .finalRiskLevel,
+        control:
+          global.riskData
+            .finalControlAdequacy,
+        method:
+          global.riskData
+            .judgmentMethod
+      }
+    );
   }
 
   /*
-   * 위험성평가 본체 분석을 작업DB 로드 때문에 지연시키지 않습니다.
+   * initializeStepTwo 하나만 감쌉니다.
    *
-   * 1. 위험성평가 DB 분석과 화면 렌더링을 먼저 수행
-   * 2. 작업DB는 별도로 로드
-   * 3. 작업DB 로드 완료 후 매칭 결과만 추가 반영
-   * 4. 작업DB 오류가 발생해도 본체 분석은 계속 진행
+   * 원본 initializeStepTwo가 위험성평가 분석과 렌더링을
+   * 모두 완료한 후 작업DB 검토를 별도 실행합니다.
+   *
+   * reviewCurrentAssessment를 await하지 않으므로
+   * 작업DB 때문에 화면이 멈추지 않습니다.
    */
-  var originalRunAssessmentAnalysis =
-    global.runAssessmentAnalysis;
+  var originalInitializeStepTwo =
+    global.initializeStepTwo;
 
   if(
-    typeof originalRunAssessmentAnalysis ===
+    typeof originalInitializeStepTwo ===
     'function'
   ){
-    global.runAssessmentAnalysis =
+    global.initializeStepTwo =
       async function(){
-        var context = this;
-        var args = arguments;
-
-        /*
-         * 본체 위험성평가 분석을 우선 완료합니다.
-         */
-        var analysisResult =
-          await originalRunAssessmentAnalysis
+        var result =
+          await originalInitializeStepTwo
             .apply(
-              context,
-              args
+              this,
+              arguments
             );
 
-        /*
-         * 작업DB 처리는 보조 기능입니다.
-         * 로드 지연이나 오류가 본체 화면을 막지 않도록
-         * 별도 비동기 작업으로 실행합니다.
-         */
-        loadWorkDatabase(false)
+        Promise.resolve()
           .then(function(){
-            findWorkDatabaseMatches();
-            applyWorkDatabaseJudgment();
-            renderWorkDatabasePanel();
-
-            if(
-              global.riskJudgmentPatch &&
-              typeof global
-                .riskJudgmentPatch
-                .renderAuthorJudgmentPanel ===
-                'function'
-            ){
-              global.riskJudgmentPatch
-                .renderAuthorJudgmentPanel();
-            }
-
-            updateWorkDatabaseReasonOption();
-
-            /*
-             * 작업DB 참고값 적용 후 위험도 카드를 다시 표시합니다.
-             */
-            if(
-              typeof global.renderJudgment ===
-              'function'
-            ){
-              global.renderJudgment();
-            }
-
-            log(
-              '작업DB 후속 매칭 반영 완료'
-            );
+            return reviewCurrentAssessment();
           })
           .catch(function(error){
             warn(
-              '작업DB 후속 매칭 실패 — 위험성평가 본체는 계속 사용합니다.',
+              '작업DB 보조 검토 실패 — 본체 평가는 계속됩니다.',
               error
             );
-
-            renderWorkDatabasePanel();
           });
 
-        return analysisResult;
-      };
-  }
-
-
-  /*
-   * 기존 자동판정 및 직접판정 패치가 처리된 후
-   * 작업DB 실제 매칭 결과를 추가합니다.
-   */
-  var originalCalculateAutomaticJudgment =
-    global.calculateAutomaticJudgment;
-
-  if(
-    typeof originalCalculateAutomaticJudgment ===
-    'function'
-  ){
-    global.calculateAutomaticJudgment =
-      function(searchData){
-        originalCalculateAutomaticJudgment(
-          searchData
-        );
-
-        findWorkDatabaseMatches();
-        applyWorkDatabaseJudgment();
+        return result;
       };
   }
 
   /*
-   * 위험도 카드 렌더링 이후 작업DB 검토 결과와
-   * 작성자 직접판정 패널을 갱신합니다.
-   */
-  var originalRenderJudgment =
-    global.renderJudgment;
-
-  if(
-    typeof originalRenderJudgment ===
-    'function'
-  ){
-    global.renderJudgment =
-      function(){
-        originalRenderJudgment();
-
-        renderWorkDatabasePanel();
-
-        if(
-          global.riskJudgmentPatch &&
-          typeof global
-            .riskJudgmentPatch
-            .renderAuthorJudgmentPanel ===
-            'function'
-        ){
-          global.riskJudgmentPatch
-            .renderAuthorJudgmentPanel();
-        }
-
-        updateWorkDatabaseReasonOption();
-      };
-  }
-
-  /*
-   * 평가 저장 객체에 실제 작업DB 매칭 근거를 보존합니다.
+   * 저장 객체에 작업DB 검토 근거를 보존합니다.
+   * 판정 및 화면 함수에는 영향을 주지 않습니다.
    */
   var originalBuildAssessmentSaveObject =
     global.buildAssessmentSaveObject;
@@ -1678,8 +1769,7 @@
             includeServerTimestamp
           );
 
-        saveObject
-          .workDatabaseReference =
+        saveObject.workDatabaseReference =
           global.riskData &&
           global.riskData
             .workDatabaseReference
@@ -1691,101 +1781,28 @@
               )
             : null;
 
-        saveObject
-          .workDatabaseState = {
-            source:
-              workDatabaseState.source,
+        saveObject.integratedJudgment =
+          global.riskData &&
+          global.riskData
+            .integratedJudgment
+            ? JSON.parse(
+                JSON.stringify(
+                  global.riskData
+                    .integratedJudgment
+                )
+              )
+            : null;
 
-            count:
-              workDatabaseState.count,
-
-            loadedAt:
-              workDatabaseState.loadedAt
-          };
-
-        return saveObject;
-      };
-  }
-
-  /*
-   * 최종 요약의 새 판정방식 명칭을 정리합니다.
-   */
-  var originalRenderReviewSummary =
-    global.renderReviewSummary;
-
-  if(
-    typeof originalRenderReviewSummary ===
-    'function'
-  ){
-    global.renderReviewSummary =
-      function(){
-        originalRenderReviewSummary();
-
-        var labels = {
-          'workdb-fallback-pending-author':
-            '작업DB 참고 후 작성자 직접판정',
-
-          'combined-fallback-pending-author':
-            '위험성평가 DB·작업DB 참고 후 작성자 직접판정',
-
-          'auto-workdb-conflict-pending-author':
-            '자동판정·작업DB 비교 후 작성자 직접판정'
+        saveObject.workDatabaseState = {
+          source:
+            workDatabaseState.source,
+          count:
+            workDatabaseState.count,
+          loadedAt:
+            workDatabaseState.loadedAt
         };
 
-        var method =
-          global.riskData &&
-          labels[
-            global.riskData
-              .judgmentMethod
-          ];
-
-        if(!method){
-          return;
-        }
-
-        var container =
-          document.getElementById(
-            'reviewSummaryGrid'
-          );
-
-        if(!container){
-          return;
-        }
-
-        var items =
-          Array.prototype.slice.call(
-            container.querySelectorAll(
-              '.review-summary-item'
-            )
-          );
-
-        var judgmentItem =
-          items.reverse().find(
-            function(item){
-              var label =
-                item.querySelector(
-                  '.review-summary-label'
-                );
-
-              return (
-                label &&
-                label.textContent.trim() ===
-                  '판정 방식'
-              );
-            }
-          );
-
-        if(judgmentItem){
-          var value =
-            judgmentItem.querySelector(
-              '.review-summary-value'
-            );
-
-          if(value){
-            value.textContent =
-              method;
-          }
-        }
+        return saveObject;
       };
   }
 
@@ -1793,25 +1810,12 @@
     'DOMContentLoaded',
     function(){
       injectStyles();
-      injectWorkDatabasePanel();
-
-      /*
-       * 페이지 진입 시 작업DB를 미리 준비합니다.
-       * 동일 SHA256 자료가 있으면 IndexedDB에서 로드됩니다.
-       */
-      loadWorkDatabase(false)
-        .then(function(){
-          log(
-            '작업DB 준비 완료:',
-            workDatabase.length +
-            '건'
-          );
-        });
+      injectPanel();
 
       log(
         'v' +
         PATCH_VERSION +
-        ' 적용 완료'
+        ' 적용 완료 — 비차단 방식'
       );
     }
   );
@@ -1820,14 +1824,11 @@
     version:
       PATCH_VERSION,
 
+    review:
+      reviewCurrentAssessment,
+
     load:
       loadWorkDatabase,
-
-    findMatches:
-      findWorkDatabaseMatches,
-
-    render:
-      renderWorkDatabasePanel,
 
     getState:
       function(){
@@ -1839,21 +1840,22 @@
             ),
 
           selected:
-            selectedWorkDatabaseMatch
+            selectedMatch
               ? Object.assign(
                   {},
-                  selectedWorkDatabaseMatch
+                  selectedMatch
                 )
               : null,
 
           matches:
-            currentWorkDatabaseMatches
-              .map(function(match){
+            currentMatches.map(
+              function(match){
                 return Object.assign(
                   {},
                   match
                 );
-              })
+              }
+            )
         };
       }
   };
