@@ -7435,17 +7435,25 @@ import {
 
   function downloadJson(filename, obj){
     const text = JSON.stringify(obj, null, 2);
-    const blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    // ⭐ MIME type을 application/octet-stream으로 변경
+    //    → 브라우저가 "다운로드"로만 처리하고 페이지 전환 방지
+    const blob = new Blob([text], {type:'application/octet-stream'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    a.style.display = 'none';
+    a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // 즉시 제거하지 않고 짧은 지연 후 정리 (Firefox 호환성)
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
     return text;
   }
+
 
   async function fetchCollection(collectionName){
     if(!window.isAdminUser || !window.isAdminUser()){
