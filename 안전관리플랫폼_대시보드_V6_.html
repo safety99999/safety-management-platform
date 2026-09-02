@@ -2048,9 +2048,54 @@ body{
       </div>
     </div>
 
-    <div class="sec-lbl">앱 설정</div>
-    <div class="sets-grp">
-      <div class="sets-item" onclick="toggleTheme()">
+    <!-- ⭐ GitHub 정적 JSON 내보내기 (2026-09-03 신규) -->
+    <div class="sec-lbl">📦 GitHub 정적 JSON 내보내기</div>
+    <div class="db-info">
+      <div class="db-info-txt">
+        <strong>📌 사용 방법</strong><br>
+        ① 1️⃣ 2️⃣ 순서대로 클릭 → 각 JSON 파일 다운로드<br>
+        ② 3️⃣ manifest 생성 → 마지막에 클릭<br>
+        ③ 다운로드된 3개 파일을 GitHub <code>assets/data/</code>에 커밋<br>
+        ⚠️ Firestore를 직접 읽으므로 <strong>reads가 발생</strong>합니다.
+      </div>
+    </div>
+    <div class="db-area">
+      <div class="db-area-title">☁️ Firestore → JSON 스냅샷</div>
+
+      <div class="workdb-count-grid" style="margin-bottom:10px;">
+        <div class="workdb-count-card">
+          <div class="workdb-count-label">위험성평가DB</div>
+          <div class="workdb-count-value" id="jsonExportRiskCount">-</div>
+        </div>
+        <div class="workdb-count-card">
+          <div class="workdb-count-label">작업DB</div>
+          <div class="workdb-count-value" id="jsonExportWorkCount">-</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button type="button" class="db-btn" id="btnExportRiskDb"
+                style="background:var(--posco);">
+          1️⃣ risk-assessment-db.v35.json 내보내기
+        </button>
+        <button type="button" class="db-btn" id="btnExportWorkDb"
+                style="background:var(--posco);">
+          2️⃣ work-database.test.json 내보내기
+        </button>
+        <button type="button" class="db-btn" id="btnExportManifest"
+                style="background:var(--done);">
+          3️⃣ db-manifest.json 생성 (마지막)
+        </button>
+      </div>
+
+      <div id="jsonExportStatus"
+           style="margin-top:10px;padding:10px;background:var(--sunk);
+                  border-radius:10px;font-size:11.5px;color:var(--sub);
+                  white-space:pre-line;font-family:ui-monospace,monospace;
+                  line-height:1.6;min-height:20px;display:none;">
+      </div>
+    </div>
+
         <div class="sets-l">
           <span class="sets-ico">🌙</span>
           <span class="sets-name">다크 모드</span>
@@ -7312,6 +7357,19 @@ console.log('[v7.4] 위험등급 수동 수정 패치 로드 완료');
   }
 
 })();
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      initializeRiskAssessmentIntegration
+    );
+  }else{
+    initializeRiskAssessmentIntegration();
+  }
+
+})();
+</script>
+     
 </script>
 
     
