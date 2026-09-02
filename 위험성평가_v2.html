@@ -2776,14 +2776,12 @@ function searchRiskDatabase(workName, workType, workDescription){
 // 17. 심각도 및 위험도 판정
 // ═══════════════════════════════════════════════════════
 
-
 function getSeverity(accidentType){
   var text = String(accidentType || '').trim();
   if(!text || text === '판정불가'){ return '판정불가'; }
 
   var normalized = compactText(text);
 
-  /* 1단계: 기존 SEVERITY_MAP 직접 매칭 (기존 로직 유지) */
   var orderedKeys = Object.keys(SEVERITY_MAP).sort(function(first, second){
     var severityDifference =
       (SEVERITY_ORDER[SEVERITY_MAP[second]] || 0) -
@@ -2801,110 +2799,19 @@ function getSeverity(accidentType){
     }
   });
 
-  if(maximumSeverity > 0){
-    return SEVERITY_ORDER_REVERSE[maximumSeverity] || '판정불가';
+  if(maximumSeverity === 0){
+    console.warn('⚠️ 미등록 사고유형:', accidentType);
+    return '판정불가';
   }
 
-  /* 2단계: 시나리오 문장에서 표준 사고유형 키워드 자동 추출 */
-  /*
-   * 인수인계서 v3.2 7항 개선: accidentType 필드에
-   * 시나리오 문장이 들어있는 경우에도 심각도 추출
-   */
-  var scenarioKeywords = [
-    /* 최고심각도 */
-    { keyword: '사망', severity: '최고심각도' },
-    { keyword: '중대재해', severity: '최고심각도' },
-    { keyword: '폭발', severity: '최고심각도' },
-    { keyword: '질식', severity: '최고심각도' },
-    { keyword: '중독', severity: '최고심각도' },
-    { keyword: '급성중독', severity: '최고심각도' },
-
-    /* 고심각도 */
-    { keyword: '감전', severity: '고심각도' },
-    { keyword: '화재', severity: '고심각도' },
-    { keyword: '화상', severity: '고심각도' },
-    { keyword: '떨어짐', severity: '고심각도' },
-    { keyword: '추락', severity: '고심각도' },
-    { keyword: '낙하', severity: '고심각도' },
-    { keyword: '쏟아짐', severity: '고심각도' },
-    { keyword: '맞음', severity: '고심각도' },
-    { keyword: '비래', severity: '고심각도' },
-    { keyword: '끼임', severity: '고심각도' },
-    { keyword: '협착', severity: '고심각도' },
-    { keyword: '갇힘', severity: '고심각도' },
-    { keyword: '무너짐', severity: '고심각도' },
-    { keyword: '붕괴', severity: '고심각도' },
-    { keyword: '매몰', severity: '고심각도' },
-    { keyword: '화학물질', severity: '고심각도' },
-    { keyword: '화학화상', severity: '고심각도' },
-    { keyword: '피부접촉', severity: '고심각도' },
-    { keyword: '흡입', severity: '고심각도' },
-    { keyword: '누출', severity: '고심각도' },
-    { keyword: '점화', severity: '고심각도' },
-    { keyword: '발열', severity: '고심각도' },
-    { keyword: '열상', severity: '고심각도' },
-    { keyword: '파단', severity: '고심각도' },
-
-    /* 중심각도 */
-    { keyword: '충돌', severity: '중심각도' },
-    { keyword: '부딪힘', severity: '중심각도' },
-    { keyword: '베임', severity: '중심각도' },
-    { keyword: '찔림', severity: '중심각도' },
-    { keyword: '절단', severity: '중심각도' },
-    { keyword: '비산', severity: '중심각도' },
-    { keyword: '분진', severity: '중심각도' },
-    { keyword: '흄', severity: '중심각도' },
-    { keyword: '노출', severity: '중심각도' },
-    { keyword: '타격', severity: '중심각도' },
-    { keyword: '타박', severity: '중심각도' },
-    { keyword: '찍힘', severity: '중심각도' },
-    { keyword: '접촉', severity: '중심각도' },
-    { keyword: '오작동', severity: '중심각도' },
-    { keyword: '오동작', severity: '중심각도' },
-
-    /* 저심각도 */
-    { keyword: '넘어짐', severity: '저심각도' },
-    { keyword: '전도', severity: '저심각도' },
-    { keyword: '미끄러짐', severity: '저심각도' },
-    { keyword: '근골격계', severity: '저심각도' },
-    { keyword: '소음', severity: '저심각도' },
-    { keyword: '온열', severity: '저심각도' },
-    { keyword: '한랭', severity: '저심각도' },
-    { keyword: '피로', severity: '저심각도' }
-  ];
-
-  var extractedSeverityOrder = 0;
-  var extractedKeywords = [];
-
-  scenarioKeywords.forEach(function(item){
-    var normalizedKw = compactText(item.keyword);
-    if(normalizedKw && normalized.indexOf(normalizedKw) >= 0){
-      var order = SEVERITY_ORDER[item.severity] || 0;
-      if(order > extractedSeverityOrder){
-        extractedSeverityOrder = order;
-      }
-      extractedKeywords.push(item.keyword);
-    }
-  });
-
-  if(extractedSeverityOrder > 0){
-    var extractedSeverity =
-      SEVERITY_ORDER_REVERSE[extractedSeverityOrder] || '판정불가';
-
-    console.log('[사고유형 자동 추출]',
-      '원문:', accidentType.substring(0, 40) + '...',
-      '· 추출 키워드:', extractedKeywords.join(', '),
-      '· 심각도:', extractedSeverity
-    );
-
-    return extractedSeverity;
-  }
-
-  /* 3단계: 그래도 매칭 안 되면 판정불가 */
-  console.warn('⚠️ 미등록 사고유형 (자동 추출 실패):', accidentType);
-  return '판정불가';
+  return SEVERITY_ORDER_REVERSE[maximumSeverity] || '판정불가';
 }
 
+function calculateMatrixRisk(controlAdequacy, severity){
+  if(VALID_CONTROL_VALUES.indexOf(controlAdequacy) < 0){ return '판정불가'; }
+  if(!severity || severity === '판정불가'){ return '판정불가'; }
+  return RISK_MATRIX[controlAdequacy][severity] || '판정불가';
+}
 
 function applyRiskAdjustments(baseLevel, accidentType, workProfile, classCode, controlAdequacy){
   if(!baseLevel || baseLevel === '판정불가'){
@@ -2956,69 +2863,10 @@ function applyRiskAdjustments(baseLevel, accidentType, workProfile, classCode, c
 
 function evaluateReferenceRisk(searchResult){
   var item = searchResult.item || {};
-  var rawControl = String(item.controlAdequacy || '').trim();
+  var control = String(item.controlAdequacy || '').trim();
   var severity = getSeverity(item.accidentType);
 
-  /*
-   * 통제값 정규화 (인수인계서 v3.2 7항 개선)
-   * ○/△/× 외에도 대책 텍스트가 들어있는 경우 △로 간주
-   * (안전대책이 명시된 경우 최소한 보완 필요 수준으로 처리)
-   */
-  var control = rawControl;
-
   if(VALID_CONTROL_VALUES.indexOf(control) < 0){
-    /* 표준값이 아닌 경우 정규화 시도 */
-    var normalizedText = rawControl.toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[()]/g, '');
-
-    if(rawControl === '○' ||
-       normalizedText === 'o' ||
-       normalizedText === '0' ||
-       normalizedText === '적정' ||
-       normalizedText === '양호' ||
-       normalizedText === '적합'){
-      control = '○';
-    } else if(rawControl === '△' ||
-              normalizedText === '보완' ||
-              normalizedText === '보완필요' ||
-              normalizedText === '주의'){
-      control = '△';
-    } else if(rawControl === '×' ||
-              rawControl === '✕' ||
-              normalizedText === 'x' ||
-              normalizedText === '미흡' ||
-              normalizedText === '부적정' ||
-              normalizedText === '부적합'){
-      control = '×';
-    } else if(rawControl.length > 10){
-      /*
-       * 긴 텍스트가 들어있는 경우 = 안전대책 목록
-       * 대책이 나열되어 있으므로 '△(보완 필요)'로 간주
-       * (완전 적정도 아니고 완전 미흡도 아닌 중간)
-       */
-      control = '△';
-    }
-  }
-
-  /* 통제값 여전히 무효면 실패 */
-  if(VALID_CONTROL_VALUES.indexOf(control) < 0){
-    /* riskLevel fallback 시도 */
-    var fallbackRisk = String(item.riskLevel || '').trim();
-    var validFallbackLevels = ['저위험', '중위험', '고위험', '매우고위험'];
-
-    if(validFallbackLevels.indexOf(fallbackRisk) >= 0){
-      return {
-        valid:true, invalidReason:'',
-        item:item, tier:searchResult.tier, relevance:searchResult.relevance,
-        severity:severity, controlAdequacy:'△',
-        baseLevel:fallbackRisk,
-        finalLevel:fallbackRisk,
-        adjustments:['DB 등록 위험도 fallback 적용'],
-        fallbackUsed:true
-      };
-    }
-
     return {
       valid:false, invalidReason:'통제 적정성 값 오류',
       item:item, tier:searchResult.tier, relevance:searchResult.relevance,
@@ -3027,23 +2875,7 @@ function evaluateReferenceRisk(searchResult){
     };
   }
 
-  /* 심각도 판정 실패 시 riskLevel fallback 시도 */
   if(severity === '판정불가'){
-    var fallbackRisk2 = String(item.riskLevel || '').trim();
-    var validFallbackLevels2 = ['저위험', '중위험', '고위험', '매우고위험'];
-
-    if(validFallbackLevels2.indexOf(fallbackRisk2) >= 0){
-      return {
-        valid:true, invalidReason:'',
-        item:item, tier:searchResult.tier, relevance:searchResult.relevance,
-        severity:severity, controlAdequacy:control,
-        baseLevel:fallbackRisk2,
-        finalLevel:fallbackRisk2,
-        adjustments:['DB 등록 위험도 fallback 적용 (심각도 미등록)'],
-        fallbackUsed:true
-      };
-    }
-
     return {
       valid:false, invalidReason:'사고유형 심각도 미등록',
       item:item, tier:searchResult.tier, relevance:searchResult.relevance,
@@ -3052,7 +2884,6 @@ function evaluateReferenceRisk(searchResult){
     };
   }
 
-  /* 정상 매트릭스 판정 (기존 로직 유지) */
   var baseLevel = calculateMatrixRisk(control, severity);
   var adjustment = applyRiskAdjustments(baseLevel, item.accidentType,
     riskData.workProfile, item.classCode, control);
@@ -3061,26 +2892,9 @@ function evaluateReferenceRisk(searchResult){
     valid:true, invalidReason:'',
     item:item, tier:searchResult.tier, relevance:searchResult.relevance,
     severity:severity, controlAdequacy:control, baseLevel:baseLevel,
-    finalLevel:adjustment.level, adjustments:adjustment.adjustments,
-    fallbackUsed:false
+    finalLevel:adjustment.level, adjustments:adjustment.adjustments
   };
 }
-
-
-function evaluateReferenceRisk(searchResult){
-  ...
-  return {
-    valid:true, invalidReason:'',
-    ...
-    fallbackUsed:false
-  };
-}
-
-function buildReferenceDetail(judgment){
-  return {
-    docId: judgment.item.docId || judgment.item.id || '',
-    ...
-
 
 function buildReferenceDetail(judgment){
   return {
@@ -7658,7 +7472,3 @@ document.addEventListener('DOMContentLoaded', initializeApplication);
 
 </body>
 </html>
-
-
-
-
