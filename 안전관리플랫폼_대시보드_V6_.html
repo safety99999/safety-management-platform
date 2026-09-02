@@ -7404,19 +7404,22 @@ import {
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+  // ⭐ 대시보드가 이미 초기화한 Firestore 인스턴스 재사용
+  //    (그렇지 않으면 대량 조회 시 WebChannel 실패 발생)
+  //    Windows Chrome/Edge에서도 long polling 강제 적용
   let db;
   try{
-    if(needsLongPolling){
-      db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        useFetchStreams: false
-      });
-    }else{
-      db = getFirestore(app);
-    }
-  }catch(e){
+    db = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false
+    });
+    console.log('[JSON 내보내기] Firestore long polling 모드 초기화');
+  }catch(initError){
+    // 이미 초기화된 경우 → 기존 인스턴스 재사용
     db = getFirestore(app);
+    console.log('[JSON 내보내기] Firestore 기존 인스턴스 재사용:', initError.message);
   }
+
 
   const exportedFiles = { risk: null, work: null };
 
