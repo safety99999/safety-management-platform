@@ -1526,7 +1526,12 @@
   }
 
   /*
-   * 작업분석 전에 작업DB 로드 완료를 보장합니다.
+   * 위험성평가 본체 분석을 작업DB 로드 때문에 지연시키지 않습니다.
+   *
+   * 1. 위험성평가 DB 분석과 화면 렌더링을 먼저 수행
+   * 2. 작업DB는 별도로 로드
+   * 3. 작업DB 로드 완료 후 매칭 결과만 추가 반영
+   * 4. 작업DB 오류가 발생해도 본체 분석은 계속 진행
    */
   var originalRunAssessmentAnalysis =
     global.runAssessmentAnalysis;
@@ -1537,15 +1542,70 @@
   ){
     global.runAssessmentAnalysis =
       async function(){
-        await loadWorkDatabase(false);
+        var context = this;
+        var args = arguments;
 
-        return originalRunAssessmentAnalysis
-          .apply(
-            this,
-            arguments
-          );
+        /*
+         * 본체 위험성평가 분석을 우선 완료합니다.
+         */
+        var analysisResult =
+          await originalRunAssessmentAnalysis
+            .apply(
+              context,
+              args
+            );
+
+        /*
+         * 작업DB 처리는 보조 기능입니다.
+         * 로드 지연이나 오류가 본체 화면을 막지 않도록
+         * 별도 비동기 작업으로 실행합니다.
+         */
+        loadWorkDatabase(false)
+          .then(function(){
+            findWorkDatabaseMatches();
+            applyWorkDatabaseJudgment();
+            renderWorkDatabasePanel();
+
+            if(
+              global.riskJudgmentPatch &&
+              typeof global
+                .riskJudgmentPatch
+                .renderAuthorJudgmentPanel ===
+                'function'
+            ){
+              global.riskJudgmentPatch
+                .renderAuthorJudgmentPanel();
+            }
+
+            updateWorkDatabaseReasonOption();
+
+            /*
+             * 작업DB 참고값 적용 후 위험도 카드를 다시 표시합니다.
+             */
+            if(
+              typeof global.renderJudgment ===
+              'function'
+            ){
+              global.renderJudgment();
+            }
+
+            log(
+              '작업DB 후속 매칭 반영 완료'
+            );
+          })
+          .catch(function(error){
+            warn(
+              '작업DB 후속 매칭 실패 — 위험성평가 본체는 계속 사용합니다.',
+              error
+            );
+
+            renderWorkDatabasePanel();
+          });
+
+        return analysisResult;
       };
   }
+
 
   /*
    * 기존 자동판정 및 직접판정 패치가 처리된 후
