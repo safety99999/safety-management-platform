@@ -7433,26 +7433,58 @@ import {
       .join('');
   }
 
-  function downloadJson(filename, obj){
+   function downloadJson(filename, obj){
     const text = JSON.stringify(obj, null, 2);
-    // ⭐ MIME type을 application/octet-stream으로 변경
-    //    → 브라우저가 "다운로드"로만 처리하고 페이지 전환 방지
-    const blob = new Blob([text], {type:'application/octet-stream'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    // 즉시 제거하지 않고 짧은 지연 후 정리 (Firefox 호환성)
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 200);
-    return text;
+
+    try {
+      // ⭐ 방법 1: Blob + FileSaver 방식 (표준)
+      const blob = new Blob(['\ufeff' + text], {
+        type: 'application/octet-stream'
+      });
+
+      // IE/Edge 레거시
+      if(window.navigator && window.navigator.msSaveOrOpenBlob){
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+        return text;
+      }
+
+      // 표준 브라우저: blob URL을 iframe에 로드하여 다운로드
+      const blobUrl = URL.createObjectURL(blob);
+
+      // hidden iframe 방식 (페이지 전환 없음)
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.style.position = 'absolute';
+      iframe.style.left = '-9999px';
+      document.body.appendChild(iframe);
+
+      // 다운로드 링크 생성
+      const a = iframe.contentDocument.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      iframe.contentDocument.body.appendChild(a);
+      a.click();
+
+      // 정리
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        if(iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, 1000);
+
+      return text;
+    } catch(err) {
+      console.error('[JSON 내보내기] 다운로드 오류:', err);
+
+      // ⭐ 폴백: 최후의 수단 - 사용자에게 수동 저장 안내
+      const win = window.open('', '_blank');
+      if(win){
+        win.document.write('<pre>' + text.replace(/</g, '&lt;') + '</pre>');
+        win.document.title = filename;
+      }
+      throw err;
+    }
   }
+
 
 
   async function fetchCollection(collectionName){
