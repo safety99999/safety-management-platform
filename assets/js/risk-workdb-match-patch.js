@@ -1641,4 +1641,150 @@
   log('v' + PATCH_VERSION + ' loaded');
 
 })(window);
+/* ============================================================
+   risk-workdb-match-patch 확장 v3.0.1
+   1) (경미) 토큰 단위 하향 보정
+   2) 원본 판정불가 행 참조 제외
+   3) 통제값 문자 정규화
+   ※ v3.0.0 시프트 보정 이후에 적용됨
+   ============================================================ */
+(function(global){
+  'use strict';
+
+  var V = '3.0.1';
+  if(global.riskWorkDbPatchV301){ console.log('[v3.0.1] 이미 적용'); return; }
+
+  var RANK = {'저심각도':1,'중심각도':2,'고심각도':3,'최고심각도':4};
+  var REV  = {1:'저심각도',2:'중심각도',3:'고심각도',4:'최고심각도'};
+
+  /* ---------- 1) 통제값 정규화 ---------- */
+  function normalizeControl(v){
+    var s = String(v == null ? '' : v).trim();
+    if(!s) return '';
+    if(/^[○◯〇oO0]$/.test(s)) return '○';
+    if(/^[△▲]$/.test(s))      return '△';
+    if(/^[×✕✖xX]$/.test(s))   return '×';
+    return s;
+  }
+
+  function normalizeAllControls(){
+    if(!Array.isArray(global.riskDatabase)) return 0;
+    var n = 0;
+    global.riskDatabase.forEach(function(r){
+      var before = r.controlAdequacy;
+      var after  = normalizeControl(before);
+      if(after !== before){ r.controlAdequacy = after; n++; }
+    });
+    return n;
+  }
+
+  /* ---------- 2) (경미) 토큰 단위 하향 ---------- */
+  var SPLIT = /\s*[\/;]\s*|\s*(?:및|또는)\s*/;
+
+  function installMinorTokenGuard(){
+    if(typeof global.getSeverity !== 'function'){
+      console.error('[v3.0.1] getSeverity 없음 → 하향 보정 미적용'); return false;
+    }
+    /* 앞서 콘솔에서 설치한 잘못된 래퍼가 있으면 원본으로 되돌림 */
+    while(global.getSeverity.__minorGuard && global.getSeverity.__original){
+      global.getSeverity = global.getSeverity.__original;
+    }
+    if(global.getSeverity.__minorTokenGuard) return true;
+
+    var original = global.getSeverity;
+
+    var wrapped = function(accidentType){
+      var text = String(accidentType == null ? '' : accidentType);
+      if(text.indexOf('경미') < 0){ return original.apply(this, arguments); }
+
+      var tokens = text.split(SPLIT).map(function(s){ return s.trim(); })
+                       .filter(function(s){ return s.length > 0; });
+      if(tokens.length === 0){ return original.apply(this, arguments); }
+
+      var maxRank = 0, trace = [];
+      tokens.forEach(function(tok){
+        var isMinor = /경미/.test(tok);
+        var clean = tok.replace(/\(\s*경미\s*\)/g, '').replace(/경미/g, '').trim();
+        var sev = original(clean || tok);
+        var rank = RANK[sev] || 0;
+        if(isMinor && rank > 1){ rank -= 1; }
+        trace.push(tok + '=>' + (REV[rank] || sev));
+        if(rank > maxRank){ maxRank = rank; }
+      });
+
+      var result = REV[maxRank];
+      if(!result){ return original.apply(this, arguments); }
+      if(wrapped.verbose){ console.log('[경미 토큰]', result, '|', trace.join(' , ')); }
+      return result;
+    };
+
+    wrapped.__minorTokenGuard = true;
+    wrapped.__original = original;
+    wrapped.verbose = false;
+    global.getSeverity = wrapped;
+    return true;
+  }
+
+  /* ---------- 3) 원본 판정불가 행 참조 제외 ---------- */
+  function isJudgeableRow(row){
+    if(!row) return false;
+    return String(row.accidentType || '').trim() !== '판정불가' &&
+           String(row.riskLevel   || '').trim() !== '판정불가';
+  }
+
+  function installReferenceFilter(){
+    if(typeof global.evaluateReferenceRisk !== 'function'){
+      console.error('[v3.0.1] evaluateReferenceRisk 없음 → 참조 필터 미적용'); return false;
+    }
+    if(global.evaluateReferenceRisk.__refFilter) return true;
+
+    var original = global.evaluateReferenceRisk;
+
+    var wrapped = function(searchResult){
+      var item = searchResult && searchResult.item;
+      if(item && !isJudgeableRow(item)){
+        return {
+          valid: false,
+          invalidReason: '참조부적격(원본 판정불가 항목)',
+          item: item,
+          excludedBy: 'v3.0.1'
+        };
+      }
+      return original.apply(this, arguments);
+    };
+
+    wrapped.__refFilter = true;
+    wrapped.__original = original;
+    global.evaluateReferenceRisk = wrapped;
+    return true;
+  }
+
+  /* ---------- 실행 ---------- */
+  var report = {
+    version: V,
+    controlNormalized: normalizeAllControls(),
+    minorTokenGuard: installMinorTokenGuard(),
+    referenceFilter: installReferenceFilter(),
+    excludedRows: Array.isArray(global.riskDatabase)
+      ? global.riskDatabase.filter(function(r){ return !isJudgeableRow(r); }).length : 0,
+    remarkLost: Array.isArray(global.riskDatabase)
+      ? global.riskDatabase.filter(function(r){ return !String(r.remark||'').trim(); }).length : 0
+  };
+
+  global.riskWorkDbPatchV301 = {
+    version: V,
+    report: report,
+    normalizeControl: normalizeControl,
+    isJudgeableRow: isJudgeableRow,
+    setVerbose: function(on){ if(global.getSeverity.__minorTokenGuard){ global.getSeverity.verbose = !!on; } },
+    restore: function(){
+      if(global.getSeverity.__minorTokenGuard) global.getSeverity = global.getSeverity.__original;
+      if(global.evaluateReferenceRisk.__refFilter) global.evaluateReferenceRisk = global.evaluateReferenceRisk.__original;
+      delete global.riskWorkDbPatchV301;
+      console.log('[v3.0.1] 해제 완료');
+    }
+  };
+
+  console.log('[risk-workdb v3.0.1] 적용 완료', report);
+})(window);
 
