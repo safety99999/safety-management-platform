@@ -7466,6 +7466,35 @@ document.addEventListener('DOMContentLoaded', initializeApplication);
 })();
 
 </script>
+<!-- [v3.4] v3.0.1 검증용 디버그 훅 -->
+<script>
+(function installDebugHook(){
+  try {
+    // 이 파일은 var 전역 선언이므로 window에서 바로 접근 가능
+    window.__RA_DEBUG = {
+      version: 'v3.4-debug-hook',
+      installedAt: new Date().toISOString(),
+      get getSeverity(){ return window.getSeverity; },
+      get evaluateReferenceRisk(){ return window.evaluateReferenceRisk; },
+      get riskDatabase(){ return window.riskDatabase; },
+      get VALID_CONTROL_VALUES(){ return window.VALID_CONTROL_VALUES; },
+      get SEVERITY_MAP(){ return window.SEVERITY_MAP; },
+      get RISK_MATRIX(){ return window.RISK_MATRIX; }
+    };
+
+    console.log('[__RA_DEBUG] installed', {
+      getSeverity: typeof window.getSeverity,
+      evaluateReferenceRisk: typeof window.evaluateReferenceRisk,
+      riskDatabase: Array.isArray(window.riskDatabase)
+        ? (window.riskDatabase.length + '건')
+        : 'not-ready-yet(로드 후 재확인)',
+      VALID_CONTROL_VALUES: window.VALID_CONTROL_VALUES
+    });
+  } catch(e){
+    console.warn('[__RA_DEBUG] install failed:', e && e.message);
+  }
+})();
+</script>
 
 <!-- 자동판정 보완 및 작성자 직접판정 -->
 <script src="./assets/js/risk-judgment-patch.js?v=1.0.1"></script>
