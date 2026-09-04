@@ -1787,4 +1787,218 @@
 
   console.log('[risk-workdb v3.0.1] 적용 완료', report);
 })(window);
+/* ============================================================
+   risk-workdb-match-patch 확장 v3.0.2
+   관리대장(safetyDatabase.workHistory) 최우선 반영
+   
+   [규칙]
+   1) 관리대장 매칭 시 risk === '고위험' → 무조건 고위험
+   2) '점검' 키워드 (정비/수리 없음) → 일반작업으로 하향
+   3) 관리대장 매칭 시 risk === '일반' → 상한 '중위험'
+   4) '정비 + 분해/조립' → 최소 중위험
+   
+   ※ 훅 지점: buildAssessmentSaveObject (기존 v3.0.0 훅 뒤에 연결)
+   ============================================================ */
+(function(global){
+  'use strict';
+
+  var V = '3.0.2';
+  if(global.riskWorkDbPatchV302){ console.log('[v3.0.2] 이미 적용'); return; }
+
+  var LEVEL_ORDER = {
+    '일반작업': 0, '저위험': 1, '일반': 1,
+    '중위험': 2, '고위험': 3, '매우고위험': 4
+  };
+
+  /* ---------- 관리대장 유사 작업 검색 ---------- */
+  function findInWorkHistory(workName){
+    try {
+      var raw = localStorage.getItem('safetyDatabase');
+      if(!raw) return null;
+      
+      var db = JSON.parse(raw);
+      var history = db.workHistory || [];
+      if(!workName || history.length === 0) return null;
+
+      var keywords = String(workName).replace(/\s+/g,'').match(/[가-힣]{2,}/g) || [];
+      if(keywords.length === 0) return null;
+
+      var best = null, bestScore = 0, candidates = [];
+
+      history.forEach(function(w){
+        var name = (String(w.workName||'') + String(w.workNameFull||'')).replace(/\s+/g,'');
+        var score = 0;
+        keywords.forEach(function(kw){ if(name.indexOf(kw) >= 0) score++; });
+        if(score > 0) candidates.push({ work: w, score: score });
+        if(score > bestScore){ bestScore = score; best = w; }
+      });
+
+      var threshold = Math.ceil(keywords.length / 2);
+      if(bestScore >= threshold){
+        return { work: best, score: bestScore, total: keywords.length, candidateCount: candidates.length };
+      }
+      return null;
+    } catch(e){
+      console.warn('[v3.0.2] 관리대장 조회 실패:', e);
+      return null;
+    }
+  }
+
+  /* ---------- 키워드 규칙 ---------- */
+  function inferByKeyword(workName, workDescription){
+    var text = String(workName || '') + ' ' + String(workDescription || '');
+    
+    /* 점검 (정비/수리/교체/분해/조립 없을 때) → 일반작업 */
+    if(/점검|순찰|육안|외관|측정|판독/.test(text) 
+       && !/정비|수리|교체|분해|조립/.test(text)){
+      return { level: '일반작업', reason: '점검 작업으로 판정' };
+    }
+    
+    /* 정비 + 분해/조립 → 중위험 */
+    if(/정비|수리/.test(text) && /분해|조립/.test(text)){
+      return { level: '중위험', reason: '정비-분해/조립 작업' };
+    }
+    
+    return null;
+  }
+
+  function capRiskLevel(current, max){
+    var ci = LEVEL_ORDER[current], mi = LEVEL_ORDER[max];
+    if(ci === undefined || mi === undefined) return current;
+    return ci > mi ? max : current;
+  }
+
+  /* ---------- 오버라이드 로직 ---------- */
+  function overrideDecision(riskData){
+    if(!riskData || !riskData.workName) return riskData;
+
+    var workName = riskData.workName;
+    var workDescription = riskData.workDescription || '';
+    var original = riskData.finalRiskLevel || '';
+    var reasons = [];
+    var applied = false;
+
+    console.log('[v3.0.2] 판정 시작:', { workName: workName, original: original });
+
+    /* Step 1: 관리대장 매칭 (최우선) */
+    var match = findInWorkHistory(workName);
+    if(match){
+      var mgRisk = String(match.work.risk || '').trim();
+      console.log('[v3.0.2] 📋 관리대장 매칭:', 
+        match.work.workName, '| risk:', mgRisk,
+        '| 점수:', match.score + '/' + match.total,
+        '| 후보:', match.candidateCount + '건');
+
+      if(mgRisk === '고위험'){
+        if(original !== '고위험'){
+          riskData.finalRiskLevel = '고위험';
+          reasons.push('관리대장 고위험 분류 최우선 적용 (기존: ' + original + ')');
+          applied = true;
+        }
+      } else if(mgRisk === '일반' || mgRisk === '일반작업'){
+        var capped = capRiskLevel(original, '중위험');
+        if(capped !== original){
+          riskData.finalRiskLevel = capped;
+          reasons.push('관리대장 일반 → 상한 중위험 적용 (기존: ' + original + ')');
+          applied = true;
+        }
+      }
+    } else {
+      console.log('[v3.0.2] 관리대장 매칭 실패');
+    }
+
+    /* Step 2: 키워드 규칙 (관리대장 고위험 아닐 때만) */
+    if(riskData.finalRiskLevel !== '고위험'){
+      var ruled = inferByKeyword(workName, workDescription);
+      if(ruled){
+        var current = riskData.finalRiskLevel;
+        
+        if(ruled.level === '일반작업' && LEVEL_ORDER[current] > 0){
+          riskData.finalRiskLevel = '일반작업';
+          reasons.push(ruled.reason + ' (기존: ' + current + ')');
+          applied = true;
+        } else if(ruled.level === '중위험' && current !== '중위험'){
+          riskData.finalRiskLevel = '중위험';
+          reasons.push(ruled.reason + ' (기존: ' + current + ')');
+          applied = true;
+        }
+      }
+    }
+
+    /* Step 3: 로깅 및 근거 저장 */
+    if(applied){
+      riskData.overrideApplied = true;
+      riskData.overrideVersion = V;
+      riskData.overrideReasons = reasons;
+      riskData.originalRiskLevel = original;
+      
+      console.log('[v3.0.2] ✅ 오버라이드 적용:', original, '→', riskData.finalRiskLevel);
+      reasons.forEach(function(r){ console.log('[v3.0.2]   · ' + r); });
+    } else {
+      console.log('[v3.0.2] 변경 없음:', original);
+    }
+
+    return riskData;
+  }
+
+  /* ---------- 훅 설치: buildAssessmentSaveObject 감싸기 ---------- */
+  function installHook(){
+    if(typeof global.buildAssessmentSaveObject !== 'function'){
+      setTimeout(installHook, 100);
+      return;
+    }
+    if(global.buildAssessmentSaveObject.__v302Installed) return;
+
+    var previous = global.buildAssessmentSaveObject;
+
+    var wrapped = function(includeServerTimestamp){
+      var saveObject = previous.apply(this, arguments);
+      
+      /* riskData 자체에도 반영 (UI/저장 양쪽 동기화) */
+      if(global.riskData){
+        overrideDecision(global.riskData);
+        /* saveObject 도 갱신 */
+        saveObject.finalRiskLevel = global.riskData.finalRiskLevel;
+        saveObject.overrideApplied = global.riskData.overrideApplied;
+        saveObject.overrideVersion = global.riskData.overrideVersion;
+        saveObject.overrideReasons = global.riskData.overrideReasons;
+        saveObject.originalRiskLevel = global.riskData.originalRiskLevel;
+      } else {
+        overrideDecision(saveObject);
+      }
+      
+      return saveObject;
+    };
+
+    wrapped.__v302Installed = true;
+    wrapped.__previous = previous;
+    global.buildAssessmentSaveObject = wrapped;
+    
+    console.log('[v3.0.2] ✅ buildAssessmentSaveObject 훅 설치 완료');
+  }
+
+  /* ---------- 부트 ---------- */
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', installHook);
+  } else {
+    installHook();
+  }
+
+  global.riskWorkDbPatchV302 = {
+    version: V,
+    override: overrideDecision,
+    findInHistory: findInWorkHistory,
+    ruleByKeyword: inferByKeyword,
+    reinstall: installHook,
+    restore: function(){
+      if(global.buildAssessmentSaveObject.__v302Installed){
+        global.buildAssessmentSaveObject = global.buildAssessmentSaveObject.__previous;
+      }
+      delete global.riskWorkDbPatchV302;
+      console.log('[v3.0.2] 해제 완료');
+    }
+  };
+
+  console.log('[risk-workdb v3.0.2] 관리대장 최우선 반영 로드 완료');
+})(window);
 
