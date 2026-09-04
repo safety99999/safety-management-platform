@@ -6021,7 +6021,11 @@ async function saveAssessmentToFirestore(){
     .doc(riskData.riskId)
     .set(saveObject, { merge: false });
 
-  console.log('✅ 위험성평가 Firestore 저장:', riskData.riskId);
+  console.log(
+    '✅ 위험성평가 Firestore 저장:',
+    collectionName,
+    riskData.riskId
+  );
 }
 
 function saveAssessmentToLocalStorage(){
