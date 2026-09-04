@@ -6014,7 +6014,7 @@ async function executeAssessmentSave(){
 }
 
 async function saveAssessmentToFirestore(){
-  var collectionName = getCollectionName('위험성평가');
+  var collectionName = getCollectionName('riskAssessmentResults');
   var saveObject = buildAssessmentSaveObject(true);
 
   await db.collection(collectionName)
