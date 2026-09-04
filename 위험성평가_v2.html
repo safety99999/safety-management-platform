@@ -6017,6 +6017,26 @@ async function saveAssessmentToFirestore(){
   var collectionName = getCollectionName('riskAssessmentResults');
   var saveObject = buildAssessmentSaveObject(true);
 
+  /*
+   * v3.0.2 오버라이드가 적용되지 않은 경우에도
+   * Firestore에 undefined가 전달되지 않도록 기본값을 지정합니다.
+   */
+  if(typeof saveObject.overrideApplied !== 'boolean'){
+    saveObject.overrideApplied = false;
+  }
+
+  if(typeof saveObject.overrideVersion !== 'string'){
+    saveObject.overrideVersion = '';
+  }
+
+  if(!Array.isArray(saveObject.overrideReasons)){
+    saveObject.overrideReasons = [];
+  }
+
+  if(typeof saveObject.originalRiskLevel !== 'string'){
+    saveObject.originalRiskLevel = saveObject.finalRiskLevel || '';
+  }
+
   await db.collection(collectionName)
     .doc(riskData.riskId)
     .set(saveObject, { merge: false });
@@ -6027,6 +6047,7 @@ async function saveAssessmentToFirestore(){
     riskData.riskId
   );
 }
+
 
 function saveAssessmentToLocalStorage(){
   var records = getStoredAssessments();
