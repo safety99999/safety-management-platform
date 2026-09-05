@@ -1727,6 +1727,35 @@ if(!firebase.apps.length){
 }
 
 var db = firebase.firestore();
+var auth = firebase.auth();
+
+var authReadyPromise = new Promise(function(resolve){
+  var unsubscribe = auth.onAuthStateChanged(
+    function(user){
+      if(unsubscribe){
+        unsubscribe();
+      }
+
+      console.log(
+        '[Firebase Auth] 위험성평가 인증 복원:',
+        user
+          ? { uid:user.uid, email:user.email || '' }
+          : null
+      );
+
+      resolve(user || null);
+    },
+    function(error){
+      console.error(
+        '[Firebase Auth] 위험성평가 인증 확인 실패:',
+        error
+      );
+
+      resolve(null);
+    }
+  );
+});
+
 
 // ═══════════════════════════════════════════════════════
 // 3. 공통 허용값 및 화면 분류
@@ -5955,7 +5984,23 @@ async function submitAssessment(){
 
 async function executeAssessmentSave(){
   if(assessmentSubmitting){ return; }
+
+  var authenticatedUser = await authReadyPromise;
+
+  if(!authenticatedUser){
+    showAlertDialog({
+      icon: '❌',
+      title: '로그인 확인 필요',
+      message:
+        'Firebase 로그인 세션이 없습니다.\n\n' +
+        '동일한 주소에서 다시 로그인해 주세요.'
+    });
+
+    return;
+  }
+
   assessmentSubmitting = true;
+
 
   var submitButton = getElement('submitAssessmentButton');
   if(submitButton){
@@ -6014,13 +6059,12 @@ async function executeAssessmentSave(){
 }
 
 async function saveAssessmentToFirestore(){
-  var collectionName = getCollectionName('riskAssessmentResults');
-  var saveObject = buildAssessmentSaveObject(true);
+  var collectionName =
+    getCollectionName('riskAssessmentResults');
 
-  /*
-   * v3.0.2 오버라이드가 적용되지 않은 경우에도
-   * Firestore에 undefined가 전달되지 않도록 기본값을 지정합니다.
-   */
+  var saveObject =
+    buildAssessmentSaveObject(true);
+
   if(typeof saveObject.overrideApplied !== 'boolean'){
     saveObject.overrideApplied = false;
   }
@@ -6034,12 +6078,13 @@ async function saveAssessmentToFirestore(){
   }
 
   if(typeof saveObject.originalRiskLevel !== 'string'){
-    saveObject.originalRiskLevel = saveObject.finalRiskLevel || '';
+    saveObject.originalRiskLevel =
+      saveObject.finalRiskLevel || '';
   }
 
   await db.collection(collectionName)
     .doc(riskData.riskId)
-    .set(saveObject, { merge: false });
+    .set(saveObject, { merge:false });
 
   console.log(
     '✅ 위험성평가 Firestore 저장:',
@@ -6047,6 +6092,7 @@ async function saveAssessmentToFirestore(){
     riskData.riskId
   );
 }
+
 
 
 function saveAssessmentToLocalStorage(){
@@ -7416,10 +7462,42 @@ function initializeFromUrl(){
 }
 
 async function initializeApplication(){
+  var authenticatedUser = await authReadyPromise;
+
+  if(!authenticatedUser){
+    console.error(
+      '[Firebase Auth] 위험성평가 인증 세션 없음'
+    );
+
+    alert(
+      '로그인 인증정보를 확인할 수 없습니다.\n' +
+      '동일한 주소에서 다시 로그인해 주세요.'
+    );
+
+    window.location.replace(
+      'login.html?redirect=' +
+      encodeURIComponent(
+        window.location.pathname +
+        window.location.search
+      )
+    );
+
+    return;
+  }
+
+  console.log(
+    '[Firebase Auth] 위험성평가 인증 확인 완료:',
+    {
+      uid: authenticatedUser.uid,
+      email: authenticatedUser.email || ''
+    }
+  );
+
   initializeTheme();
   bindApplicationEvents();
 
   riskData.date = formatDateKST(new Date());
+
   setInputValue('assessmentDateInput', riskData.date);
 
   var adminButton = getElement('adminButton');
