@@ -858,108 +858,119 @@ button{cursor:pointer;}
 </style>
 <style id="risk-readability-v1">
 /* ═══════════════════════════════════════════════════════
-   위험성평가 가독성 개선 v1.0
-   - PC·모바일 공통
-   - 기본정보 입력 영역 1열
-   - 안내·대책·결과 글자 확대
-   - 판정 및 저장 로직 영향 없음
+   위험성평가 가독성·정보구조 개선 v1.1
+   - 기본정보 1열
+   - 전체 주요 글자 확대
+   - 위험도 검토 정보 통합
+   - 판정·저장 로직 영향 없음
    ═══════════════════════════════════════════════════════ */
 
-/* 1. 기본정보 입력 영역 1열 */
+/* 기본정보 1열 */
 #screen-step1 .form-row{
   grid-template-columns:1fr;
-  gap:12px;
+  gap:14px;
 }
 
-/* 2. 입력 항목 */
+/* 전체 기본 글자 */
+.screen{
+  font-size:16px;
+}
+
+/* 입력 화면 */
 .form-label{
-  margin-bottom:7px;
-  color:var(--body);
-  font-size:13px;
-  font-weight:800;
+  margin-bottom:8px;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:850;
   line-height:1.45;
 }
 
 .form-input,
 .form-select,
 .form-textarea{
-  min-height:48px;
-  padding:12px 14px;
+  min-height:52px;
+  padding:13px 15px;
   color:var(--ink);
-  font-size:15px;
+  font-size:16px;
   font-weight:650;
   line-height:1.55;
 }
 
 .form-textarea{
-  min-height:100px;
+  min-height:110px;
 }
 
-/* 3. 공통 카드와 제목 */
+/* 카드와 제목 */
 .card,
 .form-section,
 .summary-card,
 .checklist-card,
 .hazard-card{
-  padding:14px;
+  padding:15px;
 }
 
 .section-title{
   gap:7px;
-  margin-bottom:11px;
-  padding-bottom:9px;
+  margin-bottom:12px;
+  padding-bottom:10px;
   color:var(--ink);
-  font-size:16px;
+  font-size:17px;
   font-weight:900;
   line-height:1.4;
 }
 
-/* 4. 시작 화면 */
+/* 시작 화면 */
+.welcome-title{
+  font-size:23px;
+}
+
+.welcome-text{
+  font-size:14px;
+  line-height:1.6;
+}
+
 .welcome-principle{
-  font-size:12.5px;
+  font-size:13px;
   line-height:1.6;
 }
 
 .mode-title{
-  font-size:15px;
-  line-height:1.4;
+  font-size:16px;
 }
 
-.mode-desc{
-  font-size:12px;
+.mode-desc,
+.list-heading{
+  font-size:13px;
   line-height:1.5;
 }
 
-.list-heading{
-  font-size:12px;
-  line-height:1.4;
-}
-
-/* 5. 안내·경고 문구 */
+/* 안내·경고 문구 */
 .info-box,
 .warning-box,
 .danger-box{
-  padding:11px 12px;
+  padding:12px 13px;
 }
 
 .info-title,
 .warning-title,
 .danger-title{
   margin-bottom:4px;
-  font-size:13px;
-  font-weight:900;
+  font-size:14px;
   line-height:1.4;
 }
 
 .info-text,
 .warning-text,
 .danger-text{
-  color:var(--ink);
-  font-size:13.5px;
+  font-size:14px;
   font-weight:650;
   line-height:1.65;
   word-break:keep-all;
   overflow-wrap:anywhere;
+}
+
+.info-text{
+  color:var(--ink);
 }
 
 .warning-text{
@@ -970,68 +981,42 @@ button{cursor:pointer;}
   color:var(--stop);
 }
 
-/* 6. 연결정보 */
+/* 연결 정보 */
 .link-label{
-  font-size:11px;
-  line-height:1.4;
+  font-size:12px;
 }
 
 .link-value{
-  font-size:14px;
+  font-size:15px;
   line-height:1.5;
 }
 
-/* 7. 분석 결과 상단 */
-.analysis-summary-text{
-  font-size:13px;
-  line-height:1.55;
-}
-
-.db-status{
-  font-size:11px;
-  line-height:1.4;
-}
-
-/* 8. 위험도 검토 결과 */
+/* 위험도 검토 카드 */
 .judgment-card{
-  padding:13px;
+  padding:14px;
+}
+
+.judgment-header{
+  gap:8px;
+  margin-bottom:9px;
+  padding-bottom:9px;
 }
 
 .judgment-title{
-  font-size:16px;
-  line-height:1.4;
-}
-
-.draft-notice{
-  margin-bottom:9px;
-  padding:10px 11px;
-  font-size:13px;
-  font-weight:700;
-  line-height:1.6;
-  word-break:keep-all;
-  overflow-wrap:anywhere;
-}
-
-.judgment-item{
-  padding:10px 7px;
-}
-
-.judgment-label{
-  margin-bottom:5px;
-  font-size:12px;
-  line-height:1.4;
-}
-
-.judgment-value{
-  padding:5px 10px;
   font-size:17px;
-  line-height:1.35;
+  line-height:1.4;
 }
 
-.control-symbol{
-  width:40px;
-  height:40px;
-  font-size:24px;
+.judgment-header-tools{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.judgment-refresh-button{
+  width:34px;
+  height:34px;
+  font-size:15px;
 }
 
 .override-button{
@@ -1040,51 +1025,147 @@ button{cursor:pointer;}
   font-size:12px;
 }
 
-/* 9. 판정 근거 */
-.basis-header{
+.draft-notice{
+  margin-bottom:10px;
   padding:10px 11px;
+  font-size:14px;
+  line-height:1.6;
+  word-break:keep-all;
+}
+
+.judgment-grid{
+  gap:8px;
+  margin-bottom:9px;
+}
+
+.judgment-item{
+  padding:11px 8px;
+}
+
+.judgment-label{
+  margin-bottom:6px;
   font-size:13px;
+}
+
+.judgment-value{
+  padding:6px 11px;
+  font-size:18px;
+}
+
+.control-symbol{
+  width:42px;
+  height:42px;
+  font-size:25px;
+}
+
+/* 위험도 카드 안 평가자료 요약 */
+.judgment-compact-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:9px;
+  padding:9px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--sunk);
+  color:var(--body);
+  font-size:12.5px;
+  font-weight:750;
+  line-height:1.45;
+}
+
+.judgment-compact-meta #analysisSummaryText{
+  flex:1;
+}
+
+.judgment-compact-meta .db-status{
+  flex-shrink:0;
+  padding:3px 7px;
+  font-size:11px;
+}
+
+/* 판정 근거 */
+.basis-header{
+  padding:11px;
+  font-size:14px;
   line-height:1.5;
 }
 
 .basis-body{
   padding:0 11px 11px;
-  font-size:13px;
-  line-height:1.6;
+  font-size:13.5px;
+  line-height:1.65;
 }
 
 .basis-row{
   gap:8px;
-  padding:7px 0;
+  padding:8px 0;
 }
 
 .basis-number{
-  width:21px;
-  height:21px;
-  font-size:10px;
+  width:22px;
+  height:22px;
+  font-size:11px;
 }
 
 .reference-details summary{
-  font-size:12px;
-  line-height:1.5;
+  font-size:13px;
 }
 
 .reference-item{
-  min-height:32px;
+  min-height:34px;
   padding:7px 8px;
   font-size:12px;
-  line-height:1.45;
 }
 
-/* 10. 대책 선택 현황 */
+/* 작업DB 검토 결과를 참고정보로 간결하게 표시 */
+.workdb-v2-panel{
+  padding:10px 11px!important;
+  box-shadow:none!important;
+}
+
+.workdb-v2-header{
+  margin-bottom:5px!important;
+}
+
+.workdb-v2-title{
+  font-size:13px!important;
+}
+
+.workdb-v2-source{
+  font-size:10.5px!important;
+}
+
+.workdb-v2-card{
+  margin:5px 0!important;
+  padding:8px 9px!important;
+}
+
+.workdb-v2-name{
+  font-size:12.5px!important;
+  line-height:1.5!important;
+}
+
+.workdb-v2-meta,
+.workdb-v2-note{
+  font-size:11.5px!important;
+  line-height:1.5!important;
+}
+
+/* 기술용 보정 정보는 화면에서 숨김 */
+.workdb-v2-fix{
+  display:none!important;
+}
+
+/* 적용대책 선택 현황 */
 .measure-progress{
   padding:10px;
 }
 
 .measure-progress-title{
   margin-bottom:7px;
-  font-size:12px;
-  line-height:1.4;
+  font-size:13px;
 }
 
 .measure-progress-item{
@@ -1092,81 +1173,76 @@ button{cursor:pointer;}
 }
 
 .measure-progress-count{
-  font-size:14px;
-  line-height:1.3;
+  font-size:15px;
 }
 
 .measure-progress-label{
   margin-top:2px;
-  font-size:11px;
-  line-height:1.35;
+  font-size:11.5px;
 }
 
 .measure-progress-total{
   padding:7px;
-  font-size:12px;
-  line-height:1.4;
+  font-size:13px;
 }
 
-/* 11. 대책 카테고리 */
+/* 대책 카테고리 */
 .category-header{
-  min-height:52px;
-  padding:10px 11px;
+  min-height:54px;
+  padding:11px 12px;
 }
 
 .category-title{
   gap:7px;
-  font-size:15px;
-  line-height:1.4;
+  font-size:16px;
 }
 
 .category-count{
   padding:3px 8px;
-  font-size:12px;
-  line-height:1.35;
+  font-size:13px;
 }
 
 .category-arrow{
-  font-size:13px;
+  font-size:14px;
 }
 
 .category-body{
   gap:8px;
-  padding:0 9px 9px;
+  padding:0 10px 10px;
 }
 
-/* 12. 개별 안전대책 */
+/* 개별 안전대책 */
 .measure-item{
-  min-height:68px;
-  padding:11px;
-  gap:9px;
+  min-height:70px;
+  padding:12px;
+  gap:10px;
 }
 
 .measure-check{
-  width:24px;
-  height:24px;
+  width:25px;
+  height:25px;
   border-radius:6px;
-  font-size:14px;
+  font-size:15px;
 }
 
 .measure-text{
   color:var(--ink);
-  font-size:14px;
+  font-size:15px;
   font-weight:750;
   line-height:1.55;
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
 
-/* 13. 사용자 추가 대책 */
+/* 추가 대책 */
 .measure-add-row{
   grid-template-columns:1fr;
   gap:8px;
 }
 
 .user-measure-item{
-  min-height:48px;
-  padding:10px 11px;
+  min-height:50px;
+  padding:11px;
 }
 
 .user-measure-text{
@@ -1176,227 +1252,197 @@ button{cursor:pointer;}
 }
 
 .user-measure-category{
-  font-size:11px;
+  font-size:12px;
 }
 
-.user-measure-delete{
-  width:26px;
-  height:26px;
-  font-size:14px;
-}
-
-/* 14. 최종 위험등급 배너 */
+/* 최종 위험도 */
 .final-risk-banner{
-  padding:16px 14px;
+  padding:17px 15px;
 }
 
 .final-risk-level{
-  font-size:22px;
-  line-height:1.35;
+  font-size:23px;
 }
 
 .final-risk-control{
   margin-top:5px;
-  font-size:28px;
-  line-height:1.3;
+  font-size:29px;
 }
 
 .final-risk-description{
-  margin-top:7px;
-  font-size:13px;
-  font-weight:700;
-  line-height:1.55;
-  word-break:keep-all;
-  overflow-wrap:anywhere;
+  margin-top:8px;
+  font-size:14px;
+  line-height:1.6;
 }
 
-/* 15. 핵심 위험성 */
+/* 핵심 위험성 */
 .hazard-card{
-  padding:12px;
+  padding:13px;
 }
 
 .hazard-title{
-  margin-bottom:8px;
-  padding-bottom:8px;
-  font-size:15px;
-  line-height:1.4;
+  margin-bottom:9px;
+  padding-bottom:9px;
+  font-size:16px;
 }
 
 .hazard-grid{
-  gap:7px;
+  gap:8px;
 }
 
 .hazard-item{
-  min-height:62px;
-  padding:10px;
+  min-height:66px;
+  padding:11px;
 }
 
 .hazard-label{
-  margin-bottom:4px;
-  font-size:12px;
-  line-height:1.4;
+  margin-bottom:5px;
+  font-size:13px;
 }
 
 .hazard-value{
   color:var(--ink);
-  font-size:14px;
-  font-weight:750;
+  font-size:15px;
   line-height:1.6;
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
 
-/* 16. 관련 필수 체크사항 */
-.checklist-card{
-  padding:11px;
-}
-
+/* 체크사항과 최종 대책 */
 .checklist-title{
-  margin-bottom:8px;
-  padding-bottom:7px;
-  font-size:15px;
-  line-height:1.4;
+  margin-bottom:9px;
+  padding-bottom:8px;
+  font-size:16px;
 }
 
 .checklist-grid,
 .final-measures-grid{
-  gap:7px;
+  gap:8px;
 }
 
 .checklist-item,
 .final-measure-item{
-  min-height:56px;
-  padding:10px;
-  gap:8px;
+  min-height:60px;
+  padding:11px;
+  gap:9px;
 }
 
 .checklist-number,
 .final-measure-number{
-  width:25px;
-  height:25px;
-  border-radius:7px;
-  font-size:11px;
+  width:26px;
+  height:26px;
+  font-size:12px;
 }
 
 .checklist-text,
 .final-measure-text{
   color:var(--ink);
-  font-size:14px;
-  font-weight:750;
+  font-size:15px;
   line-height:1.55;
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
 
 .final-measure-item{
-  padding-bottom:23px;
+  padding-bottom:24px;
 }
 
 .final-measure-category{
   right:7px;
   bottom:5px;
-  font-size:11px;
-  line-height:1.3;
+  font-size:11.5px;
 }
 
-/* 17. 평가 종합요약 */
-.review-summary-grid{
-  gap:0;
-}
-
+/* 종합요약 */
 .review-summary-item{
-  min-height:58px;
-  padding:10px;
+  min-height:62px;
+  padding:11px;
 }
 
 .review-summary-label{
-  margin-bottom:4px;
-  color:var(--sub);
-  font-size:12px;
-  font-weight:800;
-  line-height:1.4;
+  margin-bottom:5px;
+  font-size:13px;
 }
 
 .review-summary-value{
   color:var(--ink);
-  font-size:14px;
-  font-weight:850;
+  font-size:15px;
   line-height:1.55;
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
 
-/* 18. 종합의견 */
+/* 종합의견 */
 .opinion-textarea{
-  min-height:120px;
-  padding:13px 14px;
-  font-size:15px;
+  min-height:130px;
+  padding:14px 15px;
+  font-size:16px;
   line-height:1.65;
 }
 
 .opinion-refresh-button{
-  min-height:44px;
-  padding:10px 12px;
-  font-size:13px;
+  min-height:46px;
+  padding:11px 12px;
+  font-size:14px;
 }
 
-/* 19. 버튼 */
+/* 버튼 */
 .primary-button,
 .secondary-button,
 .success-button{
-  min-height:50px;
-  padding:13px;
-  font-size:15px;
-  line-height:1.35;
+  min-height:52px;
+  padding:14px;
+  font-size:16px;
 }
 
 .small-button{
-  min-height:36px;
-  padding:8px 12px;
-  font-size:12px;
+  min-height:38px;
+  padding:9px 12px;
+  font-size:13px;
 }
 
-/* 20. 평가 이력 */
+/* 이력·완료 화면 */
 .card-name{
-  font-size:15px;
+  font-size:16px;
   line-height:1.45;
 }
 
 .card-meta{
-  font-size:12px;
+  font-size:13px;
   line-height:1.5;
 }
 
 .readonly-opinion{
-  padding:12px;
+  padding:13px;
   color:var(--ink);
-  font-size:14px;
+  font-size:15px;
   line-height:1.65;
 }
 
-/* 21. 완료 화면 */
 .complete-text{
-  font-size:13.5px;
+  font-size:14px;
   line-height:1.6;
 }
 
 .complete-action{
-  min-height:50px;
-  font-size:14px;
+  min-height:52px;
+  font-size:15px;
 }
 
-/* 22. 다이얼로그 */
+/* 다이얼로그 */
 .dialog-title{
-  font-size:16px;
+  font-size:17px;
 }
 
 .dialog-body{
   font-size:14px;
-  line-height:1.6;
+  line-height:1.65;
 }
 
-/* 23. 좁은 모바일 화면 */
+/* 좁은 화면 */
 @media(max-width:390px){
+  .judgment-grid,
+  .category-body,
   .hazard-grid,
   .checklist-grid,
   .final-measures-grid,
@@ -1409,15 +1455,13 @@ button{cursor:pointer;}
     grid-column:auto;
   }
 
-  .category-body{
-    grid-template-columns:1fr;
-  }
-
-  .judgment-grid{
-    grid-template-columns:1fr;
+  .judgment-compact-meta{
+    align-items:flex-start;
+    flex-direction:column;
   }
 }
 </style>
+
   
 </head>
 <body>
@@ -1726,41 +1770,38 @@ button{cursor:pointer;}
 
 <!-- 2단계: 위험도 및 적용대책 -->
 <section class="screen" id="screen-step2">
-  <div class="analysis-summary">
-    <div class="analysis-summary-text">
-      <div id="analysisSummaryText">평가자료를 확인하고 있습니다.</div>
-      <div class="db-status-row">
-        <span class="db-status" id="riskDatabaseStatus">위험성평가 DB 확인 중</span>
-      </div>
-    </div>
-
-    <button
-      type="button"
-      class="refresh-button"
-      onclick="reanalyzeCurrentAssessment()"
-      aria-label="현재 캐시로 평가 다시 분석"
-      title="현재 평가자료로 다시 분석">
-      🔄
-    </button>
-  </div>
 
   <div class="judgment-card" id="judgmentCard" style="display:none;">
     <div class="judgment-header">
       <span>⚡</span>
-      <span class="judgment-title">위험도 검토 결과</span>
-      <button
-        type="button"
-        class="override-button"
-        id="overrideButton"
-        onclick="openOverrideDialog()">
-        ✏️ 수정
-      </button>
+
+      <span class="judgment-title">
+        위험도 검토 결과
+      </span>
+
+      <div class="judgment-header-tools">
+        <button
+          type="button"
+          class="refresh-button judgment-refresh-button"
+          onclick="reanalyzeCurrentAssessment()"
+          aria-label="평가 다시 분석"
+          title="평가 다시 분석">
+          🔄
+        </button>
+
+        <button
+          type="button"
+          class="override-button"
+          id="overrideButton"
+          onclick="openOverrideDialog()">
+          ✏️ 수정
+        </button>
+      </div>
     </div>
 
- <div class="draft-notice">
-  AI 평가 초안입니다. 현장조건과 안전대책 적용 여부를 확인한 후 최종 판단하세요.
-</div>
-
+    <div class="draft-notice">
+      AI 평가 초안입니다. 현장조건과 안전대책을 확인한 후 최종 판단하세요.
+    </div>
 
     <div class="judgment-grid">
       <div class="judgment-item">
@@ -1772,6 +1813,18 @@ button{cursor:pointer;}
         <div class="judgment-label">참고 통제 수준</div>
         <div class="control-symbol na" id="judgmentControlValue">-</div>
       </div>
+    </div>
+
+    <div class="judgment-compact-meta">
+      <span id="analysisSummaryText">
+        평가자료를 확인하고 있습니다.
+      </span>
+
+      <span
+        class="db-status"
+        id="riskDatabaseStatus">
+        DB 확인 중
+      </span>
     </div>
 
     <div class="basis-accordion" id="basisAccordion">
@@ -1791,14 +1844,19 @@ button{cursor:pointer;}
       </div>
     </div>
 
-    <div class="warning-box" id="overrideResultBox" style="display:none;margin:7px 0 0;">
+    <div
+      class="warning-box"
+      id="overrideResultBox"
+      style="display:none;margin:9px 0 0;">
       <div class="warning-title">✏️ 관리자 수동 조정</div>
       <div class="warning-text" id="overrideResultText"></div>
     </div>
   </div>
 
   <div class="measure-progress" id="measureProgress" style="display:none;">
-    <div class="measure-progress-title">📊 현장 적용대책 선택 현황</div>
+    <div class="measure-progress-title">
+      📊 적용대책 선택
+    </div>
 
     <div class="measure-progress-grid">
       <div class="measure-progress-item">
@@ -1818,12 +1876,12 @@ button{cursor:pointer;}
 
       <div class="measure-progress-item">
         <div class="measure-progress-count" id="ppeProgress">0/0</div>
-        <div class="measure-progress-label">🟢 개인보호구</div>
+        <div class="measure-progress-label">🟢 보호구</div>
       </div>
     </div>
 
     <div class="measure-progress-total">
-      총 선택:
+      선택
       <span id="totalSelectedMeasures">0</span>
       /
       <span id="totalAvailableMeasures">0</span>개
@@ -1834,14 +1892,19 @@ button{cursor:pointer;}
   <div id="measureCategoryContainer">
     <div class="loading-card">
       <div class="loading-icon">🔍</div>
+
       <div class="loading-text">
         위험요인과 안전대책을 분석하고 있습니다.
-        <small>위험성평가 DB와 안전기준을 기반으로 평가 초안을 작성합니다.</small>
+        <small>잠시만 기다려 주세요.</small>
       </div>
     </div>
   </div>
 
-  <div class="form-section user-measures" id="userMeasureSection" style="display:none;">
+  <div
+    class="form-section user-measures"
+    id="userMeasureSection"
+    style="display:none;">
+
     <div class="section-title">➕ 추가 대책</div>
 
     <div class="measure-add-row">
@@ -1852,35 +1915,71 @@ button{cursor:pointer;}
         placeholder="현장조건에 맞는 추가 대책"
         autocomplete="off">
 
-      <select class="form-select" id="userMeasureCategory" aria-label="추가 대책 분류">
+      <select
+        class="form-select"
+        id="userMeasureCategory"
+        aria-label="추가 대책 분류">
         <option value="essential">🔴 핵심</option>
         <option value="engineering">🟠 공학적</option>
         <option value="administrative" selected>🟡 관리적</option>
         <option value="ppe">🟢 개인보호구</option>
       </select>
 
-      <button type="button" class="small-button" onclick="addUserMeasure()">추가</button>
+      <button
+        type="button"
+        class="small-button"
+        onclick="addUserMeasure()">
+        추가
+      </button>
     </div>
 
-    <div class="user-measure-list" id="userMeasureList"></div>
+    <div
+      class="user-measure-list"
+      id="userMeasureList">
+    </div>
   </div>
 
-  <div class="warning-box" id="noReferenceWarning" style="display:none;">
-    <div class="warning-title">⚠️ 관련 평가자료 없음</div>
+  <div
+    class="warning-box"
+    id="noReferenceWarning"
+    style="display:none;">
+
+    <div class="warning-title">
+      ⚠️ 관련 평가자료 없음
+    </div>
+
     <div class="warning-text">
-      작업명·작업유형·상세 내용을 다시 확인하거나
-      현장조건에 맞는 대책을 직접 추가해 주세요.
+      작업정보를 확인하거나 현장 대책을 직접 추가해 주세요.
     </div>
   </div>
 
-  <div class="danger-box" id="databaseErrorBox" style="display:none;">
-    <div class="danger-title">❌ 위험성평가 DB 오류</div>
-    <div class="danger-text" id="databaseErrorText"></div>
+  <div
+    class="danger-box"
+    id="databaseErrorBox"
+    style="display:none;">
+
+    <div class="danger-title">
+      ❌ 위험성평가 DB 오류
+    </div>
+
+    <div
+      class="danger-text"
+      id="databaseErrorText">
+    </div>
   </div>
 
   <div class="button-row">
-    <button type="button" class="secondary-button" onclick="goToStep(1)">← 이전</button>
-    <button type="button" class="primary-button" onclick="validateMeasureSelection()">
+    <button
+      type="button"
+      class="secondary-button"
+      onclick="goToStep(1)">
+      ← 이전
+    </button>
+
+    <button
+      type="button"
+      class="primary-button"
+      onclick="validateMeasureSelection()">
       종합검토 →
     </button>
   </div>
