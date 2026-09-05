@@ -4962,6 +4962,1167 @@ document.addEventListener('keydown', function(e){
   }
 
 })(window);
+<script>
+/* =========================================================
+   위험성평가 → 안전작업허가서 실행정보 연계 v1.1.0
+
+   1. 위험성평가 기본정보 자동 입력
+   2. 위험성평가 기반 작업유형 자동 선택
+   3. 위험성평가 선택대책을 허가 체크리스트로 연결
+   4. 허가서 현장 추가항목 지원
+   5. 체크 결과와 출처를 허가서에 저장
+
+   ※ 기존 위험성평가 원본은 수정하지 않음
+   ========================================================= */
+(function(global){
+  'use strict';
+
+  var VERSION = '1.1.0';
+  var automaticTypeApplied = false;
+
+  if(global.permitRiskExecutionLinkV110){
+    console.log('[허가 연계 v1.1.0] 이미 적용');
+    return;
+  }
+
+  function getLinkedRisk(){
+    if(
+      !global.permitRiskLink ||
+      typeof global.permitRiskLink.getLinkedAssessment !== 'function'
+    ){
+      return null;
+    }
+
+    return global.permitRiskLink.getLinkedAssessment();
+  }
+
+  function clone(value){
+    if(value === undefined || value === null){
+      return value;
+    }
+
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function escapeHtml(value){
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function setFieldValue(id, value){
+    var element = document.getElementById(id);
+
+    if(
+      !element ||
+      value === undefined ||
+      value === null ||
+      String(value).trim() === ''
+    ){
+      return false;
+    }
+
+    element.value = String(value);
+    element.classList.add('risk-linked-auto');
+
+    return true;
+  }
+
+  function setLocationValue(value){
+    var select =
+      document.getElementById('location');
+
+    if(!select || !value){
+      return false;
+    }
+
+    var text =
+      String(value);
+
+    if(
+      text.indexOf('1공장') >= 0 ||
+      text.indexOf('2-1') >= 0
+    ){
+      select.value = '포항양극재 1공장';
+    } else if(
+      text.indexOf('2공장') >= 0 ||
+      text.indexOf('2-2') >= 0
+    ){
+      select.value = '포항양극재 2공장';
+    } else {
+      select.value = '기타';
+    }
+
+    select.classList.add('risk-linked-auto');
+
+    return true;
+  }
+
+  /* -----------------------------------------------------
+   * 1단계 기본정보 자동 입력
+   * ----------------------------------------------------- */
+
+  function applyRiskBasicInformation(){
+    var risk =
+      getLinkedRisk();
+
+    if(!risk){
+      return false;
+    }
+
+    var filledCount = 0;
+
+    if(setFieldValue('work-name', risk.workName)){
+      filledCount++;
+    }
+
+    if(setLocationValue(risk.location)){
+      filledCount++;
+    }
+
+    if(
+      setFieldValue(
+        'detail-location',
+        risk.detailLocation
+      )
+    ){
+      filledCount++;
+    }
+
+    if(setFieldValue('start-date', risk.date)){
+      filledCount++;
+    }
+
+    if(setFieldValue('end-date', risk.date)){
+      filledCount++;
+    }
+
+    if(setFieldValue('worker-count', risk.workers)){
+      filledCount++;
+    }
+
+    if(setFieldValue('company-name', risk.company)){
+      filledCount++;
+    }
+
+    if(
+      setFieldValue(
+        'work-description',
+        risk.workDescription ||
+        risk.workDesc ||
+        risk.workName
+      )
+    ){
+      filledCount++;
+    }
+
+    if(global.permitData){
+      global.permitData.riskId =
+        risk.riskId || null;
+
+      if(
+        !global.permitData.workId &&
+        risk.workId
+      ){
+        global.permitData.workId =
+          risk.workId;
+      }
+
+      if(
+        !global.permitData.sourceWorkId &&
+        risk.workId
+      ){
+        global.permitData.sourceWorkId =
+          risk.workId;
+      }
+    }
+
+    console.log(
+      '[허가 연계 v1.1.0] 기본정보 자동 입력:',
+      {
+        riskId: risk.riskId || '',
+        workId: risk.workId || '',
+        filledCount: filledCount
+      }
+    );
+
+    return true;
+  }
+
+  /* -----------------------------------------------------
+   * 2단계 작업유형 자동 선택
+   * ----------------------------------------------------- */
+
+  function addUnique(target, value){
+    if(value && target.indexOf(value) < 0){
+      target.push(value);
+    }
+  }
+
+  function detectPermitWorkTypes(risk){
+    var types = [];
+    var profile = risk.workProfile || {};
+    var conditions = profile.conditions || {};
+
+    var text = [
+      risk.workType || '',
+      risk.workName || '',
+      risk.workDescription || '',
+      risk.workDesc || '',
+      profile.normalizedText || ''
+    ].join(' ').toLowerCase();
+
+    if(
+      profile.group === 'fire' ||
+      conditions.fire === true
+    ){
+      addUnique(types, 'fire');
+    }
+
+    if(
+      profile.group === 'electrical' ||
+      conditions.electrical === true
+    ){
+      if(/활선|충전부|충전작업/.test(text)){
+        addUnique(types, 'electric-live');
+      } else {
+        addUnique(types, 'electric');
+      }
+    }
+
+    if(
+      profile.group === 'fall' ||
+      profile.group === 'scaffold' ||
+      profile.group === 'ladder' ||
+      profile.group === 'aerial-lift' ||
+      conditions.fall === true ||
+      conditions.scaffold === true ||
+      conditions.ladder === true ||
+      conditions.aerialLift === true
+    ){
+      addUnique(types, 'height');
+    }
+
+    if(
+      profile.group === 'lifting' ||
+      conditions.lifting === true
+    ){
+      addUnique(types, 'heavy');
+    }
+
+    if(
+      profile.group === 'confined' ||
+      conditions.confined === true
+    ){
+      addUnique(types, 'confined');
+    }
+
+    /*
+     * 현재 허가서에 화학물질·정비 전용 유형이 없으므로
+     * 위험성평가 대책은 3단계 체크리스트로 연결하고
+     * 작업유형은 일반작업을 기본 선택합니다.
+     */
+    if(types.length === 0){
+      addUnique(types, 'general');
+    }
+
+    return types;
+  }
+
+  function getWorkTypeCard(type){
+    var cards =
+      Array.prototype.slice.call(
+        document.querySelectorAll('.wt-card')
+      );
+
+    if(type === 'general'){
+      return document.querySelector('.wt-card.general');
+    }
+
+    return cards.find(function(card){
+      var onclick =
+        card.getAttribute('onclick') || '';
+
+      return (
+        onclick.indexOf("'" + type + "'") >= 0 ||
+        onclick.indexOf('"' + type + '"') >= 0
+      );
+    }) || null;
+  }
+
+  function applyRiskWorkTypes(force){
+    var risk =
+      getLinkedRisk();
+
+    if(!risk){
+      return false;
+    }
+
+    if(automaticTypeApplied && !force){
+      return true;
+    }
+
+    var types =
+      detectPermitWorkTypes(risk);
+
+    document
+      .querySelectorAll('.wt-card')
+      .forEach(function(card){
+        card.classList.remove(
+          'active',
+          'disabled'
+        );
+      });
+
+    if(global.permitData){
+      global.permitData.workTypes =
+        types.slice();
+
+      global.permitData.workTypesSource = {
+        source: 'risk-assessment',
+        riskId: risk.riskId || '',
+        automaticTypes: types.slice(),
+        additionalSelectionAllowed: true,
+        appliedAt: new Date().toISOString(),
+        version: VERSION
+      };
+    }
+
+    types.forEach(function(type){
+      var card =
+        getWorkTypeCard(type);
+
+      if(card){
+        card.classList.add('active');
+        card.dataset.riskLinked = 'true';
+      }
+    });
+
+    automaticTypeApplied = true;
+
+    console.log(
+      '[허가 연계 v1.1.0] 작업유형 자동 선택:',
+      types
+    );
+
+    return true;
+  }
+
+  /* -----------------------------------------------------
+   * 위험성평가 대책 추출
+   * ----------------------------------------------------- */
+
+  function getRiskMeasures(risk){
+    if(!risk){
+      return [];
+    }
+
+    if(Array.isArray(risk.allMeasures)){
+      return risk.allMeasures
+        .map(function(measure, index){
+          if(typeof measure === 'string'){
+            return {
+              id: 'RA-MEASURE-' + (index + 1),
+              text: measure,
+              category: '',
+              source: 'risk-assessment'
+            };
+          }
+
+          return {
+            id:
+              measure.meaningKey ||
+              'RA-MEASURE-' + (index + 1),
+
+            text:
+              measure.text || '',
+
+            category:
+              measure.category || '',
+
+            source:
+              measure.source ||
+              'risk-assessment'
+          };
+        })
+        .filter(function(measure){
+          return Boolean(measure.text);
+        });
+    }
+
+    if(Array.isArray(risk.riskMeasures)){
+      return risk.riskMeasures
+        .map(function(text, index){
+          return {
+            id: 'RA-MEASURE-' + (index + 1),
+            text: String(text || ''),
+            category: '',
+            source: 'risk-assessment'
+          };
+        })
+        .filter(function(measure){
+          return Boolean(measure.text);
+        });
+    }
+
+    return [];
+  }
+
+  function initializeLinkedChecklist(){
+    var risk = getLinkedRisk();
+
+    if(!risk || !global.permitData){
+      return null;
+    }
+
+    var existing =
+      global.permitData.riskAssessmentChecklist;
+
+    if(
+      existing &&
+      existing.sourceRiskId === risk.riskId &&
+      Array.isArray(existing.items)
+    ){
+      return existing;
+    }
+
+    global.permitData.riskAssessmentChecklist = {
+      sourceRiskId: risk.riskId || '',
+      sourceWorkId: risk.workId || '',
+      sourceType: 'risk-assessment',
+      version: VERSION,
+
+      items: getRiskMeasures(risk).map(
+        function(measure, index){
+          return {
+            checklistItemId:
+              measure.id ||
+              'RA-MEASURE-' + (index + 1),
+
+            text: measure.text,
+            category: measure.category || '',
+            source: measure.source || '',
+            required: true,
+            result: '',
+            checkedAt: '',
+            checkedBy: ''
+          };
+        }
+      )
+    };
+
+    if(
+      !Array.isArray(
+        global.permitData.additionalPermitChecklist
+      )
+    ){
+      global.permitData.additionalPermitChecklist = [];
+    }
+
+    return global.permitData.riskAssessmentChecklist;
+  }
+
+  function setLinkedCheckResult(type, index, result){
+    if(!global.permitData){
+      return;
+    }
+
+    var list =
+      type === 'additional'
+        ? global.permitData.additionalPermitChecklist
+        : (
+            global.permitData.riskAssessmentChecklist
+              ? global.permitData
+                  .riskAssessmentChecklist.items
+              : []
+          );
+
+    if(!Array.isArray(list) || !list[index]){
+      return;
+    }
+
+    list[index].result = result;
+    list[index].checkedAt =
+      new Date().toISOString();
+
+    list[index].checkedBy =
+      sessionStorage.getItem('userName') ||
+      global.permitData.supervisor ||
+      '';
+
+    renderLinkedChecklist();
+  }
+
+  global.setLinkedRiskCheck =
+    function(index, result){
+      setLinkedCheckResult(
+        'risk',
+        Number(index),
+        result
+      );
+    };
+
+  global.setAdditionalPermitCheck =
+    function(index, result){
+      setLinkedCheckResult(
+        'additional',
+        Number(index),
+        result
+      );
+    };
+
+  global.addAdditionalPermitCheck =
+    function(){
+      var input =
+        document.getElementById(
+          'additionalPermitCheckInput'
+        );
+
+      if(!input){
+        return;
+      }
+
+      var text =
+        String(input.value || '').trim();
+
+      if(text.length < 3){
+        global.showToast(
+          '추가 확인사항을 3자 이상 입력해 주세요.',
+          'danger'
+        );
+
+        return;
+      }
+
+      if(
+        !Array.isArray(
+          global.permitData
+            .additionalPermitChecklist
+        )
+      ){
+        global.permitData
+          .additionalPermitChecklist = [];
+      }
+
+      global.permitData
+        .additionalPermitChecklist
+        .push({
+          checklistItemId:
+            'PERMIT-ADD-' + Date.now(),
+
+          text: text,
+          source: 'permit-additional',
+          required: true,
+          result: '',
+          addedBy:
+            sessionStorage.getItem('userName') ||
+            global.permitData.supervisor ||
+            '',
+          addedAt:
+            new Date().toISOString(),
+          checkedAt: '',
+          checkedBy: ''
+        });
+
+      input.value = '';
+      renderLinkedChecklist();
+    };
+
+  global.removeAdditionalPermitCheck =
+    function(index){
+      var list =
+        global.permitData
+          .additionalPermitChecklist;
+
+      if(!Array.isArray(list)){
+        return;
+      }
+
+      list.splice(Number(index), 1);
+      renderLinkedChecklist();
+    };
+
+  function resultButtons(type, index, result){
+    return (
+      '<div class="cl-radios">' +
+
+        '<button type="button" ' +
+          'class="cl-radio-btn' +
+          (result === 'ok' ? ' ok' : '') +
+          '" onclick="' +
+          (
+            type === 'additional'
+              ? 'setAdditionalPermitCheck'
+              : 'setLinkedRiskCheck'
+          ) +
+          '(' + index + ',\'ok\')">' +
+          '⭕' +
+        '</button>' +
+
+        '<button type="button" ' +
+          'class="cl-radio-btn' +
+          (result === 'no' ? ' no' : '') +
+          '" onclick="' +
+          (
+            type === 'additional'
+              ? 'setAdditionalPermitCheck'
+              : 'setLinkedRiskCheck'
+          ) +
+          '(' + index + ',\'no\')">' +
+          '❌' +
+        '</button>' +
+
+      '</div>'
+    );
+  }
+
+  function renderLinkedChecklist(){
+    var container =
+      document.getElementById(
+        'riskLinkedChecklistSection'
+      );
+
+    if(!container){
+      return;
+    }
+
+    var linked =
+      initializeLinkedChecklist();
+
+    if(!linked){
+      container.innerHTML = '';
+      return;
+    }
+
+    var riskItems =
+      linked.items || [];
+
+    var additionalItems =
+      global.permitData
+        .additionalPermitChecklist || [];
+
+    var html =
+      '<div class="cl-section">' +
+
+        '<div class="cl-section-header">' +
+          '🤖 위험성평가 연계 체크리스트' +
+        '</div>' +
+
+        '<div class="cl-legend">' +
+          '<div class="cl-legend-item">' +
+            '출처: ' +
+            escapeHtml(linked.sourceRiskId || '-') +
+          '</div>' +
+
+          '<div class="cl-legend-item">' +
+            '<span class="cl-legend-required">*</span> ' +
+            '위험성평가 선택대책' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="cl-items">';
+
+    riskItems.forEach(function(item, index){
+      var itemClass =
+        item.result === 'ok'
+          ? 'cl-item required ok'
+          : (
+              item.result === 'no'
+                ? 'cl-item required no'
+                : 'cl-item required'
+            );
+
+      html +=
+        '<div class="' + itemClass + '">' +
+
+          '<div class="cl-num">' +
+            'RA-' + (index + 1) +
+          '</div>' +
+
+          '<div class="cl-text">' +
+            escapeHtml(item.text) +
+          '</div>' +
+
+          resultButtons(
+            'risk',
+            index,
+            item.result
+          ) +
+
+        '</div>';
+    });
+
+    html +=
+        '</div>' +
+      '</div>' +
+
+      '<div class="cl-section">' +
+
+        '<div class="cl-section-header general">' +
+          '➕ 허가서 현장 추가 확인사항' +
+        '</div>' +
+
+        '<div style="padding:14px 16px;">' +
+
+          '<div style="display:flex;gap:8px;">' +
+            '<input type="text" ' +
+              'class="f-input" ' +
+              'id="additionalPermitCheckInput" ' +
+              'placeholder="현장에서 추가로 확인할 항목">' +
+
+            '<button type="button" ' +
+              'class="btn-primary" ' +
+              'style="flex:0 0 auto;padding:12px 16px;" ' +
+              'onclick="addAdditionalPermitCheck()">' +
+              '추가' +
+            '</button>' +
+          '</div>' +
+
+        '</div>' +
+
+        '<div class="cl-items">';
+
+    additionalItems.forEach(
+      function(item, index){
+        var itemClass =
+          item.result === 'ok'
+            ? 'cl-item required ok'
+            : (
+                item.result === 'no'
+                  ? 'cl-item required no'
+                  : 'cl-item required'
+              );
+
+        html +=
+          '<div class="' + itemClass + '">' +
+
+            '<div class="cl-num">' +
+              '추가' + (index + 1) +
+            '</div>' +
+
+            '<div class="cl-text">' +
+              escapeHtml(item.text) +
+            '</div>' +
+
+            resultButtons(
+              'additional',
+              index,
+              item.result
+            ) +
+
+            '<button type="button" ' +
+              'style="border:0;background:transparent;' +
+              'color:var(--stop);font-size:20px;' +
+              'font-weight:900;" ' +
+              'onclick="removeAdditionalPermitCheck(' +
+              index +
+              ')">' +
+              '×' +
+            '</button>' +
+
+          '</div>';
+      }
+    );
+
+    if(additionalItems.length === 0){
+      html +=
+        '<div style="padding:14px 18px;' +
+          'color:var(--sub);font-size:13px;' +
+          'font-weight:650;">' +
+          '추가된 현장 확인사항이 없습니다.' +
+        '</div>';
+    }
+
+    html +=
+        '</div>' +
+      '</div>';
+
+    container.innerHTML = html;
+  }
+
+  function injectLinkedChecklistContainer(){
+    var mainContainer =
+      document.getElementById(
+        'cl-dynamic-container'
+      );
+
+    if(
+      !mainContainer ||
+      document.getElementById(
+        'riskLinkedChecklistSection'
+      )
+    ){
+      return;
+    }
+
+    var section =
+      document.createElement('div');
+
+    section.id =
+      'riskLinkedChecklistSection';
+
+    mainContainer.insertAdjacentElement(
+      'beforebegin',
+      section
+    );
+  }
+
+  /* -----------------------------------------------------
+   * 함수 연결
+   * ----------------------------------------------------- */
+
+  function installSelectModeHook(){
+    if(
+      typeof global.selectMode !== 'function' ||
+      global.selectMode.__riskExecutionV110
+    ){
+      return;
+    }
+
+    var previous =
+      global.selectMode;
+
+    var wrapped =
+      function(mode){
+        var result =
+          previous.apply(this, arguments);
+
+        if(mode === 'new'){
+          setTimeout(
+            applyRiskBasicInformation,
+            0
+          );
+        }
+
+        return result;
+      };
+
+    wrapped.__riskExecutionV110 = true;
+    wrapped.__previous = previous;
+
+    global.selectMode = wrapped;
+  }
+
+  function installStartFromDbHook(){
+    if(
+      typeof global.startFromDB !== 'function' ||
+      global.startFromDB.__riskExecutionV110
+    ){
+      return;
+    }
+
+    var previous =
+      global.startFromDB;
+
+    var wrapped =
+      function(){
+        var result =
+          previous.apply(this, arguments);
+
+        setTimeout(function(){
+          applyRiskBasicInformation();
+          automaticTypeApplied = false;
+        }, 0);
+
+        return result;
+      };
+
+    wrapped.__riskExecutionV110 = true;
+    wrapped.__previous = previous;
+
+    global.startFromDB = wrapped;
+  }
+
+  function installGoToStepHook(){
+    if(
+      typeof global.goToStep !== 'function' ||
+      global.goToStep.__riskExecutionV110
+    ){
+      return;
+    }
+
+    var previous =
+      global.goToStep;
+
+    var wrapped =
+      function(step){
+        var result =
+          previous.apply(this, arguments);
+
+        if(Number(step) === 2){
+          setTimeout(function(){
+            applyRiskWorkTypes(false);
+          }, 0);
+        }
+
+        return result;
+      };
+
+    wrapped.__riskExecutionV110 = true;
+    wrapped.__previous = previous;
+
+    global.goToStep = wrapped;
+  }
+
+  function installChecklistRenderHook(){
+    if(
+      typeof global.renderChecklist !== 'function' ||
+      global.renderChecklist.__riskExecutionV110
+    ){
+      return;
+    }
+
+    var previous =
+      global.renderChecklist;
+
+    var wrapped =
+      function(){
+        var result =
+          previous.apply(this, arguments);
+
+        injectLinkedChecklistContainer();
+        initializeLinkedChecklist();
+        renderLinkedChecklist();
+
+        return result;
+      };
+
+    wrapped.__riskExecutionV110 = true;
+    wrapped.__previous = previous;
+
+    global.renderChecklist = wrapped;
+  }
+
+  function installStepThreeValidationHook(){
+    if(
+      typeof global.validateStep3 !== 'function' ||
+      global.validateStep3.__riskExecutionV110
+    ){
+      return;
+    }
+
+    var previous =
+      global.validateStep3;
+
+    var wrapped =
+      function(){
+        var linked =
+          initializeLinkedChecklist();
+
+        if(linked){
+          var allItems =
+            (linked.items || []).concat(
+              global.permitData
+                .additionalPermitChecklist || []
+            );
+
+          var missing =
+            allItems.filter(function(item){
+              return !item.result;
+            });
+
+          if(missing.length > 0){
+            global.showToast(
+              '위험성평가 연계·추가 항목을 모두 확인해 주세요.',
+              'danger'
+            );
+
+            var section =
+              document.getElementById(
+                'riskLinkedChecklistSection'
+              );
+
+            if(section){
+              section.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+              });
+            }
+
+            return;
+          }
+
+          var failed =
+            allItems.filter(function(item){
+              return item.result === 'no';
+            });
+
+          if(failed.length > 0){
+            global.showToast(
+              '위험성평가 안전대책 미이행 항목이 있어 허가를 진행할 수 없습니다.',
+              'danger'
+            );
+
+            return;
+          }
+        }
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__riskExecutionV110 = true;
+    wrapped.__previous = previous;
+
+    global.validateStep3 = wrapped;
+  }
+
+  function installSaveHook(){
+    if(
+      typeof global.buildPermitRecord !== 'function' ||
+      global.buildPermitRecord.__riskExecutionV110
+    ){
+      return;
+    }
+
+    var previous =
+      global.buildPermitRecord;
+
+    var wrapped =
+      function(){
+        var record =
+          previous.apply(this, arguments);
+
+        var risk =
+          getLinkedRisk();
+
+        record.riskAssessmentChecklist =
+          global.permitData &&
+          global.permitData.riskAssessmentChecklist
+            ? clone(
+                global.permitData
+                  .riskAssessmentChecklist
+              )
+            : null;
+
+        record.additionalPermitChecklist =
+          global.permitData &&
+          Array.isArray(
+            global.permitData
+              .additionalPermitChecklist
+          )
+            ? clone(
+                global.permitData
+                  .additionalPermitChecklist
+              )
+            : [];
+
+        record.workTypesSource =
+          global.permitData &&
+          global.permitData.workTypesSource
+            ? clone(
+                global.permitData
+                  .workTypesSource
+              )
+            : null;
+
+        record.riskLinked =
+          Boolean(risk);
+
+        record.riskLinkVersion =
+          VERSION;
+
+        return record;
+      };
+
+    wrapped.__riskExecutionV110 = true;
+    wrapped.__previous = previous;
+
+    global.buildPermitRecord = wrapped;
+  }
+
+  function injectStyle(){
+    if(
+      document.getElementById(
+        'permitRiskExecutionStyle'
+      )
+    ){
+      return;
+    }
+
+    var style =
+      document.createElement('style');
+
+    style.id =
+      'permitRiskExecutionStyle';
+
+    style.textContent = [
+      '.risk-linked-auto{',
+        'border-color:var(--done)!important;',
+        'background:var(--done-bg)!important;',
+      '}',
+
+      '.wt-card[data-risk-linked="true"]::before{',
+        'content:"위험성평가 연계";',
+        'flex-shrink:0;',
+        'padding:3px 7px;',
+        'border-radius:6px;',
+        'background:var(--posco);',
+        'color:#fff;',
+        'font-size:10px;',
+        'font-weight:850;',
+      '}',
+
+      '#riskLinkedChecklistSection{',
+        'margin-bottom:14px;',
+      '}',
+
+      '#riskLinkedChecklistSection ',
+      '.cl-section-header{',
+        'background:linear-gradient(',
+          '150deg,var(--deep),var(--posco)',
+        ');',
+      '}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function install(){
+    injectStyle();
+    installSelectModeHook();
+    installStartFromDbHook();
+    installGoToStepHook();
+    installChecklistRenderHook();
+    installStepThreeValidationHook();
+    installSaveHook();
+
+    setTimeout(function(){
+      applyRiskBasicInformation();
+    }, 0);
+
+    console.log(
+      '[위험성평가 → 허가 실행정보 연계] v' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.permitRiskExecutionLinkV110 = {
+    version: VERSION,
+    fillBasicInformation: applyRiskBasicInformation,
+    applyWorkTypes: applyRiskWorkTypes,
+    renderChecklist: renderLinkedChecklist,
+    getLinkedRisk: getLinkedRisk
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
+</script>
+  
 </script>
   
 </body>
