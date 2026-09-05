@@ -1264,6 +1264,11 @@ body{
     getApp 
   } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
   
+    import {
+    getAuth,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
   import { 
     getFirestore, 
     initializeFirestore,
@@ -1294,7 +1299,54 @@ body{
   });
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  
+    const permitAuth = getAuth(app);
+
+  window.permitAuthReady = new Promise(function(resolve){
+    let completed = false;
+    let unsubscribe = function(){};
+
+    unsubscribe = onAuthStateChanged(
+      permitAuth,
+
+      function(user){
+        if(completed){
+          return;
+        }
+
+        completed = true;
+        unsubscribe();
+
+        console.log(
+          '[허가서 Firebase Auth] 인증 확인:',
+          user
+            ? {
+                uid: user.uid,
+                email: user.email || ''
+              }
+            : null
+        );
+
+        resolve(user || null);
+      },
+
+      function(error){
+        if(completed){
+          return;
+        }
+
+        completed = true;
+        unsubscribe();
+
+        console.error(
+          '[허가서 Firebase Auth] 인증 확인 실패:',
+          error
+        );
+
+        resolve(null);
+      }
+    );
+  });
+
   // ⭐ iOS Safari 대응 초기화
   let db;
   try {
@@ -3545,6 +3597,94 @@ async function savePermitToFirestore(record) {
       console.warn('[허가서] Firebase 미로드 - Firestore 저장 건너뜀');
       return { success: false, reason: 'no-firebase' };
     }
+    var appSession = null;
+
+    try {
+      appSession = JSON.parse(
+        sessionStorage.getItem('appSession') ||
+        'null'
+      );
+    } catch(sessionError){
+      appSession = null;
+    }
+
+    /*
+     * 공개 테스터는 Firestore에 저장하지 않습니다.
+     */
+    if(
+      appSession &&
+      appSession.accessMode === 'tester'
+    ){
+      console.log(
+        '[허가서] 테스터 모드 - Firestore 저장 차단'
+      );
+
+      return {
+        success: false,
+        reason: 'tester-local-only'
+      };
+    }
+
+    /*
+     * 인증 사용자 세션인지 확인합니다.
+     */
+    if(
+      !appSession ||
+      appSession.accessMode !== 'authenticated' ||
+      !appSession.uid
+    ){
+      console.warn(
+        '[허가서] 인증 앱 세션 없음 - Firestore 저장 차단'
+      );
+
+      return {
+        success: false,
+        reason: 'no-app-session'
+      };
+    }
+
+    var authenticatedUser =
+      window.permitAuthReady
+        ? await window.permitAuthReady
+        : null;
+
+    if(!authenticatedUser){
+      console.warn(
+        '[허가서] Firebase 인증 없음 - Firestore 저장 차단'
+      );
+
+      return {
+        success: false,
+        reason: 'no-firebase-auth'
+      };
+    }
+
+    if(
+      authenticatedUser.uid !==
+      appSession.uid
+    ){
+      console.error(
+        '[허가서] 앱 세션과 Firebase UID 불일치'
+      );
+
+      return {
+        success: false,
+        reason: 'uid-mismatch'
+      };
+    }
+
+    record.createdByUid =
+      record.createdByUid ||
+      authenticatedUser.uid;
+
+    record.updatedByUid =
+      authenticatedUser.uid;
+
+    record.environment =
+      window.APP_MODE || 'test';
+
+    record.isTestData =
+      record.environment === 'test';
 
     if (!record.permitNo) {
       console.error('[허가서] permitNo가 없어 Firestore 저장 불가');
@@ -10348,6 +10488,36 @@ function validateStepOne(){
         true,
       version: VERSION
     };
+    var currentAppSession = null;
+
+    try {
+      currentAppSession = JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || 'null'
+      );
+    } catch(sessionError){
+      currentAppSession = null;
+    }
+
+    record.createdByUid =
+      (
+        currentAppSession &&
+        currentAppSession.accessMode ===
+          'authenticated' &&
+        currentAppSession.uid
+      )
+        ? currentAppSession.uid
+        : '';
+
+    record.updatedByUid =
+      record.createdByUid;
+
+    record.environment =
+      global.APP_MODE || 'test';
+
+    record.isTestData =
+      record.environment === 'test';
 
     record.workflowVersion =
       VERSION;
