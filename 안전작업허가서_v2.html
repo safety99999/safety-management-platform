@@ -955,6 +955,98 @@ body{
 }
   
 @media(prefers-reduced-motion:reduce){
+ /* ═══════════════════════════════════════
+   작업 수행 구분
+   ═══════════════════════════════════════ */
+
+.execution-type-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:9px;
+}
+
+.execution-type-card{
+  width:100%;
+  min-height:76px;
+  padding:13px 14px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border:2px solid var(--line);
+  border-radius:13px;
+  background:var(--card);
+  color:var(--ink);
+  font-family:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.execution-type-card:active{
+  transform:scale(.98);
+}
+
+.execution-type-card.active{
+  border-color:var(--posco);
+  background:var(--tint);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
+}
+
+.execution-type-icon{
+  flex-shrink:0;
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:var(--sunk);
+  font-size:22px;
+}
+
+.execution-type-content{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.execution-type-content strong{
+  color:var(--ink);
+  font-size:16px;
+  font-weight:800;
+}
+
+.execution-type-content small{
+  color:var(--sub);
+  font-size:12.5px;
+  font-weight:600;
+  line-height:1.45;
+}
+
+.execution-type-check{
+  flex-shrink:0;
+  width:25px;
+  height:25px;
+  display:grid;
+  place-items:center;
+  border:2px solid var(--line);
+  border-radius:50%;
+  color:transparent;
+  font-size:14px;
+  font-weight:900;
+}
+
+.execution-type-card.active .execution-type-check{
+  border-color:var(--posco);
+  background:var(--posco);
+  color:#fff;
+}
+
+.execution-type-notice{
+  margin-top:12px;
+  margin-bottom:0;
+}
+ 
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
 
@@ -1169,6 +1261,31 @@ body{
 </nav>
 
 <div class="toast-wrap" id="toastWrap"></div>
+<!-- 통합 워크플로 고정 검증 알림 -->
+<div
+  id="validationBanner"
+  class="validation-banner"
+  role="alert"
+  aria-live="assertive"
+>
+  <span class="validation-banner-icon">⚠️</span>
+
+  <span
+    id="validationBannerMessage"
+    class="validation-banner-message"
+  >
+    필수 항목을 확인해 주세요.
+  </span>
+
+  <button
+    type="button"
+    class="validation-banner-close"
+    onclick="hideValidationBanner()"
+    aria-label="알림 닫기"
+  >
+    ×
+  </button>
+</div>
 
 <div class="progress-wrap" id="progressWrap" style="display:none;">
   <div class="progress-steps" id="progressSteps">
@@ -1240,6 +1357,71 @@ body{
     </label>
     <input class="f-input" id="wo-manual-input" placeholder="W/O 번호 직접 입력"
       style="display:none;margin-top:10px;text-align:center;font-weight:800;font-size:16px;">
+  </div>
+  <!-- 작업 수행 구분 -->
+  <div class="form-section" id="executionTypeSection">
+    <div class="form-section-title">🏢 작업 수행 구분</div>
+
+    <div class="execution-type-grid">
+
+      <button
+        type="button"
+        class="execution-type-card"
+        data-execution-type="contracted"
+        onclick="selectExecutionType('contracted')"
+      >
+        <span class="execution-type-icon">🤝</span>
+
+        <span class="execution-type-content">
+          <strong>도급·외주 작업</strong>
+          <small>수급인 작업책임자가 현장을 지휘합니다.</small>
+        </span>
+
+        <span class="execution-type-check">✓</span>
+      </button>
+
+      <button
+        type="button"
+        class="execution-type-card"
+        data-execution-type="direct"
+        onclick="selectExecutionType('direct')"
+      >
+        <span class="execution-type-icon">🏭</span>
+
+        <span class="execution-type-content">
+          <strong>당사 직영 작업</strong>
+          <small>당사 작업책임자가 현장을 지휘합니다.</small>
+        </span>
+
+        <span class="execution-type-check">✓</span>
+      </button>
+
+      <button
+        type="button"
+        class="execution-type-card"
+        data-execution-type="mixed"
+        onclick="selectExecutionType('mixed')"
+      >
+        <span class="execution-type-icon">👥</span>
+
+        <span class="execution-type-content">
+          <strong>혼합 작업</strong>
+          <small>당사와 수급인 작업책임자가 함께 참여합니다.</small>
+        </span>
+
+        <span class="execution-type-check">✓</span>
+      </button>
+
+    </div>
+
+    <div class="info-box execution-type-notice">
+      <div class="info-box-title">역할 구분 안내</div>
+
+      <div class="info-box-text">
+        당사 작업담당자는 작업계획·연계·허가 요청을 담당합니다.
+        작업책임자는 실제 현장에서 작업을 지휘합니다.
+      </div>
+    </div>
   </div>
 
   <div class="form-section">
