@@ -953,6 +953,56 @@ body{
   background:var(--warn);
   box-shadow:0 4px 12px rgba(180,83,9,.25);
 }
+/* 통합 워크플로 검증 알림 */
+.validation-banner{
+  display:none;
+  position:fixed;
+  top:14px;
+  left:50%;
+  z-index:10000;
+  width:calc(100% - 28px);
+  max-width:430px;
+  padding:13px 14px;
+  align-items:flex-start;
+  gap:9px;
+  border:1px solid var(--stop);
+  border-radius:12px;
+  background:var(--stop);
+  color:#fff;
+  box-shadow:0 8px 28px rgba(214,39,61,.3);
+  transform:translateX(-50%);
+}
+
+.validation-banner.active{
+  display:flex;
+}
+
+.validation-banner-icon{
+  flex-shrink:0;
+  font-size:18px;
+  line-height:1.4;
+}
+
+.validation-banner-message{
+  flex:1;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.5;
+}
+
+.validation-banner-close{
+  flex-shrink:0;
+  width:26px;
+  height:26px;
+  border:0;
+  border-radius:50%;
+  background:rgba(255,255,255,.18);
+  color:#fff;
+  font-family:inherit;
+  font-size:18px;
+  line-height:1;
+  cursor:pointer;
+}
   
 @media(prefers-reduced-motion:reduce){
  /* ═══════════════════════════════════════
