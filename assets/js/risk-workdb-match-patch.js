@@ -4007,3 +4007,353 @@
   }
 
 })(window);
+/* ============================================================
+ * risk-workdb-match-patch UI 확장 v3.2.1
+ * 사내 고위험작업 기준 기본 접힘 및 선택 현황 요약
+ *
+ * - 판정·저장 로직 변경 없음
+ * - 고위험 조건과 예외조건은 상세 영역에서 선택
+ * - 최종 확인 체크박스는 접힌 상태에서도 표시
+ * ============================================================ */
+(function(global){
+  'use strict';
+
+  var V = '3.2.1';
+
+  if(global.riskHighWorkPolicyUiV321){
+    console.log('[v3.2.1] 이미 적용');
+    return;
+  }
+
+  function getElement(id){
+    return document.getElementById(id);
+  }
+
+  function injectCompactStyle(){
+    if(getElement('highRiskPolicyUiV321Style')){
+      return;
+    }
+
+    var style = document.createElement('style');
+
+    style.id = 'highRiskPolicyUiV321Style';
+
+    style.textContent = [
+      '.high-risk-policy-section{',
+        'padding:13px!important;',
+      '}',
+
+      '.high-risk-policy-section .high-risk-policy-intro{',
+        'margin-bottom:9px;',
+        'padding:9px 10px;',
+        'font-size:13px;',
+        'line-height:1.55;',
+      '}',
+
+      '.high-risk-policy-toggle{',
+        'width:100%;',
+        'min-height:48px;',
+        'display:flex;',
+        'align-items:center;',
+        'justify-content:space-between;',
+        'gap:10px;',
+        'padding:11px 12px;',
+        'border:1.5px solid var(--line);',
+        'border-radius:10px;',
+        'background:var(--sunk);',
+        'color:var(--ink);',
+        'font-family:inherit;',
+        'text-align:left;',
+        'cursor:pointer;',
+      '}',
+
+      '.high-risk-policy-toggle:active{',
+        'transform:scale(.99);',
+      '}',
+
+      '.high-risk-policy-toggle-main{',
+        'flex:1;',
+        'font-size:14px;',
+        'font-weight:850;',
+        'line-height:1.45;',
+      '}',
+
+      '.high-risk-policy-toggle-count{',
+        'display:block;',
+        'margin-top:3px;',
+        'color:var(--sub);',
+        'font-size:12px;',
+        'font-weight:700;',
+      '}',
+
+      '.high-risk-policy-toggle-arrow{',
+        'flex-shrink:0;',
+        'color:var(--posco);',
+        'font-size:15px;',
+        'font-weight:900;',
+        'transition:transform .2s ease;',
+      '}',
+
+      '.high-risk-policy-toggle[aria-expanded="true"] ',
+      '.high-risk-policy-toggle-arrow{',
+        'transform:rotate(180deg);',
+      '}',
+
+      '.high-risk-policy-detail{',
+        'display:none;',
+        'margin-top:9px;',
+        'padding-top:2px;',
+      '}',
+
+      '.high-risk-policy-detail.expanded{',
+        'display:block;',
+      '}',
+
+      '.high-risk-policy-review{',
+        'margin-top:10px!important;',
+        'padding:11px!important;',
+      '}',
+
+      '.high-risk-policy-review .high-risk-policy-item label{',
+        'font-size:14px;',
+        'line-height:1.55;',
+      '}',
+
+      '.high-risk-policy-detail .high-risk-policy-item{',
+        'padding:10px;',
+        'margin-bottom:7px;',
+      '}',
+
+      '.high-risk-policy-detail .high-risk-policy-item label{',
+        'font-size:13.5px;',
+        'line-height:1.55;',
+      '}',
+
+      '.high-risk-policy-detail .high-risk-policy-item.exception{',
+        'margin-left:12px;',
+        'padding:9px 10px;',
+      '}',
+
+      '@media(max-width:360px){',
+        '.high-risk-policy-toggle{',
+          'align-items:flex-start;',
+        '}',
+      '}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function countChecked(ids){
+    return ids.filter(function(id){
+      var element = getElement(id);
+      return Boolean(element && element.checked);
+    }).length;
+  }
+
+  function updatePolicySummary(){
+    var summary = getElement('highRiskPolicySummary');
+    var toggle = getElement('highRiskPolicyToggle');
+
+    if(!summary || !toggle){
+      return;
+    }
+
+    var criterionIds = [
+      'hrFireCriterion',
+      'hrConfinedCriterion',
+      'hrChemicalCriterion',
+      'hrHeightCriterion',
+      'hrLiftingCriterion',
+      'hrElectricalCriterion'
+    ];
+
+    var exceptionIds = [
+      'hrConfinedShortException',
+      'hrConfinedCo2Exception',
+      'hrChemicalReagentException',
+      'hrHeightPlatformException',
+      'hrLiftingChainBlockException',
+      'hrElectricalBranchException'
+    ];
+
+    var criterionCount = countChecked(criterionIds);
+    var exceptionCount = countChecked(exceptionIds);
+
+    summary.textContent =
+      '고위험 조건 ' + criterionCount + '건 · ' +
+      '예외조건 ' + exceptionCount + '건';
+
+    if(criterionCount > 0){
+      toggle.style.borderColor = 'var(--stop)';
+      toggle.style.background = 'var(--stop-bg)';
+    } else if(exceptionCount > 0){
+      toggle.style.borderColor = 'var(--warn)';
+      toggle.style.background = 'var(--warn-bg)';
+    } else {
+      toggle.style.borderColor = 'var(--line)';
+      toggle.style.background = 'var(--sunk)';
+    }
+  }
+
+  function togglePolicyDetail(){
+    var toggle = getElement('highRiskPolicyToggle');
+    var detail = getElement('highRiskPolicyDetail');
+
+    if(!toggle || !detail){
+      return;
+    }
+
+    var expanded =
+      toggle.getAttribute('aria-expanded') === 'true';
+
+    toggle.setAttribute(
+      'aria-expanded',
+      expanded ? 'false' : 'true'
+    );
+
+    detail.classList.toggle(
+      'expanded',
+      !expanded
+    );
+
+    var label = getElement('highRiskPolicyToggleLabel');
+
+    if(label){
+      label.textContent =
+        expanded
+          ? '세부 기준 보기'
+          : '세부 기준 닫기';
+    }
+  }
+
+  function enhancePolicySection(){
+    var section = getElement('highRiskPolicySection');
+
+    if(!section || section.dataset.compactUi === 'v3.2.1'){
+      return;
+    }
+
+    var title =
+      section.querySelector('.section-title');
+
+    var intro =
+      section.querySelector('.high-risk-policy-intro');
+
+    var review =
+      section.querySelector('.high-risk-policy-review');
+
+    if(!title || !review){
+      return;
+    }
+
+    section.dataset.compactUi = 'v3.2.1';
+
+    if(intro){
+      intro.textContent =
+        '관리대장 고위험은 공식값을 우선 적용합니다. 신규평가는 세부 기준을 확인하세요.';
+    }
+
+    /*
+     * 기존 상세 항목을 이동하기 전에 대상 목록을 확보합니다.
+     */
+    var detailNodes =
+      Array.prototype.slice
+        .call(section.children)
+        .filter(function(element){
+          return (
+            element !== title &&
+            element !== intro &&
+            element !== review
+          );
+        });
+
+    var toggle =
+      document.createElement('button');
+
+    toggle.type = 'button';
+    toggle.id = 'highRiskPolicyToggle';
+    toggle.className = 'high-risk-policy-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute(
+      'aria-controls',
+      'highRiskPolicyDetail'
+    );
+
+    toggle.innerHTML =
+      '<span class="high-risk-policy-toggle-main">' +
+        '<span id="highRiskPolicyToggleLabel">세부 기준 보기</span>' +
+        '<span class="high-risk-policy-toggle-count" ' +
+          'id="highRiskPolicySummary">' +
+          '고위험 조건 0건 · 예외조건 0건' +
+        '</span>' +
+      '</span>' +
+      '<span class="high-risk-policy-toggle-arrow">▼</span>';
+
+    var detail =
+      document.createElement('div');
+
+    detail.id = 'highRiskPolicyDetail';
+    detail.className = 'high-risk-policy-detail';
+
+    detailNodes.forEach(function(node){
+      detail.appendChild(node);
+    });
+
+    if(intro){
+      intro.insertAdjacentElement('afterend', toggle);
+    } else {
+      title.insertAdjacentElement('afterend', toggle);
+    }
+
+    toggle.insertAdjacentElement('afterend', detail);
+
+    /*
+     * 검토 완료 체크박스는 상세 영역 밖에 두어
+     * 접힌 상태에서도 바로 선택할 수 있게 합니다.
+     */
+    detail.insertAdjacentElement('afterend', review);
+
+    toggle.addEventListener(
+      'click',
+      togglePolicyDetail
+    );
+
+    detail
+      .querySelectorAll('input[type="checkbox"]')
+      .forEach(function(input){
+        input.addEventListener(
+          'change',
+          updatePolicySummary
+        );
+      });
+
+    updatePolicySummary();
+
+    console.log(
+      '[v3.2.1] 고위험작업 기준 기본 접힘 UI 적용 완료'
+    );
+  }
+
+  function install(){
+    injectCompactStyle();
+    enhancePolicySection();
+  }
+
+  global.riskHighWorkPolicyUiV321 = {
+    version: V,
+    install: install,
+    toggle: togglePolicyDetail,
+    updateSummary: updatePolicySummary
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
