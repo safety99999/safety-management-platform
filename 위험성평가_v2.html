@@ -858,29 +858,34 @@ button{cursor:pointer;}
 </style>
 <style id="risk-readability-v1">
 /* ═══════════════════════════════════════════════════════
-   위험성평가 가독성·정보구조 개선 v1.1
+   위험성평가 모바일 가독성 개선 v1.2
    - 기본정보 1열
-   - 전체 주요 글자 확대
-   - 위험도 검토 정보 통합
+   - 주요 글자 확대
+   - 작업DB 결과와 대책 현황 축소
+   - 3단계 위험도 배너 가로형
    - 판정·저장 로직 영향 없음
    ═══════════════════════════════════════════════════════ */
 
-/* 기본정보 1열 */
+/* 기본 화면 */
+.screen{
+  padding:14px 12px;
+  font-size:16px;
+}
+
+/* 기본정보는 항상 1열 */
 #screen-step1 .form-row{
   grid-template-columns:1fr;
   gap:14px;
 }
 
-/* 전체 기본 글자 */
-.screen{
-  font-size:16px;
+.form-group{
+  margin-bottom:15px;
 }
 
-/* 입력 화면 */
 .form-label{
   margin-bottom:8px;
   color:var(--ink);
-  font-size:14px;
+  font-size:15px;
   font-weight:850;
   line-height:1.45;
 }
@@ -888,19 +893,19 @@ button{cursor:pointer;}
 .form-input,
 .form-select,
 .form-textarea{
-  min-height:52px;
-  padding:13px 15px;
+  min-height:54px;
+  padding:14px 15px;
   color:var(--ink);
   font-size:16px;
-  font-weight:650;
+  font-weight:700;
   line-height:1.55;
 }
 
 .form-textarea{
-  min-height:110px;
+  min-height:112px;
 }
 
-/* 카드와 제목 */
+/* 카드 */
 .card,
 .form-section,
 .summary-card,
@@ -921,16 +926,16 @@ button{cursor:pointer;}
 
 /* 시작 화면 */
 .welcome-title{
-  font-size:23px;
+  font-size:24px;
 }
 
 .welcome-text{
-  font-size:14px;
+  font-size:15px;
   line-height:1.6;
 }
 
 .welcome-principle{
-  font-size:13px;
+  font-size:14px;
   line-height:1.6;
 }
 
@@ -938,13 +943,21 @@ button{cursor:pointer;}
   font-size:16px;
 }
 
-.mode-desc,
-.list-heading{
+.mode-desc{
   font-size:13px;
   line-height:1.5;
 }
 
-/* 안내·경고 문구 */
+.list-heading{
+  font-size:13px;
+}
+
+.company-filter{
+  min-height:48px;
+  font-size:15px;
+}
+
+/* 안내·경고 */
 .info-box,
 .warning-box,
 .danger-box{
@@ -954,15 +967,15 @@ button{cursor:pointer;}
 .info-title,
 .warning-title,
 .danger-title{
-  margin-bottom:4px;
-  font-size:14px;
+  margin-bottom:5px;
+  font-size:15px;
   line-height:1.4;
 }
 
 .info-text,
 .warning-text,
 .danger-text{
-  font-size:14px;
+  font-size:15px;
   font-weight:650;
   line-height:1.65;
   word-break:keep-all;
@@ -981,29 +994,28 @@ button{cursor:pointer;}
   color:var(--stop);
 }
 
-/* 연결 정보 */
-.link-label{
-  font-size:12px;
-}
-
-.link-value{
+/* 진행 표시 */
+.progress-label{
   font-size:15px;
-  line-height:1.5;
 }
 
-/* 위험도 검토 카드 */
+.progress-count{
+  font-size:13px;
+}
+
+/* 위험도 검토 */
 .judgment-card{
-  padding:14px;
+  padding:15px;
 }
 
 .judgment-header{
   gap:8px;
-  margin-bottom:9px;
-  padding-bottom:9px;
+  margin-bottom:10px;
+  padding-bottom:10px;
 }
 
 .judgment-title{
-  font-size:17px;
+  font-size:18px;
   line-height:1.4;
 }
 
@@ -1014,65 +1026,65 @@ button{cursor:pointer;}
 }
 
 .judgment-refresh-button{
-  width:34px;
-  height:34px;
-  font-size:15px;
+  width:38px;
+  height:38px;
+  font-size:17px;
 }
 
 .override-button{
-  min-height:34px;
-  padding:7px 10px;
-  font-size:12px;
+  min-height:38px;
+  padding:8px 11px;
+  font-size:13px;
 }
 
 .draft-notice{
-  margin-bottom:10px;
-  padding:10px 11px;
-  font-size:14px;
-  line-height:1.6;
+  margin-bottom:11px;
+  padding:11px 12px;
+  font-size:15px;
+  line-height:1.65;
   word-break:keep-all;
 }
 
 .judgment-grid{
-  gap:8px;
-  margin-bottom:9px;
+  gap:9px;
+  margin-bottom:10px;
 }
 
 .judgment-item{
-  padding:11px 8px;
+  padding:12px 9px;
 }
 
 .judgment-label{
-  margin-bottom:6px;
-  font-size:13px;
+  margin-bottom:7px;
+  font-size:14px;
 }
 
 .judgment-value{
-  padding:6px 11px;
-  font-size:18px;
+  padding:7px 12px;
+  font-size:19px;
 }
 
 .control-symbol{
-  width:42px;
-  height:42px;
-  font-size:25px;
+  width:44px;
+  height:44px;
+  font-size:27px;
 }
 
-/* 위험도 카드 안 평가자료 요약 */
+/* 평가자료 요약 */
 .judgment-compact-meta{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:8px;
-  margin-bottom:9px;
+  margin-bottom:10px;
   padding:9px 10px;
   border:1px solid var(--line);
-  border-radius:8px;
+  border-radius:9px;
   background:var(--sunk);
   color:var(--body);
-  font-size:12.5px;
+  font-size:13px;
   font-weight:750;
-  line-height:1.45;
+  line-height:1.5;
 }
 
 .judgment-compact-meta #analysisSummaryText{
@@ -1081,47 +1093,48 @@ button{cursor:pointer;}
 
 .judgment-compact-meta .db-status{
   flex-shrink:0;
-  padding:3px 7px;
+  padding:4px 8px;
   font-size:11px;
 }
 
 /* 판정 근거 */
 .basis-header{
-  padding:11px;
-  font-size:14px;
+  padding:12px;
+  font-size:15px;
   line-height:1.5;
 }
 
 .basis-body{
-  padding:0 11px 11px;
-  font-size:13.5px;
+  padding:0 12px 12px;
+  font-size:14px;
   line-height:1.65;
 }
 
 .basis-row{
   gap:8px;
-  padding:8px 0;
+  padding:9px 0;
 }
 
 .basis-number{
-  width:22px;
-  height:22px;
+  width:23px;
+  height:23px;
   font-size:11px;
 }
 
 .reference-details summary{
-  font-size:13px;
+  font-size:14px;
 }
 
 .reference-item{
-  min-height:34px;
-  padding:7px 8px;
-  font-size:12px;
+  min-height:36px;
+  padding:8px 9px;
+  font-size:13px;
 }
 
-/* 작업DB 검토 결과를 참고정보로 간결하게 표시 */
+/* 작업DB 검토 결과: 모든 사용자에게 간략 표시 */
 .workdb-v2-panel{
-  padding:10px 11px!important;
+  margin-bottom:9px!important;
+  padding:10px 12px!important;
   box-shadow:none!important;
 }
 
@@ -1130,11 +1143,11 @@ button{cursor:pointer;}
 }
 
 .workdb-v2-title{
-  font-size:13px!important;
+  font-size:14px!important;
 }
 
 .workdb-v2-source{
-  font-size:10.5px!important;
+  display:none!important;
 }
 
 .workdb-v2-card{
@@ -1143,33 +1156,40 @@ button{cursor:pointer;}
 }
 
 .workdb-v2-name{
-  font-size:12.5px!important;
+  font-size:13px!important;
   line-height:1.5!important;
 }
 
 .workdb-v2-meta,
 .workdb-v2-note{
-  font-size:11.5px!important;
-  line-height:1.5!important;
+  font-size:12px!important;
+  line-height:1.55!important;
 }
 
-/* 기술용 보정 정보는 화면에서 숨김 */
+/* 시스템 내부 보정 정보는 화면에서 숨김 */
 .workdb-v2-fix{
   display:none!important;
 }
 
-/* 적용대책 선택 현황 */
+/* 적용대책 선택 현황: 높이를 줄인 요약 카드 */
 .measure-progress{
-  padding:10px;
+  position:sticky;
+  top:58px;
+  padding:9px 10px;
 }
 
 .measure-progress-title{
-  margin-bottom:7px;
+  margin-bottom:6px;
   font-size:13px;
 }
 
+.measure-progress-grid{
+  gap:5px;
+  margin-bottom:6px;
+}
+
 .measure-progress-item{
-  padding:7px 3px;
+  padding:6px 2px;
 }
 
 .measure-progress-count{
@@ -1177,28 +1197,28 @@ button{cursor:pointer;}
 }
 
 .measure-progress-label{
-  margin-top:2px;
-  font-size:11.5px;
+  margin-top:1px;
+  font-size:11px;
 }
 
 .measure-progress-total{
-  padding:7px;
+  padding:6px;
   font-size:13px;
 }
 
 /* 대책 카테고리 */
 .category-header{
-  min-height:54px;
+  min-height:55px;
   padding:11px 12px;
 }
 
 .category-title{
   gap:7px;
-  font-size:16px;
+  font-size:17px;
 }
 
 .category-count{
-  padding:3px 8px;
+  padding:4px 9px;
   font-size:13px;
 }
 
@@ -1206,28 +1226,31 @@ button{cursor:pointer;}
   font-size:14px;
 }
 
+/* 대책은 모바일·PC 프레임 모두 1열 */
 .category-body{
-  gap:8px;
+  grid-template-columns:1fr;
+  gap:9px;
   padding:0 10px 10px;
 }
 
-/* 개별 안전대책 */
+/* 대책 항목 */
 .measure-item{
-  min-height:70px;
-  padding:12px;
-  gap:10px;
+  min-height:64px;
+  padding:13px;
+  gap:11px;
+  align-items:center;
 }
 
 .measure-check{
-  width:25px;
-  height:25px;
-  border-radius:6px;
-  font-size:15px;
+  width:27px;
+  height:27px;
+  border-radius:7px;
+  font-size:16px;
 }
 
 .measure-text{
   color:var(--ink);
-  font-size:15px;
+  font-size:16px;
   font-weight:750;
   line-height:1.55;
   word-break:keep-all;
@@ -1237,17 +1260,17 @@ button{cursor:pointer;}
 /* 추가 대책 */
 .measure-add-row{
   grid-template-columns:1fr;
-  gap:8px;
+  gap:9px;
 }
 
 .user-measure-item{
-  min-height:50px;
-  padding:11px;
+  min-height:52px;
+  padding:12px;
 }
 
 .user-measure-text{
   color:var(--ink);
-  font-size:14px;
+  font-size:15px;
   line-height:1.55;
 }
 
@@ -1255,118 +1278,157 @@ button{cursor:pointer;}
   font-size:12px;
 }
 
-/* 최종 위험도 */
+/* 3단계 위험도 가로형 배너 */
 .final-risk-banner{
-  padding:17px 15px;
+  padding:14px 16px;
+  text-align:left;
+}
+
+.final-risk-main{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
 }
 
 .final-risk-level{
-  font-size:23px;
+  font-size:22px;
+  line-height:1.3;
 }
 
 .final-risk-control{
-  margin-top:5px;
-  font-size:29px;
+  margin-top:0;
+  padding:5px 10px;
+  border-radius:9px;
+  background:rgba(255,255,255,.18);
+  font-size:21px;
+  line-height:1.3;
+  white-space:nowrap;
 }
 
 .final-risk-description{
-  margin-top:8px;
+  margin-top:9px;
+  padding-top:9px;
+  border-top:1px solid rgba(255,255,255,.28);
   font-size:14px;
-  line-height:1.6;
+  font-weight:700;
+  line-height:1.5;
+  opacity:1;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+/* 3단계 짧은 안내 */
+.final-principle{
+  padding:10px 12px;
 }
 
 /* 핵심 위험성 */
 .hazard-card{
-  padding:13px;
+  padding:14px;
 }
 
 .hazard-title{
-  margin-bottom:9px;
+  margin-bottom:10px;
   padding-bottom:9px;
-  font-size:16px;
+  font-size:17px;
 }
 
 .hazard-grid{
-  gap:8px;
+  grid-template-columns:1fr;
+  gap:9px;
 }
 
 .hazard-item{
-  min-height:66px;
-  padding:11px;
+  min-height:auto;
+  padding:12px;
+}
+
+.hazard-item.wide{
+  grid-column:auto;
 }
 
 .hazard-label{
   margin-bottom:5px;
-  font-size:13px;
+  font-size:14px;
 }
 
 .hazard-value{
   color:var(--ink);
-  font-size:15px;
-  line-height:1.6;
+  font-size:16px;
+  font-weight:750;
+  line-height:1.65;
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
 
 /* 체크사항과 최종 대책 */
 .checklist-title{
-  margin-bottom:9px;
-  padding-bottom:8px;
-  font-size:16px;
+  margin-bottom:10px;
+  padding-bottom:9px;
+  font-size:17px;
 }
 
 .checklist-grid,
 .final-measures-grid{
-  gap:8px;
+  grid-template-columns:1fr;
+  gap:9px;
 }
 
 .checklist-item,
 .final-measure-item{
   min-height:60px;
-  padding:11px;
-  gap:9px;
+  padding:12px;
+  gap:10px;
 }
 
 .checklist-number,
 .final-measure-number{
-  width:26px;
-  height:26px;
-  font-size:12px;
+  width:28px;
+  height:28px;
+  font-size:13px;
 }
 
 .checklist-text,
 .final-measure-text{
   color:var(--ink);
-  font-size:15px;
+  font-size:16px;
+  font-weight:750;
   line-height:1.55;
   word-break:keep-all;
   overflow-wrap:anywhere;
 }
 
 .final-measure-item{
-  padding-bottom:24px;
+  padding-bottom:26px;
 }
 
 .final-measure-category{
-  right:7px;
-  bottom:5px;
-  font-size:11.5px;
+  right:8px;
+  bottom:6px;
+  font-size:12px;
 }
 
-/* 종합요약 */
-.review-summary-item{
-  min-height:62px;
-  padding:11px;
+/* 종합요약도 1열 */
+.review-summary-grid{
+  grid-template-columns:1fr;
+}
+
+.review-summary-item,
+.review-summary-item.wide{
+  grid-column:auto;
+  min-height:60px;
+  padding:12px;
 }
 
 .review-summary-label{
   margin-bottom:5px;
-  font-size:13px;
+  font-size:14px;
 }
 
 .review-summary-value{
   color:var(--ink);
-  font-size:15px;
+  font-size:16px;
   line-height:1.55;
   word-break:keep-all;
   overflow-wrap:anywhere;
@@ -1374,94 +1436,87 @@ button{cursor:pointer;}
 
 /* 종합의견 */
 .opinion-textarea{
-  min-height:130px;
+  min-height:140px;
   padding:14px 15px;
   font-size:16px;
-  line-height:1.65;
+  line-height:1.7;
 }
 
 .opinion-refresh-button{
-  min-height:46px;
-  padding:11px 12px;
-  font-size:14px;
+  min-height:48px;
+  padding:12px;
+  font-size:15px;
 }
 
 /* 버튼 */
 .primary-button,
 .secondary-button,
 .success-button{
-  min-height:52px;
+  min-height:54px;
   padding:14px;
   font-size:16px;
 }
 
 .small-button{
-  min-height:38px;
+  min-height:40px;
   padding:9px 12px;
-  font-size:13px;
+  font-size:14px;
 }
 
-/* 이력·완료 화면 */
+/* 이력·완료 */
 .card-name{
   font-size:16px;
-  line-height:1.45;
+  line-height:1.5;
 }
 
 .card-meta{
   font-size:13px;
-  line-height:1.5;
+  line-height:1.55;
 }
 
 .readonly-opinion{
   padding:13px;
   color:var(--ink);
+  font-size:16px;
+  line-height:1.7;
+}
+
+.complete-text{
   font-size:15px;
   line-height:1.65;
 }
 
-.complete-text{
-  font-size:14px;
-  line-height:1.6;
-}
-
 .complete-action{
-  min-height:52px;
-  font-size:15px;
+  min-height:54px;
+  font-size:16px;
 }
 
 /* 다이얼로그 */
 .dialog-title{
-  font-size:17px;
+  font-size:18px;
 }
 
 .dialog-body{
-  font-size:14px;
+  font-size:15px;
   line-height:1.65;
 }
 
-/* 좁은 화면 */
-@media(max-width:390px){
-  .judgment-grid,
-  .category-body,
-  .hazard-grid,
-  .checklist-grid,
-  .final-measures-grid,
-  .review-summary-grid{
+/* 매우 좁은 화면 */
+@media(max-width:360px){
+  .judgment-grid{
     grid-template-columns:1fr;
-  }
-
-  .hazard-item.wide,
-  .review-summary-item.wide{
-    grid-column:auto;
   }
 
   .judgment-compact-meta{
     align-items:flex-start;
     flex-direction:column;
   }
+
+  .measure-progress-label{
+    font-size:10px;
+  }
 }
 </style>
-
   
 </head>
 <body>
@@ -6160,21 +6215,64 @@ function renderChecklistMapping(){
 // ═══════════════════════════════════════════════════════
 
 function renderFinalRiskBanner(){
-  var container = getElement('finalRiskBannerArea');
-  if(!container){ return; }
+  var container =
+    getElement('finalRiskBannerArea');
 
-  var riskLevel = riskData.finalRiskLevel || '판정불가';
-  var control = riskData.finalControlAdequacy || '-';
+  if(!container){
+    return;
+  }
+
+  var riskLevel =
+    riskData.finalRiskLevel ||
+    '판정불가';
+
+  var control =
+    riskData.finalControlAdequacy ||
+    '-';
+
+  var riskIcon = '';
+
+  if(
+    riskLevel === '고위험' ||
+    riskLevel === '매우고위험'
+  ){
+    riskIcon = '🚨 ';
+  } else if(riskLevel === '중위험'){
+    riskIcon = '⚠️ ';
+  } else if(riskLevel === '저위험'){
+    riskIcon = '✅ ';
+  }
+
+  var workSummary = [
+    riskData.workName || '',
+    riskData.workType || ''
+  ]
+    .filter(function(value){
+      return String(value || '').trim();
+    })
+    .join(' · ');
 
   container.innerHTML =
-    '<div class="final-risk-banner ' + getRiskClass(riskLevel) + '">' +
-      '<div class="final-risk-level">' + escapeHtml(riskLevel) + '</div>' +
-      '<div class="final-risk-control">통제 ' + escapeHtml(control) + '</div>' +
-      '<div class="final-risk-description">' +
-        escapeHtml(riskData.workName) + '<br>' +
-        escapeHtml(riskData.workType) + '<br>' +
-        (riskData.overridden ? '관리자 수동 조정' : 'AI 활용 DB·안전기준 기반 평가 초안') +
+    '<div class="final-risk-banner ' +
+      getRiskClass(riskLevel) +
+    '">' +
+
+      '<div class="final-risk-main">' +
+        '<div class="final-risk-level">' +
+          riskIcon +
+          escapeHtml(riskLevel) +
+        '</div>' +
+
+        '<div class="final-risk-control">' +
+          '통제 ' +
+          escapeHtml(control) +
+        '</div>' +
       '</div>' +
+
+      '<div class="final-risk-description">' +
+        escapeHtml(workSummary || '-') +
+      '</div>' +
+
     '</div>';
 }
 
