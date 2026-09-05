@@ -10366,8 +10366,14 @@ document.addEventListener('keydown', function(e){
     parseUrlParameters();
     injectWorkflowStyle();
 
-    configureStartCards();
-    removeContactCard();
+removeContactCard();
+configureStartCards();
+
+setTimeout(function(){
+  configureStartCards();
+  removeContactCard();
+}, 0);
+
 
     createNewRiskListScreen();
     injectRiskSummaryCard();
