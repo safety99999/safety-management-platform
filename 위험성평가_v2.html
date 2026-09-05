@@ -1644,6 +1644,31 @@ button{cursor:pointer;}
     font-size:10px;
   }
 }
+/* 평가 종합요약 2열 표시 */
+#reviewSummaryGrid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:0;
+}
+
+#reviewSummaryGrid .review-summary-item{
+  grid-column:auto;
+  min-height:72px;
+  padding:12px;
+}
+
+#reviewSummaryGrid .review-summary-item.wide{
+  grid-column:1 / -1;
+}
+
+#reviewSummaryGrid .review-summary-label{
+  font-size:13px;
+}
+
+#reviewSummaryGrid .review-summary-value{
+  font-size:15px;
+  line-height:1.5;
+}
+  
 </style>
   
 </head>
