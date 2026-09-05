@@ -6125,7 +6125,1123 @@ document.addEventListener('keydown', function(e){
 })(window);
 </script>
   
+<script>
+/* =========================================================
+   안전작업허가서 위험성평가 통합 개선 v1.2.0
+
+   1. 위험성평가 대책과 허가서 표준항목 의미 중복 통합
+   2. 중복 항목은 허가서 표준항목에서 한 번만 확인
+   3. 위험성평가 출처와 원본 항목은 저장
+   4. 7단계 작업자 서명을 직영 작업담당자 서명으로 변경
+   5. 수급인 작업책임자 정보와 허가자 승인대기 상태 저장
+   ========================================================= */
+(function(global){
+  'use strict';
+
+  var VERSION = '1.2.0';
+
+  if(global.permitRiskWorkflowV120){
+    console.log('[허가 통합 v1.2.0] 이미 적용');
+    return;
+  }
+
+  function getElement(id){
+    return document.getElementById(id);
+  }
+
+  function getValue(id){
+    var element = getElement(id);
+
+    return element
+      ? String(element.value || '').trim()
+      : '';
+  }
+
+  function clone(value){
+    if(value === undefined || value === null){
+      return value;
+    }
+
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function normalizeText(value){
+    return String(value || '')
+      .toLowerCase()
+      .replace(/\bloto\b/gi, 'ils')
+      .replace(/로토/g, 'ils')
+      .replace(/잠금\s*[·ㆍ-]?\s*표찰/g, 'ils')
+      .replace(/개인\s*보호구/g, '보호구')
+      .replace(/[^0-9a-z가-힣]/g, '');
+  }
+
+  /* -----------------------------------------------------
+   * 중복 판단용 의미 키
+   * ----------------------------------------------------- */
+
+  function getMeaningKey(value){
+    var text = normalizeText(value);
+
+    if(!text){
+      return '';
+    }
+
+    if(
+      /보호구|안전모|안전화/.test(text) &&
+      /착용/.test(text)
+    ){
+      return 'PPE_BASIC';
+    }
+
+    if(
+      /공구|도구|장비/.test(text) &&
+      /점검|상태|확인/.test(text)
+    ){
+      return 'TOOL_EQUIPMENT_INSPECTION';
+    }
+
+    if(
+      /작업구역|출입통제|출입금지|관계자외/.test(text)
+    ){
+      return 'WORK_AREA_CONTROL';
+    }
+
+    if(
+      /정리정돈|뒷정리|청소/.test(text)
+    ){
+      return 'HOUSEKEEPING';
+    }
+
+    if(
+      /비상연락|연락체계|연락망/.test(text)
+    ){
+      return 'EMERGENCY_CONTACT';
+    }
+
+    if(
+      /tbm|위험요인공유/.test(text)
+    ){
+      return 'TBM';
+    }
+
+    if(
+      /ils|에너지원차단|전원차단|잠금조치/.test(text)
+    ){
+      return 'ENERGY_ISOLATION';
+    }
+
+    if(
+      /잔류에너지|잔압제거|방전조치/.test(text)
+    ){
+      return 'RESIDUAL_ENERGY';
+    }
+
+    if(
+      /방호장치|방호덮개/.test(text) &&
+      /복구|원상/.test(text)
+    ){
+      return 'GUARD_RESTORATION';
+    }
+
+    if(
+      /작업중지|중지기준|중지권/.test(text)
+    ){
+      return 'STOP_WORK';
+    }
+
+    if(
+      /작업내용|작업범위/.test(text) &&
+      /확인/.test(text)
+    ){
+      return 'WORK_SCOPE';
+    }
+
+    return 'TEXT:' + text;
+  }
+
+  function getLinkedChecklistItems(){
+    if(
+      !global.permitData ||
+      !global.permitData.riskAssessmentChecklist ||
+      !Array.isArray(
+        global.permitData
+          .riskAssessmentChecklist.items
+      )
+    ){
+      return [];
+    }
+
+    return global.permitData
+      .riskAssessmentChecklist.items;
+  }
+
+  function getSelectedStandardItems(){
+    var result = [];
+
+    if(
+      !global.permitData ||
+      !Array.isArray(global.permitData.workTypes) ||
+      !global.CHECKLIST_DEF
+    ){
+      return result;
+    }
+
+    global.permitData.workTypes.forEach(function(type){
+      var definition =
+        global.CHECKLIST_DEF[type];
+
+      if(!definition || !Array.isArray(definition.items)){
+        return;
+      }
+
+      definition.items.forEach(function(item){
+        result.push({
+          type: type,
+          num: item.num,
+          text: item.text,
+          required: item.required === true,
+          key: type + '-' + item.num,
+          meaningKey: getMeaningKey(item.text)
+        });
+      });
+    });
+
+    return result;
+  }
+
+  function buildMergeMap(){
+    var riskItems =
+      getLinkedChecklistItems();
+
+    var standardItems =
+      getSelectedStandardItems();
+
+    var mergeMap = [];
+
+    riskItems.forEach(function(riskItem, riskIndex){
+      var riskMeaning =
+        getMeaningKey(riskItem.text);
+
+      var standard =
+        standardItems.find(function(item){
+          return (
+            riskMeaning &&
+            riskMeaning.indexOf('TEXT:') !== 0 &&
+            item.meaningKey === riskMeaning
+          );
+        });
+
+      if(!standard){
+        return;
+      }
+
+      riskItem.merged = true;
+      riskItem.mergedWith = {
+        type: standard.type,
+        num: standard.num,
+        key: standard.key,
+        text: standard.text,
+        meaningKey: riskMeaning
+      };
+
+      if(!Array.isArray(riskItem.sources)){
+        riskItem.sources = [];
+      }
+
+      var sourceExists =
+        riskItem.sources.some(function(source){
+          return (
+            source.type === 'permit-standard' &&
+            source.key === standard.key
+          );
+        });
+
+      if(!sourceExists){
+        riskItem.sources.push({
+          type: 'permit-standard',
+          key: standard.key,
+          checklistType: standard.type,
+          itemNo: standard.num,
+          text: standard.text
+        });
+      }
+
+      mergeMap.push({
+        riskIndex: riskIndex,
+        riskItem: riskItem,
+        standard: standard,
+        meaningKey: riskMeaning
+      });
+    });
+
+    if(global.permitData){
+      global.permitData.checklistMergeInfo = {
+        version: VERSION,
+        sourceRiskId:
+          global.permitData.riskId || '',
+        mergedCount: mergeMap.length,
+        items: mergeMap.map(function(item){
+          return {
+            riskChecklistItemId:
+              item.riskItem.checklistItemId || '',
+            riskText:
+              item.riskItem.text || '',
+            permitKey:
+              item.standard.key,
+            permitText:
+              item.standard.text,
+            meaningKey:
+              item.meaningKey
+          };
+        }),
+        calculatedAt:
+          new Date().toISOString()
+      };
+    }
+
+    return mergeMap;
+  }
+
+  function appendSourceBadge(element, text){
+    if(!element){
+      return;
+    }
+
+    var existing =
+      element.querySelector(
+        '.risk-merged-source-badge'
+      );
+
+    if(existing){
+      existing.textContent = text;
+      return;
+    }
+
+    var badge =
+      document.createElement('div');
+
+    badge.className =
+      'risk-merged-source-badge';
+
+    badge.textContent = text;
+
+    element.appendChild(badge);
+  }
+
+  function applyMergedChecklistView(){
+    var mergeMap =
+      buildMergeMap();
+
+    /*
+     * 중복 위험성평가 행은 숨기고,
+     * 기존 허가서 표준항목에 출처를 표시합니다.
+     */
+    mergeMap.forEach(function(mapping){
+      var riskNumber =
+        'RA-' + (mapping.riskIndex + 1);
+
+      var riskRows =
+        Array.prototype.slice.call(
+          document.querySelectorAll(
+            '#riskLinkedChecklistSection .cl-item'
+          )
+        );
+
+      var riskRow =
+        riskRows.find(function(row){
+          var number =
+            row.querySelector('.cl-num');
+
+          return (
+            number &&
+            number.textContent.trim() === riskNumber
+          );
+        });
+
+      if(riskRow){
+        riskRow.style.display = 'none';
+        riskRow.dataset.merged = 'true';
+        riskRow.dataset.mergedWith =
+          mapping.standard.key;
+      }
+
+      var standardId =
+        'ci-' +
+        mapping.standard.type +
+        '-' +
+        String(mapping.standard.num)
+          .replace('.', '-');
+
+      var standardRow =
+        getElement(standardId);
+
+      if(standardRow){
+        standardRow.dataset.riskMerged = 'true';
+
+        var textElement =
+          standardRow.querySelector('.cl-text');
+
+        appendSourceBadge(
+          textElement,
+          '위험성평가 연계 · ' +
+          (
+            global.permitData &&
+            global.permitData.riskId
+              ? global.permitData.riskId
+              : '위험성평가'
+          )
+        );
+      }
+    });
+
+    var section =
+      getElement('riskLinkedChecklistSection');
+
+    if(section){
+      var header =
+        section.querySelector(
+          '.cl-section-header'
+        );
+
+      if(header){
+        header.textContent =
+          '🤖 위험성평가 연계 안전대책';
+      }
+
+      var legend =
+        section.querySelector('.cl-legend');
+
+      if(legend){
+        var visibleCount =
+          Array.prototype.slice.call(
+            section.querySelectorAll('.cl-item')
+          )
+          .filter(function(item){
+            return item.style.display !== 'none';
+          })
+          .length;
+
+        appendSourceBadge(
+          legend,
+          '중복 ' +
+          mergeMap.length +
+          '건 통합 · 별도 확인 ' +
+          visibleCount +
+          '건'
+        );
+      }
+    }
+
+    console.log(
+      '[허가 통합 v1.2.0] 체크리스트 중복 통합:',
+      {
+        mergedCount: mergeMap.length,
+        mergeMap: mergeMap
+      }
+    );
+
+    return mergeMap;
+  }
+
+  function synchronizeMergedResult(
+    type,
+    num,
+    result
+  ){
+    var mergeMap =
+      buildMergeMap();
+
+    var standardKey =
+      type + '-' + num;
+
+    mergeMap.forEach(function(mapping){
+      if(mapping.standard.key !== standardKey){
+        return;
+      }
+
+      mapping.riskItem.result = result;
+      mapping.riskItem.checkedAt =
+        new Date().toISOString();
+
+      mapping.riskItem.checkedBy =
+        sessionStorage.getItem('userName') ||
+        getValue('company-work-manager-name') ||
+        '';
+    });
+  }
+
+  /* -----------------------------------------------------
+   * 기존 체크리스트 함수 연결
+   * ----------------------------------------------------- */
+
+  function installSetCheckHook(){
+    if(
+      typeof global.setCheck !== 'function' ||
+      global.setCheck.__v120Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.setCheck;
+
+    var wrapped =
+      function(type, num, value, button){
+        var result =
+          previous.apply(this, arguments);
+
+        synchronizeMergedResult(
+          type,
+          num,
+          value
+        );
+
+        setTimeout(
+          applyMergedChecklistView,
+          0
+        );
+
+        return result;
+      };
+
+    wrapped.__v120Installed = true;
+    wrapped.__previous = previous;
+
+    global.setCheck = wrapped;
+  }
+
+  function installRenderChecklistHook(){
+    if(
+      typeof global.renderChecklist !== 'function' ||
+      global.renderChecklist.__v120Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.renderChecklist;
+
+    var wrapped =
+      function(){
+        var result =
+          previous.apply(this, arguments);
+
+        setTimeout(
+          applyMergedChecklistView,
+          0
+        );
+
+        return result;
+      };
+
+    wrapped.__v120Installed = true;
+    wrapped.__previous = previous;
+
+    global.renderChecklist = wrapped;
+  }
+
+  function installLinkedCheckHook(){
+    if(
+      typeof global.setLinkedRiskCheck !== 'function' ||
+      global.setLinkedRiskCheck.__v120Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.setLinkedRiskCheck;
+
+    var wrapped =
+      function(){
+        var result =
+          previous.apply(this, arguments);
+
+        setTimeout(
+          applyMergedChecklistView,
+          0
+        );
+
+        return result;
+      };
+
+    wrapped.__v120Installed = true;
+    wrapped.__previous = previous;
+
+    global.setLinkedRiskCheck = wrapped;
+  }
+
+  /* -----------------------------------------------------
+   * 7단계 역할 및 화면 개선
+   * ----------------------------------------------------- */
+
+  function createConfirmationItem(id, text){
+    return (
+      '<label class="permit-manager-confirm-item">' +
+        '<input type="checkbox" id="' +
+          id +
+        '">' +
+        '<span>' +
+          text +
+        '</span>' +
+      '</label>'
+    );
+  }
+
+  function enhanceStepSeven(){
+    var screen =
+      getElement('screen-step7');
+
+    if(!screen || screen.dataset.v120Enhanced === 'true'){
+      return;
+    }
+
+    screen.dataset.v120Enhanced = 'true';
+
+    var sections =
+      screen.querySelectorAll('.form-section');
+
+    if(sections.length < 2){
+      return;
+    }
+
+    var signatureSection =
+      sections[0];
+
+    var supervisorSection =
+      sections[1];
+
+    var signatureTitle =
+      signatureSection.querySelector(
+        '.form-section-title'
+      );
+
+    if(signatureTitle){
+      signatureTitle.textContent =
+        '✍️ 직영 작업담당자 확인·서명';
+    }
+
+    var signatureBox =
+      signatureSection.querySelector('.sig-box');
+
+    if(signatureBox){
+      signatureBox.insertAdjacentHTML(
+        'beforebegin',
+
+        '<div class="permit-manager-fields">' +
+
+          '<div class="form-group">' +
+            '<label class="f-label">' +
+              '직영 작업담당자 이름' +
+              '<span class="req">*</span>' +
+            '</label>' +
+            '<input class="f-input" ' +
+              'id="company-work-manager-name" ' +
+              'placeholder="작업담당자 이름">' +
+          '</div>' +
+
+          '<div class="f-row">' +
+            '<div class="form-group">' +
+              '<label class="f-label">' +
+                '소속 부서' +
+                '<span class="req">*</span>' +
+              '</label>' +
+              '<input class="f-input" ' +
+                'id="company-work-manager-department" ' +
+                'placeholder="예: 설비기술섹션">' +
+            '</div>' +
+
+            '<div class="form-group">' +
+              '<label class="f-label">' +
+                '연락처' +
+                '<span class="req">*</span>' +
+              '</label>' +
+              '<input class="f-input" ' +
+                'id="company-work-manager-phone" ' +
+                'type="tel" ' +
+                'placeholder="010-0000-0000">' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="permit-manager-confirmations">' +
+            createConfirmationItem(
+              'confirm-risk-reviewed',
+              '위험성평가의 위험요인과 사고 시나리오를 확인했습니다.'
+            ) +
+
+            createConfirmationItem(
+              'confirm-measures-implemented',
+              '선택된 안전대책의 현장 적용상태를 확인했습니다.'
+            ) +
+
+            createConfirmationItem(
+              'confirm-work-condition-matched',
+              '현재 작업조건이 위험성평가 당시 조건과 일치합니다.'
+            ) +
+
+            createConfirmationItem(
+              'confirm-no-critical-risk',
+              '미해결 중대위험이 없음을 확인했습니다.'
+            ) +
+          '</div>' +
+
+        '</div>'
+      );
+    }
+
+    var canvasLabel =
+      signatureSection.querySelector(
+        '.sig-label'
+      );
+
+    if(canvasLabel){
+      canvasLabel.innerHTML =
+        '직영 작업담당자 서명 ' +
+        '<span class="req">*</span>';
+    }
+
+    var supervisorTitle =
+      supervisorSection.querySelector(
+        '.form-section-title'
+      );
+
+    if(supervisorTitle){
+      supervisorTitle.textContent =
+        '👷 수급인 작업책임자 정보';
+    }
+
+    var supervisorLabels =
+      supervisorSection.querySelectorAll(
+        '.f-label'
+      );
+
+    if(supervisorLabels[0]){
+      supervisorLabels[0].innerHTML =
+        '수급인 작업책임자 이름' +
+        '<span class="req">*</span>';
+    }
+
+    if(supervisorLabels[1]){
+      supervisorLabels[1].innerHTML =
+        '수급인 작업책임자 연락처' +
+        '<span class="req">*</span>';
+    }
+
+    if(supervisorLabels[2]){
+      supervisorLabels[2].innerHTML =
+        'TBM 전달 이메일' +
+        '<span class="req">*</span>';
+    }
+
+    var approvalInfo =
+      screen.querySelector('.info-box');
+
+    if(approvalInfo){
+      var title =
+        approvalInfo.querySelector(
+          '.info-box-title'
+        );
+
+      var text =
+        approvalInfo.querySelector(
+          '.info-box-text'
+        );
+
+      if(title){
+        title.textContent =
+          '📋 허가 및 TBM 전달 절차';
+      }
+
+      if(text){
+        text.innerHTML =
+          '직영 작업담당자 확인·서명 ' +
+          '→ 허가자 승인 요청 ' +
+          '→ 허가자 최종 승인 ' +
+          '→ 수급인 작업책임자에게 TBM 접속주소 전달';
+      }
+    }
+
+    var actionButton =
+      screen.querySelector(
+        '.btn-row .btn-primary'
+      );
+
+    if(actionButton){
+      actionButton.textContent =
+        '허가자 승인 요청';
+    }
+
+    var savedUser =
+      sessionStorage.getItem('userName') || '';
+
+    var managerName =
+      getElement('company-work-manager-name');
+
+    if(managerName && savedUser){
+      managerName.value = savedUser;
+    }
+
+    console.log(
+      '[허가 통합 v1.2.0] 7단계 역할 화면 개선 완료'
+    );
+  }
+
+  function allManagerConfirmationsChecked(){
+    var ids = [
+      'confirm-risk-reviewed',
+      'confirm-measures-implemented',
+      'confirm-work-condition-matched',
+      'confirm-no-critical-risk'
+    ];
+
+    return ids.every(function(id){
+      var element = getElement(id);
+      return Boolean(element && element.checked);
+    });
+  }
+
+  function installStepSevenValidationHook(){
+    if(
+      typeof global.validateStep7 !== 'function' ||
+      global.validateStep7.__v120Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.validateStep7;
+
+    var wrapped =
+      function(){
+        var managerName =
+          getValue('company-work-manager-name');
+
+        var managerDepartment =
+          getValue('company-work-manager-department');
+
+        var managerPhone =
+          getValue('company-work-manager-phone');
+
+        if(
+          !managerName ||
+          !managerDepartment ||
+          !managerPhone
+        ){
+          global.showToast(
+            '직영 작업담당자 정보를 모두 입력해 주세요.',
+            'danger'
+          );
+
+          return;
+        }
+
+        if(!allManagerConfirmationsChecked()){
+          global.showToast(
+            '직영 작업담당자 확인사항을 모두 체크해 주세요.',
+            'danger'
+          );
+
+          return;
+        }
+
+        if(global.permitData){
+          global.permitData.companyWorkManager = {
+            name: managerName,
+            department: managerDepartment,
+            phone: managerPhone,
+            signatureProvided: true,
+            signatureSaved: false,
+            signedAt: new Date().toISOString(),
+
+            confirmations: {
+              riskAssessmentReviewed: true,
+              measuresImplemented: true,
+              workConditionsMatched: true,
+              noUnresolvedCriticalRisk: true
+            }
+          };
+        }
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__v120Installed = true;
+    wrapped.__previous = previous;
+
+    global.validateStep7 = wrapped;
+  }
+
+  /* -----------------------------------------------------
+   * 저장 객체 확장
+   * ----------------------------------------------------- */
+
+  function installSaveHook(){
+    if(
+      typeof global.buildPermitRecord !== 'function' ||
+      global.buildPermitRecord.__v120Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.buildPermitRecord;
+
+    var wrapped =
+      function(){
+        var record =
+          previous.apply(this, arguments);
+
+        var now =
+          new Date().toISOString();
+
+        var companyWorkManager =
+          global.permitData &&
+          global.permitData.companyWorkManager
+            ? clone(
+                global.permitData.companyWorkManager
+              )
+            : {
+                name:
+                  getValue(
+                    'company-work-manager-name'
+                  ),
+                department:
+                  getValue(
+                    'company-work-manager-department'
+                  ),
+                phone:
+                  getValue(
+                    'company-work-manager-phone'
+                  ),
+                signatureProvided: true,
+                signatureSaved: false,
+                signedAt: now,
+
+                confirmations: {
+                  riskAssessmentReviewed:
+                    Boolean(
+                      getElement(
+                        'confirm-risk-reviewed'
+                      ) &&
+                      getElement(
+                        'confirm-risk-reviewed'
+                      ).checked
+                    ),
+
+                  measuresImplemented:
+                    Boolean(
+                      getElement(
+                        'confirm-measures-implemented'
+                      ) &&
+                      getElement(
+                        'confirm-measures-implemented'
+                      ).checked
+                    ),
+
+                  workConditionsMatched:
+                    Boolean(
+                      getElement(
+                        'confirm-work-condition-matched'
+                      ) &&
+                      getElement(
+                        'confirm-work-condition-matched'
+                      ).checked
+                    ),
+
+                  noUnresolvedCriticalRisk:
+                    Boolean(
+                      getElement(
+                        'confirm-no-critical-risk'
+                      ) &&
+                      getElement(
+                        'confirm-no-critical-risk'
+                      ).checked
+                    )
+                }
+              };
+
+        record.companyWorkManager =
+          companyWorkManager;
+
+        record.contractorWorkSupervisor = {
+          name:
+            record.supervisorName ||
+            getValue('sup-name'),
+
+          company:
+            record.companyName ||
+            '',
+
+          phone:
+            record.supervisorPhone ||
+            getValue('sup-phone'),
+
+          email:
+            record.supervisorEmail ||
+            getValue('sup-email'),
+
+          tbmDeliveryStatus:
+            '허가승인대기'
+        };
+
+        record.permitApproval = {
+          required: true,
+          status: '승인대기',
+          requestedAt: now,
+          requestedBy:
+            companyWorkManager.name || '',
+          approvedAt: '',
+          approvedBy: '',
+          comment: ''
+        };
+
+        record.approvalWorkflow = {
+          version: VERSION,
+          currentStep: 'PERMIT_APPROVAL_PENDING',
+          companyWorkManagerSigned: true,
+          permitApprovalCompleted: false,
+          tbmLinkDeliveryAllowed: false,
+          tbmLinkDelivered: false
+        };
+
+        record.checklistMergeInfo =
+          global.permitData &&
+          global.permitData.checklistMergeInfo
+            ? clone(
+                global.permitData.checklistMergeInfo
+              )
+            : null;
+
+        /*
+         * 기존 필드는 호환을 위해 유지하지만,
+         * 신규 공식 서명 주체는 companyWorkManager입니다.
+         */
+        record.signatureRole =
+          'company-work-manager';
+
+        record.signatureRoleLabel =
+          '직영 작업담당자';
+
+        record.workflowVersion =
+          VERSION;
+
+        return record;
+      };
+
+    wrapped.__v120Installed = true;
+    wrapped.__previous = previous;
+
+    global.buildPermitRecord = wrapped;
+  }
+
+  /* -----------------------------------------------------
+   * 스타일
+   * ----------------------------------------------------- */
+
+  function injectStyle(){
+    if(getElement('permitRiskWorkflowV120Style')){
+      return;
+    }
+
+    var style =
+      document.createElement('style');
+
+    style.id =
+      'permitRiskWorkflowV120Style';
+
+    style.textContent = [
+      '.risk-merged-source-badge{',
+        'display:block;',
+        'width:fit-content;',
+        'margin-top:5px;',
+        'padding:3px 7px;',
+        'border-radius:6px;',
+        'background:var(--tint);',
+        'color:var(--posco);',
+        'font-size:11px;',
+        'font-weight:800;',
+        'line-height:1.4;',
+      '}',
+
+      '.permit-manager-fields{',
+        'margin-bottom:16px;',
+      '}',
+
+      '.permit-manager-confirmations{',
+        'display:flex;',
+        'flex-direction:column;',
+        'gap:8px;',
+        'margin:4px 0 16px;',
+      '}',
+
+      '.permit-manager-confirm-item{',
+        'display:flex;',
+        'align-items:flex-start;',
+        'gap:10px;',
+        'padding:12px;',
+        'border:1.5px solid var(--line);',
+        'border-radius:10px;',
+        'background:var(--sunk);',
+        'cursor:pointer;',
+      '}',
+
+      '.permit-manager-confirm-item input{',
+        'flex-shrink:0;',
+        'width:22px;',
+        'height:22px;',
+        'margin-top:1px;',
+        'accent-color:var(--done);',
+      '}',
+
+      '.permit-manager-confirm-item span{',
+        'color:var(--ink);',
+        'font-size:14px;',
+        'font-weight:700;',
+        'line-height:1.55;',
+      '}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function install(){
+    injectStyle();
+    installSetCheckHook();
+    installRenderChecklistHook();
+    installLinkedCheckHook();
+    installStepSevenValidationHook();
+    installSaveHook();
+    enhanceStepSeven();
+
+    console.log(
+      '[위험성평가·허가 체크리스트 및 역할 통합] v' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.permitRiskWorkflowV120 = {
+    version: VERSION,
+    meaningKey: getMeaningKey,
+    buildMergeMap: buildMergeMap,
+    applyMergedView: applyMergedChecklistView,
+    enhanceStepSeven: enhanceStepSeven
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
 </script>
+
   
 </body>
 </html>
