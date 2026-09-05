@@ -8655,6 +8655,58 @@ document.addEventListener('DOMContentLoaded', initializeApplication);
 
 <!-- 작업DB 비차단 검토 + 위험성평가DB 컬럼 정렬 보정 -->
 <script src="./assets/js/risk-workdb-match-patch.js?v=3.2.1-fix1"></script>
+<!-- 허가서 신규평가 목록에서 진입 시 기본정보 화면 바로 열기 -->
+<script id="direct-new-assessment-entry">
+(function(global){
+  'use strict';
+
+  var originalInitializeFromUrl =
+    global.initializeFromUrl;
+
+  if(
+    typeof originalInitializeFromUrl !==
+    'function'
+  ){
+    console.error(
+      '[신규평가 직접 진입] initializeFromUrl 함수를 찾지 못했습니다.'
+    );
+
+    return;
+  }
+
+  global.initializeFromUrl = function(){
+    var parameters =
+      new URLSearchParams(
+        global.location.search
+      );
+
+    var entry =
+      parameters.get('entry') || '';
+
+    if(entry === 'new-assessment'){
+      console.log(
+        '[신규평가 직접 진입] 기본정보 화면으로 이동'
+      );
+
+      if(
+        typeof global.selectStartMode ===
+        'function'
+      ){
+        global.selectStartMode('new');
+        return;
+      }
+    }
+
+    return originalInitializeFromUrl.apply(
+      this,
+      arguments
+    );
+  };
+})(window);
+</script>
+
+</body>
+</html>
   
 </body>
 </html>
