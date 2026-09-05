@@ -9243,7 +9243,952 @@ document.addEventListener('keydown', function(e){
 
 })(window);
 </script>
-  
+ <script>
+/* =========================================================
+   안전작업허가서 시작 화면 및 평가 목록 개선 v1.4.0
+
+   - 좌측: 오늘 작업목록
+   - 우측: 신규평가 목록
+   - 관련 문의 카드 제거
+   - 오늘 작업별 위험성평가 완료 상태 표시
+   - workId 없는 신규 완료평가 목록 제공
+   - 선택한 평가를 riskId로 허가서에 연결
+   ========================================================= */
+(function(global){
+  'use strict';
+
+  var VERSION = '1.4.0';
+
+  if(global.permitStartFlowV140){
+    console.log('[허가 시작 흐름 v1.4.0] 이미 적용');
+    return;
+  }
+
+  function getElement(id){
+    return document.getElementById(id);
+  }
+
+  function escapeHtml(value){
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeJs(value){
+    return String(value == null ? '' : value)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\r/g, '\\r')
+      .replace(/\n/g, '\\n');
+  }
+
+  function getRiskLevel(record){
+    return (
+      record.finalRiskLevel ||
+      record.riskLevel ||
+      record.overallRisk ||
+      '판정불가'
+    );
+  }
+
+  function getRiskScore(record){
+    var direct = Number(record.riskScore);
+
+    if(Number.isFinite(direct)){
+      return direct;
+    }
+
+    var scores = {
+      '저위험': 3,
+      '중위험': 8,
+      '고위험': 15,
+      '매우고위험': 25,
+      '판정불가': 0
+    };
+
+    return scores[getRiskLevel(record)] || 0;
+  }
+
+  function getRecordTime(record){
+    var value =
+      record.updatedAt ||
+      record.createdAt ||
+      record.date ||
+      '';
+
+    var time = new Date(value).getTime();
+
+    return Number.isFinite(time)
+      ? time
+      : 0;
+  }
+
+  function getStoredRiskAssessments(){
+    try {
+      var parsed = JSON.parse(
+        localStorage.getItem('riskAssessments') ||
+        '[]'
+      );
+
+      return Array.isArray(parsed)
+        ? parsed
+        : [];
+    } catch(error){
+      console.warn(
+        '[허가 시작 흐름] 위험성평가 목록 파싱 실패:',
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function getStoredPermits(){
+    try {
+      var parsed = JSON.parse(
+        localStorage.getItem('safetyPermits') ||
+        '[]'
+      );
+
+      return Array.isArray(parsed)
+        ? parsed
+        : [];
+    } catch(error){
+      return [];
+    }
+  }
+
+  function isCompletedRisk(record){
+    return Boolean(
+      record &&
+      record.riskId &&
+      (
+        record.status === '평가완료' ||
+        !record.status
+      )
+    );
+  }
+
+  function findLatestRiskByWorkId(workId){
+    if(!workId){
+      return null;
+    }
+
+    var records = getStoredRiskAssessments()
+      .filter(function(record){
+        return (
+          isCompletedRisk(record) &&
+          String(record.workId || '') ===
+          String(workId)
+        );
+      })
+      .sort(function(first, second){
+        return (
+          getRecordTime(second) -
+          getRecordTime(first)
+        );
+      });
+
+    return records.length > 0
+      ? records[0]
+      : null;
+  }
+
+  function getHighRiskText(record){
+    var assessment =
+      record &&
+      record.highRiskWorkAssessment;
+
+    if(!assessment){
+      return '분류정보 없음';
+    }
+
+    if(assessment.applicable === true){
+      return assessment.status === '예외검토'
+        ? '예외검토'
+        : '해당';
+    }
+
+    if(assessment.applicable === false){
+      return '비해당';
+    }
+
+    return assessment.status || '검토중';
+  }
+
+  /* -----------------------------------------------------
+   * 시작 화면 변경
+   * ----------------------------------------------------- */
+
+  function removeContactCard(){
+    var welcome = getElement('screen-welcome');
+
+    if(!welcome){
+      return;
+    }
+
+    Array.prototype.slice.call(
+      welcome.querySelectorAll('.info-box')
+    ).forEach(function(card){
+      if(
+        card.textContent.indexOf('관련 문의') >= 0
+      ){
+        card.remove();
+      }
+    });
+  }
+
+  function configureStartCards(){
+    var cards = document.querySelectorAll(
+      '#screen-welcome .mode-grid .mode-card'
+    );
+
+    if(cards.length < 2){
+      return;
+    }
+
+    var todayCard = cards[0];
+    var newRiskCard = cards[1];
+
+    todayCard.removeAttribute('href');
+    todayCard.setAttribute('href', '#');
+    todayCard.onclick = function(event){
+      if(event){
+        event.preventDefault();
+      }
+
+      global.openTodayWorkList();
+      return false;
+    };
+
+    var todayIcon =
+      todayCard.querySelector('.mode-ico');
+
+    var todayTitle =
+      todayCard.querySelector('.mode-title');
+
+    var todayDescription =
+      todayCard.querySelector('.mode-desc');
+
+    if(todayIcon){
+      todayIcon.textContent = '📋';
+    }
+
+    if(todayTitle){
+      todayTitle.textContent = '오늘 작업목록';
+    }
+
+    if(todayDescription){
+      todayDescription.innerHTML =
+        '작업관리대장의<br>오늘 작업에서 선택';
+    }
+
+    newRiskCard.removeAttribute('href');
+    newRiskCard.setAttribute('href', '#');
+    newRiskCard.onclick = function(event){
+      if(event){
+        event.preventDefault();
+      }
+
+      openNewRiskAssessmentList();
+      return false;
+    };
+
+    var newRiskIcon =
+      newRiskCard.querySelector('.mode-ico');
+
+    var newRiskTitle =
+      newRiskCard.querySelector('.mode-title');
+
+    var newRiskDescription =
+      newRiskCard.querySelector('.mode-desc');
+
+    if(newRiskIcon){
+      newRiskIcon.textContent = '✏️';
+    }
+
+    if(newRiskTitle){
+      newRiskTitle.textContent = '신규평가 목록';
+    }
+
+    if(newRiskDescription){
+      newRiskDescription.innerHTML =
+        '관리대장 외 완료된<br>위험성평가에서 선택';
+    }
+  }
+
+  /* -----------------------------------------------------
+   * 신규평가 목록
+   * ----------------------------------------------------- */
+
+  function createNewRiskScreen(){
+    if(getElement('screen-new-risk-list')){
+      return;
+    }
+
+    var app = document.querySelector('.app');
+
+    if(!app){
+      return;
+    }
+
+    var screen = document.createElement('div');
+
+    screen.id = 'screen-new-risk-list';
+    screen.className = 'screen';
+
+    screen.innerHTML =
+      '<div class="ptw-work-list-wrap">' +
+
+        '<div class="welcome-hero" ' +
+          'style="padding:25px 20px;margin-bottom:16px;">' +
+
+          '<div class="welcome-ico" ' +
+            'style="font-size:43px;">✏️</div>' +
+
+          '<div class="welcome-title" ' +
+            'style="font-size:23px;">신규평가 목록</div>' +
+
+          '<div class="welcome-sub">' +
+            '작업관리대장에 연결되지 않은<br>' +
+            '완료된 위험성평가에서 선택하세요.' +
+          '</div>' +
+
+        '</div>' +
+
+        '<div class="ptw-list-header">' +
+          '<div class="ptw-list-title">' +
+            '🤖 완료된 신규 위험성평가' +
+          '</div>' +
+
+          '<div class="ptw-list-count" ' +
+            'id="newRiskListCount">0건</div>' +
+        '</div>' +
+
+        '<div id="newRiskListCards"></div>' +
+
+        '<div class="ptw-list-actions">' +
+          '<button type="button" ' +
+            'class="ptw-list-action" ' +
+            'onclick="closeNewRiskAssessmentList()">' +
+            '← 이전' +
+          '</button>' +
+
+          '<button type="button" ' +
+            'class="ptw-list-action primary" ' +
+            'onclick="moveToNewRiskAssessment()">' +
+            '🤖 신규 위험성평가' +
+          '</button>' +
+        '</div>' +
+
+      '</div>';
+
+    app.appendChild(screen);
+  }
+
+  function getAvailableNewRisks(){
+    var usedRiskIds = {};
+
+    getStoredPermits().forEach(function(permit){
+      if(permit && permit.riskId){
+        usedRiskIds[String(permit.riskId)] = true;
+      }
+    });
+
+    return getStoredRiskAssessments()
+      .filter(function(record){
+        return (
+          isCompletedRisk(record) &&
+          !String(record.workId || '').trim()
+        );
+      })
+      .sort(function(first, second){
+        return (
+          getRecordTime(second) -
+          getRecordTime(first)
+        );
+      })
+      .map(function(record){
+        var copied = Object.assign({}, record);
+
+        copied.hasPermit =
+          usedRiskIds[
+            String(record.riskId || '')
+          ] === true;
+
+        return copied;
+      });
+  }
+
+  function renderNewRiskList(){
+    var container =
+      getElement('newRiskListCards');
+
+    var count =
+      getElement('newRiskListCount');
+
+    if(!container){
+      return;
+    }
+
+    var records = getAvailableNewRisks();
+
+    if(count){
+      count.textContent =
+        records.length + '건';
+    }
+
+    if(records.length === 0){
+      container.innerHTML =
+        '<div class="ptw-empty">' +
+          '<div class="ptw-empty-icon">📭</div>' +
+          '<div class="ptw-empty-title">' +
+            '완료된 신규평가가 없습니다' +
+          '</div>' +
+          '<div class="ptw-empty-desc">' +
+            '신규 위험성평가를 먼저 완료해 주세요.' +
+          '</div>' +
+        '</div>';
+
+      return;
+    }
+
+    container.innerHTML =
+      records.map(function(record){
+        var level = getRiskLevel(record);
+        var high =
+          level === '고위험' ||
+          level === '매우고위험';
+
+        var button = record.hasPermit
+          ? (
+              '<button type="button" ' +
+                'class="ptw-start-btn existing" disabled>' +
+                '허가서 생성됨' +
+              '</button>'
+            )
+          : (
+              '<button type="button" ' +
+                'class="ptw-start-btn" ' +
+                'onclick="selectNewRiskAssessment(\'' +
+                  escapeJs(record.riskId) +
+                '\')">' +
+                '이 평가로 허가 작성 →' +
+              '</button>'
+            );
+
+        return (
+          '<div class="ptw-work-card ' +
+            (high ? 'high-risk' : 'normal-risk') +
+          '">' +
+
+            '<div class="ptw-work-top">' +
+              '<span class="ptw-risk-badge ' +
+                (high ? 'high' : 'normal') +
+              '">' +
+                escapeHtml(level) +
+                ' · ' +
+                getRiskScore(record) +
+                '점' +
+              '</span>' +
+
+              '<span class="ptw-permit-status ' +
+                (record.hasPermit
+                  ? 'progress'
+                  : 'approved') +
+              '">' +
+                (record.hasPermit
+                  ? '허가 연결됨'
+                  : '평가완료') +
+              '</span>' +
+            '</div>' +
+
+            '<div class="ptw-work-name">' +
+              escapeHtml(
+                record.workName ||
+                '작업명 미지정'
+              ) +
+            '</div>' +
+
+            '<div class="ptw-work-meta">' +
+              '<span>📄 ' +
+                escapeHtml(record.riskId) +
+              '</span>' +
+
+              '<span>📅 ' +
+                escapeHtml(record.date || '-') +
+              '</span>' +
+
+              '<span>📍 ' +
+                escapeHtml(
+                  [
+                    record.location || '',
+                    record.detailLocation || ''
+                  ].join(' ').trim() || '-'
+                ) +
+              '</span>' +
+
+              '<span>🏢 ' +
+                escapeHtml(record.company || '-') +
+              '</span>' +
+            '</div>' +
+
+            '<div class="new-risk-policy-row">' +
+              '고위험작업: ' +
+              escapeHtml(
+                getHighRiskText(record)
+              ) +
+            '</div>' +
+
+            '<div class="ptw-work-source">' +
+              '<div class="ptw-work-no">' +
+                escapeHtml(record.riskId) +
+              '</div>' +
+              button +
+            '</div>' +
+
+          '</div>'
+        );
+      }).join('');
+  }
+
+  function openNewRiskAssessmentList(){
+    createNewRiskScreen();
+
+    document
+      .querySelectorAll('.screen')
+      .forEach(function(screen){
+        screen.classList.remove('active');
+      });
+
+    var screen =
+      getElement('screen-new-risk-list');
+
+    if(screen){
+      screen.classList.add('active');
+    }
+
+    var progress =
+      getElement('progressWrap');
+
+    if(progress){
+      progress.style.display = 'none';
+    }
+
+    var title =
+      getElement('topnavTitle');
+
+    if(title){
+      title.textContent = '신규평가 목록';
+    }
+
+    global.currentStep = 0;
+
+    renderNewRiskList();
+    global.scrollTo(0, 0);
+  }
+
+  global.closeNewRiskAssessmentList =
+    function(){
+      global.goToScreen('screen-welcome');
+
+      var title =
+        getElement('topnavTitle');
+
+      if(title){
+        title.textContent = '안전작업허가서';
+      }
+    };
+
+  global.moveToNewRiskAssessment =
+    function(){
+      global.location.href =
+        '위험성평가_v2.html';
+    };
+
+  global.selectNewRiskAssessment =
+    function(riskId){
+      var url =
+        global.location.pathname +
+        '?riskId=' +
+        encodeURIComponent(riskId) +
+        '&entry=new-risk-selection';
+
+      global.location.href = url;
+    };
+
+  /* -----------------------------------------------------
+   * 선택된 신규평가로 바로 1단계 진입
+   * ----------------------------------------------------- */
+
+  function enterSelectedRiskAssessment(){
+    var parameters =
+      new URLSearchParams(
+        global.location.search
+      );
+
+    var riskId =
+      parameters.get('riskId') || '';
+
+    var entry =
+      parameters.get('entry') || '';
+
+    if(
+      !riskId ||
+      entry !== 'new-risk-selection'
+    ){
+      return;
+    }
+
+    setTimeout(function(){
+      if(
+        global.permitRiskLink &&
+        global.permitRiskLink
+          .getLinkedAssessment &&
+        global.permitRiskLink
+          .getLinkedAssessment()
+      ){
+        global.selectMode('new');
+
+        console.log(
+          '[허가 시작 흐름] 신규평가 선택 진입:',
+          riskId
+        );
+      }
+    }, 150);
+  }
+
+  /* -----------------------------------------------------
+   * 오늘 작업목록 위험성평가 상태 표시
+   * ----------------------------------------------------- */
+
+  function renderTodayWorksWithRiskStatus(){
+    var container =
+      getElement('ptwTodayWorkCards');
+
+    var count =
+      getElement('ptwTodayCount');
+
+    if(!container){
+      return;
+    }
+
+    var works =
+      Array.isArray(global.ptwFilteredWorks)
+        ? global.ptwFilteredWorks
+        : [];
+
+    if(count){
+      count.textContent =
+        works.length + '건';
+    }
+
+    if(works.length === 0){
+      container.innerHTML =
+        '<div class="ptw-empty">' +
+          '<div class="ptw-empty-icon">📭</div>' +
+          '<div class="ptw-empty-title">' +
+            '조건에 맞는 오늘 작업이 없습니다' +
+          '</div>' +
+          '<div class="ptw-empty-desc">' +
+            '작업관리대장의 일자와 필터 조건을 확인해 주세요.' +
+          '</div>' +
+        '</div>';
+
+      return;
+    }
+
+    container.innerHTML =
+      works.map(function(work){
+        var risk =
+          findLatestRiskByWorkId(
+            work.workId
+          );
+
+        var isHighRisk =
+          work.riskLevel === '고위험';
+
+        var statusClass =
+          global.ptwGetStatusClass(
+            work.permitStatus
+          );
+
+        var hasPermit =
+          Boolean(work.permit);
+
+        var riskHtml = risk
+          ? (
+              '<div class="today-risk-status complete">' +
+                '<div class="today-risk-status-title">' +
+                  '✅ 위험성평가 완료' +
+                '</div>' +
+
+                '<div class="today-risk-status-detail">' +
+                  escapeHtml(risk.riskId) +
+                  ' · ' +
+                  escapeHtml(getRiskLevel(risk)) +
+                  ' ' +
+                  getRiskScore(risk) +
+                  '점 · 고위험작업 ' +
+                  escapeHtml(
+                    getHighRiskText(risk)
+                  ) +
+                '</div>' +
+              '</div>'
+            )
+          : (
+              '<div class="today-risk-status missing">' +
+                '<div class="today-risk-status-title">' +
+                  '⚠️ 위험성평가 미완료' +
+                '</div>' +
+
+                '<div class="today-risk-status-detail">' +
+                  '위험성평가를 먼저 완료해야 합니다.' +
+                '</div>' +
+              '</div>'
+            );
+
+        var actionButton = '';
+
+        if(hasPermit){
+          actionButton =
+            '<button type="button" ' +
+              'class="ptw-start-btn existing" ' +
+              'onclick="ptwHandleExistingPermit(\'' +
+                escapeJs(work.workId) +
+              '\')">' +
+              '허가 있음' +
+            '</button>';
+
+        } else if(risk){
+          actionButton =
+            '<button type="button" ' +
+              'class="ptw-start-btn" ' +
+              'onclick="startPermitWithRisk(\'' +
+                escapeJs(work.workId) +
+                '\',\'' +
+                escapeJs(risk.riskId) +
+              '\')">' +
+              '허가 작성 →' +
+            '</button>';
+
+        } else {
+          actionButton =
+            '<button type="button" ' +
+              'class="ptw-start-btn risk-required" ' +
+              'onclick="moveToRiskForWork(\'' +
+                escapeJs(work.workId) +
+              '\')">' +
+              '위험성평가 먼저 작성' +
+            '</button>';
+        }
+
+        return (
+          '<div class="ptw-work-card ' +
+            (isHighRisk
+              ? 'high-risk'
+              : 'normal-risk') +
+          '">' +
+
+            '<div class="ptw-work-top">' +
+              '<span class="ptw-risk-badge ' +
+                (isHighRisk
+                  ? 'high'
+                  : 'normal') +
+              '">' +
+                escapeHtml(
+                  work.riskLevel || '일반'
+                ) +
+              '</span>' +
+
+              '<span class="ptw-permit-status ' +
+                statusClass +
+              '">' +
+                escapeHtml(
+                  work.permitStatus || '미작성'
+                ) +
+              '</span>' +
+            '</div>' +
+
+            '<div class="ptw-work-name">' +
+              escapeHtml(work.workName) +
+            '</div>' +
+
+            '<div class="ptw-work-meta">' +
+              '<span>📍 ' +
+                escapeHtml(work.location) +
+              '</span>' +
+
+              '<span>🏢 ' +
+                escapeHtml(work.company) +
+              '</span>' +
+
+              (
+                work.workTime
+                  ? '<span>⏰ ' +
+                    escapeHtml(work.workTime) +
+                    '</span>'
+                  : ''
+              ) +
+            '</div>' +
+
+            riskHtml +
+
+            '<div class="ptw-work-source">' +
+              '<div class="ptw-work-no">' +
+                escapeHtml(work.workId) +
+              '</div>' +
+              actionButton +
+            '</div>' +
+
+          '</div>'
+        );
+      }).join('');
+  }
+
+  global.startPermitWithRisk =
+    function(workId, riskId){
+      var url =
+        global.location.pathname +
+        '?workId=' +
+        encodeURIComponent(workId) +
+        '&riskId=' +
+        encodeURIComponent(riskId);
+
+      global.location.href = url;
+    };
+
+  global.moveToRiskForWork =
+    function(workId){
+      global.location.href =
+        '위험성평가_v2.html?workId=' +
+        encodeURIComponent(workId);
+    };
+
+  function installTodayWorkRenderHook(){
+    if(
+      typeof global.ptwRenderTodayWorks !==
+      'function'
+    ){
+      return;
+    }
+
+    global.ptwRenderTodayWorks =
+      renderTodayWorksWithRiskStatus;
+  }
+
+  /* -----------------------------------------------------
+   * 스타일
+   * ----------------------------------------------------- */
+
+  function injectStyle(){
+    if(getElement('permitStartFlowV140Style')){
+      return;
+    }
+
+    var style =
+      document.createElement('style');
+
+    style.id =
+      'permitStartFlowV140Style';
+
+    style.textContent = [
+      '.new-risk-policy-row{',
+        'margin-bottom:10px;',
+        'padding:8px 10px;',
+        'border-radius:8px;',
+        'background:var(--sunk);',
+        'color:var(--body);',
+        'font-size:12px;',
+        'font-weight:750;',
+      '}',
+
+      '.today-risk-status{',
+        'margin:10px 0;',
+        'padding:10px 11px;',
+        'border-radius:9px;',
+        'border-left:4px solid;',
+      '}',
+
+      '.today-risk-status.complete{',
+        'border-color:var(--done);',
+        'background:var(--done-bg);',
+      '}',
+
+      '.today-risk-status.missing{',
+        'border-color:var(--warn);',
+        'background:var(--warn-bg);',
+      '}',
+
+      '.today-risk-status-title{',
+        'margin-bottom:3px;',
+        'font-size:13px;',
+        'font-weight:850;',
+      '}',
+
+      '.today-risk-status.complete ',
+      '.today-risk-status-title{',
+        'color:var(--done);',
+      '}',
+
+      '.today-risk-status.missing ',
+      '.today-risk-status-title{',
+        'color:var(--warn);',
+      '}',
+
+      '.today-risk-status-detail{',
+        'color:var(--body);',
+        'font-size:12px;',
+        'font-weight:650;',
+        'line-height:1.5;',
+      '}',
+
+      '.ptw-start-btn.risk-required{',
+        'background:var(--warn);',
+      '}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function install(){
+    injectStyle();
+    removeContactCard();
+    configureStartCards();
+    createNewRiskScreen();
+    installTodayWorkRenderHook();
+    enterSelectedRiskAssessment();
+
+    console.log(
+      '[안전작업허가서 시작 화면·평가 목록] v' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.permitStartFlowV140 = {
+    version: VERSION,
+    configure: configureStartCards,
+    renderNewRisks: renderNewRiskList,
+    renderTodayWorks: renderTodayWorksWithRiskStatus,
+    findRiskByWorkId: findLatestRiskByWorkId
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
+</script>
+ 
 </body>
 </html>
 
