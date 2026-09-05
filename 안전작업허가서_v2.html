@@ -8700,6 +8700,549 @@ document.addEventListener('keydown', function(e){
 })(window);
 </script>
 
+<script>
+/* =========================================================
+   안전작업허가서 체크 판정 및 역할 보정 v1.3.1
+
+   - ○ ↔ × 자유 변경
+   - × 상태일 때 사유 필수
+   - × + 사유 입력 시 다음 단계 이동 허용
+   - 미해결 ×가 있으면 최종 허가자 승인 요청 차단
+   - 직영 작업담당자 → 당사 작업담당자
+   ========================================================= */
+(function(global){
+  'use strict';
+
+  var VERSION = '1.3.1';
+
+  if(global.permitChecklistCorrectionV131){
+    console.log('[허가 체크 보정 v1.3.1] 이미 적용');
+    return;
+  }
+
+  function getElement(id){
+    return document.getElementById(id);
+  }
+
+  function getCurrentUser(){
+    return (
+      sessionStorage.getItem('userName') ||
+      (
+        global.permitData &&
+        global.permitData.companyWorkManager &&
+        global.permitData.companyWorkManager.name
+      ) ||
+      (
+        global.permitData &&
+        global.permitData.supervisor
+      ) ||
+      ''
+    );
+  }
+
+  function getUnifiedChecklist(){
+    return (
+      global.permitData &&
+      global.permitData.unifiedSafetyChecklist &&
+      Array.isArray(
+        global.permitData.unifiedSafetyChecklist.items
+      )
+    )
+      ? global.permitData.unifiedSafetyChecklist
+      : null;
+  }
+
+  function renderChecklist(){
+    if(
+      global.permitUnifiedChecklistV130 &&
+      typeof global.permitUnifiedChecklistV130.render === 'function'
+    ){
+      global.permitUnifiedChecklistV130.render();
+    }
+  }
+
+  function removeEmptyUnresolvedFindings(item){
+    if(!Array.isArray(item.findings)){
+      return;
+    }
+
+    item.findings = item.findings.filter(function(finding){
+      var reason =
+        String(finding.reason || '').trim();
+
+      return !(
+        finding.resolved !== true &&
+        reason.length === 0
+      );
+    });
+  }
+
+  function resolveFinding(item){
+    if(!Array.isArray(item.findings)){
+      return;
+    }
+
+    var finding =
+      item.findings.find(function(candidate){
+        return candidate.resolved !== true;
+      });
+
+    if(!finding){
+      return;
+    }
+
+    finding.reason =
+      item.reason || finding.reason || '';
+
+    finding.resolved = true;
+    finding.correctiveAction =
+      '현장 확인 후 적합으로 재확인';
+
+    finding.recheckResult = 'ok';
+    finding.recheckedAt =
+      new Date().toISOString();
+
+    finding.recheckedBy =
+      getCurrentUser();
+  }
+
+  /*
+   * ○ ↔ × 자유 변경
+   *
+   * ×를 잘못 눌렀다가 사유 입력 없이 ○로 바꾸면
+   * 단순 입력 정정으로 보고 빈 미흡 이력을 제거합니다.
+   *
+   * 사유를 입력한 뒤 ○로 바꾸면
+   * 실제 조치·재확인 이력으로 보존합니다.
+   */
+  function setUnifiedResult(index, result){
+    var checklist =
+      getUnifiedChecklist();
+
+    if(
+      !checklist ||
+      !checklist.items[index]
+    ){
+      return;
+    }
+
+    var item =
+      checklist.items[index];
+
+    var previousResult =
+      item.result || '';
+
+    if(result === 'no'){
+      item.result = 'no';
+      item.checkedAt =
+        new Date().toISOString();
+      item.checkedBy =
+        getCurrentUser();
+
+      /*
+       * ×를 선택하는 순간에는 미흡 이력을 만들지 않습니다.
+       * 사유를 실제 입력할 때 이력을 생성합니다.
+       */
+      if(previousResult !== 'no'){
+        item.reason = '';
+      }
+
+      renderChecklist();
+      return;
+    }
+
+    if(result === 'ok'){
+      var reason =
+        String(item.reason || '').trim();
+
+      if(
+        previousResult === 'no' &&
+        reason.length > 0
+      ){
+        /*
+         * 사유가 있으면 실제 미흡 후 조치 완료로 보존합니다.
+         */
+        resolveFinding(item);
+      } else if(
+        previousResult === 'no' &&
+        reason.length === 0
+      ){
+        /*
+         * 사유 없이 바로 ○로 바꾸면 오입력 정정입니다.
+         */
+        removeEmptyUnresolvedFindings(item);
+      }
+
+      item.result = 'ok';
+      item.checkedAt =
+        new Date().toISOString();
+      item.checkedBy =
+        getCurrentUser();
+
+      /*
+       * 현재 입력용 사유는 비우되 findings 이력은 유지합니다.
+       */
+      item.reason = '';
+
+      renderChecklist();
+    }
+  }
+
+  global.setUnifiedSafetyResult =
+    setUnifiedResult;
+
+  /*
+   * 3단계 검증을 새 기준으로 교체합니다.
+   *
+   * - 미선택: 진행 불가
+   * - × + 사유 없음: 진행 불가
+   * - × + 사유 있음: 다음 단계 이동 가능
+   * - 특수작업 체크리스트의 ×는 기존처럼 진행 불가
+   */
+  function validateUnifiedStepThree(){
+    var checklist =
+      getUnifiedChecklist();
+
+    var items =
+      checklist
+        ? checklist.items
+        : [];
+
+    var missing =
+      items.filter(function(item){
+        return !item.result;
+      });
+
+    if(missing.length > 0){
+      global.showToast(
+        '통합 안전 체크리스트를 모두 확인해 주세요.',
+        'danger'
+      );
+
+      var unifiedSection =
+        getElement(
+          'unifiedSafetyChecklistSection'
+        );
+
+      if(unifiedSection){
+        unifiedSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+
+      return;
+    }
+
+    var reasonMissing =
+      items.filter(function(item){
+        return (
+          item.result === 'no' &&
+          String(item.reason || '').trim().length < 2
+        );
+      });
+
+    if(reasonMissing.length > 0){
+      global.showToast(
+        '미흡 항목의 사유를 입력해 주세요.',
+        'danger'
+      );
+
+      var reasonInput =
+        document.querySelector(
+          '.unified-reason-input'
+        );
+
+      if(reasonInput){
+        reasonInput.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+
+        setTimeout(function(){
+          reasonInput.focus();
+        }, 300);
+      }
+
+      return;
+    }
+
+    /*
+     * 일반작업 외에 선택된 특수 작업유형은
+     * 기존 작업유형 체크리스트를 별도로 검증합니다.
+     */
+    var specialTypes =
+      global.permitData &&
+      Array.isArray(global.permitData.workTypes)
+        ? global.permitData.workTypes.filter(function(type){
+            return type !== 'general';
+          })
+        : [];
+
+    var specialMissing = [];
+    var specialFailed = [];
+
+    specialTypes.forEach(function(type){
+      var definition =
+        global.CHECKLIST_DEF &&
+        global.CHECKLIST_DEF[type];
+
+      if(
+        !definition ||
+        !Array.isArray(definition.items)
+      ){
+        return;
+      }
+
+      definition.items.forEach(function(item){
+        var key =
+          type + '-' + item.num;
+
+        var value =
+          global.permitData.checklist[key];
+
+        if(!value){
+          specialMissing.push(item);
+        }
+
+        if(value === 'no'){
+          specialFailed.push(item);
+        }
+      });
+    });
+
+    if(specialMissing.length > 0){
+      global.showToast(
+        '선택한 특수 작업유형의 체크리스트를 모두 확인해 주세요.',
+        'danger'
+      );
+
+      return;
+    }
+
+    if(specialFailed.length > 0){
+      global.showToast(
+        '특수 작업 체크리스트에 부적합 항목이 있어 진행할 수 없습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var openFindings =
+      items.filter(function(item){
+        return item.result === 'no';
+      });
+
+    if(global.permitData){
+      global.permitData.unresolvedChecklistFindings =
+        openFindings.map(function(item){
+          return {
+            checklistItemId:
+              item.checklistItemId || '',
+            text:
+              item.text || '',
+            reason:
+              item.reason || '',
+            status:
+              '조치필요'
+          };
+        });
+
+      global.permitData.hasUnresolvedChecklistFindings =
+        openFindings.length > 0;
+    }
+
+    /*
+     * ×에 사유가 입력되어 있으면 후속 준비 단계까지 이동합니다.
+     * 단, 7단계의 허가자 승인 요청은 차단됩니다.
+     */
+    if(
+      global.permitData.workTypes.length === 1 &&
+      global.permitData.workTypes[0] === 'general'
+    ){
+      global.renderQuestions();
+      global.goToStep(6);
+      return;
+    }
+
+    if(
+      global.permitData.workTypes.indexOf(
+        'confined'
+      ) >= 0
+    ){
+      global.goToStep(4);
+      return;
+    }
+
+    global.goToStep(5);
+  }
+
+  global.validateStep3 =
+    validateUnifiedStepThree;
+
+  /*
+   * 미해결 ×가 남아 있으면 최종 승인 요청을 차단합니다.
+   */
+  function installFinalApprovalGuard(){
+    if(
+      typeof global.validateStep7 !== 'function' ||
+      global.validateStep7.__v131Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.validateStep7;
+
+    var wrapped =
+      function(){
+        var checklist =
+          getUnifiedChecklist();
+
+        var unresolved =
+          checklist
+            ? checklist.items.filter(function(item){
+                return item.result === 'no';
+              })
+            : [];
+
+        if(unresolved.length > 0){
+          global.showToast(
+            '미흡 항목이 남아 있어 허가자 승인을 요청할 수 없습니다.',
+            'danger'
+          );
+
+          return;
+        }
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__v131Installed = true;
+    wrapped.__previous = previous;
+
+    global.validateStep7 =
+      wrapped;
+  }
+
+  /*
+   * 화면 역할 명칭 보정
+   */
+  function updateRoleLabels(){
+    var screen =
+      getElement('screen-step7');
+
+    if(!screen){
+      return;
+    }
+
+    screen
+      .querySelectorAll(
+        '.form-section-title,' +
+        '.f-label,' +
+        '.sig-label,' +
+        '.info-box-text'
+      )
+      .forEach(function(element){
+        element.innerHTML =
+          element.innerHTML
+            .replace(
+              /직영 작업담당자/g,
+              '당사 작업담당자'
+            );
+      });
+
+    var managerName =
+      getElement(
+        'company-work-manager-name'
+      );
+
+    if(managerName){
+      managerName.placeholder =
+        '당사 작업담당자 이름';
+    }
+  }
+
+  /*
+   * 저장 객체의 공식 역할 명칭도 보정합니다.
+   */
+  function installSaveHook(){
+    if(
+      typeof global.buildPermitRecord !== 'function' ||
+      global.buildPermitRecord.__v131Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.buildPermitRecord;
+
+    var wrapped =
+      function(){
+        var record =
+          previous.apply(
+            this,
+            arguments
+          );
+
+        record.signatureRole =
+          'company-work-manager';
+
+        record.signatureRoleLabel =
+          '당사 작업담당자';
+
+        record.checklistDecisionPolicy = {
+          version: VERSION,
+          values: ['ok', 'no'],
+          noReasonRequired: true,
+          noReasonMinimumLength: 2,
+          nextStepAllowedWithReason: true,
+          finalApprovalBlockedWithOpenFinding: true
+        };
+
+        return record;
+      };
+
+    wrapped.__v131Installed = true;
+    wrapped.__previous = previous;
+
+    global.buildPermitRecord =
+      wrapped;
+  }
+
+  function install(){
+    installFinalApprovalGuard();
+    installSaveHook();
+    updateRoleLabels();
+
+    console.log(
+      '[안전작업허가서 체크 판정 및 역할 보정] v' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.permitChecklistCorrectionV131 = {
+    version: VERSION,
+    setResult: setUnifiedResult,
+    updateRoleLabels: updateRoleLabels
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
+</script>
   
 </body>
 </html>
