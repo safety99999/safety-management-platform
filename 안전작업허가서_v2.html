@@ -1174,9 +1174,14 @@ body{
   margin-top:12px;
   margin-bottom:0;
 }
- 
-  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+
+@media(prefers-reduced-motion:reduce){
+  *{
+    animation-duration:.01ms!important;
+    transition-duration:.01ms!important;
+  }
 }
+
 
 /* ═══════════════════════════════════════
    🖨️ 인쇄용 스타일 (A4 출력 시 프레임 제거)
@@ -1366,13 +1371,16 @@ body{
   }
 
   // ⭐ 전역 노출: 다른 스크립트에서 사용 가능
-  window.firebaseApp = { 
-    db: db,
-    doc: doc,
-    setDoc: setDoc,
-    getDoc: getDoc,
-    serverTimestamp: serverTimestamp
-  };
+window.firebaseApp = { 
+  db: db,
+  auth: permitAuth,
+  authReady: window.permitAuthReady,
+  doc: doc,
+  setDoc: setDoc,
+  getDoc: getDoc,
+  serverTimestamp: serverTimestamp
+};
+
   
   // ⭐ 허가서 컬렉션명 자동 접두사 적용 (test_ 또는 없음)
   window.firebaseApp.PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
