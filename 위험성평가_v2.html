@@ -20,234 +20,6 @@
 <link
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-/* ═══════════════════════════════════════════════════════
-   위험성평가 가독성 개선 v1.0
-   - PC·모바일 공통 적용
-   - 기본정보 1열 배치
-   - 주요 본문·대책·결과 글자 확대
-   ═══════════════════════════════════════════════════════ */
-
-/* 기본정보 입력 영역: PC·모바일 공통 1열 */
-.form-row{
-  grid-template-columns:1fr;
-  gap:12px;
-}
-
-/* 입력 항목 */
-.form-label{
-  margin-bottom:7px;
-  font-size:13px;
-  line-height:1.45;
-}
-
-.form-input,
-.form-select,
-.form-textarea{
-  min-height:48px;
-  padding:12px 14px;
-  font-size:15px;
-  line-height:1.55;
-}
-
-.form-textarea{
-  min-height:100px;
-}
-
-/* 공통 제목 */
-.section-title{
-  font-size:16px;
-  line-height:1.4;
-}
-
-/* 안내 문구 */
-.info-title,
-.warning-title,
-.danger-title{
-  font-size:13px;
-}
-
-.info-text,
-.warning-text,
-.danger-text{
-  color:var(--ink);
-  font-size:13.5px;
-  font-weight:650;
-  line-height:1.65;
-}
-
-/* 위험도 검토 결과 */
-.judgment-title{
-  font-size:16px;
-}
-
-.draft-notice{
-  padding:10px 11px;
-  font-size:13px;
-  line-height:1.6;
-}
-
-.judgment-label{
-  font-size:12px;
-}
-
-.judgment-value{
-  font-size:17px;
-}
-
-.basis-header,
-.basis-body{
-  font-size:13px;
-  line-height:1.6;
-}
-
-.reference-details summary{
-  font-size:12px;
-}
-
-.reference-item{
-  font-size:12px;
-}
-
-/* 대책 선택 현황 */
-.measure-progress-title{
-  font-size:12px;
-}
-
-.measure-progress-count{
-  font-size:14px;
-}
-
-.measure-progress-label{
-  font-size:11px;
-}
-
-.measure-progress-total{
-  font-size:12px;
-}
-
-/* 대책 카테고리 */
-.category-header{
-  min-height:50px;
-}
-
-.category-title{
-  font-size:15px;
-}
-
-.category-count{
-  font-size:12px;
-}
-
-/* 개별 대책 */
-.measure-item{
-  min-height:66px;
-  padding:10px;
-  gap:9px;
-}
-
-.measure-check{
-  width:24px;
-  height:24px;
-  font-size:14px;
-}
-
-.measure-text{
-  color:var(--ink);
-  font-size:14px;
-  line-height:1.55;
-}
-
-/* 핵심 위험성 */
-.hazard-title{
-  font-size:15px;
-}
-
-.hazard-label{
-  font-size:12px;
-}
-
-.hazard-value{
-  color:var(--ink);
-  font-size:14px;
-  line-height:1.6;
-}
-
-/* 관련 필수 체크사항 */
-.checklist-title{
-  font-size:15px;
-}
-
-.checklist-item,
-.final-measure-item{
-  min-height:52px;
-  padding:9px;
-  gap:7px;
-}
-
-.checklist-number,
-.final-measure-number{
-  width:24px;
-  height:24px;
-  font-size:11px;
-}
-
-.checklist-text,
-.final-measure-text{
-  color:var(--ink);
-  font-size:14px;
-  line-height:1.55;
-}
-
-/* 대책 분류 */
-.final-measure-category{
-  font-size:11px;
-}
-
-/* 평가 종합요약 */
-.review-summary-item{
-  min-height:54px;
-  padding:9px;
-}
-
-.review-summary-label{
-  font-size:12px;
-}
-
-.review-summary-value{
-  color:var(--ink);
-  font-size:14px;
-  line-height:1.55;
-}
-
-/* 종합의견 */
-.opinion-textarea{
-  min-height:120px;
-  font-size:15px;
-  line-height:1.6;
-}
-
-/* 버튼 터치 영역 */
-.primary-button,
-.secondary-button,
-.success-button{
-  min-height:50px;
-  font-size:15px;
-}
-
-/* 매우 좁은 모바일 화면 */
-@media(max-width:390px){
-  .hazard-grid,
-  .checklist-grid,
-  .final-measures-grid,
-  .review-summary-grid{
-    grid-template-columns:1fr;
-  }
-
-  .hazard-item.wide,
-  .review-summary-item.wide{
-    grid-column:auto;
-  }
-}
 
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -1084,6 +856,569 @@ button{cursor:pointer;}
 
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 </style>
+<style id="risk-readability-v1">
+/* ═══════════════════════════════════════════════════════
+   위험성평가 가독성 개선 v1.0
+   - PC·모바일 공통
+   - 기본정보 입력 영역 1열
+   - 안내·대책·결과 글자 확대
+   - 판정 및 저장 로직 영향 없음
+   ═══════════════════════════════════════════════════════ */
+
+/* 1. 기본정보 입력 영역 1열 */
+#screen-step1 .form-row{
+  grid-template-columns:1fr;
+  gap:12px;
+}
+
+/* 2. 입력 항목 */
+.form-label{
+  margin-bottom:7px;
+  color:var(--body);
+  font-size:13px;
+  font-weight:800;
+  line-height:1.45;
+}
+
+.form-input,
+.form-select,
+.form-textarea{
+  min-height:48px;
+  padding:12px 14px;
+  color:var(--ink);
+  font-size:15px;
+  font-weight:650;
+  line-height:1.55;
+}
+
+.form-textarea{
+  min-height:100px;
+}
+
+/* 3. 공통 카드와 제목 */
+.card,
+.form-section,
+.summary-card,
+.checklist-card,
+.hazard-card{
+  padding:14px;
+}
+
+.section-title{
+  gap:7px;
+  margin-bottom:11px;
+  padding-bottom:9px;
+  color:var(--ink);
+  font-size:16px;
+  font-weight:900;
+  line-height:1.4;
+}
+
+/* 4. 시작 화면 */
+.welcome-principle{
+  font-size:12.5px;
+  line-height:1.6;
+}
+
+.mode-title{
+  font-size:15px;
+  line-height:1.4;
+}
+
+.mode-desc{
+  font-size:12px;
+  line-height:1.5;
+}
+
+.list-heading{
+  font-size:12px;
+  line-height:1.4;
+}
+
+/* 5. 안내·경고 문구 */
+.info-box,
+.warning-box,
+.danger-box{
+  padding:11px 12px;
+}
+
+.info-title,
+.warning-title,
+.danger-title{
+  margin-bottom:4px;
+  font-size:13px;
+  font-weight:900;
+  line-height:1.4;
+}
+
+.info-text,
+.warning-text,
+.danger-text{
+  color:var(--ink);
+  font-size:13.5px;
+  font-weight:650;
+  line-height:1.65;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+.warning-text{
+  color:var(--warn);
+}
+
+.danger-text{
+  color:var(--stop);
+}
+
+/* 6. 연결정보 */
+.link-label{
+  font-size:11px;
+  line-height:1.4;
+}
+
+.link-value{
+  font-size:14px;
+  line-height:1.5;
+}
+
+/* 7. 분석 결과 상단 */
+.analysis-summary-text{
+  font-size:13px;
+  line-height:1.55;
+}
+
+.db-status{
+  font-size:11px;
+  line-height:1.4;
+}
+
+/* 8. 위험도 검토 결과 */
+.judgment-card{
+  padding:13px;
+}
+
+.judgment-title{
+  font-size:16px;
+  line-height:1.4;
+}
+
+.draft-notice{
+  margin-bottom:9px;
+  padding:10px 11px;
+  font-size:13px;
+  font-weight:700;
+  line-height:1.6;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+.judgment-item{
+  padding:10px 7px;
+}
+
+.judgment-label{
+  margin-bottom:5px;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.judgment-value{
+  padding:5px 10px;
+  font-size:17px;
+  line-height:1.35;
+}
+
+.control-symbol{
+  width:40px;
+  height:40px;
+  font-size:24px;
+}
+
+.override-button{
+  min-height:34px;
+  padding:7px 10px;
+  font-size:12px;
+}
+
+/* 9. 판정 근거 */
+.basis-header{
+  padding:10px 11px;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.basis-body{
+  padding:0 11px 11px;
+  font-size:13px;
+  line-height:1.6;
+}
+
+.basis-row{
+  gap:8px;
+  padding:7px 0;
+}
+
+.basis-number{
+  width:21px;
+  height:21px;
+  font-size:10px;
+}
+
+.reference-details summary{
+  font-size:12px;
+  line-height:1.5;
+}
+
+.reference-item{
+  min-height:32px;
+  padding:7px 8px;
+  font-size:12px;
+  line-height:1.45;
+}
+
+/* 10. 대책 선택 현황 */
+.measure-progress{
+  padding:10px;
+}
+
+.measure-progress-title{
+  margin-bottom:7px;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.measure-progress-item{
+  padding:7px 3px;
+}
+
+.measure-progress-count{
+  font-size:14px;
+  line-height:1.3;
+}
+
+.measure-progress-label{
+  margin-top:2px;
+  font-size:11px;
+  line-height:1.35;
+}
+
+.measure-progress-total{
+  padding:7px;
+  font-size:12px;
+  line-height:1.4;
+}
+
+/* 11. 대책 카테고리 */
+.category-header{
+  min-height:52px;
+  padding:10px 11px;
+}
+
+.category-title{
+  gap:7px;
+  font-size:15px;
+  line-height:1.4;
+}
+
+.category-count{
+  padding:3px 8px;
+  font-size:12px;
+  line-height:1.35;
+}
+
+.category-arrow{
+  font-size:13px;
+}
+
+.category-body{
+  gap:8px;
+  padding:0 9px 9px;
+}
+
+/* 12. 개별 안전대책 */
+.measure-item{
+  min-height:68px;
+  padding:11px;
+  gap:9px;
+}
+
+.measure-check{
+  width:24px;
+  height:24px;
+  border-radius:6px;
+  font-size:14px;
+}
+
+.measure-text{
+  color:var(--ink);
+  font-size:14px;
+  font-weight:750;
+  line-height:1.55;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+/* 13. 사용자 추가 대책 */
+.measure-add-row{
+  grid-template-columns:1fr;
+  gap:8px;
+}
+
+.user-measure-item{
+  min-height:48px;
+  padding:10px 11px;
+}
+
+.user-measure-text{
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.55;
+}
+
+.user-measure-category{
+  font-size:11px;
+}
+
+.user-measure-delete{
+  width:26px;
+  height:26px;
+  font-size:14px;
+}
+
+/* 14. 최종 위험등급 배너 */
+.final-risk-banner{
+  padding:16px 14px;
+}
+
+.final-risk-level{
+  font-size:22px;
+  line-height:1.35;
+}
+
+.final-risk-control{
+  margin-top:5px;
+  font-size:28px;
+  line-height:1.3;
+}
+
+.final-risk-description{
+  margin-top:7px;
+  font-size:13px;
+  font-weight:700;
+  line-height:1.55;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+/* 15. 핵심 위험성 */
+.hazard-card{
+  padding:12px;
+}
+
+.hazard-title{
+  margin-bottom:8px;
+  padding-bottom:8px;
+  font-size:15px;
+  line-height:1.4;
+}
+
+.hazard-grid{
+  gap:7px;
+}
+
+.hazard-item{
+  min-height:62px;
+  padding:10px;
+}
+
+.hazard-label{
+  margin-bottom:4px;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.hazard-value{
+  color:var(--ink);
+  font-size:14px;
+  font-weight:750;
+  line-height:1.6;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+/* 16. 관련 필수 체크사항 */
+.checklist-card{
+  padding:11px;
+}
+
+.checklist-title{
+  margin-bottom:8px;
+  padding-bottom:7px;
+  font-size:15px;
+  line-height:1.4;
+}
+
+.checklist-grid,
+.final-measures-grid{
+  gap:7px;
+}
+
+.checklist-item,
+.final-measure-item{
+  min-height:56px;
+  padding:10px;
+  gap:8px;
+}
+
+.checklist-number,
+.final-measure-number{
+  width:25px;
+  height:25px;
+  border-radius:7px;
+  font-size:11px;
+}
+
+.checklist-text,
+.final-measure-text{
+  color:var(--ink);
+  font-size:14px;
+  font-weight:750;
+  line-height:1.55;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+.final-measure-item{
+  padding-bottom:23px;
+}
+
+.final-measure-category{
+  right:7px;
+  bottom:5px;
+  font-size:11px;
+  line-height:1.3;
+}
+
+/* 17. 평가 종합요약 */
+.review-summary-grid{
+  gap:0;
+}
+
+.review-summary-item{
+  min-height:58px;
+  padding:10px;
+}
+
+.review-summary-label{
+  margin-bottom:4px;
+  color:var(--sub);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.4;
+}
+
+.review-summary-value{
+  color:var(--ink);
+  font-size:14px;
+  font-weight:850;
+  line-height:1.55;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+/* 18. 종합의견 */
+.opinion-textarea{
+  min-height:120px;
+  padding:13px 14px;
+  font-size:15px;
+  line-height:1.65;
+}
+
+.opinion-refresh-button{
+  min-height:44px;
+  padding:10px 12px;
+  font-size:13px;
+}
+
+/* 19. 버튼 */
+.primary-button,
+.secondary-button,
+.success-button{
+  min-height:50px;
+  padding:13px;
+  font-size:15px;
+  line-height:1.35;
+}
+
+.small-button{
+  min-height:36px;
+  padding:8px 12px;
+  font-size:12px;
+}
+
+/* 20. 평가 이력 */
+.card-name{
+  font-size:15px;
+  line-height:1.45;
+}
+
+.card-meta{
+  font-size:12px;
+  line-height:1.5;
+}
+
+.readonly-opinion{
+  padding:12px;
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.65;
+}
+
+/* 21. 완료 화면 */
+.complete-text{
+  font-size:13.5px;
+  line-height:1.6;
+}
+
+.complete-action{
+  min-height:50px;
+  font-size:14px;
+}
+
+/* 22. 다이얼로그 */
+.dialog-title{
+  font-size:16px;
+}
+
+.dialog-body{
+  font-size:14px;
+  line-height:1.6;
+}
+
+/* 23. 좁은 모바일 화면 */
+@media(max-width:390px){
+  .hazard-grid,
+  .checklist-grid,
+  .final-measures-grid,
+  .review-summary-grid{
+    grid-template-columns:1fr;
+  }
+
+  .hazard-item.wide,
+  .review-summary-item.wide{
+    grid-column:auto;
+  }
+
+  .category-body{
+    grid-template-columns:1fr;
+  }
+
+  .judgment-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+  
 </head>
 <body>
 <div class="app">
@@ -7824,7 +8159,7 @@ document.addEventListener('DOMContentLoaded', initializeApplication);
     });
   } catch(e){
     console.warn('[__RA_DEBUG] install failed:', e && e.message);
-  }S
+  }
 })();
 </script>
 
