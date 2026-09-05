@@ -2676,8 +2676,22 @@ if(
           saveObject.riskLevel =
             global.riskData.finalRiskLevel || '';
 
-          saveObject.overallRisk =
-            global.riskData.finalRiskLevel || '';
+saveObject.overallRisk =
+  global.riskData.finalRiskLevel || '';
+
+saveObject.riskScore =
+  typeof global.getRiskScore === 'function'
+    ? global.getRiskScore(global.riskData.finalRiskLevel)
+    : (
+        global.riskData.finalRiskLevel === '저위험'
+          ? 3
+          : global.riskData.finalRiskLevel === '중위험'
+            ? 8
+            : global.riskData.finalRiskLevel === '고위험'
+              ? 15
+              : 0
+      );
+
 
           saveObject.overrideApplied =
             global.riskData.overrideApplied === true;
