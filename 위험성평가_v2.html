@@ -20,6 +20,234 @@
 <link
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+/* ═══════════════════════════════════════════════════════
+   위험성평가 가독성 개선 v1.0
+   - PC·모바일 공통 적용
+   - 기본정보 1열 배치
+   - 주요 본문·대책·결과 글자 확대
+   ═══════════════════════════════════════════════════════ */
+
+/* 기본정보 입력 영역: PC·모바일 공통 1열 */
+.form-row{
+  grid-template-columns:1fr;
+  gap:12px;
+}
+
+/* 입력 항목 */
+.form-label{
+  margin-bottom:7px;
+  font-size:13px;
+  line-height:1.45;
+}
+
+.form-input,
+.form-select,
+.form-textarea{
+  min-height:48px;
+  padding:12px 14px;
+  font-size:15px;
+  line-height:1.55;
+}
+
+.form-textarea{
+  min-height:100px;
+}
+
+/* 공통 제목 */
+.section-title{
+  font-size:16px;
+  line-height:1.4;
+}
+
+/* 안내 문구 */
+.info-title,
+.warning-title,
+.danger-title{
+  font-size:13px;
+}
+
+.info-text,
+.warning-text,
+.danger-text{
+  color:var(--ink);
+  font-size:13.5px;
+  font-weight:650;
+  line-height:1.65;
+}
+
+/* 위험도 검토 결과 */
+.judgment-title{
+  font-size:16px;
+}
+
+.draft-notice{
+  padding:10px 11px;
+  font-size:13px;
+  line-height:1.6;
+}
+
+.judgment-label{
+  font-size:12px;
+}
+
+.judgment-value{
+  font-size:17px;
+}
+
+.basis-header,
+.basis-body{
+  font-size:13px;
+  line-height:1.6;
+}
+
+.reference-details summary{
+  font-size:12px;
+}
+
+.reference-item{
+  font-size:12px;
+}
+
+/* 대책 선택 현황 */
+.measure-progress-title{
+  font-size:12px;
+}
+
+.measure-progress-count{
+  font-size:14px;
+}
+
+.measure-progress-label{
+  font-size:11px;
+}
+
+.measure-progress-total{
+  font-size:12px;
+}
+
+/* 대책 카테고리 */
+.category-header{
+  min-height:50px;
+}
+
+.category-title{
+  font-size:15px;
+}
+
+.category-count{
+  font-size:12px;
+}
+
+/* 개별 대책 */
+.measure-item{
+  min-height:66px;
+  padding:10px;
+  gap:9px;
+}
+
+.measure-check{
+  width:24px;
+  height:24px;
+  font-size:14px;
+}
+
+.measure-text{
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.55;
+}
+
+/* 핵심 위험성 */
+.hazard-title{
+  font-size:15px;
+}
+
+.hazard-label{
+  font-size:12px;
+}
+
+.hazard-value{
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.6;
+}
+
+/* 관련 필수 체크사항 */
+.checklist-title{
+  font-size:15px;
+}
+
+.checklist-item,
+.final-measure-item{
+  min-height:52px;
+  padding:9px;
+  gap:7px;
+}
+
+.checklist-number,
+.final-measure-number{
+  width:24px;
+  height:24px;
+  font-size:11px;
+}
+
+.checklist-text,
+.final-measure-text{
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.55;
+}
+
+/* 대책 분류 */
+.final-measure-category{
+  font-size:11px;
+}
+
+/* 평가 종합요약 */
+.review-summary-item{
+  min-height:54px;
+  padding:9px;
+}
+
+.review-summary-label{
+  font-size:12px;
+}
+
+.review-summary-value{
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.55;
+}
+
+/* 종합의견 */
+.opinion-textarea{
+  min-height:120px;
+  font-size:15px;
+  line-height:1.6;
+}
+
+/* 버튼 터치 영역 */
+.primary-button,
+.secondary-button,
+.success-button{
+  min-height:50px;
+  font-size:15px;
+}
+
+/* 매우 좁은 모바일 화면 */
+@media(max-width:390px){
+  .hazard-grid,
+  .checklist-grid,
+  .final-measures-grid,
+  .review-summary-grid{
+    grid-template-columns:1fr;
+  }
+
+  .hazard-item.wide,
+  .review-summary-item.wide{
+    grid-column:auto;
+  }
+}
 
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -947,10 +1175,10 @@ button{cursor:pointer;}
       일관된 위험성평가 초안을 제공합니다.
     </div>
 
-    <div class="welcome-principle">
-      AI를 활용해 구축한 위험성평가 DB와 안전기준을 적용하며,
-      권한 있는 평가자가 현장조건을 확인한 후 최종 판단합니다.
-    </div>
+<div class="welcome-principle">
+  AI가 평가 초안을 제공하며, 평가자가 현장조건을 확인해 최종 판단합니다.
+</div>
+
 
     <div class="welcome-version">
       v2 · schema 35
@@ -1027,11 +1255,11 @@ button{cursor:pointer;}
 
   <div class="info-box">
     <div class="info-title">💡 AI 지원 위험성평가</div>
-    <div class="info-text">
-      AI를 활용해 구축한 위험성평가 DB와 안전기준으로
-      <strong>위험요인·안전대책의 누락을 점검하고 평가 초안</strong>을 제공합니다.<br>
-      <strong>권한 있는 평가자가 현장조건과 대책 적용 여부를 확인한 후 최종 판단</strong>해야 합니다.
-    </div>
+   <div class="info-text">
+  AI가 위험요인과 안전대책의 누락을 점검해 평가 초안을 제공합니다.<br>
+  <strong>평가자는 현장조건과 대책 적용 여부를 확인한 후 최종 판단하세요.</strong>
+</div>
+
   </div>
 
   <div class="form-section">
@@ -1194,10 +1422,10 @@ button{cursor:pointer;}
       </button>
     </div>
 
-    <div class="draft-notice">
-      AI를 활용해 구축한 위험성평가 DB와 안전기준을 바탕으로 작성된 평가 초안입니다.
-      현장조건과 안전대책의 적용 여부를 확인한 후 최종 판단해 주세요.
-    </div>
+ <div class="draft-notice">
+  AI 평가 초안입니다. 현장조건과 안전대책 적용 여부를 확인한 후 최종 판단하세요.
+</div>
+
 
     <div class="judgment-grid">
       <div class="judgment-item">
@@ -1329,11 +1557,11 @@ button{cursor:pointer;}
 
   <div class="info-box final-principle">
     <div class="info-title">🤖 AI 지원 위험성평가</div>
-    <div class="info-text">
-      AI를 활용해 구축한 위험성평가 DB와 안전기준으로
-      위험요인과 대책의 누락을 점검한 평가 초안입니다.
-      <strong>권한 있는 평가자가 현장조건과 적용 대책을 확인한 후 최종 판단</strong>해야 합니다.
-    </div>
+<div class="info-text">
+  AI 평가 초안입니다.
+  <strong>위험요인과 적용대책을 확인한 후 최종 판단하세요.</strong>
+</div>
+
   </div>
 
   <div class="hazard-card" id="hazardSummaryCard">
