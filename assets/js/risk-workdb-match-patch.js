@@ -1813,7 +1813,7 @@
 (function(global){
   'use strict';
 
-  var V = '3.0.4';
+  var V = '3.0.5';
 
   if(global.riskWorkDbPatchV303){
     console.log('[v3.0.3] 이미 적용');
@@ -2231,10 +2231,11 @@
       /점검|순찰|육안|외관|측정|판독/.test(text) &&
       !/정비|수리|교체|분해|조립/.test(text)
     ){
-      return {
-        level: '일반작업',
-        reason: '순수 점검 작업 규칙 적용'
-      };
+return {
+  level: '저위험',
+  reason: '순수 점검 작업 저위험 규칙 적용'
+};
+
     }
 
     /*
@@ -2555,20 +2556,21 @@ if(
             conservativeLevel;
         }
       } else {
-        if(
-          keywordRule.level === '일반작업' &&
-          LEVEL_ORDER[finalLevel] > 0
-        ){
-          reasons.push(
-            keywordRule.reason +
-            ' (기존: ' +
-            finalLevel +
-            ')'
-          );
+ if(
+  keywordRule.level === '저위험' &&
+  LEVEL_ORDER[finalLevel] > LEVEL_ORDER['저위험']
+){
+  reasons.push(
+    keywordRule.reason +
+    ' (기존: ' +
+    finalLevel +
+    ')'
+  );
 
-          finalLevel =
-            '일반작업';
-        }
+  finalLevel =
+    '저위험';
+}
+
 
         if(
           keywordRule.level === '중위험' &&
@@ -2811,7 +2813,8 @@ if(
     api;
 
 console.log(
-  '[risk-workdb v3.0.4] 관리대장 workId 복구 및 고위험 최우선 로드 완료'
+  '[risk-workdb v3.0.5] 고위험 최우선 및 순수 점검 저위험 규칙 로드 완료'
 );
+
 
 })(window);
