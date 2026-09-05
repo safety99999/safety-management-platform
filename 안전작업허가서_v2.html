@@ -1058,6 +1058,29 @@ body{
   height:21px;
   accent-color:var(--posco);
 }
+/* 승인대기 완료 화면 */
+.permit-pending-hero{
+  background:linear-gradient(
+    158deg,
+    #8B5A00,
+    var(--warn)
+  );
+  box-shadow:0 6px 22px rgba(180,83,9,.28);
+}
+
+.summary-val.pending{
+  color:var(--warn);
+  font-weight:900;
+}
+
+.btn-success.permit-tbm-locked,
+.btn-success.permit-tbm-locked:disabled{
+  background:var(--line);
+  color:var(--faint);
+  box-shadow:none;
+  cursor:not-allowed;
+  opacity:1;
+}
   
 @media(prefers-reduced-motion:reduce){
  /* ═══════════════════════════════════════
@@ -2042,40 +2065,109 @@ body{
   </div>
 </div>
 
-<!-- COMPLETE: 완료 화면 -->
+<!-- COMPLETE: 허가 승인 요청 완료 -->
 <div class="screen" id="screen-complete">
-  <div class="complete-hero">
-    <div class="complete-ico">✅</div>
-    <div class="complete-title">허가서 신청 완료!</div>
-    <div class="complete-sub">안전작업허가서가 성공적으로 제출되었습니다.<br>작업책임자 승인 후 TBM을 실시하고 작업을 시작하세요.</div>
+
+  <div class="complete-hero permit-pending-hero">
+    <div class="complete-ico">⏳</div>
+
+    <div class="complete-title" id="permitCompleteTitle">
+      허가 승인 요청 완료
+    </div>
+
+    <div class="complete-sub" id="permitCompleteDescription">
+      허가자 최종 승인 후 TBM을 진행할 수 있습니다.
+    </div>
   </div>
 
   <div class="summary-card">
-    <div class="summary-row"><span class="summary-key">허가번호</span><span class="summary-val highlight" id="fin-permit-no">-</span></div>
-    <div class="summary-row"><span class="summary-key">W/O 번호</span><span class="summary-val" id="fin-wo">-</span></div>
-    <div class="summary-row"><span class="summary-key">작업명</span><span class="summary-val" id="fin-name">-</span></div>
-    <div class="summary-row"><span class="summary-key">작업장소</span><span class="summary-val" id="fin-loc">-</span></div>
-    <div class="summary-row"><span class="summary-key">작업기간</span><span class="summary-val" id="fin-period">-</span></div>
-    <div class="summary-row"><span class="summary-key">협력사</span><span class="summary-val" id="fin-company">-</span></div>
-    <div class="summary-row"><span class="summary-key">작업인원</span><span class="summary-val" id="fin-workers">-</span></div>
-    <div class="summary-row"><span class="summary-key">신청일시</span><span class="summary-val" id="fin-datetime">-</span></div>
+
+    <div class="summary-row">
+      <span class="summary-key">허가번호</span>
+      <span class="summary-val highlight" id="fin-permit-no">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">허가 상태</span>
+      <span class="summary-val pending" id="fin-approval-status">
+        승인대기
+      </span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">작업 수행 구분</span>
+      <span class="summary-val" id="fin-execution-type">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">W/O 번호</span>
+      <span class="summary-val" id="fin-wo">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">작업명</span>
+      <span class="summary-val" id="fin-name">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">작업장소</span>
+      <span class="summary-val" id="fin-loc">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">작업기간</span>
+      <span class="summary-val" id="fin-period">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">협력사·수행 조직</span>
+      <span class="summary-val" id="fin-company">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">작업인원</span>
+      <span class="summary-val" id="fin-workers">-</span>
+    </div>
+
+    <div class="summary-row">
+      <span class="summary-key">신청일시</span>
+      <span class="summary-val" id="fin-datetime">-</span>
+    </div>
+
   </div>
 
   <div class="warn-box">
     <div class="warn-box-title">📌 다음 단계</div>
+
     <div class="warn-box-text">
-      1. 작업책임자 승인 대기<br>
-      2. 관리감독자 최종 승인<br>
-      3. <strong>작업 당일 TBM(Tool Box Meeting) 실시 필수</strong>
+      1. 허가자가 작업조건과 안전조치를 검토합니다.<br>
+      2. 허가자 최종 승인 후 TBM 링크가 활성화됩니다.<br>
+      3. TBM 완료 후 작업 시작 절차를 진행합니다.
     </div>
   </div>
 
   <div class="btn-row">
-    <button class="btn-secondary" onclick="goToScreen('screen-welcome')">처음으로</button>
-    <button class="btn-success" onclick="goToTBM()">📝 TBM 일지 작성</button>
+
+    <button
+      type="button"
+      class="btn-secondary"
+      onclick="goHome()"
+    >
+      🏠 대시보드
+    </button>
+
+    <button
+      type="button"
+      class="btn-success permit-tbm-locked"
+      id="goTbmAfterApprovalButton"
+      onclick="goToTBM()"
+      disabled
+    >
+      🔒 허가 승인 후 TBM 가능
+    </button>
+
   </div>
 </div>
-
 <!-- EXTEND: 연장 화면 -->
 <div class="screen" id="screen-extend">
   <div class="extend-hero">
@@ -9771,10 +9863,17 @@ function validateStepOne(){
     );
 
     global.setTxt(
+      'fin-company',
+      global.permitData.companyName ||
+      '-'
+    );
+
+    global.setTxt(
       'fin-workers',
       global.permitData.workerCount +
       '명'
     );
+
 
     global.setTxt(
       'fin-datetime',
