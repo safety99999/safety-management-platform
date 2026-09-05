@@ -1502,6 +1502,134 @@ button{cursor:pointer;}
 }
 
 /* 매우 좁은 화면 */
+/* ═══════════════════════════════════════════════════════
+   위험성평가 완료 요약 가독성 개선 v1.0
+   ═══════════════════════════════════════════════════════ */
+
+#screen-complete .complete-hero{
+  padding:30px 18px 20px;
+}
+
+#screen-complete .complete-icon{
+  margin-bottom:12px;
+  font-size:58px;
+  line-height:1;
+}
+
+#screen-complete .complete-title{
+  margin-bottom:9px;
+  font-size:25px;
+  font-weight:900;
+  letter-spacing:-.04em;
+}
+
+#screen-complete .complete-text{
+  color:var(--body);
+  font-size:16px;
+  font-weight:700;
+  line-height:1.75;
+  word-break:keep-all;
+}
+
+#completeSummary{
+  padding:0;
+  overflow:hidden;
+  border:1.5px solid var(--line);
+  border-radius:18px;
+  background:var(--card);
+  box-shadow:var(--shadow-medium);
+}
+
+#completeSummary .complete-summary-head{
+  padding:15px 17px;
+  border-bottom:1px solid var(--line);
+  background:var(--tint);
+}
+
+#completeSummary .complete-summary-title{
+  color:var(--posco);
+  font-size:17px;
+  font-weight:900;
+  line-height:1.4;
+}
+
+#completeSummary .complete-summary-subtitle{
+  margin-top:4px;
+  color:var(--sub);
+  font-size:13px;
+  font-weight:650;
+  line-height:1.5;
+}
+
+#completeSummary .summary-row{
+  display:grid;
+  grid-template-columns:112px minmax(0,1fr);
+  align-items:start;
+  gap:12px;
+  padding:14px 17px;
+  border-bottom:1px solid var(--line);
+}
+
+#completeSummary .summary-row:last-child{
+  border-bottom:0;
+}
+
+#completeSummary .summary-key{
+  color:var(--sub);
+  font-size:14px;
+  font-weight:800;
+  line-height:1.55;
+}
+
+#completeSummary .summary-val{
+  color:var(--ink);
+  font-size:16px;
+  font-weight:800;
+  line-height:1.55;
+  text-align:right;
+  word-break:break-word;
+  overflow-wrap:anywhere;
+}
+
+#completeSummary .summary-val.hl{
+  color:var(--posco);
+  font-weight:900;
+}
+
+#completeSummary .summary-row:first-of-type .summary-val{
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:17px;
+  letter-spacing:.01em;
+}
+
+#screen-complete .warning-box{
+  padding:15px 16px;
+}
+
+#screen-complete .warning-title{
+  margin-bottom:7px;
+  font-size:17px;
+}
+
+#screen-complete .warning-text{
+  color:var(--body);
+  font-size:15px;
+  font-weight:700;
+  line-height:1.75;
+  word-break:keep-all;
+}
+
+@media(max-width:360px){
+  #completeSummary .summary-row{
+    grid-template-columns:1fr;
+    gap:4px;
+  }
+
+  #completeSummary .summary-val{
+    text-align:left;
+  }
+}
+  
 @media(max-width:360px){
   .judgment-grid{
     grid-template-columns:1fr;
@@ -6953,40 +7081,177 @@ function showCompletionScreen(){
   showScreen('screen-complete');
 
   var badge = getElement('riskIdBadge');
+
   if(badge){
     badge.textContent = riskData.riskId;
     badge.style.display = 'block';
   }
 
-  var selectedMeasures = collectAllSelectedMeasures();
-  var summary = getElement('completeSummary');
+  var selectedMeasures =
+    collectAllSelectedMeasures();
+
+  var summary =
+    getElement('completeSummary');
+
+  var highRiskAssessment =
+    riskData.highRiskWorkAssessment || {};
+
+  var highRiskStatus =
+    '검토정보 없음';
+
+  if(highRiskAssessment.applicable === true){
+    highRiskStatus =
+      highRiskAssessment.status === '예외검토'
+        ? '예외 승인 검토 필요'
+        : '해당';
+  } else if(highRiskAssessment.applicable === false){
+    highRiskStatus = '비해당';
+  }
+
+  var categoryLabels =
+    Array.isArray(
+      highRiskAssessment.categoryLabels
+    )
+      ? highRiskAssessment.categoryLabels
+      : [];
+
+  if(categoryLabels.length > 0){
+    highRiskStatus +=
+      ' · ' +
+      categoryLabels.join(', ');
+  }
+
+  var judgmentSource =
+    highRiskAssessment.source ===
+      'management-ledger'
+      ? '작업관리대장 공식값'
+      : '사내 고위험작업 기준';
+
+  var controlLabels = {
+    '○': '○ 적정',
+    '△': '△ 보완 필요',
+    '×': '× 미흡'
+  };
+
+  var controlText =
+    controlLabels[
+      riskData.finalControlAdequacy
+    ] ||
+    riskData.finalControlAdequacy ||
+    '-';
+
+  var finalRisk =
+    riskData.finalRiskLevel ||
+    '판정불가';
+
+  var riskScore =
+    getRiskScore(finalRisk);
 
   if(summary){
     summary.innerHTML =
-      createSummaryRow('평가번호', riskData.riskId, true) +
-      createSummaryRow('작업명', riskData.workName, false) +
-      createSummaryRow('예상 위험도', riskData.finalRiskLevel, true) +
-      createSummaryRow('통제 수준', riskData.finalControlAdequacy, true) +
-      createSummaryRow('적용대책', selectedMeasures.length + '개', false);
+      '<div class="complete-summary-head">' +
+        '<div class="complete-summary-title">' +
+          '📋 평가 결과 요약' +
+        '</div>' +
+        '<div class="complete-summary-subtitle">' +
+          '최종 저장된 위험성평가 정보입니다.' +
+        '</div>' +
+      '</div>' +
+
+      createSummaryRow(
+        '평가번호',
+        riskData.riskId,
+        true
+      ) +
+
+      createSummaryRow(
+        '작업명',
+        riskData.workName,
+        false
+      ) +
+
+      createSummaryRow(
+        '평가일',
+        riskData.date,
+        false
+      ) +
+
+      createSummaryRow(
+        '최종 위험도',
+        finalRisk + ' · ' + riskScore + '점',
+        true
+      ) +
+
+      createSummaryRow(
+        '고위험작업',
+        highRiskStatus,
+        highRiskAssessment.applicable === true
+      ) +
+
+      createSummaryRow(
+        '판정 기준',
+        judgmentSource,
+        false
+      ) +
+
+      createSummaryRow(
+        '통제 적정성',
+        controlText,
+        true
+      ) +
+
+      createSummaryRow(
+        '적용 안전대책',
+        selectedMeasures.length + '개',
+        false
+      ) +
+
+      createSummaryRow(
+        '평가자',
+        riskData.assessor || '-',
+        false
+      );
   }
 
-  setText('completeText',
-    '위험성평가 결과가 저장되었습니다.\n작업 전 적용대책의 이행상태를 다시 확인해 주세요.');
+  setText(
+    'completeText',
+    '평가번호 ' +
+      riskData.riskId +
+      '로 저장되었습니다.\n' +
+      '작업허가서 작성 전 위험도와 적용대책을 다시 확인해 주세요.'
+  );
 
-  var permitButton = getElement('goPermitButton');
-  var tbmButton = getElement('goTbmButton');
-  var linkedPermit = riskData.linkedPermitNo || riskData.permitNo;
+  var permitButton =
+    getElement('goPermitButton');
+
+  var tbmButton =
+    getElement('goTbmButton');
+
+  var linkedPermit =
+    riskData.linkedPermitNo ||
+    riskData.permitNo;
 
   if(linkedPermit){
-    if(permitButton){ permitButton.style.display = 'none'; }
-    if(tbmButton){ tbmButton.style.display = 'block'; }
+    if(permitButton){
+      permitButton.style.display = 'none';
+    }
+
+    if(tbmButton){
+      tbmButton.style.display = 'block';
+    }
   } else {
-    if(permitButton){ permitButton.style.display = 'block'; }
-    if(tbmButton){ tbmButton.style.display = 'none'; }
+    if(permitButton){
+      permitButton.style.display = 'block';
+    }
+
+    if(tbmButton){
+      tbmButton.style.display = 'none';
+    }
   }
 
   renderRecentHistory();
 }
+
 
 function goToPermit(){
   var parameters = [];
