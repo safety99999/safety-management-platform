@@ -3858,8 +3858,7 @@ function ptwCreateTodayWorkScreen(){
       '</select>' +
       '<div id="ptwTodayWorkCards"></div>' +
       '<div class="ptw-list-actions">' +
-        '<button class="ptw-list-action" onclick="ptwCloseTodayWorkList()">← 이전</button>' +
-        '<button class="ptw-list-action primary" onclick="ptwStartManualPermit()">✏️ 신규 작성</button>' +
+        '<button class="ptw-list-action" style="grid-column:1 / -1;" onclick="ptwCloseTodayWorkList()">← 허가서 시작 화면</button>' +
       '</div>' +
     '</div>';
 
@@ -4041,9 +4040,20 @@ function ptwCloseTodayWorkList(){
 }
 
 function ptwStartManualPermit(){
-  ptwCloseTodayWorkList();
-  selectMode('new');
+  showToast(
+    '관리대장 외 작업은 신규 위험성평가를 먼저 작성해 주세요.',
+    'info'
+  );
+
+  setTimeout(function(){
+    if(typeof window.openNewRiskAssessmentList === 'function'){
+      window.openNewRiskAssessmentList();
+    }else{
+      window.location.href = '위험성평가_v2.html';
+    }
+  }, 400);
 }
+
 
 function ptwSelectTodayWork(workId){
   var selected = ptwTodayWorks.find(function(work){ return work.workId === workId; });
@@ -7918,10 +7928,21 @@ document.addEventListener('keydown', function(e){
    * SECTION 15. 1단계 검증
    * ===================================================== */
 
-  function validateStepOne(){
-    hideValidationBanner();
+function validateStepOne(){
+  hideValidationBanner();
 
-    var requiredFields = [
+  if(
+    !Workflow.state.linkedRisk ||
+    !Workflow.state.linkedRisk.riskId
+  ){
+    return showValidationBanner(
+      '완료된 위험성평가를 먼저 연결해 주세요.',
+      getElement('permitV2RiskSummary')
+    );
+  }
+
+  var requiredFields = [
+
       {
         id: 'work-name',
         label: '작업명'
