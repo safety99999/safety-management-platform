@@ -7241,6 +7241,1464 @@ document.addEventListener('keydown', function(e){
 
 })(window);
 </script>
+<script>
+/* =========================================================
+   안전작업허가서 통합 안전 체크리스트 v1.3.0
+
+   - 위험성평가 안전대책 + 일반작업 공통항목 통합
+   - 의미 중복 항목은 한 번만 표시
+   - 모든 표시 항목은 ○ / ×로 판정
+   - × 선택 시 미흡 사유 입력
+   - 조치 후 ○ 재확인
+   - 최초 × 판정과 사유 이력 보존
+   - 현장 확인항목 추가 지원
+   ========================================================= */
+(function(global){
+  'use strict';
+
+  var VERSION = '1.3.0';
+
+  if(global.permitUnifiedChecklistV130){
+    console.log('[통합 체크리스트 v1.3.0] 이미 적용');
+    return;
+  }
+
+  function getElement(id){
+    return document.getElementById(id);
+  }
+
+  function clone(value){
+    if(value === undefined || value === null){
+      return value;
+    }
+
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function escapeHtml(value){
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function getCurrentUser(){
+    return (
+      sessionStorage.getItem('userName') ||
+      (
+        global.permitData &&
+        (
+          global.permitData.companyWorkManager &&
+          global.permitData.companyWorkManager.name
+        )
+      ) ||
+      (
+        global.permitData &&
+        global.permitData.supervisor
+      ) ||
+      ''
+    );
+  }
+
+  function getMeaningKey(text){
+    if(
+      global.permitRiskWorkflowV120 &&
+      typeof global.permitRiskWorkflowV120.meaningKey === 'function'
+    ){
+      return global.permitRiskWorkflowV120.meaningKey(text);
+    }
+
+    var normalized = String(text || '')
+      .toLowerCase()
+      .replace(/\bloto\b/gi, 'ils')
+      .replace(/로토/g, 'ils')
+      .replace(/잠금\s*[·ㆍ-]?\s*표찰/g, 'ils')
+      .replace(/개인\s*보호구/g, '보호구')
+      .replace(/[^0-9a-z가-힣]/g, '');
+
+    if(
+      /보호구|안전모|안전화/.test(normalized) &&
+      /준비|착용/.test(normalized)
+    ){
+      return 'PPE_BASIC';
+    }
+
+    if(
+      /작업구역|출입통제|출입금지|관계자외/.test(normalized)
+    ){
+      return 'WORK_AREA_CONTROL';
+    }
+
+    if(
+      /공구|도구|장비/.test(normalized) &&
+      /점검|상태|확인/.test(normalized)
+    ){
+      return 'TOOL_EQUIPMENT_INSPECTION';
+    }
+
+    if(
+      /비상연락|연락체계|연락망/.test(normalized)
+    ){
+      return 'EMERGENCY_CONTACT';
+    }
+
+    if(
+      /작업중지|중지기준|중지권/.test(normalized)
+    ){
+      return 'STOP_WORK';
+    }
+
+    if(
+      /tbm|위험요인공유|전달자료/.test(normalized)
+    ){
+      return 'TBM_PREPARATION';
+    }
+
+    if(
+      /동시작업|작업간섭|주변작업환경/.test(normalized)
+    ){
+      return 'SIMULTANEOUS_WORK';
+    }
+
+    if(
+      /ils|에너지원차단|전원차단|잠금조치/.test(normalized)
+    ){
+      return 'ENERGY_ISOLATION';
+    }
+
+    if(
+      /잔류에너지|잔압제거|방전조치/.test(normalized)
+    ){
+      return 'RESIDUAL_ENERGY';
+    }
+
+    return 'TEXT:' + normalized;
+  }
+
+  function configureGeneralChecklist(){
+    if(
+      !global.CHECKLIST_DEF ||
+      !global.CHECKLIST_DEF.general
+    ){
+      return;
+    }
+
+    global.CHECKLIST_DEF.general.items = [
+      {
+        num: '0.1',
+        text: '포항양극재 안전철칙 적용사항 확인',
+        required: true
+      },
+      {
+        num: '0.2',
+        text: '작업에 적합한 개인보호구 준비 및 착용',
+        required: true
+      },
+      {
+        num: '0.3',
+        text: '작업구역 설정 및 관계자 외 출입통제',
+        required: true
+      },
+      {
+        num: '0.4',
+        text: '작업 도구·장비 사전점검',
+        required: true
+      },
+      {
+        num: '0.5',
+        text: '비상연락체계와 작업중지 방법 확인',
+        required: true
+      },
+      {
+        num: '0.6',
+        text: 'TBM 전달자료와 참석 대상자 확인',
+        required: true
+      },
+      {
+        num: '0.7',
+        text: '주변 작업환경과 동시작업 간섭 확인',
+        required: true
+      }
+    ];
+  }
+
+  function addSource(item, source){
+    if(!Array.isArray(item.sources)){
+      item.sources = [];
+    }
+
+    var duplicated = item.sources.some(function(existing){
+      return (
+        existing.type === source.type &&
+        existing.sourceItemId === source.sourceItemId
+      );
+    });
+
+    if(!duplicated){
+      item.sources.push(source);
+    }
+  }
+
+  function getRiskItems(){
+    if(
+      !global.permitData ||
+      !global.permitData.riskAssessmentChecklist ||
+      !Array.isArray(
+        global.permitData.riskAssessmentChecklist.items
+      )
+    ){
+      return [];
+    }
+
+    return global.permitData
+      .riskAssessmentChecklist.items;
+  }
+
+  function getGeneralItems(){
+    if(
+      !global.CHECKLIST_DEF ||
+      !global.CHECKLIST_DEF.general ||
+      !Array.isArray(
+        global.CHECKLIST_DEF.general.items
+      )
+    ){
+      return [];
+    }
+
+    return global.CHECKLIST_DEF.general.items;
+  }
+
+  function buildUnifiedChecklist(){
+    if(!global.permitData){
+      return [];
+    }
+
+    var previous =
+      global.permitData.unifiedSafetyChecklist;
+
+    var previousItems =
+      previous && Array.isArray(previous.items)
+        ? previous.items
+        : [];
+
+    var previousMap = {};
+
+    previousItems.forEach(function(item){
+      if(item && item.meaningKey){
+        previousMap[item.meaningKey] = item;
+      }
+    });
+
+    var itemMap = new Map();
+    var riskId =
+      global.permitData.riskId || '';
+
+    getRiskItems().forEach(function(item, index){
+      var meaningKey =
+        getMeaningKey(item.text);
+
+      if(!meaningKey){
+        return;
+      }
+
+      var previousItem =
+        previousMap[meaningKey];
+
+      var unified = {
+        checklistItemId:
+          previousItem
+            ? previousItem.checklistItemId
+            : (
+                'UNIFIED-' +
+                String(index + 1).padStart(3, '0')
+              ),
+
+        meaningKey: meaningKey,
+        text: item.text || '',
+        required: true,
+        result:
+          previousItem
+            ? previousItem.result || ''
+            : item.result || '',
+
+        reason:
+          previousItem
+            ? previousItem.reason || ''
+            : '',
+
+        sources:
+          previousItem &&
+          Array.isArray(previousItem.sources)
+            ? clone(previousItem.sources)
+            : [],
+
+        findings:
+          previousItem &&
+          Array.isArray(previousItem.findings)
+            ? clone(previousItem.findings)
+            : [],
+
+        checkedBy:
+          previousItem
+            ? previousItem.checkedBy || ''
+            : item.checkedBy || '',
+
+        checkedAt:
+          previousItem
+            ? previousItem.checkedAt || ''
+            : item.checkedAt || ''
+      };
+
+      addSource(unified, {
+        type: 'risk-assessment',
+        sourceRiskId: riskId,
+        sourceItemId:
+          item.checklistItemId ||
+          'RA-' + (index + 1),
+        text: item.text || ''
+      });
+
+      itemMap.set(meaningKey, unified);
+    });
+
+    getGeneralItems().forEach(function(item){
+      var meaningKey =
+        getMeaningKey(item.text);
+
+      if(!meaningKey){
+        return;
+      }
+
+      var unified =
+        itemMap.get(meaningKey);
+
+      if(!unified){
+        var previousItem =
+          previousMap[meaningKey];
+
+        unified = {
+          checklistItemId:
+            previousItem
+              ? previousItem.checklistItemId
+              : 'GENERAL-' + item.num,
+
+          meaningKey: meaningKey,
+          text: item.text || '',
+          required: true,
+          result:
+            previousItem
+              ? previousItem.result || ''
+              : (
+                  global.permitData.checklist &&
+                  global.permitData.checklist[
+                    'general-' + item.num
+                  ]
+                ) || '',
+
+          reason:
+            previousItem
+              ? previousItem.reason || ''
+              : '',
+
+          sources:
+            previousItem &&
+            Array.isArray(previousItem.sources)
+              ? clone(previousItem.sources)
+              : [],
+
+          findings:
+            previousItem &&
+            Array.isArray(previousItem.findings)
+              ? clone(previousItem.findings)
+              : [],
+
+          checkedBy:
+            previousItem
+              ? previousItem.checkedBy || ''
+              : '',
+
+          checkedAt:
+            previousItem
+              ? previousItem.checkedAt || ''
+              : ''
+        };
+
+        itemMap.set(meaningKey, unified);
+      } else {
+        /*
+         * 중복 시 일반 체크리스트 문구를
+         * 통합 표시 문구로 사용합니다.
+         */
+        unified.text =
+          item.text || unified.text;
+      }
+
+      addSource(unified, {
+        type: 'permit-common',
+        sourceItemId: 'general-' + item.num,
+        itemNo: item.num,
+        text: item.text || ''
+      });
+    });
+
+    var additionalItems =
+      Array.isArray(
+        global.permitData.additionalPermitChecklist
+      )
+        ? global.permitData.additionalPermitChecklist
+        : [];
+
+    additionalItems.forEach(function(item, index){
+      var meaningKey =
+        item.meaningKey ||
+        getMeaningKey(item.text) ||
+        'ADDITIONAL-' + index;
+
+      if(itemMap.has(meaningKey)){
+        var merged =
+          itemMap.get(meaningKey);
+
+        addSource(merged, {
+          type: 'permit-additional',
+          sourceItemId:
+            item.checklistItemId ||
+            'ADDITIONAL-' + index,
+          text: item.text || ''
+        });
+
+        return;
+      }
+
+      var previousItem =
+        previousMap[meaningKey];
+
+      var unified = {
+        checklistItemId:
+          previousItem
+            ? previousItem.checklistItemId
+            : (
+                item.checklistItemId ||
+                'ADDITIONAL-' + Date.now() + '-' + index
+              ),
+
+        meaningKey: meaningKey,
+        text: item.text || '',
+        required: true,
+        result:
+          previousItem
+            ? previousItem.result || ''
+            : item.result || '',
+
+        reason:
+          previousItem
+            ? previousItem.reason || ''
+            : item.reason || '',
+
+        sources:
+          previousItem &&
+          Array.isArray(previousItem.sources)
+            ? clone(previousItem.sources)
+            : [],
+
+        findings:
+          previousItem &&
+          Array.isArray(previousItem.findings)
+            ? clone(previousItem.findings)
+            : [],
+
+        checkedBy:
+          previousItem
+            ? previousItem.checkedBy || ''
+            : item.checkedBy || '',
+
+        checkedAt:
+          previousItem
+            ? previousItem.checkedAt || ''
+            : item.checkedAt || ''
+      };
+
+      addSource(unified, {
+        type: 'permit-additional',
+        sourceItemId:
+          item.checklistItemId ||
+          'ADDITIONAL-' + index,
+        text: item.text || ''
+      });
+
+      itemMap.set(meaningKey, unified);
+    });
+
+    var items =
+      Array.from(itemMap.values());
+
+    global.permitData.unifiedSafetyChecklist = {
+      version: VERSION,
+      sourceRiskId: riskId,
+      generatedAt:
+        previous && previous.generatedAt
+          ? previous.generatedAt
+          : new Date().toISOString(),
+      updatedAt:
+        new Date().toISOString(),
+      items: items
+    };
+
+    synchronizeSourceData(items);
+
+    return items;
+  }
+
+  function synchronizeSourceData(items){
+    if(!global.permitData){
+      return;
+    }
+
+    if(!global.permitData.checklist){
+      global.permitData.checklist = {};
+    }
+
+    var riskItems =
+      getRiskItems();
+
+    items.forEach(function(item){
+      (item.sources || []).forEach(function(source){
+        if(source.type === 'permit-common'){
+          global.permitData.checklist[
+            source.sourceItemId
+          ] = item.result || '';
+        }
+
+        if(source.type === 'risk-assessment'){
+          var target =
+            riskItems.find(function(riskItem){
+              return (
+                riskItem.checklistItemId ===
+                source.sourceItemId
+              );
+            });
+
+          if(target){
+            target.result =
+              item.result || '';
+
+            target.checkedAt =
+              item.checkedAt || '';
+
+            target.checkedBy =
+              item.checkedBy || '';
+          }
+        }
+
+        if(source.type === 'permit-additional'){
+          var additionalItems =
+            global.permitData
+              .additionalPermitChecklist || [];
+
+          var additional =
+            additionalItems.find(function(candidate){
+              return (
+                candidate.checklistItemId ===
+                source.sourceItemId
+              );
+            });
+
+          if(additional){
+            additional.result =
+              item.result || '';
+
+            additional.reason =
+              item.reason || '';
+
+            additional.checkedAt =
+              item.checkedAt || '';
+
+            additional.checkedBy =
+              item.checkedBy || '';
+          }
+        }
+      });
+    });
+  }
+
+  function getSourceLabels(item){
+    var labels = [];
+
+    (item.sources || []).forEach(function(source){
+      if(
+        source.type === 'risk-assessment' &&
+        labels.indexOf('위험성평가') < 0
+      ){
+        labels.push('위험성평가');
+      }
+
+      if(
+        source.type === 'permit-common' &&
+        labels.indexOf('허가 공통') < 0
+      ){
+        labels.push('허가 공통');
+      }
+
+      if(
+        source.type === 'permit-additional' &&
+        labels.indexOf('현장 추가') < 0
+      ){
+        labels.push('현장 추가');
+      }
+    });
+
+    return labels;
+  }
+
+  function hasSource(item, sourceType){
+    return (item.sources || []).some(function(source){
+      return source.type === sourceType;
+    });
+  }
+
+  function renderUnifiedChecklist(){
+    var container =
+      getElement('unifiedSafetyChecklistSection');
+
+    if(!container){
+      return;
+    }
+
+    var items =
+      buildUnifiedChecklist();
+
+    var riskId =
+      global.permitData &&
+      global.permitData.riskId
+        ? global.permitData.riskId
+        : '';
+
+    var completedCount =
+      items.filter(function(item){
+        return item.result === 'ok';
+      }).length;
+
+    var html =
+      '<section class="cl-section unified-checklist">' +
+
+        '<div class="cl-section-header general">' +
+          '✅ 통합 안전 체크리스트' +
+        '</div>' +
+
+        '<div class="unified-checklist-info">' +
+          '위험성평가 안전대책과 허가 전 공통사항을 통합했습니다.' +
+          (
+            riskId
+              ? '<br>연결 평가: <strong>' +
+                escapeHtml(riskId) +
+                '</strong>'
+              : ''
+          ) +
+        '</div>' +
+
+        '<div class="cl-progress">' +
+          '<div class="cl-progress-txt">' +
+            '적합 확인 현황' +
+          '</div>' +
+
+          '<div class="cl-progress-val">' +
+            completedCount +
+            ' / ' +
+            items.length +
+          '</div>' +
+        '</div>' +
+
+        '<div class="cl-items">';
+
+    items.forEach(function(item, index){
+      var itemClass =
+        'cl-item unified-item';
+
+      if(item.result === 'ok'){
+        itemClass += ' ok';
+      }
+
+      if(item.result === 'no'){
+        itemClass += ' no';
+      }
+
+      var labels =
+        getSourceLabels(item);
+
+      html +=
+        '<div class="' + itemClass + '">' +
+
+          '<div class="cl-num">' +
+            (index + 1) +
+          '</div>' +
+
+          '<div class="unified-item-content">' +
+
+            '<div class="cl-text">' +
+              escapeHtml(item.text) +
+            '</div>' +
+
+            '<div class="unified-source-row">' +
+              labels.map(function(label){
+                return (
+                  '<span class="unified-source-badge">' +
+                    escapeHtml(label) +
+                  '</span>'
+                );
+              }).join('') +
+            '</div>' +
+
+          '</div>' +
+
+          '<div class="cl-radios">' +
+
+            '<button type="button" ' +
+              'class="cl-radio-btn' +
+              (item.result === 'ok' ? ' ok' : '') +
+              '" onclick="setUnifiedSafetyResult(' +
+              index +
+              ',\'ok\')">' +
+              '⭕' +
+            '</button>' +
+
+            '<button type="button" ' +
+              'class="cl-radio-btn' +
+              (item.result === 'no' ? ' no' : '') +
+              '" onclick="setUnifiedSafetyResult(' +
+              index +
+              ',\'no\')">' +
+              '❌' +
+            '</button>' +
+
+          '</div>' +
+
+          (
+            item.result === 'no'
+              ? (
+                  '<div class="unified-reason-wrap">' +
+
+                    '<label class="unified-reason-label">' +
+                      '미흡 사유' +
+                      '<span class="req">*</span>' +
+                    '</label>' +
+
+                    '<textarea class="unified-reason-input" ' +
+                      'placeholder="미흡한 상태와 필요한 조치를 간단히 입력하세요." ' +
+                      'oninput="setUnifiedSafetyReason(' +
+                      index +
+                      ',this.value)">' +
+                      escapeHtml(item.reason || '') +
+                    '</textarea>' +
+
+                    '<div class="unified-reason-help">' +
+                      '조치 후 ⭕로 재확인해야 다음 단계로 진행할 수 있습니다.' +
+                    '</div>' +
+
+                  '</div>'
+                )
+              : ''
+          ) +
+
+        '</div>';
+    });
+
+    html +=
+        '</div>' +
+
+        '<div class="unified-add-area">' +
+          '<label class="f-label">' +
+            '➕ 현장 확인항목 추가' +
+          '</label>' +
+
+          '<div class="unified-add-row">' +
+            '<input type="text" ' +
+              'class="f-input" ' +
+              'id="unifiedAdditionalInput" ' +
+              'placeholder="현장에서 추가로 확인할 사항">' +
+
+            '<button type="button" ' +
+              'class="btn-primary unified-add-button" ' +
+              'onclick="addUnifiedSafetyItem()">' +
+              '추가' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+
+      '</section>';
+
+    container.innerHTML = html;
+  }
+
+  function createFinding(item, reason){
+    if(!Array.isArray(item.findings)){
+      item.findings = [];
+    }
+
+    var unresolved =
+      item.findings.find(function(finding){
+        return finding.resolved !== true;
+      });
+
+    if(unresolved){
+      unresolved.reason = reason || unresolved.reason;
+      return unresolved;
+    }
+
+    var finding = {
+      findingId:
+        'FINDING-' + Date.now(),
+
+      initialResult: 'no',
+      reason: reason || '',
+      foundAt:
+        new Date().toISOString(),
+      foundBy:
+        getCurrentUser(),
+      resolved: false,
+      correctiveAction: '',
+      recheckResult: '',
+      recheckedAt: '',
+      recheckedBy: ''
+    };
+
+    item.findings.push(finding);
+
+    return finding;
+  }
+
+  global.setUnifiedSafetyResult =
+    function(index, result){
+      var checklist =
+        global.permitData &&
+        global.permitData.unifiedSafetyChecklist;
+
+      if(
+        !checklist ||
+        !Array.isArray(checklist.items) ||
+        !checklist.items[index]
+      ){
+        return;
+      }
+
+      var item =
+        checklist.items[index];
+
+      if(
+        result === 'ok' &&
+        item.result === 'no'
+      ){
+        var currentFinding =
+          Array.isArray(item.findings)
+            ? item.findings.find(function(finding){
+                return finding.resolved !== true;
+              })
+            : null;
+
+        if(
+          !item.reason ||
+          item.reason.trim().length < 2
+        ){
+          global.showToast(
+            '미흡 사유를 먼저 입력한 후 조치 완료를 확인해 주세요.',
+            'danger'
+          );
+
+          return;
+        }
+
+        if(currentFinding){
+          currentFinding.reason =
+            item.reason;
+
+          currentFinding.resolved = true;
+
+          currentFinding.correctiveAction =
+            '현장 조치 후 적합 재확인';
+
+          currentFinding.recheckResult =
+            'ok';
+
+          currentFinding.recheckedAt =
+            new Date().toISOString();
+
+          currentFinding.recheckedBy =
+            getCurrentUser();
+        }
+      }
+
+      item.result = result;
+      item.checkedAt =
+        new Date().toISOString();
+
+      item.checkedBy =
+        getCurrentUser();
+
+      if(result === 'no'){
+        createFinding(
+          item,
+          item.reason || ''
+        );
+      }
+
+      synchronizeSourceData(
+        checklist.items
+      );
+
+      renderUnifiedChecklist();
+    };
+
+  global.setUnifiedSafetyReason =
+    function(index, reason){
+      var checklist =
+        global.permitData &&
+        global.permitData.unifiedSafetyChecklist;
+
+      if(
+        !checklist ||
+        !Array.isArray(checklist.items) ||
+        !checklist.items[index]
+      ){
+        return;
+      }
+
+      var item =
+        checklist.items[index];
+
+      item.reason =
+        String(reason || '').trim();
+
+      var finding =
+        createFinding(
+          item,
+          item.reason
+        );
+
+      finding.reason =
+        item.reason;
+
+      synchronizeSourceData(
+        checklist.items
+      );
+    };
+
+  global.addUnifiedSafetyItem =
+    function(){
+      var input =
+        getElement('unifiedAdditionalInput');
+
+      if(!input){
+        return;
+      }
+
+      var text =
+        String(input.value || '').trim();
+
+      if(text.length < 3){
+        global.showToast(
+          '추가 항목을 3자 이상 입력해 주세요.',
+          'danger'
+        );
+
+        return;
+      }
+
+      if(
+        !Array.isArray(
+          global.permitData
+            .additionalPermitChecklist
+        )
+      ){
+        global.permitData
+          .additionalPermitChecklist = [];
+      }
+
+      var meaningKey =
+        getMeaningKey(text);
+
+      var duplicated =
+        buildUnifiedChecklist().some(function(item){
+          return item.meaningKey === meaningKey;
+        });
+
+      if(duplicated){
+        global.showToast(
+          '동일하거나 유사한 확인항목이 이미 있습니다.',
+          'danger'
+        );
+
+        return;
+      }
+
+      global.permitData
+        .additionalPermitChecklist
+        .push({
+          checklistItemId:
+            'PERMIT-ADD-' + Date.now(),
+          meaningKey: meaningKey,
+          text: text,
+          required: true,
+          result: '',
+          reason: '',
+          findings: [],
+          addedBy:
+            getCurrentUser(),
+          addedAt:
+            new Date().toISOString(),
+          checkedAt: '',
+          checkedBy: ''
+        });
+
+      input.value = '';
+
+      buildUnifiedChecklist();
+      renderUnifiedChecklist();
+
+      global.showToast(
+        '현장 확인항목을 추가했습니다.',
+        'success'
+      );
+    };
+
+  function injectUnifiedContainer(){
+    var standardContainer =
+      getElement('cl-dynamic-container');
+
+    if(!standardContainer){
+      return;
+    }
+
+    var unified =
+      getElement('unifiedSafetyChecklistSection');
+
+    if(!unified){
+      unified =
+        document.createElement('div');
+
+      unified.id =
+        'unifiedSafetyChecklistSection';
+
+      standardContainer.insertAdjacentElement(
+        'beforebegin',
+        unified
+      );
+    }
+
+    /*
+     * 위험성평가 연계·일반작업 원본 목록은
+     * 데이터 동기화용으로 유지하고 화면에서 숨깁니다.
+     */
+    var riskSection =
+      getElement('riskLinkedChecklistSection');
+
+    if(riskSection){
+      riskSection.style.display = 'none';
+    }
+
+    var generalSection =
+      getElement('cl-general');
+
+    if(generalSection){
+      generalSection.style.display = 'none';
+    }
+  }
+
+  function hideLegacySections(){
+    var riskSection =
+      getElement('riskLinkedChecklistSection');
+
+    if(riskSection){
+      riskSection.style.display = 'none';
+    }
+
+    var generalSection =
+      getElement('cl-general');
+
+    if(generalSection){
+      generalSection.style.display = 'none';
+    }
+  }
+
+  function installRenderHook(){
+    if(
+      typeof global.renderChecklist !== 'function' ||
+      global.renderChecklist.__v130Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.renderChecklist;
+
+    var wrapped =
+      function(){
+        configureGeneralChecklist();
+
+        var result =
+          previous.apply(this, arguments);
+
+        setTimeout(function(){
+          injectUnifiedContainer();
+          buildUnifiedChecklist();
+          renderUnifiedChecklist();
+          hideLegacySections();
+        }, 0);
+
+        return result;
+      };
+
+    wrapped.__v130Installed = true;
+    wrapped.__previous = previous;
+
+    global.renderChecklist =
+      wrapped;
+  }
+
+  function installValidationHook(){
+    if(
+      typeof global.validateStep3 !== 'function' ||
+      global.validateStep3.__v130Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.validateStep3;
+
+    var wrapped =
+      function(){
+        var items =
+          buildUnifiedChecklist();
+
+        var missing =
+          items.filter(function(item){
+            return !item.result;
+          });
+
+        if(missing.length > 0){
+          global.showToast(
+            '통합 안전 체크리스트를 모두 확인해 주세요.',
+            'danger'
+          );
+
+          var container =
+            getElement(
+              'unifiedSafetyChecklistSection'
+            );
+
+          if(container){
+            container.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+
+          return;
+        }
+
+        var failed =
+          items.filter(function(item){
+            return item.result === 'no';
+          });
+
+        if(failed.length > 0){
+          var reasonMissing =
+            failed.some(function(item){
+              return (
+                !item.reason ||
+                item.reason.trim().length < 2
+              );
+            });
+
+          global.showToast(
+            reasonMissing
+              ? '미흡 항목의 사유를 입력해 주세요.'
+              : '미흡 항목을 조치한 후 ⭕로 재확인해 주세요.',
+            'danger'
+          );
+
+          return;
+        }
+
+        synchronizeSourceData(items);
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__v130Installed = true;
+    wrapped.__previous = previous;
+
+    global.validateStep3 =
+      wrapped;
+  }
+
+  function installSaveHook(){
+    if(
+      typeof global.buildPermitRecord !== 'function' ||
+      global.buildPermitRecord.__v130Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.buildPermitRecord;
+
+    var wrapped =
+      function(){
+        var record =
+          previous.apply(this, arguments);
+
+        var checklist =
+          global.permitData &&
+          global.permitData
+            .unifiedSafetyChecklist
+            ? clone(
+                global.permitData
+                  .unifiedSafetyChecklist
+              )
+            : {
+                version: VERSION,
+                sourceRiskId: '',
+                generatedAt:
+                  new Date().toISOString(),
+                updatedAt:
+                  new Date().toISOString(),
+                items: []
+              };
+
+        var findings = [];
+
+        (checklist.items || []).forEach(function(item){
+          (item.findings || []).forEach(function(finding){
+            findings.push(
+              Object.assign(
+                {
+                  checklistItemId:
+                    item.checklistItemId,
+                  checklistText:
+                    item.text
+                },
+                clone(finding)
+              )
+            );
+          });
+        });
+
+        record.unifiedSafetyChecklist =
+          checklist;
+
+        record.checklistFindings =
+          findings;
+
+        record.unifiedChecklistSummary = {
+          total:
+            checklist.items.length,
+
+          passed:
+            checklist.items.filter(function(item){
+              return item.result === 'ok';
+            }).length,
+
+          failed:
+            checklist.items.filter(function(item){
+              return item.result === 'no';
+            }).length,
+
+          findingCount:
+            findings.length,
+
+          unresolvedFindingCount:
+            findings.filter(function(finding){
+              return finding.resolved !== true;
+            }).length,
+
+          version:
+            VERSION
+        };
+
+        return record;
+      };
+
+    wrapped.__v130Installed = true;
+    wrapped.__previous = previous;
+
+    global.buildPermitRecord =
+      wrapped;
+  }
+
+  function injectStyle(){
+    if(getElement('permitUnifiedChecklistV130Style')){
+      return;
+    }
+
+    var style =
+      document.createElement('style');
+
+    style.id =
+      'permitUnifiedChecklistV130Style';
+
+    style.textContent = [
+      '.unified-checklist-info{',
+        'padding:12px 16px;',
+        'border-bottom:1px solid var(--line);',
+        'background:var(--tint);',
+        'color:var(--body);',
+        'font-size:13px;',
+        'font-weight:700;',
+        'line-height:1.6;',
+      '}',
+
+      '.unified-item{',
+        'align-items:flex-start;',
+      '}',
+
+      '.unified-item-content{',
+        'flex:1;',
+        'min-width:0;',
+      '}',
+
+      '.unified-source-row{',
+        'display:flex;',
+        'flex-wrap:wrap;',
+        'gap:5px;',
+        'margin-top:6px;',
+      '}',
+
+      '.unified-source-badge{',
+        'padding:3px 7px;',
+        'border-radius:6px;',
+        'background:var(--tint);',
+        'color:var(--posco);',
+        'font-size:10.5px;',
+        'font-weight:850;',
+      '}',
+
+      '.unified-reason-wrap{',
+        'width:100%;',
+        'margin-top:9px;',
+        'padding:12px;',
+        'border:1.5px solid var(--stop);',
+        'border-radius:10px;',
+        'background:var(--stop-bg);',
+      '}',
+
+      '.unified-reason-label{',
+        'display:block;',
+        'margin-bottom:7px;',
+        'color:var(--stop);',
+        'font-size:13px;',
+        'font-weight:850;',
+      '}',
+
+      '.unified-reason-input{',
+        'width:100%;',
+        'min-height:72px;',
+        'padding:10px 11px;',
+        'border:1.5px solid var(--line);',
+        'border-radius:9px;',
+        'background:var(--card);',
+        'color:var(--ink);',
+        'font-family:inherit;',
+        'font-size:14px;',
+        'font-weight:650;',
+        'line-height:1.55;',
+        'resize:vertical;',
+      '}',
+
+      '.unified-reason-help{',
+        'margin-top:6px;',
+        'color:var(--stop);',
+        'font-size:12px;',
+        'font-weight:700;',
+        'line-height:1.5;',
+      '}',
+
+      '.unified-add-area{',
+        'padding:14px 16px;',
+        'border-top:1px solid var(--line);',
+        'background:var(--sunk);',
+      '}',
+
+      '.unified-add-row{',
+        'display:grid;',
+        'grid-template-columns:minmax(0,1fr) auto;',
+        'gap:8px;',
+      '}',
+
+      '.unified-add-button{',
+        'min-width:72px;',
+        'padding:12px 15px;',
+      '}',
+
+      '@media(max-width:380px){',
+        '.unified-item{',
+          'display:grid;',
+          'grid-template-columns:auto minmax(0,1fr);',
+        '}',
+
+        '.unified-item .cl-radios{',
+          'grid-column:1 / -1;',
+          'width:100%;',
+          'justify-content:flex-end;',
+        '}',
+
+        '.unified-reason-wrap{',
+          'grid-column:1 / -1;',
+        '}',
+
+        '.unified-add-row{',
+          'grid-template-columns:1fr;',
+        '}',
+      '}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function install(){
+    configureGeneralChecklist();
+    injectStyle();
+    installRenderHook();
+    installValidationHook();
+    installSaveHook();
+
+    if(
+      global.STEP_LABELS &&
+      Array.isArray(global.STEP_LABELS)
+    ){
+      global.STEP_LABELS[3] =
+        '통합 안전 체크리스트';
+    }
+
+    console.log(
+      '[안전작업허가서 통합 안전 체크리스트] v' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.permitUnifiedChecklistV130 = {
+    version: VERSION,
+    build: buildUnifiedChecklist,
+    render: renderUnifiedChecklist,
+    meaningKey: getMeaningKey,
+    configureGeneral: configureGeneralChecklist
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
+</script>
 
   
 </body>
