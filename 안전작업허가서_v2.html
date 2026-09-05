@@ -4047,6 +4047,923 @@ document.addEventListener('keydown', function(e){
     </div><!-- /.app -->
   </div><!-- /.phone-screen -->
 </div><!-- /.phone-frame -->
+<script>
+/* =========================================================
+   위험성평가 → 안전작업허가서 연결 v1.0
+   - URL riskId 우선 연결
+   - workId가 있으면 최신 완료 평가 자동 연결
+   - 허가서에 위험성평가 스냅샷 저장
+   - 위험성평가 미연결 시 허가 작성 차단
+   ========================================================= */
+(function(global){
+  'use strict';
+
+  var VERSION = '1.0.0';
+  var linkedRiskAssessment = null;
+  var requestedRiskId = '';
+  var requestedWorkId = '';
+
+  function clone(value){
+    if(value === undefined || value === null){
+      return value;
+    }
+
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function readParameters(){
+    var parameters =
+      new URLSearchParams(global.location.search);
+
+    requestedRiskId =
+      String(parameters.get('riskId') || '').trim();
+
+    requestedWorkId =
+      String(parameters.get('workId') || '').trim();
+  }
+
+  function getStoredRiskAssessments(){
+    try {
+      var parsed =
+        JSON.parse(
+          localStorage.getItem('riskAssessments') ||
+          '[]'
+        );
+
+      return Array.isArray(parsed)
+        ? parsed
+        : [];
+    } catch(error){
+      console.warn(
+        '[위험성평가 연결] 로컬 평가자료 파싱 실패:',
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function getRecordTime(record){
+    var value =
+      record.updatedAt ||
+      record.createdAt ||
+      record.date ||
+      '';
+
+    var time =
+      new Date(value).getTime();
+
+    return Number.isFinite(time)
+      ? time
+      : 0;
+  }
+
+  function findRiskAssessment(riskId, workId){
+    var records =
+      getStoredRiskAssessments();
+
+    /*
+     * URL로 전달된 riskId를 가장 먼저 확인합니다.
+     */
+    if(riskId){
+      var exactRisk =
+        records.find(function(record){
+          return (
+            String(record.riskId || '') ===
+            String(riskId)
+          );
+        });
+
+      if(exactRisk){
+        return exactRisk;
+      }
+    }
+
+    /*
+     * riskId가 없으면 같은 workId의
+     * 가장 최근 완료 평가를 사용합니다.
+     */
+    if(workId){
+      var workRecords =
+        records
+          .filter(function(record){
+            return (
+              String(record.workId || '') ===
+              String(workId) &&
+              (
+                record.status === '평가완료' ||
+                !record.status
+              )
+            );
+          })
+          .sort(function(first, second){
+            return (
+              getRecordTime(second) -
+              getRecordTime(first)
+            );
+          });
+
+      if(workRecords.length > 0){
+        return workRecords[0];
+      }
+    }
+
+    return null;
+  }
+
+  function getRiskScore(record){
+    if(
+      record &&
+      Number.isFinite(
+        Number(record.riskScore)
+      )
+    ){
+      return Number(record.riskScore);
+    }
+
+    var scores = {
+      '저위험': 3,
+      '중위험': 8,
+      '고위험': 15,
+      '매우고위험': 25,
+      '판정불가': 0
+    };
+
+    var level =
+      record
+        ? (
+            record.finalRiskLevel ||
+            record.riskLevel ||
+            record.overallRisk ||
+            '판정불가'
+          )
+        : '판정불가';
+
+    return scores[level] || 0;
+  }
+
+  function getSelectedMeasures(record){
+    if(
+      record &&
+      Array.isArray(record.allMeasures)
+    ){
+      return record.allMeasures.map(function(measure){
+        if(typeof measure === 'string'){
+          return {
+            text: measure,
+            category: ''
+          };
+        }
+
+        return {
+          text: measure.text || '',
+          category: measure.category || '',
+          source: measure.source || '',
+          standardCode:
+            measure.standardCode || ''
+        };
+      });
+    }
+
+    if(
+      record &&
+      Array.isArray(record.riskMeasures)
+    ){
+      return record.riskMeasures.map(function(text){
+        return {
+          text: String(text || ''),
+          category: ''
+        };
+      });
+    }
+
+    return [];
+  }
+
+  function buildRiskSnapshot(record){
+    if(!record){
+      return null;
+    }
+
+    var finalRiskLevel =
+      record.finalRiskLevel ||
+      record.riskLevel ||
+      record.overallRisk ||
+      '판정불가';
+
+    return {
+      sourceRiskId:
+        record.riskId || '',
+
+      sourceWorkId:
+        record.workId || '',
+
+      finalRiskLevel:
+        finalRiskLevel,
+
+      riskScore:
+        getRiskScore(record),
+
+      controlAdequacy:
+        record.finalControlAdequacy ||
+        record.controlAdequacy ||
+        '',
+
+      highRiskWorkAssessment:
+        clone(
+          record.highRiskWorkAssessment ||
+          null
+        ),
+
+      hazardSummary:
+        clone(
+          record.hazardSummary ||
+          record.summaryData ||
+          null
+        ),
+
+      selectedMeasures:
+        getSelectedMeasures(record),
+
+      mappedChecklists:
+        clone(
+          record.mappedChecklists ||
+          []
+        ),
+
+      requiredRecords:
+        clone(
+          record.requiredRecords ||
+          []
+        ),
+
+      assessmentDate:
+        record.date || '',
+
+      assessor:
+        record.assessor || '',
+
+      capturedAt:
+        new Date().toISOString(),
+
+      linkVersion:
+        VERSION
+    };
+  }
+
+  function getHighRiskText(record){
+    var assessment =
+      record &&
+      record.highRiskWorkAssessment
+        ? record.highRiskWorkAssessment
+        : null;
+
+    if(!assessment){
+      return '고위험작업 분류정보 없음';
+    }
+
+    if(assessment.applicable === true){
+      var labels =
+        Array.isArray(assessment.categoryLabels)
+          ? assessment.categoryLabels
+          : [];
+
+      var prefix =
+        assessment.status === '예외검토'
+          ? '예외 승인 검토 필요'
+          : '해당';
+
+      return labels.length > 0
+        ? prefix + ' · ' + labels.join(', ')
+        : prefix;
+    }
+
+    if(assessment.applicable === false){
+      return '비해당';
+    }
+
+    return assessment.status || '검토중';
+  }
+
+  function injectStyle(){
+    if(
+      document.getElementById(
+        'permitRiskLinkStyle'
+      )
+    ){
+      return;
+    }
+
+    var style =
+      document.createElement('style');
+
+    style.id =
+      'permitRiskLinkStyle';
+
+    style.textContent = [
+      '.permit-risk-link-card{',
+        'margin-bottom:16px;',
+        'padding:16px;',
+        'border:2px solid var(--posco);',
+        'border-radius:var(--r);',
+        'background:var(--card);',
+        'box-shadow:var(--sh);',
+      '}',
+
+      '.permit-risk-link-card.missing{',
+        'border-color:var(--stop);',
+        'background:var(--stop-bg);',
+      '}',
+
+      '.permit-risk-link-title{',
+        'margin-bottom:10px;',
+        'padding-bottom:9px;',
+        'border-bottom:1px solid var(--line);',
+        'color:var(--posco);',
+        'font-size:17px;',
+        'font-weight:900;',
+      '}',
+
+      '.permit-risk-link-card.missing ',
+      '.permit-risk-link-title{',
+        'color:var(--stop);',
+      '}',
+
+      '.permit-risk-link-row{',
+        'display:grid;',
+        'grid-template-columns:105px minmax(0,1fr);',
+        'gap:10px;',
+        'padding:8px 0;',
+        'border-bottom:1px dashed var(--line);',
+      '}',
+
+      '.permit-risk-link-row:last-child{',
+        'border-bottom:0;',
+      '}',
+
+      '.permit-risk-link-key{',
+        'color:var(--sub);',
+        'font-size:13px;',
+        'font-weight:800;',
+      '}',
+
+      '.permit-risk-link-value{',
+        'color:var(--ink);',
+        'font-size:14px;',
+        'font-weight:800;',
+        'line-height:1.5;',
+        'text-align:right;',
+        'word-break:break-word;',
+      '}',
+
+      '.permit-risk-link-value.high{',
+        'color:var(--stop);',
+      '}',
+
+      '.permit-risk-link-button{',
+        'width:100%;',
+        'margin-top:11px;',
+        'padding:12px;',
+        'border:0;',
+        'border-radius:11px;',
+        'background:var(--deep);',
+        'color:#fff;',
+        'font-family:inherit;',
+        'font-size:14px;',
+        'font-weight:850;',
+      '}',
+
+      '@media(max-width:360px){',
+        '.permit-risk-link-row{',
+          'grid-template-columns:1fr;',
+          'gap:3px;',
+        '}',
+
+        '.permit-risk-link-value{',
+          'text-align:left;',
+        '}',
+      '}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function injectSummaryCard(){
+    if(
+      document.getElementById(
+        'permitRiskLinkCard'
+      )
+    ){
+      return;
+    }
+
+    var workOrderBox =
+      document.querySelector(
+        '#screen-step1 .wo-box'
+      );
+
+    if(!workOrderBox){
+      return;
+    }
+
+    var card =
+      document.createElement('div');
+
+    card.id =
+      'permitRiskLinkCard';
+
+    card.className =
+      'permit-risk-link-card missing';
+
+    workOrderBox.insertAdjacentElement(
+      'afterend',
+      card
+    );
+  }
+
+  function renderRiskSummary(){
+    var card =
+      document.getElementById(
+        'permitRiskLinkCard'
+      );
+
+    if(!card){
+      return;
+    }
+
+    if(!linkedRiskAssessment){
+      card.className =
+        'permit-risk-link-card missing';
+
+      card.innerHTML =
+        '<div class="permit-risk-link-title">' +
+          '⚠️ 위험성평가 연결 필요' +
+        '</div>' +
+
+        '<div style="' +
+          'color:var(--body);font-size:14px;' +
+          'font-weight:700;line-height:1.65;">' +
+          '안전작업허가 신청 전에 위험성평가를 완료해야 합니다.' +
+        '</div>' +
+
+        '<button type="button" ' +
+          'class="permit-risk-link-button" ' +
+          'id="goRiskAssessmentButton">' +
+          '🤖 위험성평가 작성' +
+        '</button>';
+
+      var button =
+        document.getElementById(
+          'goRiskAssessmentButton'
+        );
+
+      if(button){
+        button.addEventListener(
+          'click',
+          moveToRiskAssessment
+        );
+      }
+
+      return;
+    }
+
+    var level =
+      linkedRiskAssessment.finalRiskLevel ||
+      linkedRiskAssessment.riskLevel ||
+      linkedRiskAssessment.overallRisk ||
+      '판정불가';
+
+    var control =
+      linkedRiskAssessment.finalControlAdequacy ||
+      linkedRiskAssessment.controlAdequacy ||
+      '-';
+
+    var measureCount =
+      getSelectedMeasures(
+        linkedRiskAssessment
+      ).length;
+
+    var highRisk =
+      level === '고위험' ||
+      level === '매우고위험';
+
+    card.className =
+      'permit-risk-link-card';
+
+    card.innerHTML =
+      '<div class="permit-risk-link-title">' +
+        '✅ 연결된 위험성평가' +
+      '</div>' +
+
+      createRiskRow(
+        '평가번호',
+        linkedRiskAssessment.riskId || '-',
+        false
+      ) +
+
+      createRiskRow(
+        '최종 위험도',
+        level + ' · ' +
+          getRiskScore(linkedRiskAssessment) +
+          '점',
+        highRisk
+      ) +
+
+      createRiskRow(
+        '고위험작업',
+        getHighRiskText(
+          linkedRiskAssessment
+        ),
+        Boolean(
+          linkedRiskAssessment
+            .highRiskWorkAssessment &&
+          linkedRiskAssessment
+            .highRiskWorkAssessment
+            .applicable === true
+        )
+      ) +
+
+      createRiskRow(
+        '통제 적정성',
+        control,
+        false
+      ) +
+
+      createRiskRow(
+        '적용 안전대책',
+        measureCount + '개',
+        false
+      ) +
+
+      createRiskRow(
+        '평가자',
+        linkedRiskAssessment.assessor || '-',
+        false
+      );
+  }
+
+  function createRiskRow(key, value, high){
+    return (
+      '<div class="permit-risk-link-row">' +
+        '<div class="permit-risk-link-key">' +
+          escapeHtmlForRiskLink(key) +
+        '</div>' +
+
+        '<div class="permit-risk-link-value' +
+          (high ? ' high' : '') +
+        '">' +
+          escapeHtmlForRiskLink(value) +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function escapeHtmlForRiskLink(value){
+    return String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    )
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function connectRiskAssessment(){
+    var effectiveWorkId =
+      (
+        global.permitData &&
+        (
+          global.permitData.workId ||
+          global.permitData.sourceWorkId
+        )
+      ) ||
+      requestedWorkId ||
+      '';
+
+    linkedRiskAssessment =
+      findRiskAssessment(
+        requestedRiskId,
+        effectiveWorkId
+      );
+
+    if(linkedRiskAssessment){
+      if(global.permitData){
+        global.permitData.riskId =
+          linkedRiskAssessment.riskId || null;
+
+        if(
+          !global.permitData.workId &&
+          linkedRiskAssessment.workId
+        ){
+          global.permitData.workId =
+            linkedRiskAssessment.workId;
+        }
+      }
+
+      console.log(
+        '[위험성평가 연결] 연결 완료:',
+        {
+          riskId:
+            linkedRiskAssessment.riskId,
+          workId:
+            linkedRiskAssessment.workId,
+          finalRiskLevel:
+            linkedRiskAssessment
+              .finalRiskLevel
+        }
+      );
+    } else {
+      console.warn(
+        '[위험성평가 연결] 완료된 평가를 찾지 못했습니다.',
+        {
+          requestedRiskId:
+            requestedRiskId,
+          requestedWorkId:
+            effectiveWorkId
+        }
+      );
+    }
+
+    renderRiskSummary();
+
+    return linkedRiskAssessment;
+  }
+
+  function moveToRiskAssessment(){
+    var workId =
+      (
+        global.permitData &&
+        (
+          global.permitData.workId ||
+          global.permitData.sourceWorkId
+        )
+      ) ||
+      requestedWorkId ||
+      '';
+
+    var url =
+      '위험성평가_v2.html';
+
+    if(workId){
+      url +=
+        '?workId=' +
+        encodeURIComponent(workId);
+    }
+
+    global.location.href = url;
+  }
+
+  function installStartFromDbHook(){
+    if(
+      typeof global.startFromDB !== 'function' ||
+      global.startFromDB.__riskLinkInstalled
+    ){
+      return;
+    }
+
+    var previous =
+      global.startFromDB;
+
+    var wrapped =
+      function(workId){
+        var result =
+          previous.apply(this, arguments);
+
+        requestedWorkId =
+          String(workId || '').trim();
+
+        connectRiskAssessment();
+
+        return result;
+      };
+
+    wrapped.__riskLinkInstalled = true;
+    wrapped.__previous = previous;
+
+    global.startFromDB = wrapped;
+  }
+
+  function installValidationHook(){
+    if(
+      typeof global.validateStep1 !== 'function' ||
+      global.validateStep1.__riskLinkInstalled
+    ){
+      return;
+    }
+
+    var previous =
+      global.validateStep1;
+
+    var wrapped =
+      function(){
+        connectRiskAssessment();
+
+        if(!linkedRiskAssessment){
+          if(
+            typeof global.showCustomConfirm ===
+            'function'
+          ){
+            global.showCustomConfirm(
+              {
+                icon: '⚠️',
+                title: '위험성평가 필요',
+                message:
+                  '안전작업허가 신청 전에 위험성평가를 완료해야 합니다.\n\n' +
+                  '위험성평가 화면으로 이동하시겠습니까?',
+                okText: '위험성평가 작성',
+                cancelText: '취소',
+                okType: 'warn'
+              },
+              function(confirmed){
+                if(confirmed){
+                  moveToRiskAssessment();
+                }
+              }
+            );
+          } else {
+            global.showToast(
+              '위험성평가를 먼저 완료해 주세요.',
+              'danger'
+            );
+          }
+
+          return;
+        }
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__riskLinkInstalled = true;
+    wrapped.__previous = previous;
+
+    global.validateStep1 = wrapped;
+  }
+
+  function installSaveHook(){
+    if(
+      typeof global.buildPermitRecord !== 'function' ||
+      global.buildPermitRecord.__riskLinkInstalled
+    ){
+      return;
+    }
+
+    var previous =
+      global.buildPermitRecord;
+
+    var wrapped =
+      function(){
+        var record =
+          previous.apply(this, arguments);
+
+        if(!linkedRiskAssessment){
+          connectRiskAssessment();
+        }
+
+        var snapshot =
+          buildRiskSnapshot(
+            linkedRiskAssessment
+          );
+
+        if(snapshot){
+          record.riskId =
+            snapshot.sourceRiskId;
+
+          record.riskLevel =
+            snapshot.finalRiskLevel;
+
+          record.overallRisk =
+            snapshot.finalRiskLevel;
+
+          record.riskScore =
+            snapshot.riskScore;
+
+          record.controlAdequacy =
+            snapshot.controlAdequacy;
+
+          record.highRiskWorkAssessment =
+            clone(
+              snapshot.highRiskWorkAssessment
+            );
+
+          record.riskHazardSummary =
+            clone(
+              snapshot.hazardSummary
+            );
+
+          record.riskMeasures =
+            snapshot.selectedMeasures
+              .map(function(measure){
+                return measure.text;
+              })
+              .filter(Boolean);
+
+          record.riskMeasureDetails =
+            clone(
+              snapshot.selectedMeasures
+            );
+
+          record.mappedChecklists =
+            clone(
+              snapshot.mappedChecklists
+            );
+
+          record.requiredRecords =
+            clone(
+              snapshot.requiredRecords
+            );
+
+          record.riskSnapshot =
+            clone(snapshot);
+        }
+
+        record.workflowLink = {
+          workId:
+            record.workId || '',
+          riskId:
+            record.riskId || '',
+          safeinfoNo:
+            record.safeinfoNo || '',
+          quizIds: [],
+          permitNo:
+            record.permitNo || '',
+          tbmNo:
+            record.tbmNo || '',
+          inspectionNos:
+            Array.isArray(record.inspectionNos)
+              ? record.inspectionNos.slice()
+              : [],
+          emergencyNos:
+            record.emergencyNo
+              ? [record.emergencyNo]
+              : []
+        };
+
+        return record;
+      };
+
+    wrapped.__riskLinkInstalled = true;
+    wrapped.__previous = previous;
+
+    global.buildPermitRecord = wrapped;
+  }
+
+  function install(){
+    readParameters();
+    injectStyle();
+    injectSummaryCard();
+    installStartFromDbHook();
+    installValidationHook();
+    installSaveHook();
+
+    connectRiskAssessment();
+
+    console.log(
+      '[위험성평가 → 허가서 연결] v' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.permitRiskLink = {
+    version: VERSION,
+
+    connect:
+      connectRiskAssessment,
+
+    getLinkedAssessment:
+      function(){
+        return linkedRiskAssessment
+          ? clone(linkedRiskAssessment)
+          : null;
+      },
+
+    buildSnapshot:
+      function(){
+        return buildRiskSnapshot(
+          linkedRiskAssessment
+        );
+      }
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
+</script>
+  
 </body>
 </html>
 
