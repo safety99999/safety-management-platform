@@ -1788,42 +1788,40 @@
   console.log('[risk-workdb v3.0.1] 적용 완료', report);
 })(window);
 /* ============================================================
- * risk-workdb-match-patch 확장 v3.0.3
- * 작업관리대장 고위험 최우선 적용 개선
+ * risk-workdb-match-patch 확장 v3.1.0
+ * 관리대장 공식 위험등급 최우선 적용 안정본
  *
- * [매칭 우선순위]
- * 1) workId 정확 일치
- * 2) 작업명 정규화 완전 일치
- * 3) 작업명 키워드 유사 일치
+ * [공식 관리대장 적용 조건]
+ * - workId 정확 일치만 공식 매칭으로 인정
+ * - 키워드·작업명 유사 매칭은 참고 후보로만 기록
  *
  * [판정 우선순위]
- * 1) 관리대장 고위험 → 무조건 고위험, 하향 규칙 즉시 중단
- * 2) 순수 점검 작업 → 일반작업
- * 3) 정비·수리 + 분해·조립 → 중위험
- * 4) 관리대장 일반 → 상한 중위험
+ * 1. workId 정확 일치 + 관리대장 고위험
+ *    → 무조건 고위험, 다른 하향 규칙 중단
+ * 2. 순수 점검·순찰·육안·외관·측정·판독
+ *    → 저위험
+ * 3. 정비·수리 + 분해·조립
+ *    → 중위험
+ * 4. workId 정확 일치 + 관리대장 일반
+ *    → 상한 중위험
  *
- * [중요]
- * - 작업담당자: 직영
- * - 작업책임자: 업체·시공사·수급사
- * - 관리대장 고위험은 당사 기준에 따라 도급사·수급사가
- *   회의를 거쳐 확정한 공식 값이므로 자동판정보다 우선한다.
- *
- * ※ 훅 지점: buildAssessmentSaveObject
+ * [저장 안정화]
+ * - 위험등급과 riskScore 동기화
+ * - override 필드 undefined 방지
+ * - Firestore/localStorage 중복 객체 생성 시 원본등급 보존
  * ============================================================ */
 (function(global){
   'use strict';
 
-  var V = '3.0.5';
+  var V = '3.1.0';
 
-  if(global.riskWorkDbPatchV303){
-    console.log('[v3.0.3] 이미 적용');
+  if(global.riskWorkDbPatchV310){
+    console.log('[v3.1.0] 이미 적용');
     return;
   }
 
   var LEVEL_ORDER = {
-    '일반작업': 0,
     '저위험': 1,
-    '일반': 1,
     '중위험': 2,
     '고위험': 3,
     '매우고위험': 4
@@ -1832,12 +1830,13 @@
   var STOP_WORDS = [
     '작업',
     '실시',
+    '확인',
     '관련',
     '안전'
   ];
 
   /* --------------------------------------------------------
-   * 공통 정규화
+   * 공통 유틸리티
    * -------------------------------------------------------- */
 
   function normalizeText(value){
@@ -1909,12 +1908,7 @@
     return String(
       firstValue(
         work,
-        [
-          'workName',
-          'workNameFull',
-          'name',
-          'title'
-        ]
+        ['workName', 'workNameFull', 'name', 'title']
       ) || ''
     ).trim();
   }
@@ -1963,13 +1957,11 @@
   }
 
   function extractKeywords(value){
-    var source = String(value || '')
+    var tokens = String(value || '')
       .toLowerCase()
       .replace(/패널/g, '판넬')
       .replace(/\bloto\b/gi, 'ils')
-      .replace(/로토/g, 'ils');
-
-    var tokens = source
+      .replace(/로토/g, 'ils')
       .split(/[^0-9a-z가-힣]+/)
       .map(function(token){
         return token.trim();
@@ -1992,15 +1984,17 @@
     return unique;
   }
 
-  function getHistory(){
+  function getWorkHistory(){
     try {
-      var raw = localStorage.getItem('safetyDatabase');
+      var raw =
+        localStorage.getItem('safetyDatabase');
 
       if(!raw){
         return [];
       }
 
-      var database = JSON.parse(raw);
+      var database =
+        JSON.parse(raw);
 
       return Array.isArray(database.workHistory)
         ? database.workHistory
@@ -2008,7 +2002,7 @@
 
     } catch(error){
       console.warn(
-        '[v3.0.3] 관리대장 데이터 읽기 실패:',
+        '[v3.1.0] 관리대장 조회 실패:',
         error
       );
 
@@ -2021,7 +2015,8 @@
     method,
     score,
     total,
-    candidateCount
+    candidateCount,
+    authoritative
   ){
     return {
       work: work,
@@ -2031,19 +2026,56 @@
       method: method,
       score: score,
       total: total,
-      candidateCount: candidateCount
+      candidateCount: candidateCount,
+      authoritative: authoritative === true
     };
+  }
+
+  function getEffectiveWorkId(riskData){
+    var workId =
+      riskData && riskData.workId
+        ? riskData.workId
+        : '';
+
+    if(!workId){
+      try {
+        workId =
+          new URLSearchParams(
+            global.location.search
+          ).get('workId') || '';
+      } catch(error){
+        console.warn(
+          '[v3.1.0] URL workId 확인 실패:',
+          error
+        );
+      }
+    }
+
+    workId = normalizeId(workId);
+
+    if(
+      riskData &&
+      !riskData.workId &&
+      workId
+    ){
+      riskData.workId = workId;
+
+      console.log(
+        '[v3.1.0] URL workId 복구:',
+        workId
+      );
+    }
+
+    return workId;
   }
 
   /* --------------------------------------------------------
    * 관리대장 검색
    * -------------------------------------------------------- */
 
-  function findInWorkHistory(
-    workName,
-    workId
-  ){
-    var history = getHistory();
+  function findInWorkHistory(workName, workId){
+    var history =
+      getWorkHistory();
 
     if(history.length === 0){
       return null;
@@ -2053,87 +2085,64 @@
       normalizeId(workId);
 
     /*
-     * 1순위: workId 정확 일치
+     * 공식 매칭: workId 정확 일치
      */
     if(normalizedWorkId){
-      var exactIdWork = history.find(function(work){
-        return (
-          getHistoryWorkId(work) ===
-          normalizedWorkId
-        );
-      });
+      var exactWork =
+        history.find(function(work){
+          return (
+            getHistoryWorkId(work) ===
+            normalizedWorkId
+          );
+        });
 
-      if(exactIdWork){
+      if(exactWork){
         return buildMatchResult(
-          exactIdWork,
+          exactWork,
           'workId-exact',
           100,
           100,
-          1
+          1,
+          true
         );
       }
     }
 
+    /*
+     * 아래부터는 참고 후보일 뿐 위험등급을 변경하지 않는다.
+     */
     if(!workName){
       return null;
     }
 
-    var normalizedWorkName =
+    var normalizedName =
       normalizeText(workName);
 
-    /*
-     * 2순위: 작업명 정규화 완전 일치
-     */
-    if(normalizedWorkName){
-      var exactNameCandidates =
+    if(normalizedName){
+      var nameCandidates =
         history.filter(function(work){
-          var historyName =
+          return (
             normalizeText(
               getHistoryWorkName(work)
-            );
-
-          var historyFullName =
+            ) === normalizedName ||
             normalizeText(
               work.workNameFull || ''
-            );
-
-          return (
-            historyName === normalizedWorkName ||
-            historyFullName === normalizedWorkName
+            ) === normalizedName
           );
         });
 
-      if(exactNameCandidates.length > 0){
-        /*
-         * 같은 이름이 여러 건이면 고위험 공식 분류를 우선한다.
-         */
-        exactNameCandidates.sort(function(first, second){
-          var firstHigh =
-            getHistoryRisk(first) === '고위험'
-              ? 1
-              : 0;
-
-          var secondHigh =
-            getHistoryRisk(second) === '고위험'
-              ? 1
-              : 0;
-
-          return secondHigh - firstHigh;
-        });
-
+      if(nameCandidates.length > 0){
         return buildMatchResult(
-          exactNameCandidates[0],
-          'workName-exact',
+          nameCandidates[0],
+          'workName-reference',
           100,
           100,
-          exactNameCandidates.length
+          nameCandidates.length,
+          false
         );
       }
     }
 
-    /*
-     * 3순위: 키워드 유사 매칭
-     */
     var keywords =
       extractKeywords(workName);
 
@@ -2164,8 +2173,7 @@
       if(score > 0){
         candidates.push({
           work: work,
-          score: score,
-          risk: getHistoryRisk(work)
+          score: score
         });
       }
     });
@@ -2175,24 +2183,11 @@
     }
 
     candidates.sort(function(first, second){
-      if(second.score !== first.score){
-        return second.score - first.score;
-      }
-
-      var firstHigh =
-        first.risk === '고위험'
-          ? 1
-          : 0;
-
-      var secondHigh =
-        second.risk === '고위험'
-          ? 1
-          : 0;
-
-      return secondHigh - firstHigh;
+      return second.score - first.score;
     });
 
-    var best = candidates[0];
+    var best =
+      candidates[0];
 
     var threshold =
       Math.ceil(keywords.length / 2);
@@ -2203,44 +2198,39 @@
 
     return buildMatchResult(
       best.work,
-      'keyword-similarity',
+      'keyword-reference',
       best.score,
       keywords.length,
-      candidates.length
+      candidates.length,
+      false
     );
   }
 
   /* --------------------------------------------------------
-   * 키워드 판정 규칙
+   * 키워드 규칙
    * -------------------------------------------------------- */
 
-  function inferByKeyword(
-    workName,
-    workDescription
-  ){
+  function inferByKeyword(workName, workDescription){
     var text =
       String(workName || '') +
       ' ' +
       String(workDescription || '');
 
     /*
-     * 순수 점검 작업
-     * 정비·수리·교체·분해·조립이 포함되면 하향하지 않는다.
+     * 순수 확인·점검 업무는 저위험
      */
     if(
       /점검|순찰|육안|외관|측정|판독/.test(text) &&
       !/정비|수리|교체|분해|조립/.test(text)
     ){
-return {
-  level: '저위험',
-  reason: '순수 점검 작업 저위험 규칙 적용'
-};
-
+      return {
+        level: '저위험',
+        reason: '순수 점검 작업 저위험 규칙 적용'
+      };
     }
 
     /*
-     * 정비·수리와 분해·조립이 동시에 존재하면
-     * 최소 중위험으로 판단한다.
+     * 정비·수리와 분해·조립이 동시에 있으면 중위험
      */
     if(
       /정비|수리/.test(text) &&
@@ -2248,7 +2238,7 @@ return {
     ){
       return {
         level: '중위험',
-        reason: '정비·수리 및 분해·조립 작업 규칙 적용'
+        reason: '정비·수리 및 분해·조립 작업 중위험 규칙 적용'
       };
     }
 
@@ -2276,26 +2266,33 @@ return {
 
   function higherRisk(first, second){
     var firstOrder =
-      LEVEL_ORDER[first];
+      LEVEL_ORDER[first] || 0;
 
     var secondOrder =
-      LEVEL_ORDER[second];
-
-    if(firstOrder === undefined){
-      return second;
-    }
-
-    if(secondOrder === undefined){
-      return first;
-    }
+      LEVEL_ORDER[second] || 0;
 
     return firstOrder >= secondOrder
       ? first
       : second;
   }
 
+  function getRiskScore(level){
+    if(typeof global.getRiskScore === 'function'){
+      return global.getRiskScore(level);
+    }
+
+    var scores = {
+      '저위험': 3,
+      '중위험': 8,
+      '고위험': 15,
+      '매우고위험': 25
+    };
+
+    return scores[level] || 0;
+  }
+
   /* --------------------------------------------------------
-   * 오버라이드 적용
+   * 판정 적용
    * -------------------------------------------------------- */
 
   function overrideDecision(riskData){
@@ -2307,17 +2304,19 @@ return {
     }
 
     /*
-     * Firestore undefined 방지를 위해 항상 기본값을 만든다.
-     * 동일 저장 객체가 두 번 생성되더라도 최초 위험도를 보존한다.
+     * Firestore와 localStorage가 각각 저장 객체를 만들기 때문에
+     * 최초 자동판정값을 계속 유지한다.
      */
     var original =
       (
         riskData.overrideVersion === V &&
-        typeof riskData.originalRiskLevel === 'string' &&
         riskData.originalRiskLevel
       )
         ? riskData.originalRiskLevel
         : (riskData.finalRiskLevel || '');
+
+    var workId =
+      getEffectiveWorkId(riskData);
 
     var workName =
       riskData.workName || '';
@@ -2327,53 +2326,26 @@ return {
       riskData.workDesc ||
       '';
 
-var urlWorkId = '';
-
-try {
-  urlWorkId =
-    new URLSearchParams(
-      global.location.search
-    ).get('workId') || '';
-} catch(error){
-  console.warn(
-    '[v3.0.4] URL workId 확인 실패:',
-    error
-  );
-}
-
-var workId =
-  riskData.workId ||
-  urlWorkId ||
-  '';
-
-/*
- * 대시보드에서 전달된 workId가 riskData에 누락된 경우 복구
- */
-if(
-  !riskData.workId &&
-  workId
-){
-  riskData.workId = workId;
-
-  console.log(
-    '[v3.0.4] URL workId 복구:',
-    workId
-  );
-}
-
-
     var match =
       findInWorkHistory(
         workName,
         workId
       );
 
-    var finalLevel = original;
+    var authoritative =
+      Boolean(
+        match &&
+        match.authoritative === true &&
+        match.method === 'workId-exact'
+      );
+
+    var finalLevel =
+      original;
+
     var reasons = [];
-    var priorityApplied = false;
 
     console.log(
-      '[v3.0.3] 판정 시작:',
+      '[v3.1.0] 판정 시작:',
       {
         workId: workId,
         workName: workName,
@@ -2382,15 +2354,53 @@ if(
     );
 
     /*
-     * 최우선 규칙:
-     * 관리대장 고위험은 다른 모든 하향 규칙보다 우선한다.
+     * 모든 관리대장 검색 결과를 기록하되
+     * workId 정확 일치 여부를 별도로 표시한다.
+     */
+    if(match){
+      riskData.managementLedgerReference = {
+        matched: true,
+        authoritative: authoritative,
+        workId: match.workId,
+        workName: match.workName,
+        risk: match.risk,
+        method: match.method,
+        score: match.score,
+        total: match.total,
+        candidateCount: match.candidateCount,
+        highRiskPriorityApplied: false,
+        reviewedAt: new Date().toISOString()
+      };
+
+      console.log(
+        authoritative
+          ? '[v3.1.0] 📋 관리대장 공식 매칭'
+          : '[v3.1.0] 🔎 관리대장 참고 후보',
+        riskData.managementLedgerReference
+      );
+    } else {
+      riskData.managementLedgerReference = {
+        matched: false,
+        authoritative: false,
+        requestedWorkId: workId,
+        requestedWorkName: workName,
+        highRiskPriorityApplied: false,
+        reviewedAt: new Date().toISOString()
+      };
+
+      console.log(
+        '[v3.1.0] 관리대장 매칭 없음'
+      );
+    }
+
+    /*
+     * 최우선: workId가 정확히 일치하는 관리대장 고위험
      */
     if(
-      match &&
+      authoritative &&
       match.risk === '고위험'
     ){
       finalLevel = '고위험';
-      priorityApplied = true;
 
       reasons.push(
         original === '고위험'
@@ -2401,6 +2411,9 @@ if(
               ')'
             )
       );
+
+      riskData.managementLedgerReference
+        .highRiskPriorityApplied = true;
 
       riskData.finalRiskLevel =
         finalLevel;
@@ -2417,83 +2430,20 @@ if(
       riskData.originalRiskLevel =
         original;
 
-      riskData.managementLedgerReference = {
-        matched: true,
-        workId: match.workId,
-        workName: match.workName,
-        risk: match.risk,
-        method: match.method,
-        score: match.score,
-        total: match.total,
-        candidateCount: match.candidateCount,
-        highRiskPriorityApplied: true,
-        reviewedAt: new Date().toISOString()
-      };
-
       console.log(
-        '[v3.0.3] 📋 관리대장 고위험 최우선:',
-        {
-          workId: match.workId,
-          workName: match.workName,
-          method: match.method,
-          score: match.score + '/' + match.total,
-          original: original,
-          final: finalLevel
-        }
+        '[v3.1.0] ✅ 관리대장 고위험 최우선:',
+        original,
+        '→',
+        finalLevel
       );
 
       console.log(
-        '[v3.0.3] ✅ 다른 하향 규칙 적용 중단'
+        '[v3.1.0] ✅ 다른 하향 규칙 적용 중단'
       );
 
       return riskData;
     }
 
-    /*
-     * 관리대장 매칭 정보를 먼저 기록한다.
-     */
-    if(match){
-      console.log(
-        '[v3.0.3] 📋 관리대장 매칭:',
-        {
-          workId: match.workId,
-          workName: match.workName,
-          risk: match.risk,
-          method: match.method,
-          score: match.score + '/' + match.total,
-          candidates: match.candidateCount
-        }
-      );
-
-      riskData.managementLedgerReference = {
-        matched: true,
-        workId: match.workId,
-        workName: match.workName,
-        risk: match.risk,
-        method: match.method,
-        score: match.score,
-        total: match.total,
-        candidateCount: match.candidateCount,
-        highRiskPriorityApplied: false,
-        reviewedAt: new Date().toISOString()
-      };
-    } else {
-      console.log(
-        '[v3.0.3] 관리대장 매칭 실패'
-      );
-
-      riskData.managementLedgerReference = {
-        matched: false,
-        requestedWorkId: workId,
-        requestedWorkName: workName,
-        highRiskPriorityApplied: false,
-        reviewedAt: new Date().toISOString()
-      };
-    }
-
-    /*
-     * 키워드 규칙
-     */
     var keywordRule =
       inferByKeyword(
         workName,
@@ -2501,11 +2451,10 @@ if(
       );
 
     /*
-     * 관리대장 일반:
-     * 자동판정이 고위험 이상이면 중위험으로 캡한다.
+     * 정확 일치한 관리대장 일반은 상한 중위험
      */
     if(
-      match &&
+      authoritative &&
       (
         match.risk === '일반' ||
         match.risk === '일반작업'
@@ -2529,52 +2478,39 @@ if(
     }
 
     /*
-     * 관리대장 일반과 키워드 규칙이 동시에 성립하면
-     * 더 보수적인 높은 등급을 채택한다.
+     * 관리대장 일반과 키워드 규칙이 동시에 있으면
+     * 더 보수적인 등급을 적용한다.
      */
     if(keywordRule){
       if(
-        match &&
+        authoritative &&
         (
           match.risk === '일반' ||
           match.risk === '일반작업'
         )
       ){
-        var conservativeLevel =
+        var conservative =
           higherRisk(
             finalLevel,
             keywordRule.level
           );
 
-        if(conservativeLevel !== finalLevel){
+        if(conservative !== finalLevel){
           reasons.push(
             keywordRule.reason +
-            ' (보수적 등급 적용)'
+            ' · 관리대장 일반과 보수적 등급 비교'
           );
 
           finalLevel =
-            conservativeLevel;
+            conservative;
         }
       } else {
- if(
-  keywordRule.level === '저위험' &&
-  LEVEL_ORDER[finalLevel] > LEVEL_ORDER['저위험']
-){
-  reasons.push(
-    keywordRule.reason +
-    ' (기존: ' +
-    finalLevel +
-    ')'
-  );
-
-  finalLevel =
-    '저위험';
-}
-
-
+        /*
+         * 신규 평가 또는 참고 후보만 존재하는 경우
+         * 키워드 규칙을 직접 적용한다.
+         */
         if(
-          keywordRule.level === '중위험' &&
-          finalLevel !== '중위험'
+          keywordRule.level !== finalLevel
         ){
           reasons.push(
             keywordRule.reason +
@@ -2584,7 +2520,7 @@ if(
           );
 
           finalLevel =
-            '중위험';
+            keywordRule.level;
         }
       }
     }
@@ -2609,7 +2545,7 @@ if(
 
     if(changed){
       console.log(
-        '[v3.0.3] ✅ 오버라이드 적용:',
+        '[v3.1.0] ✅ 오버라이드 적용:',
         original,
         '→',
         finalLevel
@@ -2617,17 +2553,69 @@ if(
 
       reasons.forEach(function(reason){
         console.log(
-          '[v3.0.3]   · ' + reason
+          '[v3.1.0]   · ' + reason
         );
       });
     } else {
       console.log(
-        '[v3.0.3] 변경 없음:',
+        '[v3.1.0] 변경 없음:',
         original
       );
     }
 
     return riskData;
+  }
+
+  /* --------------------------------------------------------
+   * 저장 객체 동기화
+   * -------------------------------------------------------- */
+
+  function applySaveFields(saveObject, riskData){
+    var finalLevel =
+      riskData.finalRiskLevel || '';
+
+    saveObject.finalRiskLevel =
+      finalLevel;
+
+    saveObject.riskLevel =
+      finalLevel;
+
+    saveObject.overallRisk =
+      finalLevel;
+
+    saveObject.riskScore =
+      getRiskScore(finalLevel);
+
+    saveObject.overrideApplied =
+      riskData.overrideApplied === true;
+
+    saveObject.overrideVersion =
+      riskData.overrideVersion || V;
+
+    saveObject.overrideReasons =
+      Array.isArray(riskData.overrideReasons)
+        ? riskData.overrideReasons.slice()
+        : [];
+
+    saveObject.originalRiskLevel =
+      riskData.originalRiskLevel ||
+      finalLevel;
+
+    saveObject.managementLedgerReference =
+      riskData.managementLedgerReference
+        ? JSON.parse(
+            JSON.stringify(
+              riskData.managementLedgerReference
+            )
+          )
+        : {
+            matched: false,
+            authoritative: false,
+            requestedWorkId: riskData.workId || '',
+            requestedWorkName: riskData.workName || ''
+          };
+
+    return saveObject;
   }
 
   /* --------------------------------------------------------
@@ -2639,17 +2627,13 @@ if(
       typeof global.buildAssessmentSaveObject !==
       'function'
     ){
-      setTimeout(
-        installHook,
-        100
-      );
-
+      setTimeout(installHook, 100);
       return;
     }
 
     if(
       global.buildAssessmentSaveObject
-        .__v303Installed
+        .__v310Installed
     ){
       return;
     }
@@ -2670,92 +2654,22 @@ if(
             global.riskData
           );
 
-          saveObject.finalRiskLevel =
-            global.riskData.finalRiskLevel || '';
-
-          saveObject.riskLevel =
-            global.riskData.finalRiskLevel || '';
-
-saveObject.overallRisk =
-  global.riskData.finalRiskLevel || '';
-
-saveObject.riskScore =
-  typeof global.getRiskScore === 'function'
-    ? global.getRiskScore(global.riskData.finalRiskLevel)
-    : (
-        global.riskData.finalRiskLevel === '저위험'
-          ? 3
-          : global.riskData.finalRiskLevel === '중위험'
-            ? 8
-            : global.riskData.finalRiskLevel === '고위험'
-              ? 15
-              : 0
-      );
-
-
-          saveObject.overrideApplied =
-            global.riskData.overrideApplied === true;
-
-          saveObject.overrideVersion =
-            global.riskData.overrideVersion || V;
-
-          saveObject.overrideReasons =
-            Array.isArray(
-              global.riskData.overrideReasons
-            )
-              ? global.riskData
-                  .overrideReasons
-                  .slice()
-              : [];
-
-          saveObject.originalRiskLevel =
-            global.riskData.originalRiskLevel ||
-            global.riskData.finalRiskLevel ||
-            '';
-
-          saveObject.managementLedgerReference =
-            global.riskData.managementLedgerReference
-              ? JSON.parse(
-                  JSON.stringify(
-                    global.riskData
-                      .managementLedgerReference
-                  )
-                )
-              : {
-                  matched: false,
-                  requestedWorkId:
-                    global.riskData.workId || '',
-                  requestedWorkName:
-                    global.riskData.workName || ''
-                };
+          applySaveFields(
+            saveObject,
+            global.riskData
+          );
         } else {
-          overrideDecision(
+          overrideDecision(saveObject);
+          applySaveFields(
+            saveObject,
             saveObject
           );
-
-          saveObject.overrideApplied =
-            saveObject.overrideApplied === true;
-
-          saveObject.overrideVersion =
-            saveObject.overrideVersion || V;
-
-          saveObject.overrideReasons =
-            Array.isArray(
-              saveObject.overrideReasons
-            )
-              ? saveObject.overrideReasons
-              : [];
-
-          saveObject.originalRiskLevel =
-            saveObject.originalRiskLevel ||
-            saveObject.finalRiskLevel ||
-            '';
         }
 
         return saveObject;
       };
 
-    wrapped.__v303Installed =
+    wrapped.__v310Installed =
       true;
 
     wrapped.__previous =
@@ -2765,13 +2679,9 @@ saveObject.riskScore =
       wrapped;
 
     console.log(
-      '[v3.0.3] ✅ buildAssessmentSaveObject 훅 설치 완료'
+      '[v3.1.0] ✅ buildAssessmentSaveObject 훅 설치 완료'
     );
   }
-
-  /* --------------------------------------------------------
-   * 부트
-   * -------------------------------------------------------- */
 
   if(document.readyState === 'loading'){
     document.addEventListener(
@@ -2784,51 +2694,43 @@ saveObject.riskScore =
 
   var api = {
     version: V,
-
-    override:
-      overrideDecision,
-
-    findInHistory:
-      findInWorkHistory,
-
-    ruleByKeyword:
-      inferByKeyword,
-
-    reinstall:
-      installHook,
+    override: overrideDecision,
+    findInHistory: findInWorkHistory,
+    ruleByKeyword: inferByKeyword,
+    reinstall: installHook,
 
     restore: function(){
       if(
         global.buildAssessmentSaveObject &&
         global.buildAssessmentSaveObject
-          .__v303Installed
+          .__v310Installed
       ){
         global.buildAssessmentSaveObject =
           global.buildAssessmentSaveObject
             .__previous;
       }
 
-      delete global.riskWorkDbPatchV303;
-      delete global.riskWorkDbPatchV302;
+      delete global.riskWorkDbPatchV310;
 
       console.log(
-        '[v3.0.3] 해제 완료'
+        '[v3.1.0] 해제 완료'
       );
     }
   };
 
-  global.riskWorkDbPatchV303 =
-    api;
+  global.riskWorkDbPatchV310 = api;
 
   /*
-   * 기존 콘솔 점검 명령과의 호환성 유지
+   * 기존 콘솔 검증 명령 호환
    */
-  global.riskWorkDbPatchV302 =
-    api;
+  global.riskWorkDbPatchV303 = api;
+  global.riskWorkDbPatchV302 = api;
 
-console.log(
-  '[risk-workdb v3.0.5] 고위험 최우선 및 순수 점검 저위험 규칙 로드 완료'
-);
+  console.log(
+    '[risk-workdb v3.1.0] 관리대장 공식 매칭 안정본 로드 완료'
+  );
+
+})(window);
 
 
 })(window);
