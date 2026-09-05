@@ -1003,6 +1003,61 @@ body{
   line-height:1;
   cursor:pointer;
 }
+/* 허가서 7단계 역할 및 확인 영역 */
+.permit-manager-confirmations{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin:14px 0;
+}
+
+.permit-confirm-item{
+  min-height:52px;
+  padding:11px 12px;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  border:1.5px solid var(--line);
+  border-radius:10px;
+  background:var(--sunk);
+  cursor:pointer;
+}
+
+.permit-confirm-item input{
+  flex-shrink:0;
+  width:21px;
+  height:21px;
+  margin-top:1px;
+  accent-color:var(--done);
+}
+
+.permit-confirm-item span{
+  color:var(--body);
+  font-size:14px;
+  font-weight:700;
+  line-height:1.5;
+}
+
+.same-role-option{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
+  padding:12px;
+  border:1.5px solid var(--line);
+  border-radius:10px;
+  background:var(--tint);
+  color:var(--body);
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.same-role-option input{
+  width:21px;
+  height:21px;
+  accent-color:var(--posco);
+}
   
 @media(prefers-reduced-motion:reduce){
  /* ═══════════════════════════════════════
@@ -1740,49 +1795,250 @@ body{
   </div>
 </div>
 
-<!-- SCREEN 7: 서명 및 승인 -->
+<!-- SCREEN 7: 확인·서명 및 승인 요청 -->
 <div class="screen" id="screen-step7">
+
   <div class="info-box">
-    <div class="info-box-title">📋 승인 프로세스</div>
-    <div class="info-box-text">작업자 서명 → 작업책임자 승인요청 → 허가자 최종 승인</div>
+    <div class="info-box-title">📋 허가 승인 요청</div>
+    <div class="info-box-text">
+      당사 작업담당자가 위험성평가와 현장 안전조치를 확인한 후
+      허가자에게 최종 승인을 요청합니다.<br>
+      실제 참여 작업자의 확인과 서명은 TBM에서 수행합니다.
+    </div>
   </div>
 
+  <!-- 당사 작업담당자 -->
   <div class="form-section">
-    <div class="form-section-title">✍️ 작업자 서명</div>
+    <div class="form-section-title">👤 당사 작업담당자</div>
+
+    <div class="form-group">
+      <label class="f-label" for="company-work-manager-name">
+        이름<span class="req">*</span>
+      </label>
+      <input
+        type="text"
+        class="f-input"
+        id="company-work-manager-name"
+        placeholder="당사 작업담당자 이름"
+      >
+    </div>
+
+    <div class="form-group">
+      <label class="f-label" for="company-work-manager-department">
+        소속 부서<span class="req">*</span>
+      </label>
+      <input
+        type="text"
+        class="f-input"
+        id="company-work-manager-department"
+        placeholder="예: 설비기술섹션"
+      >
+    </div>
+
+    <div class="form-group">
+      <label class="f-label" for="company-work-manager-phone">
+        연락처<span class="req">*</span>
+      </label>
+      <input
+        type="tel"
+        class="f-input"
+        id="company-work-manager-phone"
+        placeholder="010-0000-0000"
+      >
+    </div>
+
+    <div class="permit-manager-confirmations">
+
+      <label class="permit-confirm-item">
+        <input type="checkbox" id="confirm-risk-reviewed">
+        <span>
+          위험성평가의 위험요인과 사고 시나리오를 확인했습니다.
+        </span>
+      </label>
+
+      <label class="permit-confirm-item">
+        <input type="checkbox" id="confirm-measures-implemented">
+        <span>
+          통합 안전 체크리스트의 대책이 현장에 적용되었습니다.
+        </span>
+      </label>
+
+      <label class="permit-confirm-item">
+        <input type="checkbox" id="confirm-work-condition-matched">
+        <span>
+          작업방법·장소·장비·인원이 위험성평가 조건과 일치합니다.
+        </span>
+      </label>
+
+      <label class="permit-confirm-item">
+        <input type="checkbox" id="confirm-no-critical-risk">
+        <span>
+          미해결 중대위험이 없음을 확인했습니다.
+        </span>
+      </label>
+
+    </div>
+
     <div class="sig-box">
-      <div class="sig-label">서명 <span class="req">*</span></div>
-      <canvas class="sig-canvas" id="worker-sig" width="400" height="150"></canvas>
-      <button class="sig-clear" onclick="clearSig()">지우기</button>
+      <div class="sig-label">
+        당사 작업담당자 확인 서명
+        <span class="req">*</span>
+      </div>
+
+      <canvas
+        class="sig-canvas"
+        id="worker-sig"
+        width="400"
+        height="150"
+      ></canvas>
+
+      <button
+        type="button"
+        class="sig-clear"
+        onclick="clearSig()"
+      >
+        지우기
+      </button>
     </div>
   </div>
 
-  <div class="form-section">
-    <div class="form-section-title">👤 작업 책임자 정보</div>
+  <!-- 당사 작업책임자 -->
+  <div
+    class="form-section"
+    id="companyWorkSupervisorSection"
+    style="display:none;"
+  >
+    <div class="form-section-title">🏭 당사 작업책임자</div>
+
+    <label class="same-role-option">
+      <input
+        type="checkbox"
+        id="sameAsCompanyWorkManager"
+        onchange="toggleSameCompanyRole()"
+      >
+      <span>
+        당사 작업담당자와 작업책임자가 동일함
+      </span>
+    </label>
+
     <div class="form-group">
-      <label class="f-label">책임자 이름<span class="req">*</span></label>
-      <input class="f-input" id="sup-name" placeholder="이책임">
+      <label class="f-label" for="company-work-supervisor-name">
+        이름<span class="req">*</span>
+      </label>
+      <input
+        type="text"
+        class="f-input"
+        id="company-work-supervisor-name"
+        placeholder="당사 작업책임자 이름"
+      >
     </div>
+
     <div class="form-group">
-      <label class="f-label">연락처<span class="req">*</span></label>
-      <input class="f-input" id="sup-phone" type="tel" placeholder="010-1234-5678">
+      <label class="f-label" for="company-work-supervisor-department">
+        소속 부서<span class="req">*</span>
+      </label>
+      <input
+        type="text"
+        class="f-input"
+        id="company-work-supervisor-department"
+        placeholder="소속 부서"
+      >
     </div>
+
     <div class="form-group">
-      <label class="f-label">작업책임자 이메일<span class="req">*</span></label>
-      <input class="f-input" id="sup-email" type="email" placeholder="supervisor@posco.com">
+      <label class="f-label" for="company-work-supervisor-phone">
+        연락처<span class="req">*</span>
+      </label>
+      <input
+        type="tel"
+        class="f-input"
+        id="company-work-supervisor-phone"
+        placeholder="010-0000-0000"
+      >
+    </div>
+
+    <div class="form-group">
+      <label class="f-label" for="company-work-supervisor-email">
+        TBM 전달 이메일
+      </label>
+      <input
+        type="email"
+        class="f-input"
+        id="company-work-supervisor-email"
+        placeholder="supervisor@posco.com"
+      >
+    </div>
+  </div>
+
+  <!-- 수급인 작업책임자 -->
+  <div
+    class="form-section"
+    id="contractorWorkSupervisorSection"
+    style="display:none;"
+  >
+    <div class="form-section-title">🤝 수급인 작업책임자</div>
+
+    <div class="form-group">
+      <label class="f-label" for="sup-name">
+        이름<span class="req">*</span>
+      </label>
+      <input
+        type="text"
+        class="f-input"
+        id="sup-name"
+        placeholder="수급인 작업책임자 이름"
+      >
+    </div>
+
+    <div class="form-group">
+      <label class="f-label" for="sup-phone">
+        연락처<span class="req">*</span>
+      </label>
+      <input
+        type="tel"
+        class="f-input"
+        id="sup-phone"
+        placeholder="010-0000-0000"
+      >
+    </div>
+
+    <div class="form-group">
+      <label class="f-label" for="sup-email">
+        TBM 전달 이메일<span class="req">*</span>
+      </label>
+      <input
+        type="email"
+        class="f-input"
+        id="sup-email"
+        placeholder="supervisor@example.com"
+      >
     </div>
   </div>
 
   <div class="warn-box">
-    <div class="warn-box-title">⚠️ 확인사항</div>
+    <div class="warn-box-title">⚠️ 승인 요청 전 확인</div>
     <div class="warn-box-text">
-      • 모든 안전조치가 완료되었음을 확인합니다<br>
-      • 거짓 작성 시 산업안전보건법 위반으로 처벌받을 수 있습니다
+      승인 요청 후 허가 상태는 ‘승인대기’입니다.<br>
+      허가자 최종 승인 전에는 TBM을 진행할 수 없습니다.
     </div>
   </div>
 
   <div class="btn-row">
-    <button class="btn-secondary" onclick="goToStep(6)">← 이전</button>
-    <button class="btn-primary" onclick="validateStep7()">승인 요청</button>
+    <button
+      type="button"
+      class="btn-secondary"
+      onclick="goToStep(6)"
+    >
+      ← 이전
+    </button>
+
+    <button
+      type="button"
+      class="btn-primary"
+      onclick="validateStep7()"
+    >
+      허가자 승인 요청
+    </button>
   </div>
 </div>
 
