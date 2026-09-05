@@ -1813,7 +1813,7 @@
 (function(global){
   'use strict';
 
-  var V = '3.0.3';
+  var V = '3.0.4';
 
   if(global.riskWorkDbPatchV303){
     console.log('[v3.0.3] 이미 적용');
@@ -2326,8 +2326,40 @@
       riskData.workDesc ||
       '';
 
-    var workId =
-      riskData.workId || '';
+var urlWorkId = '';
+
+try {
+  urlWorkId =
+    new URLSearchParams(
+      global.location.search
+    ).get('workId') || '';
+} catch(error){
+  console.warn(
+    '[v3.0.4] URL workId 확인 실패:',
+    error
+  );
+}
+
+var workId =
+  riskData.workId ||
+  urlWorkId ||
+  '';
+
+/*
+ * 대시보드에서 전달된 workId가 riskData에 누락된 경우 복구
+ */
+if(
+  !riskData.workId &&
+  workId
+){
+  riskData.workId = workId;
+
+  console.log(
+    '[v3.0.4] URL workId 복구:',
+    workId
+  );
+}
+
 
     var match =
       findInWorkHistory(
@@ -2778,8 +2810,8 @@
   global.riskWorkDbPatchV302 =
     api;
 
-  console.log(
-    '[risk-workdb v3.0.3] 관리대장 고위험 최우선 개선 로드 완료'
-  );
+console.log(
+  '[risk-workdb v3.0.4] 관리대장 workId 복구 및 고위험 최우선 로드 완료'
+);
 
 })(window);
