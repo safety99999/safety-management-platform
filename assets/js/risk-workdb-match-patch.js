@@ -2731,3 +2731,1279 @@
   );
 
 })(window);
+/* ============================================================
+ * risk-workdb-match-patch 확장 v3.2.0
+ * 신규 위험성평가 사내 고위험작업 분류 적용
+ *
+ * [핵심 원칙]
+ * 1. workId-exact + 관리대장 고위험은 무조건 고위험
+ * 2. 관리대장 유사 매칭은 참고만 하고 판정에 사용하지 않음
+ * 3. 신규평가는 사내 고위험작업 6개 분류 기준으로 판정
+ * 4. 신규평가가 사내 고위험 기준에 해당하지 않으면
+ *    정적 DB 자동판정만으로 고위험을 확정하지 않음
+ * 5. 신규 일반 수리·정비·교체·분해·조립은 중위험
+ * 6. 예외조건은 자동 비대상 처리하지 않고 예외검토로 유지
+ * 7. 위험도와 고위험작업 특별관리 여부를 분리 저장
+ * ============================================================ */
+(function(global){
+  'use strict';
+
+  var V = '3.2.0';
+  var POLICY_VERSION = '1.0';
+
+  if(global.riskHighWorkPolicyV320){
+    console.log('[v3.2.0] 이미 적용');
+    return;
+  }
+
+  var LEVEL_ORDER = {
+    '판정불가': 0,
+    '저위험': 1,
+    '중위험': 2,
+    '고위험': 3,
+    '매우고위험': 4
+  };
+
+  var LEVEL_SCORE = {
+    '판정불가': 0,
+    '저위험': 3,
+    '중위험': 8,
+    '고위험': 15,
+    '매우고위험': 25
+  };
+
+  var CATEGORY_LABELS = {
+    HIGH_RISK_FIRE: '고위험 화기작업',
+    CONFINED_SPACE: '밀폐공간 작업',
+    CORROSIVE_CHEMICAL: '고(高)부식성 유해화학물질 작업',
+    HIGH_RISK_HEIGHT: '고(高)위험 고소작업',
+    HIGH_RISK_LIFTING: '고(高)위험 중량물 취급 작업',
+    HIGH_RISK_ELECTRICAL: '고(高)위험 전기작업'
+  };
+
+  function getElement(id){
+    return document.getElementById(id);
+  }
+
+  function isChecked(id){
+    var element = getElement(id);
+    return Boolean(element && element.checked);
+  }
+
+  function getValue(id){
+    var element = getElement(id);
+
+    return element
+      ? String(element.value || '').trim()
+      : '';
+  }
+
+  function normalizeId(value){
+    return String(value || '')
+      .trim()
+      .replace(/\s+/g, '');
+  }
+
+  function getEffectiveWorkId(riskData){
+    var workId =
+      riskData && riskData.workId
+        ? riskData.workId
+        : '';
+
+    if(!workId){
+      try {
+        workId =
+          new URLSearchParams(
+            global.location.search
+          ).get('workId') || '';
+      } catch(error){
+        console.warn(
+          '[v3.2.0] URL workId 확인 실패:',
+          error
+        );
+      }
+    }
+
+    workId = normalizeId(workId);
+
+    if(riskData && !riskData.workId && workId){
+      riskData.workId = workId;
+    }
+
+    return workId;
+  }
+
+  function getManagementLedgerMatch(riskData){
+    if(
+      !global.riskWorkDbPatchV310 ||
+      typeof global.riskWorkDbPatchV310.findInHistory !== 'function'
+    ){
+      return null;
+    }
+
+    return global.riskWorkDbPatchV310.findInHistory(
+      riskData.workName || '',
+      getEffectiveWorkId(riskData)
+    );
+  }
+
+  function isAuthoritativeMatch(match){
+    return Boolean(
+      match &&
+      match.authoritative === true &&
+      match.method === 'workId-exact'
+    );
+  }
+
+  function capRiskLevel(level, maximum){
+    var currentOrder = LEVEL_ORDER[level];
+    var maximumOrder = LEVEL_ORDER[maximum];
+
+    if(currentOrder === undefined){
+      return maximum;
+    }
+
+    return currentOrder > maximumOrder
+      ? maximum
+      : level;
+  }
+
+  function higherRisk(first, second){
+    var firstOrder = LEVEL_ORDER[first] || 0;
+    var secondOrder = LEVEL_ORDER[second] || 0;
+
+    return firstOrder >= secondOrder
+      ? first
+      : second;
+  }
+
+  function getRiskScore(level){
+    return LEVEL_SCORE[level] || 0;
+  }
+
+  function getCurrentAssessmentText(riskData){
+    return [
+      riskData.workType || '',
+      riskData.workName || '',
+      riskData.workDescription || '',
+      riskData.workDesc || ''
+    ].join(' ');
+  }
+
+  function isPureInspection(text){
+    return (
+      /점검|순찰|육안|외관|측정|판독/.test(text) &&
+      !/정비|수리|보수|교체|분해|조립|해체/.test(text)
+    );
+  }
+
+  function isMaintenanceWork(text){
+    return /정비|수리|보수|교체|분해|조립|해체/.test(text);
+  }
+
+  function readPolicyInputs(){
+    return {
+      reviewed: isChecked('highRiskPolicyReviewed'),
+
+      fire: {
+        criterionMatched:
+          isChecked('hrFireCriterion')
+      },
+
+      confined: {
+        criterionMatched:
+          isChecked('hrConfinedCriterion'),
+
+        shortInspectionException:
+          isChecked('hrConfinedShortException'),
+
+        co2FacilityException:
+          isChecked('hrConfinedCo2Exception')
+      },
+
+      chemical: {
+        criterionMatched:
+          isChecked('hrChemicalCriterion'),
+
+        reagentException:
+          isChecked('hrChemicalReagentException')
+      },
+
+      height: {
+        criterionMatched:
+          isChecked('hrHeightCriterion'),
+
+        protectedPlatformException:
+          isChecked('hrHeightPlatformException')
+      },
+
+      lifting: {
+        criterionMatched:
+          isChecked('hrLiftingCriterion'),
+
+        manualChainBlockException:
+          isChecked('hrLiftingChainBlockException')
+      },
+
+      electrical: {
+        criterionMatched:
+          isChecked('hrElectricalCriterion'),
+
+        branchBreakerException:
+          isChecked('hrElectricalBranchException')
+      },
+
+      additionalReason:
+        getValue('highRiskAdditionalReason')
+    };
+  }
+
+  function evaluateInternalPolicy(inputs){
+    var categories = [];
+    var reasons = [];
+    var criteria = [];
+    var exceptions = [];
+
+    if(inputs.fire.criterionMatched){
+      categories.push('HIGH_RISK_FIRE');
+
+      reasons.push(
+        '폭발위험장소, 인화성 액체·가스, 가연성가스·산소 배관 또는 저장설비에서 수행하는 화기작업'
+      );
+
+      criteria.push(
+        '사내 고위험 화기작업 기준'
+      );
+    }
+
+    if(inputs.confined.criterionMatched){
+      categories.push('CONFINED_SPACE');
+
+      reasons.push(
+        '산소결핍 또는 유해가스로 인한 질식 위험이 있는 밀폐공간 작업'
+      );
+
+      criteria.push(
+        '사내 밀폐공간 고위험작업 기준'
+      );
+
+      if(inputs.confined.shortInspectionException){
+        exceptions.push({
+          category: 'CONFINED_SPACE',
+          code: 'CONFINED_SHORT_INSPECTION',
+          reason: '10분 이내 단순점검 예외 검토'
+        });
+      }
+
+      if(inputs.confined.co2FacilityException){
+        exceptions.push({
+          category: 'CONFINED_SPACE',
+          code: 'CONFINED_CO2_CONTROLLED_AREA',
+          reason: '강화 운영 중인 이산화탄소 소화설비 방호구역·용기실 예외 검토'
+        });
+      }
+    }
+
+    if(inputs.chemical.criterionMatched){
+      categories.push('CORROSIVE_CHEMICAL');
+
+      reasons.push(
+        '강산 또는 강염기 등 고부식성 물질의 배관·탱크 수리작업'
+      );
+
+      criteria.push(
+        '사내 고부식성 유해화학물질 작업 기준'
+      );
+
+      if(inputs.chemical.reagentException){
+        exceptions.push({
+          category: 'CORROSIVE_CHEMICAL',
+          code: 'CHEMICAL_REAGENT_EXCEPTION',
+          reason: '시험·분석용 시약 사용 예외 검토'
+        });
+      }
+    }
+
+    if(inputs.height.criterionMatched){
+      categories.push('HIGH_RISK_HEIGHT');
+
+      reasons.push(
+        '5m 이상 지붕·벽체·철골·비계 설치·해체 작업이며 고정식 난간·작업대 없이 임시 추락방지시설에 의존'
+      );
+
+      criteria.push(
+        '사내 고위험 고소작업 기준'
+      );
+
+      if(inputs.height.protectedPlatformException){
+        exceptions.push({
+          category: 'HIGH_RISK_HEIGHT',
+          code: 'HEIGHT_PROTECTED_PLATFORM_EXCEPTION',
+          reason: '정규 안전난간을 갖춘 차량탑재형·시저형 고소작업대 예외 검토'
+        });
+      }
+    }
+
+    if(inputs.lifting.criterionMatched){
+      categories.push('HIGH_RISK_LIFTING');
+
+      reasons.push(
+        '크레인·이동식 크레인·리프트 등 양중기를 이용한 권상 또는 권상물 하부 작업'
+      );
+
+      criteria.push(
+        '사내 고위험 중량물 취급 작업 기준'
+      );
+
+      if(inputs.lifting.manualChainBlockException){
+        exceptions.push({
+          category: 'HIGH_RISK_LIFTING',
+          code: 'LIFTING_MANUAL_CHAIN_BLOCK_EXCEPTION',
+          reason: '수동 체인블록 작업 예외 검토'
+        });
+      }
+    }
+
+    if(inputs.electrical.criterionMatched){
+      categories.push('HIGH_RISK_ELECTRICAL');
+
+      reasons.push(
+        'AC 1,000V 초과·DC 1,500V 초과 전력계통 수리 또는 공장 단위 이상 정전·복전 작업'
+      );
+
+      criteria.push(
+        '사내 고위험 전기작업 기준'
+      );
+
+      if(inputs.electrical.branchBreakerException){
+        exceptions.push({
+          category: 'HIGH_RISK_ELECTRICAL',
+          code: 'ELECTRICAL_BRANCH_BREAKER_EXCEPTION',
+          reason: '단독 분기차단기 차단 작업 예외 검토'
+        });
+      }
+    }
+
+    return {
+      categories: categories,
+      categoryLabels: categories.map(function(code){
+        return CATEGORY_LABELS[code] || code;
+      }),
+      reasons: reasons,
+      criteria: criteria,
+      exceptions: exceptions,
+      hasHighRiskCriterion: categories.length > 0,
+      exceptionReviewRequired: exceptions.length > 0
+    };
+  }
+
+  function updateManagementReference(riskData, match){
+    var authoritative =
+      isAuthoritativeMatch(match);
+
+    if(!match){
+      riskData.managementLedgerReference = {
+        matched: false,
+        authoritative: false,
+        requestedWorkId:
+          getEffectiveWorkId(riskData),
+        requestedWorkName:
+          riskData.workName || '',
+        highRiskPriorityApplied: false,
+        reviewedAt:
+          new Date().toISOString()
+      };
+
+      return;
+    }
+
+    riskData.managementLedgerReference = {
+      matched: true,
+      authoritative: authoritative,
+      workId: match.workId || '',
+      workName: match.workName || '',
+      risk: match.risk || '',
+      method: match.method || '',
+      score: match.score || 0,
+      total: match.total || 0,
+      candidateCount: match.candidateCount || 0,
+      highRiskPriorityApplied: false,
+      reviewedAt: new Date().toISOString()
+    };
+  }
+
+  function rememberAutomaticRisk(riskData){
+    var calculatedAt =
+      riskData.autoJudgment &&
+      riskData.autoJudgment.calculatedAt
+        ? riskData.autoJudgment.calculatedAt
+        : '';
+
+    if(
+      riskData.policyAnalysisCalculatedAt !== calculatedAt
+    ){
+      riskData.policyOriginalRiskLevel =
+        (
+          riskData.autoJudgment &&
+          riskData.autoJudgment.riskLevel
+        ) ||
+        riskData.finalRiskLevel ||
+        '판정불가';
+
+      riskData.policyAnalysisCalculatedAt =
+        calculatedAt;
+    }
+
+    return (
+      riskData.policyOriginalRiskLevel ||
+      riskData.finalRiskLevel ||
+      '판정불가'
+    );
+  }
+
+  function applyInternalHighRiskPolicy(riskData){
+    if(!riskData || !riskData.workName){
+      return riskData;
+    }
+
+    var originalLevel =
+      rememberAutomaticRisk(riskData);
+
+    var finalLevel =
+      originalLevel;
+
+    var match =
+      getManagementLedgerMatch(riskData);
+
+    var authoritative =
+      isAuthoritativeMatch(match);
+
+    var inputs =
+      readPolicyInputs();
+
+    var policyResult =
+      evaluateInternalPolicy(inputs);
+
+    var reasons = [];
+    var source = 'internal-policy';
+    var applicable = false;
+    var status = '비해당';
+
+    updateManagementReference(
+      riskData,
+      match
+    );
+
+    /*
+     * 1순위:
+     * 관리대장 workId 정확 일치 + 고위험
+     */
+    if(
+      authoritative &&
+      match.risk === '고위험'
+    ){
+      finalLevel = higherRisk(
+        originalLevel,
+        '고위험'
+      );
+
+      applicable = true;
+      status = '해당';
+      source = 'management-ledger';
+
+      reasons.push(
+        originalLevel === '고위험'
+          ? '관리대장 고위험 최우선 확인 (기존 등급 동일)'
+          : (
+              '관리대장 고위험 최우선 적용 (기존: ' +
+              originalLevel +
+              ')'
+            )
+      );
+
+      riskData.managementLedgerReference
+        .highRiskPriorityApplied = true;
+
+      policyResult.categories = [
+        'MANAGEMENT_LEDGER_HIGH_RISK'
+      ];
+
+      policyResult.categoryLabels = [
+        '관리대장 확정 고위험작업'
+      ];
+
+      policyResult.criteria = [
+        'workId 정확 일치한 작업관리대장 공식 위험등급'
+      ];
+
+    /*
+     * 관리대장 일반도 공식 값으로 처리
+     */
+    } else if(
+      authoritative &&
+      (
+        match.risk === '일반' ||
+        match.risk === '일반작업'
+      )
+    ){
+      finalLevel =
+        capRiskLevel(
+          originalLevel,
+          '중위험'
+        );
+
+      applicable = false;
+      status = '비해당';
+      source = 'management-ledger';
+
+      reasons.push(
+        '관리대장 일반작업 공식값 확인 · 위험도 상한 중위험'
+      );
+
+      policyResult.categories = [];
+      policyResult.categoryLabels = [];
+      policyResult.criteria = [
+        'workId 정확 일치한 작업관리대장 일반작업'
+      ];
+
+    /*
+     * 신규평가:
+     * 사내 고위험 기준 충족
+     */
+    } else if(
+      policyResult.hasHighRiskCriterion
+    ){
+      finalLevel =
+        higherRisk(
+          originalLevel,
+          '고위험'
+        );
+
+      applicable = true;
+      source = 'internal-policy';
+
+      status =
+        policyResult.exceptionReviewRequired
+          ? '예외검토'
+          : '해당';
+
+      reasons.push(
+        policyResult.exceptionReviewRequired
+          ? '사내 고위험작업 기준 충족 · 예외 적용 승인 필요'
+          : '신규평가 사내 고위험작업 기준 충족'
+      );
+
+    /*
+     * 신규평가:
+     * 사내 고위험 기준 비해당
+     */
+    } else {
+      var text =
+        getCurrentAssessmentText(riskData);
+
+      if(isPureInspection(text)){
+        finalLevel = '저위험';
+
+        reasons.push(
+          '신규평가 · 순수 점검·순찰·육안·외관·측정·판독 작업'
+        );
+
+      } else if(isMaintenanceWork(text)){
+        finalLevel = '중위험';
+
+        reasons.push(
+          '신규평가 · 일반 수리·정비·교체·분해·조립 작업'
+        );
+
+      } else {
+        finalLevel =
+          capRiskLevel(
+            originalLevel,
+            '중위험'
+          );
+
+        if(finalLevel !== originalLevel){
+          reasons.push(
+            '신규평가 · 사내 고위험 기준 비해당으로 자동 고위험 판정 제한'
+          );
+        } else {
+          reasons.push(
+            '신규평가 · 사내 고위험 기준 비해당'
+          );
+        }
+      }
+
+      applicable = false;
+      status = '비해당';
+      source = 'internal-policy';
+    }
+
+    /*
+     * 관리자가 근거를 남기고 직접 조정한 값은 유지한다.
+     * 단, 관리대장 고위험보다 낮출 수는 없다.
+     */
+    if(
+      riskData.overridden === true &&
+      !(
+        authoritative &&
+        match.risk === '고위험'
+      )
+    ){
+      finalLevel =
+        riskData.finalRiskLevel ||
+        finalLevel;
+
+      reasons.push(
+        '권한 있는 관리자의 수동 조정값 유지'
+      );
+    }
+
+    riskData.highRiskWorkAssessment = {
+      source: source,
+      policyVersion: POLICY_VERSION,
+      applicable: applicable,
+      categories:
+        policyResult.categories.slice(),
+      categoryLabels:
+        policyResult.categoryLabels.slice(),
+      reasons:
+        policyResult.reasons.slice(),
+      criteria:
+        policyResult.criteria.slice(),
+      exceptions:
+        policyResult.exceptions.slice(),
+      exceptionApplied: false,
+      exceptionReason: '',
+      exceptionReviewRequired:
+        policyResult.exceptionReviewRequired,
+      systemSuggested:
+        source === 'internal-policy',
+      status: status,
+      assessedBy:
+        source === 'management-ledger'
+          ? '작업관리대장'
+          : (
+              riskData.assessor ||
+              sessionStorage.getItem('userName') ||
+              ''
+            ),
+      assessedAt:
+        new Date().toISOString(),
+      reviewedBy: '',
+      reviewedAt: '',
+      reviewCompleted:
+        inputs.reviewed === true,
+      inputSnapshot:
+        JSON.parse(JSON.stringify(inputs))
+    };
+
+    riskData.workSource = {
+      type:
+        authoritative
+          ? 'management-ledger'
+          : 'new-assessment',
+      authoritative:
+        authoritative,
+      method:
+        authoritative
+          ? 'workId-exact'
+          : 'internal-policy'
+    };
+
+    riskData.finalRiskLevel =
+      finalLevel;
+
+    riskData.riskLevel =
+      finalLevel;
+
+    riskData.overallRisk =
+      finalLevel;
+
+    riskData.riskScore =
+      getRiskScore(finalLevel);
+
+    riskData.overrideApplied =
+      (
+        finalLevel !== originalLevel ||
+        (
+          authoritative &&
+          match &&
+          match.risk === '고위험'
+        )
+      );
+
+    riskData.overrideVersion =
+      V;
+
+    riskData.overrideReasons =
+      reasons.slice();
+
+    riskData.originalRiskLevel =
+      originalLevel;
+
+    riskData.policyDecision = {
+      version: V,
+      source: source,
+      originalRiskLevel: originalLevel,
+      finalRiskLevel: finalLevel,
+      riskScore: getRiskScore(finalLevel),
+      reasons: reasons.slice(),
+      calculatedAt: new Date().toISOString()
+    };
+
+    renderPolicyResult(
+      riskData.highRiskWorkAssessment,
+      finalLevel
+    );
+
+    console.log(
+      '[v3.2.0] 사내 고위험작업 판정 완료:',
+      {
+        workId:
+          getEffectiveWorkId(riskData),
+        source: source,
+        authoritative: authoritative,
+        originalRiskLevel: originalLevel,
+        finalRiskLevel: finalLevel,
+        highRiskWork:
+          riskData.highRiskWorkAssessment
+      }
+    );
+
+    return riskData;
+  }
+
+  function injectPolicyStyle(){
+    if(getElement('highRiskPolicyV320Style')){
+      return;
+    }
+
+    var style =
+      document.createElement('style');
+
+    style.id =
+      'highRiskPolicyV320Style';
+
+    style.textContent = [
+      '.high-risk-policy-section{',
+      'border:2px solid var(--posco);',
+      'background:var(--card);}',
+      '.high-risk-policy-intro{',
+      'margin-bottom:12px;padding:12px;',
+      'border-left:4px solid var(--posco);',
+      'border-radius:0 9px 9px 0;',
+      'background:var(--tint);',
+      'color:var(--ink);font-size:14px;',
+      'font-weight:650;line-height:1.65;}',
+      '.high-risk-policy-item{',
+      'display:flex;align-items:flex-start;gap:10px;',
+      'margin-bottom:9px;padding:12px;',
+      'border:1.5px solid var(--line);',
+      'border-radius:10px;background:var(--sunk);}',
+      '.high-risk-policy-item input{',
+      'flex-shrink:0;width:22px;height:22px;',
+      'margin-top:2px;accent-color:var(--posco);}',
+      '.high-risk-policy-item label{',
+      'color:var(--ink);font-size:14px;',
+      'font-weight:700;line-height:1.6;cursor:pointer;}',
+      '.high-risk-policy-item.exception{',
+      'margin-left:20px;background:var(--warn-bg);',
+      'border-color:var(--warn);}',
+      '.high-risk-policy-review{',
+      'margin-top:12px;padding:13px;',
+      'border:2px solid var(--done);',
+      'border-radius:10px;background:var(--done-bg);}',
+      '.high-risk-policy-result{',
+      'margin-bottom:9px;padding:13px;',
+      'border:2px solid var(--line);',
+      'border-radius:13px;background:var(--card);}',
+      '.high-risk-policy-result.high{',
+      'border-color:var(--stop);background:var(--stop-bg);}',
+      '.high-risk-policy-result.normal{',
+      'border-color:var(--done);background:var(--done-bg);}',
+      '.high-risk-policy-result-title{',
+      'font-size:16px;font-weight:900;',
+      'color:var(--ink);margin-bottom:6px;}',
+      '.high-risk-policy-result-text{',
+      'font-size:14px;font-weight:700;',
+      'line-height:1.6;color:var(--body);}'
+    ].join('');
+
+    document.head.appendChild(style);
+  }
+
+  function injectPolicyForm(){
+    if(getElement('highRiskPolicySection')){
+      return;
+    }
+
+    var workTypeSection =
+      getElement('workTypeSelect');
+
+    if(!workTypeSection){
+      return;
+    }
+
+    var parentSection =
+      workTypeSection.closest('.form-section');
+
+    if(!parentSection){
+      return;
+    }
+
+    var section =
+      document.createElement('div');
+
+    section.id =
+      'highRiskPolicySection';
+
+    section.className =
+      'form-section high-risk-policy-section';
+
+    section.innerHTML =
+      '<div class="section-title">🚨 사내 고위험작업 기준 확인</div>' +
+
+      '<div class="high-risk-policy-intro">' +
+        '관리대장 고위험은 공식값을 우선 적용합니다. ' +
+        '신규평가는 아래 사내기준의 실제 작업조건을 확인하여 분류합니다.' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item">' +
+        '<input type="checkbox" id="hrFireCriterion">' +
+        '<label for="hrFireCriterion">' +
+          '<strong>고위험 화기작업</strong><br>' +
+          '폭발위험장소, 인화성 액체·가스가 존재하는 장소, ' +
+          '가연성가스·산소 배관 또는 저장설비에서 화기작업을 수행함' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item">' +
+        '<input type="checkbox" id="hrConfinedCriterion">' +
+        '<label for="hrConfinedCriterion">' +
+          '<strong>밀폐공간 작업</strong><br>' +
+          '산소결핍 또는 유해가스로 인한 질식 위험이 있는 밀폐공간에서 작업함' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item exception">' +
+        '<input type="checkbox" id="hrConfinedShortException">' +
+        '<label for="hrConfinedShortException">' +
+          '밀폐공간 10분 이내 단순점검 예외 검토 대상' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item exception">' +
+        '<input type="checkbox" id="hrConfinedCo2Exception">' +
+        '<label for="hrConfinedCo2Exception">' +
+          '강화 운영 중인 CO₂ 소화설비 방호구역·용기실 예외 검토 대상' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item">' +
+        '<input type="checkbox" id="hrChemicalCriterion">' +
+        '<label for="hrChemicalCriterion">' +
+          '<strong>고부식성 유해화학물질 작업</strong><br>' +
+          '황산·질산 등 강산 또는 수산화나트륨 등 강염기의 ' +
+          '배관·탱크를 수리함' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item exception">' +
+        '<input type="checkbox" id="hrChemicalReagentException">' +
+        '<label for="hrChemicalReagentException">' +
+          '시험·분석용 시약 사용 예외 검토 대상' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item">' +
+        '<input type="checkbox" id="hrHeightCriterion">' +
+        '<label for="hrHeightCriterion">' +
+          '<strong>고위험 고소작업</strong><br>' +
+          '5m 이상 지붕·벽체·철골·비계 설치·해체 작업이며, ' +
+          '고정식 안전난간·작업대 없이 가설 또는 임시 추락방지시설에 의존함' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item exception">' +
+        '<input type="checkbox" id="hrHeightPlatformException">' +
+        '<label for="hrHeightPlatformException">' +
+          '정규 안전난간을 갖춘 차량탑재형·시저형 고소작업대 예외 검토 대상' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item">' +
+        '<input type="checkbox" id="hrLiftingCriterion">' +
+        '<label for="hrLiftingCriterion">' +
+          '<strong>고위험 중량물 취급 작업</strong><br>' +
+          '크레인·이동식 크레인·리프트 등 양중기로 중량물을 권상하거나 ' +
+          '권상물 하부에서 작업함' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item exception">' +
+        '<input type="checkbox" id="hrLiftingChainBlockException">' +
+        '<label for="hrLiftingChainBlockException">' +
+          '수동 체인블록만 사용하는 작업의 예외 검토 대상' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item">' +
+        '<input type="checkbox" id="hrElectricalCriterion">' +
+        '<label for="hrElectricalCriterion">' +
+          '<strong>고위험 전기작업</strong><br>' +
+          'AC 1,000V 초과·DC 1,500V 초과 전력계통 수리 또는 ' +
+          '공장 단위 이상 정전·복전 작업을 수행함' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-item exception">' +
+        '<input type="checkbox" id="hrElectricalBranchException">' +
+        '<label for="hrElectricalBranchException">' +
+          '단독 분기차단기 차단 작업 예외 검토 대상' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="form-group">' +
+        '<label class="form-label" for="highRiskAdditionalReason">' +
+          '추가 판정 근거' +
+        '</label>' +
+        '<textarea class="form-textarea" ' +
+          'id="highRiskAdditionalReason" ' +
+          'placeholder="작업 장소, 높이, 전압, 물질, 장비, 작업방법 등 추가 근거"></textarea>' +
+      '</div>' +
+
+      '<div class="high-risk-policy-review">' +
+        '<div class="high-risk-policy-item" style="margin:0;border:0;background:transparent;padding:0;">' +
+          '<input type="checkbox" id="highRiskPolicyReviewed">' +
+          '<label for="highRiskPolicyReviewed">' +
+            '사내 고위험작업 6개 분류와 예외조건을 모두 확인했습니다.' +
+          '</label>' +
+        '</div>' +
+      '</div>';
+
+    parentSection.insertAdjacentElement(
+      'afterend',
+      section
+    );
+  }
+
+  function injectPolicyResult(){
+    if(getElement('highRiskPolicyResult')){
+      return;
+    }
+
+    var judgmentCard =
+      getElement('judgmentCard');
+
+    if(!judgmentCard){
+      return;
+    }
+
+    var result =
+      document.createElement('div');
+
+    result.id =
+      'highRiskPolicyResult';
+
+    result.className =
+      'high-risk-policy-result normal';
+
+    result.style.display =
+      'none';
+
+    judgmentCard.insertAdjacentElement(
+      'afterend',
+      result
+    );
+  }
+
+  function renderPolicyResult(assessment, finalLevel){
+    var container =
+      getElement('highRiskPolicyResult');
+
+    if(!container || !assessment){
+      return;
+    }
+
+    var high =
+      assessment.applicable === true;
+
+    var categories =
+      Array.isArray(assessment.categoryLabels)
+        ? assessment.categoryLabels
+        : [];
+
+    var statusText =
+      high
+        ? (
+            assessment.status === '예외검토'
+              ? '고위험 후보 · 예외 승인 검토 필요'
+              : '고위험작업 해당'
+          )
+        : '고위험작업 비해당';
+
+    container.className =
+      'high-risk-policy-result ' +
+      (high ? 'high' : 'normal');
+
+    container.innerHTML =
+      '<div class="high-risk-policy-result-title">' +
+        (high ? '🚨 ' : '✅ ') +
+        statusText +
+      '</div>' +
+
+      '<div class="high-risk-policy-result-text">' +
+        '판정 출처: ' +
+        (
+          assessment.source === 'management-ledger'
+            ? '작업관리대장 공식값'
+            : '사내 고위험작업 기준'
+        ) +
+        '<br>' +
+
+        '분류: ' +
+        (
+          categories.length > 0
+            ? categories.join(' · ')
+            : '해당 없음'
+        ) +
+        '<br>' +
+
+        '최종 위험도: ' +
+        String(finalLevel || '판정불가') +
+      '</div>';
+
+    container.style.display =
+      'block';
+  }
+
+  function installBasicValidationHook(){
+    if(
+      typeof global.validateBasicInformation !== 'function' ||
+      global.validateBasicInformation.__v320Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.validateBasicInformation;
+
+    var wrapped =
+      function(){
+        var reviewed =
+          isChecked('highRiskPolicyReviewed');
+
+        if(!reviewed){
+          if(typeof global.showToast === 'function'){
+            global.showToast(
+              '사내 고위험작업 기준 검토 완료를 확인해 주세요.',
+              'danger'
+            );
+          }
+
+          var section =
+            getElement('highRiskPolicySection');
+
+          if(section){
+            section.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+
+          return;
+        }
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__v320Installed =
+      true;
+
+    wrapped.__previous =
+      previous;
+
+    global.validateBasicInformation =
+      wrapped;
+  }
+
+  function installRenderHook(){
+    if(
+      typeof global.renderJudgment !== 'function' ||
+      global.renderJudgment.__v320Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.renderJudgment;
+
+    var wrapped =
+      function(){
+        if(global.riskData){
+          applyInternalHighRiskPolicy(
+            global.riskData
+          );
+        }
+
+        return previous.apply(
+          this,
+          arguments
+        );
+      };
+
+    wrapped.__v320Installed =
+      true;
+
+    wrapped.__previous =
+      previous;
+
+    global.renderJudgment =
+      wrapped;
+  }
+
+  function installSaveHook(){
+    if(
+      typeof global.buildAssessmentSaveObject !== 'function' ||
+      global.buildAssessmentSaveObject.__v320Installed
+    ){
+      return;
+    }
+
+    var previous =
+      global.buildAssessmentSaveObject;
+
+    var wrapped =
+      function(includeServerTimestamp){
+        if(global.riskData){
+          applyInternalHighRiskPolicy(
+            global.riskData
+          );
+        }
+
+        var saveObject =
+          previous.apply(
+            this,
+            arguments
+          );
+
+        var source =
+          global.riskData || saveObject;
+
+        var finalLevel =
+          source.finalRiskLevel ||
+          '판정불가';
+
+        saveObject.finalRiskLevel =
+          finalLevel;
+
+        saveObject.riskLevel =
+          finalLevel;
+
+        saveObject.overallRisk =
+          finalLevel;
+
+        saveObject.riskScore =
+          getRiskScore(finalLevel);
+
+        saveObject.overrideApplied =
+          source.overrideApplied === true;
+
+        saveObject.overrideVersion =
+          V;
+
+        saveObject.overrideReasons =
+          Array.isArray(source.overrideReasons)
+            ? source.overrideReasons.slice()
+            : [];
+
+        saveObject.originalRiskLevel =
+          source.originalRiskLevel ||
+          finalLevel;
+
+        saveObject.workSource =
+          source.workSource
+            ? JSON.parse(
+                JSON.stringify(source.workSource)
+              )
+            : null;
+
+        saveObject.highRiskWorkAssessment =
+          source.highRiskWorkAssessment
+            ? JSON.parse(
+                JSON.stringify(
+                  source.highRiskWorkAssessment
+                )
+              )
+            : null;
+
+        saveObject.policyDecision =
+          source.policyDecision
+            ? JSON.parse(
+                JSON.stringify(
+                  source.policyDecision
+                )
+              )
+            : null;
+
+        saveObject.managementLedgerReference =
+          source.managementLedgerReference
+            ? JSON.parse(
+                JSON.stringify(
+                  source.managementLedgerReference
+                )
+              )
+            : null;
+
+        return saveObject;
+      };
+
+    wrapped.__v320Installed =
+      true;
+
+    wrapped.__previous =
+      previous;
+
+    global.buildAssessmentSaveObject =
+      wrapped;
+  }
+
+  function install(){
+    injectPolicyStyle();
+    injectPolicyForm();
+    injectPolicyResult();
+    installBasicValidationHook();
+    installRenderHook();
+    installSaveHook();
+
+    console.log(
+      '[risk-workdb v3.2.0] 사내 고위험작업 분류 적용 완료'
+    );
+  }
+
+  var api = {
+    version: V,
+    policyVersion: POLICY_VERSION,
+    apply: applyInternalHighRiskPolicy,
+    readInputs: readPolicyInputs,
+    evaluate: evaluateInternalPolicy,
+    install: install,
+    categories: Object.assign({}, CATEGORY_LABELS)
+  };
+
+  global.riskHighWorkPolicyV320 =
+    api;
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      install
+    );
+  } else {
+    install();
+  }
+
+})(window);
