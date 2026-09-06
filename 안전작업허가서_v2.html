@@ -5011,21 +5011,34 @@ document.addEventListener('keydown', function(e){
     return;
   }
 
-  var Workflow = {
-    version: VERSION,
+var Workflow = {
+  version: VERSION,
 
-    state: {
-      requestedRiskId: '',
-      requestedWorkId: '',
-      entry: '',
-      linkedRisk: null,
-      automaticWorkTypes: [],
-      executionType: '',
-      initialized: false
-    },
+  state: {
+    requestedRiskId: '',
+    requestedWorkId: '',
 
-    original: {}
-  };
+    /*
+     * 보완 문서 진입 정보
+     * 예:
+     * ?permitNo=PTW-20260906-354&mode=revision
+     */
+    requestedPermitNo: '',
+    mode: '',
+    isRevisionMode: false,
+    revisionPermit: null,
+    revisionReason: '',
+
+    entry: '',
+    linkedRisk: null,
+    automaticWorkTypes: [],
+    executionType: '',
+    initialized: false
+  },
+
+  original: {}
+};
+
 
   global.PermitWorkflowV2 = Workflow;
 
@@ -5288,19 +5301,67 @@ document.addEventListener('keydown', function(e){
     return assessment.status || '검토중';
   }
 
-  function parseUrlParameters(){
-    var parameters =
-      new URLSearchParams(global.location.search);
+function parseUrlParameters(){
+  var parameters =
+    new URLSearchParams(
+      global.location.search
+    );
 
-    Workflow.state.requestedRiskId =
-      normalizeId(parameters.get('riskId'));
+  Workflow.state.requestedRiskId =
+    normalizeId(
+      parameters.get('riskId')
+    );
 
-    Workflow.state.requestedWorkId =
-      normalizeId(parameters.get('workId'));
+  Workflow.state.requestedWorkId =
+    normalizeId(
+      parameters.get('workId')
+    );
 
-    Workflow.state.entry =
-      clean(parameters.get('entry'));
-  }
+  Workflow.state.requestedPermitNo =
+    clean(
+      parameters.get('permitNo')
+    );
+
+  Workflow.state.mode =
+    clean(
+      parameters.get('mode')
+    ).toLowerCase();
+
+  Workflow.state.entry =
+    clean(
+      parameters.get('entry')
+    );
+
+  Workflow.state.isRevisionMode =
+    Boolean(
+      Workflow.state.requestedPermitNo &&
+      Workflow.state.mode === 'revision'
+    );
+
+  console.log(
+    '[Permit Workflow v2] 진입 파라미터:',
+    {
+      riskId:
+        Workflow.state.requestedRiskId,
+
+      workId:
+        Workflow.state.requestedWorkId,
+
+      permitNo:
+        Workflow.state.requestedPermitNo,
+
+      mode:
+        Workflow.state.mode,
+
+      revision:
+        Workflow.state.isRevisionMode,
+
+      entry:
+        Workflow.state.entry
+    }
+  );
+}
+
 
   Workflow.util = {
     getElement: getElement,
@@ -11919,6 +11980,24 @@ setTimeout(function(){
         : [];
 
     var results = [
+            {
+        item: '보완 문서 진입',
+        pass:
+          Workflow.state
+            .isRevisionMode
+            ? Boolean(
+                Workflow.state
+                  .requestedPermitNo
+              )
+            : true,
+        actual:
+          Workflow.state
+            .isRevisionMode
+            ? Workflow.state
+                .requestedPermitNo
+            : '신규 작성 모드'
+      },
+
       {
         item: '통합 버전',
         pass:
