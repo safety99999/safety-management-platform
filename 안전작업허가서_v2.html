@@ -6570,17 +6570,18 @@ console.log(
               '</button>' +
             '</div>' +
 
+                '</div>' +
+
+              '</div>' +
+
             (
               item.result === 'no'
                 ? '<textarea ' +
                     'class="f-textarea" ' +
-                    'style="' +
-                      'width:100%;' +
-                      'min-height:72px;' +
-                      'border-color:var(--stop)" ' +
+                    'style="width:100%;min-height:72px;border-color:var(--stop)" ' +
                     'data-unified-reason="' +
                     index +
-                    ''placeholder="미흡 사유와 필요한 조치">' +
+                    '" placeholder="미흡 사유와 필요한 조치">' +
                     escapeHtml(
                       item.reason || ''
                     ) +
@@ -6589,6 +6590,7 @@ console.log(
             ) +
 
           '</div>';
+
       }
     );
 
