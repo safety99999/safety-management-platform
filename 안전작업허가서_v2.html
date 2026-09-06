@@ -11477,12 +11477,528 @@ function validateStepOne(){
     goToTbm:
       goToTbmWithApprovalGuard
   };
+  /* =====================================================
+   * SECTION 28-1. 보완요청 허가서 조회
+   * ===================================================== */
+
+  function getPermitStatusCode(record){
+    if(!record){
+      return '';
+    }
+
+    var statusCode =
+      clean(record.statusCode);
+
+    if(statusCode){
+      return statusCode;
+    }
+
+    var status =
+      clean(
+        record.permitStatus ||
+        record.status
+      );
+
+    var statusMap = {
+      '작성 중':
+        'draft',
+
+      '임시저장':
+        'draft',
+
+      '승인대기':
+        'pendingApproval',
+
+      '재제출':
+        'resubmitted',
+
+      '보완요청':
+        'revisionRequested',
+
+      '허가완료':
+        'approved',
+
+      '승인완료':
+        'approved',
+
+      '반려':
+        'rejected',
+
+      'TBM 완료':
+        'tbmCompleted',
+
+      '작업중':
+        'inProgress',
+
+      '작업완료':
+        'completed',
+
+      '취소':
+        'cancelled'
+    };
+
+    return statusMap[status] || status;
+  }
+
+  function findLocalPermitByNo(
+    permitNo
+  ){
+    if(!permitNo){
+      return null;
+    }
+
+    var records =
+      getPermitRecords();
+
+    return records.find(
+      function(record){
+        return (
+          record &&
+          clean(record.permitNo) ===
+            clean(permitNo)
+        );
+      }
+    ) || null;
+  }
+
+  async function findCloudPermitByNo(
+    permitNo
+  ){
+    if(!permitNo){
+      return null;
+    }
+
+    var session = null;
+
+    try{
+      session =
+        JSON.parse(
+          sessionStorage.getItem(
+            'appSession'
+          ) || 'null'
+        );
+    }catch(error){
+      session = null;
+    }
+
+    /*
+     * 공개 테스터는 Firestore를
+     * 조회하지 않습니다.
+     */
+    if(
+      session &&
+      session.accessMode === 'tester'
+    ){
+      return null;
+    }
+
+    var firebaseService =
+      global.firebaseApp;
+
+    if(
+      !firebaseService ||
+      !firebaseService.db ||
+      typeof firebaseService.doc !==
+        'function' ||
+      typeof firebaseService.getDoc !==
+        'function'
+    ){
+      return null;
+    }
+
+    try{
+      if(global.permitAuthReady){
+        var firebaseUser =
+          await global.permitAuthReady;
+
+        if(
+          !firebaseUser ||
+          !session ||
+          session.accessMode !==
+            'authenticated' ||
+          session.uid !==
+            firebaseUser.uid
+        ){
+          console.warn(
+            '[Permit Workflow v2] ' +
+            '보완 문서 Firebase 인증 불일치'
+          );
+
+          return null;
+        }
+      }
+
+      var collectionName =
+        firebaseService
+          .PERMIT_COLLECTION ||
+        global.getCollectionName(
+          'safetyPermits'
+        );
+
+      var reference =
+        firebaseService.doc(
+          firebaseService.db,
+          collectionName,
+          permitNo
+        );
+
+      var snapshot =
+        await firebaseService.getDoc(
+          reference
+        );
+
+      if(!snapshot.exists()){
+        return null;
+      }
+
+      var record =
+        snapshot.data() || {};
+
+      record.permitNo =
+        record.permitNo ||
+        snapshot.id;
+
+      return record;
+
+    }catch(error){
+      console.warn(
+        '[Permit Workflow v2] ' +
+        '보완 문서 Firestore 조회 실패:',
+        error
+      );
+
+      return null;
+    }
+  }
+
+  function getRevisionReason(record){
+    if(!record){
+      return '';
+    }
+
+    return clean(
+      (
+        record.approvalWorkflow &&
+        record.approvalWorkflow
+          .lastComment
+      ) ||
+      (
+        record.permitApproval &&
+        record.permitApproval
+          .comment
+      ) ||
+      record.revisionReason ||
+      ''
+    );
+  }
+
+  function applyRevisionRecordToState(
+    record
+  ){
+    if(!record){
+      return false;
+    }
+
+    Workflow.state.revisionPermit =
+      clone(record);
+
+    Workflow.state.revisionReason =
+      getRevisionReason(record);
+
+    Workflow.state.requestedPermitNo =
+      record.permitNo ||
+      Workflow.state.requestedPermitNo;
+
+    Workflow.state.requestedRiskId =
+      normalizeId(
+        record.riskId ||
+        Workflow.state.requestedRiskId
+      );
+
+    Workflow.state.requestedWorkId =
+      normalizeId(
+        record.workId ||
+        record.sourceWorkId ||
+        Workflow.state.requestedWorkId
+      );
+
+    if(
+      Workflow.state.requestedRiskId
+    ){
+      Workflow.state.linkedRisk =
+        findRiskById(
+          Workflow.state
+            .requestedRiskId
+        );
+    }
+
+    if(
+      !Workflow.state.linkedRisk &&
+      Workflow.state.requestedWorkId
+    ){
+      Workflow.state.linkedRisk =
+        findLatestRiskByWorkId(
+          Workflow.state
+            .requestedWorkId
+        );
+    }
+
+    if(global.permitData){
+      /*
+       * 기존 permitNo를 반드시 유지합니다.
+       */
+      global.permitData.permitNo =
+        record.permitNo || '';
+
+      global.permitData.workId =
+        record.workId ||
+        record.sourceWorkId ||
+        null;
+
+      global.permitData.sourceWorkId =
+        record.sourceWorkId ||
+        record.workId ||
+        null;
+
+      global.permitData.riskId =
+        record.riskId || null;
+
+      global.permitData.status =
+        record.status ||
+        record.permitStatus ||
+        '';
+
+      global.permitData.permitStatus =
+        record.permitStatus ||
+        record.status ||
+        '';
+
+      global.permitData.statusCode =
+        getPermitStatusCode(record);
+    }
+
+    return true;
+  }
+
+  async function loadRevisionPermit(){
+    var permitNo =
+      Workflow.state
+        .requestedPermitNo;
+
+    if(
+      !Workflow.state
+        .isRevisionMode ||
+      !permitNo
+    ){
+      return null;
+    }
+
+    console.log(
+      '[Permit Workflow v2] ' +
+      '보완 문서 조회 시작:',
+      permitNo
+    );
+
+    /*
+     * 화면을 빠르게 표시하기 위해
+     * localStorage를 먼저 확인합니다.
+     */
+    var record =
+      findLocalPermitByNo(
+        permitNo
+      );
+
+    /*
+     * 인증 사용자는 Firestore 최신 문서를
+     * 다시 조회합니다.
+     */
+    var cloudRecord =
+      await findCloudPermitByNo(
+        permitNo
+      );
+
+    if(cloudRecord){
+      record = cloudRecord;
+
+      if(
+        typeof global
+          .savePermitToLocalStorage ===
+          'function'
+      ){
+        global.savePermitToLocalStorage(
+          cloudRecord
+        );
+      }
+    }
+
+    if(!record){
+      console.error(
+        '[Permit Workflow v2] ' +
+        '보완 문서를 찾을 수 없습니다:',
+        permitNo
+      );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '보완요청 허가서를 찾을 수 없습니다.',
+          'danger'
+        );
+      }
+
+      return null;
+    }
+
+    var statusCode =
+      getPermitStatusCode(record);
+
+    if(
+      statusCode !==
+        'revisionRequested'
+    ){
+      console.warn(
+        '[Permit Workflow v2] ' +
+        '보완요청 상태가 아닙니다:',
+        {
+          permitNo:
+            permitNo,
+
+          statusCode:
+            statusCode
+        }
+      );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '현재 문서는 보완요청 상태가 아닙니다.',
+          'warning'
+        );
+      }
+
+      return null;
+    }
+
+    applyRevisionRecordToState(
+      record
+    );
+
+    var badge =
+      getElement('permitNoBadge');
+
+    if(badge){
+      badge.textContent =
+        record.permitNo;
+
+      badge.style.display =
+        'block';
+    }
+
+    var title =
+      getElement('topnavTitle');
+
+    if(title){
+      title.textContent =
+        '안전작업허가서 보완';
+    }
+
+    console.log(
+      '[Permit Workflow v2] ' +
+      '보완 문서 조회 완료:',
+      {
+        permitNo:
+          record.permitNo,
+
+        statusCode:
+          statusCode,
+
+        riskId:
+          record.riskId || '',
+
+        workId:
+          record.workId ||
+          record.sourceWorkId ||
+          '',
+
+        revisionReason:
+          Workflow.state
+            .revisionReason
+      }
+    );
+
+    if(
+      typeof global.showToast ===
+        'function'
+    ){
+      global.showToast(
+        '보완요청 허가서를 불러왔습니다.',
+        'success'
+      );
+    }
+
+    return record;
+  }
+
+  Workflow.revision = {
+    load:
+      loadRevisionPermit,
+
+    findLocal:
+      findLocalPermitByNo,
+
+    findCloud:
+      findCloudPermitByNo,
+
+    applyState:
+      applyRevisionRecordToState,
+
+    getReason:
+      getRevisionReason,
+
+    getStatusCode:
+      getPermitStatusCode
+  };
 
   /* =====================================================
    * SECTION 29. 자동 진입
    * ===================================================== */
 
   function enterFromUrl(){
+    /*
+     * 보완 문서 진입을 신규 작성보다
+     * 먼저 처리합니다.
+     */
+    if(
+      Workflow.state
+        .isRevisionMode
+    ){
+      loadRevisionPermit()
+        .then(function(record){
+          if(!record){
+            return;
+          }
+
+          console.log(
+            '[Permit Workflow v2] ' +
+            '보완 문서 상태 준비 완료:',
+            record.permitNo
+          );
+        })
+        .catch(function(error){
+          console.error(
+            '[Permit Workflow v2] ' +
+            '보완 문서 진입 실패:',
+            error
+          );
+        });
+
+      return;
+    }
+
     var risk =
       Workflow.state.linkedRisk;
 
