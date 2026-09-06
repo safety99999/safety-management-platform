@@ -10041,7 +10041,19 @@ function validateStepOne(){
           }, 100);
         }
 
+        if(
+          Workflow.state
+            .isRevisionMode
+        ){
+          setTimeout(function(){
+            restoreRevisionStepView(
+              stepNumber
+            );
+          }, 150);
+        }
+
         return result;
+
       };
 
     global.goToStep.__permitWorkflowV2 =
@@ -10230,10 +10242,28 @@ function validateStepOne(){
       global.permitData.permitNo
     );
 
+    var submissionState =
+      getSubmissionStatus();
+
     global.setTxt(
       'fin-approval-status',
-      '승인대기'
+      submissionState.status
     );
+
+    global.setTxt(
+      'permitCompleteTitle',
+      submissionState.revision
+        ? '보완 문서 재제출 완료'
+        : '허가 승인 요청 완료'
+    );
+
+    global.setTxt(
+      'permitCompleteDescription',
+      submissionState.revision
+        ? '보완 문서가 재제출되었습니다. 허가자 재승인 후 TBM을 진행할 수 있습니다.'
+        : '허가자 최종 승인 후 TBM을 진행할 수 있습니다.'
+    );
+
 
     global.setTxt(
       'fin-wo',
@@ -10604,6 +10634,43 @@ function validateStepOne(){
   /* =====================================================
    * SECTION 25. 7단계 최종 처리
    * ===================================================== */
+  function isRevisionSubmission(){
+    return Boolean(
+      Workflow.state.isRevisionMode &&
+      Workflow.state.revisionPermit &&
+      Workflow.state.requestedPermitNo
+    );
+  }
+
+  function getSubmissionStatus(){
+    var revision =
+      isRevisionSubmission();
+
+    return {
+      revision:
+        revision,
+
+      status:
+        revision
+          ? '재제출'
+          : '승인대기',
+
+      statusCode:
+        revision
+          ? 'resubmitted'
+          : 'pendingApproval',
+
+      workflowStep:
+        revision
+          ? 'PERMIT_APPROVAL_RESUBMITTED'
+          : 'PERMIT_APPROVAL_PENDING',
+
+      action:
+        revision
+          ? 'resubmitted'
+          : 'submitted'
+    };
+  }
 
   function validateStepSeven(){
     var submitButton =
@@ -10698,56 +10765,102 @@ function validateStepOne(){
         generatePermitNo();
     }
 
+    var submissionState =
+      getSubmissionStatus();
+
+    var submissionTime =
+      new Date().toISOString();
+
     global.permitData.status =
-      '승인대기';
+      submissionState.status;
 
     global.permitData.permitStatus =
-      '승인대기';
+      submissionState.status;
 
     global.permitData.statusCode =
-      'pendingApproval';
+      submissionState.statusCode;
 
-    global.permitData.permitApproval = {
-      required: true,
-      status: '승인대기',
-      statusCode: 'pendingApproval',
+    var previousPermitApproval =
+      global.permitData
+        .permitApproval || {};
 
-      requestedAt:
-        new Date().toISOString(),
+    global.permitData.permitApproval =
+      Object.assign(
+        {},
+        previousPermitApproval,
+        {
+          required: true,
 
+          status:
+            submissionState.status,
 
-      requestedBy:
-        roleData
-          .companyWorkManager
-          .name,
+          statusCode:
+            submissionState.statusCode,
 
-      approvedAt: '',
-      approvedBy: '',
-      comment: ''
-    };
+          requestedAt:
+            submissionTime,
 
-    global.permitData.approvalWorkflow = {
-      version: VERSION,
+          requestedBy:
+            roleData
+              .companyWorkManager
+              .name,
 
-      currentStep:
-        'PERMIT_APPROVAL_PENDING',
+          approvedAt: '',
+          approvedBy: '',
+          approvedByUid: '',
+          comment: ''
+        }
+      );
 
-      currentStatusCode:
-        'pendingApproval',
+    var previousApprovalWorkflow =
+      global.permitData
+        .approvalWorkflow || {};
 
-      companyWorkManagerSigned:
-        true,
+    global.permitData.approvalWorkflow =
+      Object.assign(
+        {},
+        previousApprovalWorkflow,
+        {
+          version:
+            VERSION,
 
-      permitApprovalCompleted:
-        false,
+          currentStep:
+            submissionState
+              .workflowStep,
 
-      tbmLinkDeliveryAllowed:
-        false,
+          currentStatusCode:
+            submissionState
+              .statusCode,
 
-      tbmLinkDelivered:
-        false
-    };
+          companyWorkManagerSigned:
+            true,
 
+          permitApprovalCompleted:
+            false,
+
+          tbmLinkDeliveryAllowed:
+            false,
+
+          tbmLinkDelivered:
+            false,
+
+          lastAction:
+            submissionState.action,
+
+          lastActorName:
+            roleData
+              .companyWorkManager
+              .name,
+
+          lastComment:
+            submissionState.revision
+              ? '보완 후 재제출'
+              : '허가 승인 요청',
+
+          lastProcessedAt:
+            submissionTime
+        }
+      );
 
     var saveResult = null;
 
@@ -10813,6 +10926,25 @@ function validateStepOne(){
       }
 
       return false;
+    }
+    if(
+      saveResult &&
+      saveResult.record
+    ){
+      Object.assign(
+        global.permitData,
+        clone(saveResult.record)
+      );
+
+      Workflow.state.lastSavedPermit =
+        clone(saveResult.record);
+
+      if(
+        submissionState.revision
+      ){
+        Workflow.state.revisionPermit =
+          clone(saveResult.record);
+      }
     }
 
     renderPermitRequestComplete();
@@ -11203,20 +11335,318 @@ function validateStepOne(){
       record.statusHistory = [];
     }
 
-    record.statusHistory.push({
-      from: '',
-      to: '승인대기',
-      changedAt:
-        record.updatedAt,
-      changedBy:
-        roleData
-          .companyWorkManager
-          .name,
-      reason:
-        '당사 작업담당자 확인·서명 후 허가자 승인 요청'
-    });
+    var submissionState =
+      getSubmissionStatus();
+
+    var actorName =
+      roleData
+        .companyWorkManager
+        .name;
+
+    /*
+     * 보완 문서 재제출
+     */
+    if(submissionState.revision){
+      var previousRecord =
+        Workflow.state
+          .revisionPermit || {};
+
+      /*
+       * 기존 문서에 신규 수정 내용을 병합합니다.
+       * 기존 문서에만 존재하는 필드도 보존됩니다.
+       */
+      record =
+        Object.assign(
+          {},
+          clone(previousRecord),
+          record
+        );
+
+      /*
+       * 최초 생성정보는 변경하지 않습니다.
+       */
+      record.createdAt =
+        previousRecord.createdAt ||
+        record.createdAt;
+
+      record.createdBy =
+        previousRecord.createdBy ||
+        record.createdBy;
+
+      record.createdByUid =
+        previousRecord.createdByUid ||
+        record.createdByUid;
+
+      record.permitNo =
+        previousRecord.permitNo ||
+        Workflow.state
+          .requestedPermitNo;
+
+      /*
+       * 재제출 상태로 전환합니다.
+       */
+      record.status =
+        '재제출';
+
+      record.permitStatus =
+        '재제출';
+
+      record.statusCode =
+        'resubmitted';
+
+      record.updatedAt =
+        new Date().toISOString();
+
+      record.resubmittedAt =
+        record.updatedAt;
+
+      record.resubmittedBy =
+        actorName;
+
+      record.resubmittedByUid =
+        record.updatedByUid || '';
+
+      /*
+       * 이전 승인 완료값을 제거하고
+       * 다시 승인대기 상태로 만듭니다.
+       */
+      record.permitApproval =
+        Object.assign(
+          {},
+          previousRecord
+            .permitApproval || {},
+          record.permitApproval || {},
+          {
+            required: true,
+            status: '재제출',
+            statusCode: 'resubmitted',
+            requestedAt:
+              record.updatedAt,
+            requestedBy:
+              actorName,
+            approvedAt: '',
+            approvedBy: '',
+            approvedByUid: '',
+            comment: ''
+          }
+        );
+
+      record.approvalWorkflow =
+        Object.assign(
+          {},
+          previousRecord
+            .approvalWorkflow || {},
+          record.approvalWorkflow || {},
+          {
+            version:
+              VERSION,
+
+            currentStep:
+              'PERMIT_APPROVAL_RESUBMITTED',
+
+            currentStatusCode:
+              'resubmitted',
+
+            companyWorkManagerSigned:
+              true,
+
+            permitApprovalCompleted:
+              false,
+
+            tbmLinkDeliveryAllowed:
+              false,
+
+            tbmLinkDelivered:
+              false,
+
+            lastAction:
+              'resubmitted',
+
+            lastActorName:
+              actorName,
+
+            lastComment:
+              '보완 후 재제출',
+
+            lastProcessedAt:
+              record.updatedAt
+          }
+        );
+
+      /*
+       * 기존 승인 이력을 보존하고
+       * 재제출 이력을 추가합니다.
+       */
+      record.approvalHistory =
+        Array.isArray(
+          previousRecord
+            .approvalHistory
+        )
+          ? clone(
+              previousRecord
+                .approvalHistory
+            )
+          : [];
+
+      record.approvalHistory.push({
+        action:
+          'resubmitted',
+
+        actorUid:
+          record.updatedByUid || '',
+
+        actorName:
+          actorName,
+
+        comment:
+          '보완 후 재제출',
+
+        processedAt:
+          record.updatedAt,
+
+        previousStatus:
+          'revisionRequested',
+
+        nextStatus:
+          'resubmitted',
+
+        environment:
+          global.APP_MODE ||
+          'test',
+
+        isTestAction:
+          global.APP_MODE ===
+          'test'
+      });
+
+      /*
+       * 기존 상태 이력을 보존하고
+       * 상태 전이 이력을 추가합니다.
+       */
+      record.statusHistory =
+        Array.isArray(
+          previousRecord
+            .statusHistory
+        )
+          ? clone(
+              previousRecord
+                .statusHistory
+            )
+          : [];
+
+      record.statusHistory.push({
+        from:
+          'revisionRequested',
+
+        to:
+          'resubmitted',
+
+        changedAt:
+          record.updatedAt,
+
+        changedBy:
+          actorName,
+
+        changedByUid:
+          record.updatedByUid || '',
+
+        reason:
+          '관리자 보완요청 반영 후 재제출',
+
+        environment:
+          global.APP_MODE ||
+          'test'
+      });
+
+      /*
+       * 보완·재제출 이력을 별도로 관리합니다.
+       */
+      record.revisionHistory =
+        Array.isArray(
+          previousRecord
+            .revisionHistory
+        )
+          ? clone(
+              previousRecord
+                .revisionHistory
+            )
+          : [];
+
+      record.revisionHistory.push({
+        revisionNo:
+          record.revisionHistory
+            .length + 1,
+
+        requestedReason:
+          Workflow.state
+            .revisionReason || '',
+
+        resubmittedAt:
+          record.updatedAt,
+
+        resubmittedBy:
+          actorName,
+
+        resubmittedByUid:
+          record.updatedByUid || '',
+
+        status:
+          '재제출',
+
+        statusCode:
+          'resubmitted'
+      });
+
+      record.resubmissionCount =
+        record.revisionHistory.length;
+
+      /*
+       * 재승인 전까지 TBM은 계속 차단합니다.
+       */
+      record.tbmLinkDeliveryAllowed =
+        false;
+
+      record.permitApprovalCompleted =
+        false;
+
+    }else{
+      /*
+       * 신규 제출
+       */
+      record.status =
+        '승인대기';
+
+      record.permitStatus =
+        '승인대기';
+
+      record.statusCode =
+        'pendingApproval';
+
+      record.statusHistory.push({
+        from: '',
+        to:
+          'pendingApproval',
+
+        changedAt:
+          record.updatedAt,
+
+        changedBy:
+          actorName,
+
+        changedByUid:
+          record.updatedByUid || '',
+
+        reason:
+          '당사 작업담당자 확인·서명 후 허가자 승인 요청',
+
+        environment:
+          global.APP_MODE ||
+          'test'
+      });
+    }
 
     return record;
+
   }
 
   /* =====================================================
@@ -12154,6 +12584,252 @@ function validateStepOne(){
       }
     });
   }
+  function restoreRevisionStepView(
+    step
+  ){
+    if(
+      !Workflow.state
+        .isRevisionMode ||
+      !global.permitData
+    ){
+      return;
+    }
+
+    /*
+     * 2단계: 작업 유형
+     */
+    if(step === 2){
+      var workTypes =
+        Array.isArray(
+          global.permitData.workTypes
+        )
+          ? global.permitData
+              .workTypes
+          : [];
+
+      document
+        .querySelectorAll('.wt-card')
+        .forEach(function(card){
+          card.classList.remove(
+            'active',
+            'disabled'
+          );
+        });
+
+      workTypes.forEach(function(type){
+        var card =
+          getWorkTypeCard(type);
+
+        if(card){
+          card.classList.add(
+            'active'
+          );
+        }
+      });
+
+      if(
+        workTypes.length === 1 &&
+        workTypes[0] === 'general'
+      ){
+        document
+          .querySelectorAll('.wt-card')
+          .forEach(function(card){
+            if(
+              !card.classList
+                .contains('general')
+            ){
+              card.classList.add(
+                'disabled'
+              );
+            }
+          });
+      }
+    }
+
+    /*
+     * 3단계: 특수작업 체크리스트
+     */
+    if(step === 3){
+      Object.keys(
+        global.permitData
+          .checklist || {}
+      ).forEach(function(key){
+        var separator =
+          key.lastIndexOf('-');
+
+        if(separator < 1){
+          return;
+        }
+
+        var type =
+          key.substring(
+            0,
+            separator
+          );
+
+        var number =
+          key.substring(
+            separator + 1
+          );
+
+        var value =
+          global.permitData
+            .checklist[key];
+
+        var item =
+          getElement(
+            'ci-' +
+            type +
+            '-' +
+            number.replace('.', '-')
+          );
+
+        if(!item){
+          return;
+        }
+
+        item.classList.remove(
+          'ok',
+          'no',
+          'na-selected'
+        );
+
+        if(value === 'ok'){
+          item.classList.add('ok');
+        }else if(value === 'no'){
+          item.classList.add('no');
+        }else if(value === 'na'){
+          item.classList.add(
+            'na-selected'
+          );
+        }
+
+        var buttons =
+          item.querySelectorAll(
+            '.cl-radio-btn'
+          );
+
+        if(value === 'ok' && buttons[0]){
+          buttons[0].classList.add(
+            'ok'
+          );
+        }
+
+        if(value === 'no' && buttons[1]){
+          buttons[1].classList.add(
+            'no'
+          );
+        }
+
+        if(
+          value === 'na' &&
+          buttons[2]
+        ){
+          buttons[2].classList.add(
+            'na-active'
+          );
+        }
+      });
+    }
+
+    /*
+     * 5단계: ILS
+     */
+    if(step === 5){
+      var ilsItems =
+        document.querySelectorAll(
+          '#screen-step5 .cl-item'
+        );
+
+      Object.keys(
+        global.permitData
+          .ILSChecklist || {}
+      ).forEach(function(number){
+        var item =
+          ilsItems[
+            Number(number) - 1
+          ];
+
+        if(!item){
+          return;
+        }
+
+        var value =
+          global.permitData
+            .ILSChecklist[number];
+
+        var buttons =
+          item.querySelectorAll(
+            '.cl-radio-btn'
+          );
+
+        if(value === 'ok' && buttons[0]){
+          buttons[0].classList.add(
+            'ok'
+          );
+        }
+
+        if(value === 'no' && buttons[1]){
+          buttons[1].classList.add(
+            'no'
+          );
+        }
+
+        if(value === 'na' && buttons[2]){
+          buttons[2].classList.add(
+            'na-active'
+          );
+        }
+      });
+    }
+
+    /*
+     * 6단계: 안전확인 질문
+     */
+    if(step === 6){
+      Object.keys(
+        global.permitData
+          .questions || {}
+      ).forEach(function(questionId){
+        var item =
+          getElement(
+            'q-' + questionId
+          );
+
+        if(!item){
+          return;
+        }
+
+        var value =
+          global.permitData
+            .questions[
+              questionId
+            ];
+
+        item.classList.remove(
+          'yes-ans',
+          'no-ans'
+        );
+
+        item.classList.add(
+          value + '-ans'
+        );
+
+        var button =
+          item.querySelector(
+            value === 'yes'
+              ? '.q-btn.yes'
+              : '.q-btn.no'
+          );
+
+        if(button){
+          button.classList.add(
+            'active'
+          );
+        }
+      });
+    }
+  }
 
   function restoreRevisionPermit(
     record
@@ -12358,6 +13034,33 @@ function validateStepOne(){
     restoreRevisionConfirmations(
       record
     );
+    /*
+     * 보완 후에는 기존 확인과 서명을
+     * 그대로 인정하지 않습니다.
+     */
+    [
+      'confirm-risk-reviewed',
+      'confirm-measures-implemented',
+      'confirm-work-condition-matched',
+      'confirm-no-critical-risk'
+    ].forEach(function(id){
+      var confirmation =
+        getElement(id);
+
+      if(confirmation){
+        confirmation.checked = false;
+      }
+    });
+
+    var submitButton =
+      getElement(
+        'permitSubmitButton'
+      );
+
+    if(submitButton){
+      submitButton.textContent =
+        '보완 완료 · 재제출';
+    }
 
     createRevisionNotice(
       record
