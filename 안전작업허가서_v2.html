@@ -2117,10 +2117,12 @@ window.firebaseApp = {
     <button
       type="button"
       class="btn-primary"
+      id="permitSubmitButton"
       onclick="validateStep7()"
     >
       허가자 승인 요청
     </button>
+
   </div>
 </div>
 
@@ -2205,7 +2207,10 @@ window.firebaseApp = {
     </div>
   </div>
 
-  <div class="btn-row">
+    <div
+    class="btn-row"
+    style="flex-direction:column;"
+  >
 
     <button
       type="button"
@@ -2217,6 +2222,15 @@ window.firebaseApp = {
 
     <button
       type="button"
+      class="btn-secondary"
+      id="refreshPermitApprovalButton"
+      onclick="refreshCurrentPermitApproval()"
+    >
+      🔄 승인 상태 확인
+    </button>
+
+    <button
+      type="button"
       class="btn-success permit-tbm-locked"
       id="goTbmAfterApprovalButton"
       onclick="goToTBM()"
@@ -2224,6 +2238,7 @@ window.firebaseApp = {
     >
       🔒 허가 승인 후 TBM 가능
     </button>
+
 
   </div>
 </div>
@@ -2612,6 +2627,7 @@ var permitData = {
   inspectionNos: [],
 
   status: '대기중',
+  statusCode: 'draft',
   createdAt: '',
   updatedAt: '',
   createdBy: '',
@@ -3178,7 +3194,13 @@ function initSigPad() {
 function initCanvasSig(canvasId){
   var canvas = document.getElementById(canvasId);
   if(!canvas) return;
-  var ctx = canvas.getContext('2d');
+  var ctx = canvas.getContext(
+    '2d',
+    {
+      willReadFrequently: true
+    }
+  );
+
   ctx.strokeStyle='#1C2B3A'; ctx.lineWidth=2.5; ctx.lineCap='round';
   var drawing=false, lx=0, ly=0;
   function getPos(e){
@@ -3206,12 +3228,48 @@ function clearExtSig() {
 }
 
 function hasCanvasSig(canvasId) {
-  var canvas = document.getElementById(canvasId);
-  if(!canvas) return false;
-  var data = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
-  for(var i=3;i<data.length;i+=4) if(data[i]>0) return true;
+  var canvas =
+    document.getElementById(
+      canvasId
+    );
+
+  if(!canvas){
+    return false;
+  }
+
+  var context =
+    canvas.getContext(
+      '2d',
+      {
+        willReadFrequently: true
+      }
+    );
+
+  if(!context){
+    return false;
+  }
+
+  var imageData =
+    context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    ).data;
+
+  for(
+    var index = 3;
+    index < imageData.length;
+    index += 4
+  ){
+    if(imageData[index] > 0){
+      return true;
+    }
+  }
+
   return false;
 }
+
 
 // ═══════════════════════════════════════════════════════
 // VALIDATION
@@ -10194,18 +10252,337 @@ function validateStepOne(){
       );
     }
   }
+  /* =====================================================
+   * 승인 상태 조회 및 완료 화면 갱신
+   * ===================================================== */
+
+  function isPermitApproved(record){
+    record = record || {};
+
+    return (
+      record.statusCode ===
+        'approved' ||
+      record.status ===
+        '허가완료' ||
+      record.permitStatus ===
+        '허가완료'
+    );
+  }
+
+  function applyPermitApprovalState(
+    record
+  ){
+    if(!record){
+      return false;
+    }
+
+    var approved =
+      isPermitApproved(record);
+
+    var statusText =
+      record.permitStatus ||
+      record.status ||
+      (
+        approved
+          ? '허가완료'
+          : '승인대기'
+      );
+
+    var statusElement =
+      getElement(
+        'fin-approval-status'
+      );
+
+    if(statusElement){
+      statusElement.textContent =
+        statusText;
+
+      statusElement.classList.toggle(
+        'pending',
+        !approved
+      );
+    }
+
+    var tbmButton =
+      getElement(
+        'goTbmAfterApprovalButton'
+      );
+
+    if(tbmButton){
+      tbmButton.disabled =
+        !approved;
+
+      tbmButton.classList.toggle(
+        'permit-tbm-locked',
+        !approved
+      );
+
+      tbmButton.textContent =
+        approved
+          ? '✅ TBM 진행'
+          : '🔒 허가 승인 후 TBM 가능';
+    }
+
+    return approved;
+  }
+
+  async function refreshCurrentPermitApproval(){
+    var refreshButton =
+      getElement(
+        'refreshPermitApprovalButton'
+      );
+
+    if(
+      refreshButton &&
+      refreshButton.dataset.loading ===
+        'true'
+    ){
+      return false;
+    }
+
+    var permitNo =
+      global.permitData &&
+      global.permitData.permitNo;
+
+    if(!permitNo){
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '현재 허가번호를 확인할 수 없습니다.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+
+    var firebaseService =
+      global.firebaseApp;
+
+    if(
+      !firebaseService ||
+      !firebaseService.db ||
+      typeof firebaseService.doc !==
+        'function' ||
+      typeof firebaseService.getDoc !==
+        'function'
+    ){
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          'Firebase 연결 상태를 확인해 주세요.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+
+    if(refreshButton){
+      refreshButton.dataset.loading =
+        'true';
+
+      refreshButton.disabled = true;
+
+      refreshButton.textContent =
+        '조회 중...';
+    }
+
+    try{
+      var collectionName =
+        firebaseService
+          .PERMIT_COLLECTION ||
+        global.getCollectionName(
+          'safetyPermits'
+        );
+
+      var documentReference =
+        firebaseService.doc(
+          firebaseService.db,
+          collectionName,
+          permitNo
+        );
+
+      var snapshot =
+        await firebaseService.getDoc(
+          documentReference
+        );
+
+      if(!snapshot.exists()){
+        throw new Error(
+          'Firestore에서 허가서를 찾을 수 없습니다.'
+        );
+      }
+
+      var record =
+        snapshot.data() || {};
+
+      record.permitNo =
+        record.permitNo ||
+        snapshot.id;
+
+      global.permitData.status =
+        record.status || '';
+
+      global.permitData.permitStatus =
+        record.permitStatus ||
+        record.status ||
+        '';
+
+      global.permitData.statusCode =
+        record.statusCode || '';
+
+      global.permitData
+        .approvalWorkflow =
+        clone(
+          record.approvalWorkflow ||
+          {}
+        );
+
+      global.permitData
+        .permitApproval =
+        clone(
+          record.permitApproval ||
+          {}
+        );
+
+      Workflow.state
+        .lastSavedPermit =
+        clone(record);
+
+      /*
+       * 동일 허가번호를 갱신하므로
+       * localStorage에 중복 추가되지 않습니다.
+       */
+      if(
+        typeof global
+          .savePermitToLocalStorage ===
+          'function'
+      ){
+        global.savePermitToLocalStorage(
+          record
+        );
+      }
+
+      var approved =
+        applyPermitApprovalState(
+          record
+        );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          approved
+            ? '허가가 승인되었습니다. TBM을 진행할 수 있습니다.'
+            : '현재 상태: ' +
+              (
+                record.permitStatus ||
+                record.status ||
+                '승인대기'
+              ),
+          approved
+            ? 'success'
+            : 'info'
+        );
+      }
+
+      return true;
+
+    }catch(error){
+      console.error(
+        '[Permit Workflow v2] 승인 상태 조회 실패:',
+        error
+      );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '승인 상태 조회 실패: ' +
+          error.message,
+          'danger'
+        );
+      }
+
+      return false;
+
+    }finally{
+      if(refreshButton){
+        refreshButton.dataset.loading =
+          'false';
+
+        refreshButton.disabled = false;
+
+        refreshButton.textContent =
+          '🔄 승인 상태 확인';
+      }
+    }
+  }
+
+  global.refreshCurrentPermitApproval =
+    refreshCurrentPermitApproval;
+
+  Workflow.approvalView = {
+    isApproved:
+      isPermitApproved,
+
+    apply:
+      applyPermitApprovalState,
+
+    refresh:
+      refreshCurrentPermitApproval
+  };
 
   /* =====================================================
    * SECTION 25. 7단계 최종 처리
    * ===================================================== */
 
   function validateStepSeven(){
+    var submitButton =
+      getElement(
+        'permitSubmitButton'
+      );
+
+    /*
+     * 이미 저장 중이면 동일한 제출 요청을
+     * 다시 실행하지 않습니다.
+     */
+    if(
+      submitButton &&
+      submitButton.dataset.submitting ===
+        'true'
+    ){
+      return false;
+    }
+
     var roleData =
       validateStepSevenInputs();
 
     if(!roleData){
       return false;
     }
+
+    /*
+     * 모든 입력 검증이 통과한 뒤
+     * 제출 버튼을 잠급니다.
+     */
+    if(submitButton){
+      submitButton.dataset.submitting =
+        'true';
+
+      submitButton.disabled = true;
+
+      submitButton.textContent =
+        '저장 중...';
+    }
+
 
     global.permitData.supervisorName =
       roleData
@@ -10266,12 +10643,17 @@ function validateStepOne(){
     global.permitData.permitStatus =
       '승인대기';
 
+    global.permitData.statusCode =
+      'pendingApproval';
+
     global.permitData.permitApproval = {
       required: true,
       status: '승인대기',
+      statusCode: 'pendingApproval',
 
       requestedAt:
         new Date().toISOString(),
+
 
       requestedBy:
         roleData
@@ -10285,8 +10667,12 @@ function validateStepOne(){
 
     global.permitData.approvalWorkflow = {
       version: VERSION,
+
       currentStep:
         'PERMIT_APPROVAL_PENDING',
+
+      currentStatusCode:
+        'pendingApproval',
 
       companyWorkManagerSigned:
         true,
@@ -10301,10 +10687,75 @@ function validateStepOne(){
         false
     };
 
-    var saveResult =
-      saveIntegratedPermit();
+
+    var saveResult = null;
+
+    try{
+      saveResult =
+        saveIntegratedPermit();
+
+    }catch(saveError){
+      console.error(
+        '[Permit Workflow v2] 제출 저장 오류:',
+        saveError
+      );
+
+      if(submitButton){
+        submitButton.dataset.submitting =
+          'false';
+
+        submitButton.disabled = false;
+
+        submitButton.textContent =
+          '허가자 승인 요청';
+      }
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '허가서 저장 중 오류가 발생했습니다.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+
+    /*
+     * localStorage 저장이 실패하면
+     * 완료 화면으로 이동하지 않습니다.
+     */
+    if(
+      !saveResult ||
+      saveResult.localSuccess !== true
+    ){
+      if(submitButton){
+        submitButton.dataset.submitting =
+          'false';
+
+        submitButton.disabled = false;
+
+        submitButton.textContent =
+          '허가자 승인 요청';
+      }
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '허가서 로컬 저장에 실패했습니다.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
 
     renderPermitRequestComplete();
+
 
     if(
       typeof global.showToast ===
@@ -10607,6 +11058,9 @@ function validateStepOne(){
     record.permitStatus =
       '승인대기';
 
+    record.statusCode =
+      'pendingApproval';
+
     record.permitApproval =
       clone(
         global.permitData
@@ -10852,10 +11306,32 @@ function validateStepOne(){
   }
 
   function goToTbmWithApprovalGuard(){
-    var status =
-      getCurrentPermitStatus();
+    var lastSaved =
+      Workflow.state
+        .lastSavedPermit ||
+      {};
 
-    if(status !== '허가완료'){
+    var currentPermit =
+      global.permitData || {};
+
+    var status =
+      lastSaved.permitStatus ||
+      lastSaved.status ||
+      currentPermit.permitStatus ||
+      currentPermit.status ||
+      '';
+
+    var statusCode =
+      lastSaved.statusCode ||
+      currentPermit.statusCode ||
+      '';
+
+    var approved =
+      statusCode === 'approved' ||
+      status === '허가완료' ||
+      status === 'approved';
+
+    if(!approved){
       showValidationBanner(
         '허가자 최종 승인 후 TBM을 시작할 수 있습니다.',
         getElement(
@@ -10863,30 +11339,56 @@ function validateStepOne(){
         )
       );
 
-      return;
+      return false;
+    }
+
+    var permitNo =
+      currentPermit.permitNo ||
+      lastSaved.permitNo ||
+      '';
+
+    if(!permitNo){
+      showValidationBanner(
+        '허가번호를 확인할 수 없습니다.',
+        getElement(
+          'goTbmAfterApprovalButton'
+        )
+      );
+
+      return false;
     }
 
     var parameters = [
       'permitNo=' +
       encodeURIComponent(
-        global.permitData.permitNo
+        permitNo
       )
     ];
 
-    if(global.permitData.workId){
+    var workId =
+      currentPermit.workId ||
+      lastSaved.workId ||
+      '';
+
+    if(workId){
       parameters.push(
         'workId=' +
         encodeURIComponent(
-          global.permitData.workId
+          workId
         )
       );
     }
 
-    if(global.permitData.riskId){
+    var riskId =
+      currentPermit.riskId ||
+      lastSaved.riskId ||
+      '';
+
+    if(riskId){
       parameters.push(
         'riskId=' +
         encodeURIComponent(
-          global.permitData.riskId
+          riskId
         )
       );
     }
@@ -10894,7 +11396,10 @@ function validateStepOne(){
     global.location.href =
       'TBM_v2.html?' +
       parameters.join('&');
+
+    return true;
   }
+
 
   if(typeof global.goToTBM === 'function'){
     Workflow.original.goToTBM =
