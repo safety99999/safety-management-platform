@@ -3566,24 +3566,125 @@ function buildPermitRecord() {
  */
 function savePermitToLocalStorage(record) {
   try {
-    var permits = getPermits();
-    permits.push(record);
-    localStorage.setItem('safetyPermits', JSON.stringify(permits));
+    /*
+     * 유효하지 않은 객체 또는 허가번호가 없는 객체는
+     * localStorage에 저장하지 않습니다.
+     */
+    if (
+      !record ||
+      typeof record !== 'object' ||
+      Array.isArray(record) ||
+      typeof record.permitNo !== 'string' ||
+      !record.permitNo.trim()
+    ) {
+      console.warn(
+        '[허가서] 로컬에 저장할 객체가 올바르지 않습니다.',
+        record
+      );
 
-    // 다른 탭/앱에 변경 알림
+      return {
+        success: false,
+        reason: 'invalid-record'
+      };
+    }
+
+    record.permitNo =
+      record.permitNo.trim();
+
+    var permits =
+      getPermits();
+
+    var existingIndex =
+      permits.findIndex(
+        function(permit) {
+          return (
+            permit &&
+            permit.permitNo ===
+              record.permitNo
+          );
+        }
+      );
+
+    if(existingIndex >= 0) {
+      /*
+       * 동일한 허가번호가 있으면 배열에 추가하지 않고
+       * 기존 문서를 갱신합니다.
+       */
+      permits[existingIndex] =
+        Object.assign(
+          {},
+          permits[existingIndex],
+          record
+        );
+    } else {
+      permits.push(record);
+    }
+
+    localStorage.setItem(
+      'safetyPermits',
+      JSON.stringify(permits)
+    );
+
+    /*
+     * 다른 화면 또는 같은 페이지의 데이터 변경
+     * 감지 기능에 저장 결과를 알립니다.
+     */
     try {
-      window.dispatchEvent(new CustomEvent('app-data-changed', {
-        detail: { key: 'safetyPermits', timestamp: Date.now() }
-      }));
-    } catch (e) {}
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail: {
+              key: 'safetyPermits',
+              permitNo:
+                record.permitNo,
+              operation:
+                existingIndex >= 0
+                  ? 'updated'
+                  : 'created',
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    } catch (eventError) {
+      console.warn(
+        '[허가서] 로컬 변경 이벤트 전달 실패:',
+        eventError
+      );
+    }
 
-    console.log('[허가서] localStorage 저장 완료:', record.permitNo);
-    return { success: true };
+    console.log(
+      '[허가서] localStorage 저장 완료:',
+      record.permitNo,
+      existingIndex >= 0
+        ? '갱신'
+        : '신규'
+    );
+
+    return {
+      success: true,
+      operation:
+        existingIndex >= 0
+          ? 'updated'
+          : 'created'
+    };
+
   } catch (error) {
-    console.error('[허가서] localStorage 저장 실패:', error);
-    return { success: false, error: error };
+    console.error(
+      '[허가서] localStorage 저장 실패:',
+      error
+    );
+
+    return {
+      success: false,
+      reason: 'local-storage-error',
+      error: error
+    };
   }
 }
+
 
 /**
  * ⭐ 허가서 record를 Firestore에 저장한다. (Step 1 신규)
