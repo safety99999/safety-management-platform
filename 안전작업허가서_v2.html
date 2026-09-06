@@ -11779,6 +11779,659 @@ function validateStepOne(){
 
     return true;
   }
+  /* =====================================================
+   * SECTION 28-2. 보완 문서 화면 복원
+   * ===================================================== */
+
+  function setRevisionField(
+    id,
+    value
+  ){
+    var element =
+      getElement(id);
+
+    if(
+      !element ||
+      value === undefined ||
+      value === null
+    ){
+      return;
+    }
+
+    element.value =
+      String(value);
+
+    element.classList.add(
+      'permit-v2-auto-filled'
+    );
+  }
+
+  function buildRevisionRiskRecord(
+    record
+  ){
+    if(!record){
+      return null;
+    }
+
+    var snapshot =
+      record.riskSnapshot || {};
+
+    if(
+      !record.riskId &&
+      !snapshot.sourceRiskId
+    ){
+      return null;
+    }
+
+    return {
+      riskId:
+        record.riskId ||
+        snapshot.sourceRiskId ||
+        '',
+
+      workId:
+        record.workId ||
+        record.sourceWorkId ||
+        snapshot.sourceWorkId ||
+        '',
+
+      workName:
+        record.workName || '',
+
+      workDescription:
+        record.workDescription || '',
+
+      location:
+        record.location || '',
+
+      detailLocation:
+        record.detailLocation || '',
+
+      company:
+        record.companyName || '',
+
+      workers:
+        record.workerCount || '',
+
+      date:
+        record.startDate || '',
+
+      plannedWorkDate:
+        record.startDate || '',
+
+      finalRiskLevel:
+        snapshot.finalRiskLevel ||
+        record.riskLevel ||
+        record.overallRisk ||
+        '판정불가',
+
+      riskLevel:
+        snapshot.finalRiskLevel ||
+        record.riskLevel ||
+        record.overallRisk ||
+        '판정불가',
+
+      riskScore:
+        snapshot.riskScore ||
+        record.riskScore ||
+        0,
+
+      finalControlAdequacy:
+        snapshot.controlAdequacy ||
+        record.controlAdequacy ||
+        '',
+
+      highRiskWorkAssessment:
+        clone(
+          snapshot.highRiskWorkAssessment ||
+          record.highRiskWorkAssessment ||
+          null
+        ),
+
+      hazardSummary:
+        clone(
+          snapshot.hazardSummary ||
+          record.riskHazardSummary ||
+          null
+        ),
+
+      allMeasures:
+        clone(
+          snapshot.selectedMeasures ||
+          record.riskMeasureDetails ||
+          []
+        ),
+
+      riskMeasures:
+        clone(
+          record.riskMeasures ||
+          []
+        ),
+
+      mappedChecklists:
+        clone(
+          snapshot.mappedChecklists ||
+          record.mappedChecklists ||
+          []
+        ),
+
+      requiredRecords:
+        clone(
+          snapshot.requiredRecords ||
+          record.requiredRecords ||
+          []
+        ),
+
+      status:
+        '평가완료',
+
+      assessor:
+        snapshot.assessor ||
+        record.riskAssessor ||
+        ''
+    };
+  }
+
+  function createRevisionNotice(
+    record
+  ){
+    var oldNotice =
+      getElement(
+        'permitRevisionNotice'
+      );
+
+    if(oldNotice){
+      oldNotice.remove();
+    }
+
+    var stepOne =
+      getElement('screen-step1');
+
+    if(!stepOne){
+      return;
+    }
+
+    var workOrderBox =
+      stepOne.querySelector(
+        '.wo-box'
+      );
+
+    if(!workOrderBox){
+      return;
+    }
+
+    var reason =
+      getRevisionReason(record);
+
+    var notice =
+      document.createElement('div');
+
+    notice.id =
+      'permitRevisionNotice';
+
+    notice.style.cssText =
+      'margin-bottom:16px;' +
+      'padding:16px 17px;' +
+      'border:2px solid var(--warn);' +
+      'border-left-width:6px;' +
+      'border-radius:14px;' +
+      'background:var(--warn-bg);' +
+      'box-shadow:var(--sh);';
+
+    notice.innerHTML =
+      '<div style="' +
+        'margin-bottom:7px;' +
+        'color:var(--warn);' +
+        'font-size:17px;' +
+        'font-weight:900;' +
+      '">' +
+        '🟠 보완요청 문서' +
+      '</div>' +
+
+      '<div style="' +
+        'margin-bottom:8px;' +
+        'color:var(--body);' +
+        'font-size:14px;' +
+        'font-weight:750;' +
+        'line-height:1.6;' +
+      '">' +
+        '허가번호: <strong>' +
+        escapeHtml(record.permitNo || '-') +
+        '</strong>' +
+      '</div>' +
+
+      '<div style="' +
+        'padding:11px 12px;' +
+        'border-radius:9px;' +
+        'background:var(--card);' +
+        'color:var(--warn);' +
+        'font-size:14px;' +
+        'font-weight:800;' +
+        'line-height:1.6;' +
+        'white-space:pre-wrap;' +
+      '">' +
+        '<strong>보완 사유</strong><br>' +
+        escapeHtml(
+          reason ||
+          '등록된 보완 사유가 없습니다.'
+        ) +
+      '</div>' +
+
+      '<div style="' +
+        'margin-top:9px;' +
+        'color:var(--sub);' +
+        'font-size:12.5px;' +
+        'font-weight:700;' +
+        'line-height:1.5;' +
+      '">' +
+        '내용을 수정한 후 마지막 단계에서 다시 서명하고 재제출하세요.' +
+      '</div>';
+
+    workOrderBox.insertAdjacentElement(
+      'beforebegin',
+      notice
+    );
+  }
+
+  function restoreRevisionRoleFields(
+    record
+  ){
+    var manager =
+      record.companyWorkManager || {};
+
+    var companySupervisor =
+      record.companyWorkSupervisor || {};
+
+    var contractorSupervisor =
+      record.contractorWorkSupervisor || {};
+
+    setRevisionField(
+      'company-work-manager-name',
+      manager.name || ''
+    );
+
+    setRevisionField(
+      'company-work-manager-department',
+      manager.department || ''
+    );
+
+    setRevisionField(
+      'company-work-manager-phone',
+      manager.phone || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-name',
+      companySupervisor.name || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-department',
+      companySupervisor.department || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-phone',
+      companySupervisor.phone || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-email',
+      companySupervisor.email || ''
+    );
+
+    setRevisionField(
+      'sup-name',
+      contractorSupervisor.name ||
+      record.supervisorName ||
+      ''
+    );
+
+    setRevisionField(
+      'sup-phone',
+      contractorSupervisor.phone ||
+      record.supervisorPhone ||
+      ''
+    );
+
+    setRevisionField(
+      'sup-email',
+      contractorSupervisor.email ||
+      record.supervisorEmail ||
+      ''
+    );
+
+    var sameRole =
+      getElement(
+        'sameAsCompanyWorkManager'
+      );
+
+    if(sameRole){
+      sameRole.checked =
+        companySupervisor
+          .sameAsCompanyWorkManager ===
+          true;
+    }
+  }
+
+  function restoreRevisionConfirmations(
+    record
+  ){
+    var confirmations =
+      (
+        record.companyWorkManager &&
+        record.companyWorkManager
+          .confirmations
+      ) || {};
+
+    var confirmationMap = {
+      'confirm-risk-reviewed':
+        confirmations
+          .riskAssessmentReviewed,
+
+      'confirm-measures-implemented':
+        confirmations
+          .measuresImplemented,
+
+      'confirm-work-condition-matched':
+        confirmations
+          .workConditionsMatched,
+
+      'confirm-no-critical-risk':
+        confirmations
+          .noUnresolvedCriticalRisk
+    };
+
+    Object.keys(
+      confirmationMap
+    ).forEach(function(id){
+      var element =
+        getElement(id);
+
+      if(element){
+        element.checked =
+          confirmationMap[id] === true;
+      }
+    });
+  }
+
+  function restoreRevisionPermit(
+    record
+  ){
+    if(!record){
+      return false;
+    }
+
+    /*
+     * 기본 객체에 기존 문서 전체를 병합하여
+     * 승인 이력과 생성 정보를 보존합니다.
+     */
+    if(global.permitData){
+      Object.assign(
+        global.permitData,
+        clone(record)
+      );
+
+      global.permitData.permitNo =
+        record.permitNo;
+
+      global.permitData.workerSignature =
+        null;
+
+      global.permitData
+        .workerSignatureProvided =
+        false;
+
+      global.permitData
+        .workerSignatureSaved =
+        false;
+    }
+
+    /*
+     * 위험성평가 원본이 로컬에 없으면
+     * 허가서에 저장된 스냅샷을 사용합니다.
+     */
+    if(!Workflow.state.linkedRisk){
+      Workflow.state.linkedRisk =
+        buildRevisionRiskRecord(
+          record
+        );
+    }
+
+    setRevisionField(
+      'work-name',
+      record.workName || ''
+    );
+
+    setRevisionField(
+      'location',
+      record.location || ''
+    );
+
+    setRevisionField(
+      'detail-location',
+      record.detailLocation || ''
+    );
+
+    setRevisionField(
+      'start-date',
+      record.startDate || ''
+    );
+
+    setRevisionField(
+      'start-time',
+      record.startTime || ''
+    );
+
+    setRevisionField(
+      'end-date',
+      record.endDate || ''
+    );
+
+    setRevisionField(
+      'end-time',
+      record.endTime || ''
+    );
+
+    setRevisionField(
+      'worker-count',
+      record.workerCount || ''
+    );
+
+    setRevisionField(
+      'company-name',
+      record.companyName || ''
+    );
+
+    setRevisionField(
+      'supervisor',
+      record.supervisor || ''
+    );
+
+    setRevisionField(
+      'work-description',
+      record.workDescription || ''
+    );
+
+    /*
+     * 기존 W/O 번호 복원
+     */
+    var workOrderDisplay =
+      getElement('wo-display');
+
+    if(workOrderDisplay){
+      workOrderDisplay.textContent =
+        record.woNumber ||
+        '자동 생성';
+    }
+
+    /*
+     * 작업 수행 구분 복원
+     */
+    var executionType =
+      record.executionType || '';
+
+    if(
+      executionType &&
+      EXECUTION_TYPE_LABELS[
+        executionType
+      ]
+    ){
+      Workflow.state.executionType =
+        executionType;
+
+      global.permitData.executionType =
+        executionType;
+
+      global.permitData
+        .executionTypeLabel =
+        EXECUTION_TYPE_LABELS[
+          executionType
+        ];
+
+      renderExecutionType();
+    }
+
+    /*
+     * 작업 유형과 체크리스트를 복원합니다.
+     */
+    global.permitData.workTypes =
+      Array.isArray(record.workTypes)
+        ? record.workTypes.slice()
+        : [];
+
+    Workflow.state
+      .automaticWorkTypes =
+      global.permitData
+        .workTypes.slice();
+
+    global.permitData.checklist =
+      clone(record.checklist || {});
+
+    global.permitData
+      .checklistReasons =
+      clone(
+        record.checklistReasons ||
+        {}
+      );
+
+    global.permitData.ILSChecklist =
+      clone(
+        record.ILSChecklist ||
+        {}
+      );
+
+    global.permitData.ILSReasons =
+      clone(
+        record.ILSReasons ||
+        {}
+      );
+
+    global.permitData.questions =
+      clone(record.questions || {});
+
+    global.permitData
+      .questionReasons =
+      clone(
+        record.questionReasons ||
+        {}
+      );
+
+    global.permitData
+      .unifiedSafetyChecklist =
+      clone(
+        record.unifiedSafetyChecklist ||
+        null
+      );
+
+    global.permitData
+      .additionalPermitChecklist =
+      clone(
+        record.additionalPermitChecklist ||
+        []
+      );
+
+    restoreRevisionRoleFields(
+      record
+    );
+
+    restoreRevisionConfirmations(
+      record
+    );
+
+    createRevisionNotice(
+      record
+    );
+
+    renderRiskSummary();
+
+    /*
+     * 보완 모드에서는 기존 서명을 인정하지 않고
+     * 다시 서명하도록 캔버스를 초기화합니다.
+     */
+    if(
+      typeof global.clearSig ===
+        'function'
+    ){
+      global.clearSig();
+    }
+
+    /*
+     * 입력 가능한 1단계 화면으로 이동합니다.
+     */
+    if(
+      typeof global.goToStep ===
+        'function'
+    ){
+      global.goToStep(1);
+    }
+
+    var title =
+      getElement('topnavTitle');
+
+    if(title){
+      title.textContent =
+        '안전작업허가서 보완';
+    }
+
+    var badge =
+      getElement('permitNoBadge');
+
+    if(badge){
+      badge.textContent =
+        record.permitNo;
+
+      badge.style.display =
+        'block';
+    }
+
+    console.log(
+      '[Permit Workflow v2] ' +
+      '보완 문서 화면 복원 완료:',
+      {
+        permitNo:
+          record.permitNo,
+
+        workName:
+          record.workName,
+
+        riskId:
+          record.riskId || '',
+
+        executionType:
+          executionType,
+
+        workTypes:
+          global.permitData
+            .workTypes
+      }
+    );
+
+    return true;
+  }
+
+  Workflow.revision.restore =
+    restoreRevisionPermit;
 
   async function loadRevisionPermit(){
     var permitNo =
@@ -11887,8 +12540,13 @@ function validateStepOne(){
       record
     );
 
+    restoreRevisionPermit(
+      record
+    );
+
     var badge =
       getElement('permitNoBadge');
+
 
     if(badge){
       badge.textContent =
