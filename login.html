@@ -354,22 +354,36 @@ body{
           </div>
         </div>
 
-        <form id="loginForm" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;">
+       <form id="loginForm" autocomplete="on" style="display:flex;flex-direction:column;gap:14px;">
           <div class="field">
             <label for="userId">아이디</label>
             <div class="field-wrap">
               <input
-                type="text" id="userId" name="userId"
-                placeholder="아이디 입력"
-                autocapitalize="off" autocorrect="off" spellcheck="false"
-              />
+             <input
+  type="text"
+  id="userId"
+  name="userId"
+  placeholder="아이디 입력"
+  autocomplete="username"
+  autocapitalize="off"
+  autocorrect="off"
+  spellcheck="false"
+/>
+   
             </div>
           </div>
 
           <div class="field">
             <label for="userPw">비밀번호</label>
             <div class="field-wrap">
-              <input type="password" id="userPw" name="userPw" placeholder="비밀번호 입력" />
+              <input
+  type="password"
+  id="userPw"
+  name="userPw"
+  placeholder="비밀번호 입력"
+  autocomplete="current-password"
+/>
+
               <button type="button" class="pw-toggle" id="pwToggle">보기</button>
             </div>
           </div>
@@ -447,19 +461,120 @@ const $tester   = document.getElementById("btnTester");
 
 function showMsg(text, type){
   $msg.textContent = text;
-  $msg.className = "msg " + (type || "error");
+
+  $msg.className =
+    "msg " + (type || "error");
+
+  $msg.style.display = "block";
 }
+
 function clearMsg(){
   $msg.textContent = "";
   $msg.className = "msg";
-  $msg.style.display = "none";
+  $msg.style.display = "";
 }
+
 function toEmail(rawId){
-  const id = (rawId || "").trim();
-  if(!id) return "";
-  if(id.includes("@")) return id;
-  return id + "@" + AUTH_ID_DOMAIN;
+  var id =
+    String(rawId || "")
+      .trim()
+      .toLowerCase();
+
+  if(!id){
+    return "";
+  }
+
+  if(id.includes("@")){
+    return id;
+  }
+
+  return (
+    id +
+    "@" +
+    AUTH_ID_DOMAIN
+  );
 }
+
+/*
+ * 로그인 페이지와 다른 화면에서 공통으로 사용하는
+ * 애플리케이션 세션을 제거합니다.
+ */
+function clearApplicationSession(){
+  sessionStorage.removeItem(
+    "appSession"
+  );
+
+  sessionStorage.removeItem(
+    "userName"
+  );
+
+  sessionStorage.removeItem(
+    "userRole"
+  );
+
+  sessionStorage.removeItem(
+    "adminMode"
+  );
+}
+
+/*
+ * 로그인 성공 또는 테스터 진입 시
+ * 세션 키를 같은 형식으로 저장합니다.
+ */
+function saveApplicationSession(session){
+  sessionStorage.setItem(
+    "appSession",
+    JSON.stringify(session)
+  );
+
+  sessionStorage.setItem(
+    "userName",
+    session.displayName || ""
+  );
+
+  sessionStorage.setItem(
+    "userRole",
+    session.role || ""
+  );
+
+  if(session.role === "admin"){
+    sessionStorage.setItem(
+      "adminMode",
+      "true"
+    );
+  }else{
+    sessionStorage.removeItem(
+      "adminMode"
+    );
+  }
+}
+
+/*
+ * 로그인 화면에 진입하면 이전 앱 세션과
+ * 남아 있는 Firebase 인증을 정리합니다.
+ */
+async function initializeLoginPage(){
+  clearApplicationSession();
+
+  try{
+    if(auth.currentUser){
+      await auth.signOut();
+    }
+  }catch(error){
+    console.warn(
+      "[로그인] 기존 Firebase 인증 정리 실패:",
+      error
+    );
+  }
+
+  if($id){
+    $id.focus();
+  }
+}
+
+const loginPageReady =
+  initializeLoginPage();
+
 
 /* 비밀번호 보기/숨기기 */
 $pwToggle.addEventListener("click", () => {
@@ -476,136 +591,364 @@ $pwToggle.addEventListener("click", () => {
    로그인 처리
    (대시보드 세션 키: 'appSession')
    ========================================================= */
-$form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  clearMsg();
+$form.addEventListener(
+  "submit",
+  async function(event){
+    event.preventDefault();
+    clearMsg();
 
-  const rawId = $id.value.trim();
-  const pw    = $pw.value;
+    var rawId =
+      ($id.value || "").trim();
 
-  if(!rawId || !pw){
-    showMsg("아이디와 비밀번호를 입력하세요.", "error");
-    return;
+    var password =
+      $pw.value || "";
+
+    if(!rawId || !password){
+      showMsg(
+        "아이디와 비밀번호를 입력하세요.",
+        "error"
+      );
+
+      return;
+    }
+
+    var email =
+      toEmail(rawId);
+
+    $btn.disabled = true;
+    $tester.disabled = true;
+    $btn.textContent = "로그인 중...";
+
+    /*
+     * 로그인 페이지의 이전 세션 정리가
+     * 완료될 때까지 기다립니다.
+     */
+    await loginPageReady;
+
+    /*
+     * 새로운 인증이 완료되기 전에는
+     * 이전 앱 세션을 사용하지 않습니다.
+     */
+    clearApplicationSession();
+
+    try{
+      /*
+       * appSession이 sessionStorage이므로
+       * Firebase 인증도 SESSION으로 맞춥니다.
+       */
+      await auth.setPersistence(
+        firebase.auth.Auth.Persistence
+          .SESSION
+      );
+
+      /*
+       * 이전 Firebase 사용자가 남아 있다면
+       * 새로운 로그인 전에 정리합니다.
+       */
+      if(auth.currentUser){
+        await auth.signOut();
+      }
+
+      var credential =
+        await auth
+          .signInWithEmailAndPassword(
+            email,
+            password
+          );
+
+      var user =
+        credential.user;
+
+      if(!user || !user.uid){
+        throw new Error(
+          "Firebase 사용자 UID를 확인할 수 없습니다."
+        );
+      }
+
+      console.log(
+        "[로그인] Authentication 성공:",
+        user.uid
+      );
+
+      var userSnapshot =
+        await db
+          .collection("users")
+          .doc(user.uid)
+          .get();
+
+      console.log(
+        "[로그인] users 문서 존재:",
+        userSnapshot.exists
+      );
+
+      if(!userSnapshot.exists){
+        await auth.signOut();
+
+        showMsg(
+          "등록되지 않은 계정입니다. 관리자에게 문의하세요.",
+          "error"
+        );
+
+        return;
+      }
+
+      var data =
+        userSnapshot.data() || {};
+
+      console.log(
+        "[로그인] 계정 확인:",
+        {
+          active: data.active,
+          role: data.role,
+          environment:
+            data.environment
+        }
+      );
+
+      if(data.active !== true){
+        await auth.signOut();
+
+        showMsg(
+          "비활성 계정입니다.",
+          "error"
+        );
+
+        return;
+      }
+
+      if(
+        data.environment !==
+        window.APP_MODE
+      ){
+        await auth.signOut();
+
+        showMsg(
+          "현재 테스트 환경에서 사용할 수 없는 계정입니다.",
+          "error"
+        );
+
+        return;
+      }
+
+      if(
+        data.role !== "admin" &&
+        data.role !== "user"
+      ){
+        await auth.signOut();
+
+        showMsg(
+          "허용되지 않은 역할입니다.",
+          "error"
+        );
+
+        return;
+      }
+
+      /*
+       * 현재 Firebase 인증 토큰을 갱신하여
+       * 인증 상태를 확정합니다.
+       */
+      await user.getIdToken(true);
+
+      var session = {
+        accessMode:
+          "authenticated",
+
+        role:
+          data.role,
+
+        uid:
+          user.uid,
+
+        displayName:
+          data.displayName ||
+          rawId,
+
+        email:
+          user.email ||
+          email,
+
+        environment:
+          window.APP_MODE,
+
+        issuedAt:
+          new Date().toISOString(),
+
+        source:
+          "firebase-auth"
+      };
+
+      saveApplicationSession(
+        session
+      );
+
+      console.log(
+        "[로그인] 앱 세션 저장 완료:",
+        {
+          uid: session.uid,
+          role: session.role,
+          environment:
+            session.environment
+        }
+      );
+
+      showMsg(
+        "로그인 성공. 대시보드로 이동합니다.",
+        "info"
+      );
+
+      setTimeout(function(){
+        window.location.replace(
+          "안전관리플랫폼_대시보드_V6_.html"
+        );
+      }, 300);
+
+    }catch(error){
+      console.error(
+        "[로그인 오류]",
+        error
+      );
+
+      clearApplicationSession();
+
+      var text =
+        "로그인에 실패했습니다.";
+
+      switch(error.code){
+        case "auth/invalid-credential":
+        case "auth/wrong-password":
+        case "auth/user-not-found":
+          text =
+            "아이디 또는 비밀번호가 올바르지 않습니다.";
+          break;
+
+        case "auth/too-many-requests":
+          text =
+            "로그인 시도가 많습니다. 잠시 후 다시 시도하세요.";
+          break;
+
+        case "auth/network-request-failed":
+          text =
+            "네트워크 오류가 발생했습니다.";
+          break;
+
+        case "auth/invalid-email":
+          text =
+            "아이디 형식이 올바르지 않습니다.";
+          break;
+
+        case "auth/user-disabled":
+          text =
+            "사용이 중지된 계정입니다.";
+          break;
+      }
+
+      showMsg(
+        text,
+        "error"
+      );
+
+    }finally{
+      $btn.disabled = false;
+      $tester.disabled = false;
+
+      $btn.textContent =
+        "사용자 로그인";
+
+      $tester.textContent =
+        "🧪 테스터로 체험하기";
+    }
   }
+);
 
-  const email = toEmail(rawId);
-  $btn.disabled = true;
-  $btn.textContent = "로그인 중...";
-
-  try{
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-    const cred = await auth.signInWithEmailAndPassword(email, pw);
-    const user = cred.user;
-    console.log("[로그인] Authentication 성공:", user.uid);
-
-    const userSnap = await db.collection("users").doc(user.uid).get();
-    console.log("[로그인] users 문서 존재:", userSnap.exists);
-
-    if(!userSnap.exists){
-      showMsg("등록되지 않은 계정입니다. 관리자에게 문의하세요.", "error");
-      await auth.signOut();
-      return;
-    }
-
-    const data = userSnap.data();
-    console.log("[로그인] active:", data.active, "role:", data.role, "env:", data.environment);
-
-    if(data.active !== true){
-      showMsg("비활성 계정입니다.", "error");
-      await auth.signOut();
-      return;
-    }
-    if(data.environment !== "test"){
-      showMsg("테스트 환경 계정이 아닙니다.", "error");
-      await auth.signOut();
-      return;
-    }
-    if(data.role !== "admin" && data.role !== "user"){
-      showMsg("허용되지 않은 역할입니다.", "error");
-      await auth.signOut();
-      return;
-    }
-
-    /* 대시보드가 읽는 세션 키: 'appSession' */
-    const session = {
-      accessMode: "authenticated",
-      role: data.role,
-      uid: user.uid,
-      displayName: data.displayName || "",
-      email: user.email || email,
-      environment: "test"
-    };
-    sessionStorage.setItem("appSession", JSON.stringify(session));
-
-    /* ═══════════════════════════════════════════════════
-       세션 키 통일 (인수인계서 5.15항)
-       - 위험성평가_v2 등 다른 화면이 참조하는 세션 키
-       ═══════════════════════════════════════════════════ */
-    sessionStorage.setItem("userName", data.displayName || rawId);
-    sessionStorage.setItem("userRole", data.role);  // 'admin' | 'user'
-    if(data.role === "admin"){
-      sessionStorage.setItem("adminMode", "true");
-    } else {
-      sessionStorage.removeItem("adminMode");
-    }
-    console.log("[로그인] 앱 세션 저장 완료 (appSession + userName/userRole/adminMode)");
-
-    showMsg("로그인 성공. 대시보드로 이동합니다.", "info");
-
-    setTimeout(() => {
-      location.href = "안전관리플랫폼_대시보드_V6_.html";
-    }, 300);
-
-  }catch(err){
-    console.error("[로그인 오류]", err);
-    let text = "로그인에 실패했습니다.";
-    switch(err.code){
-      case "auth/invalid-credential":
-      case "auth/wrong-password":
-      case "auth/user-not-found":
-        text = "아이디 또는 비밀번호가 올바르지 않습니다."; break;
-      case "auth/too-many-requests":
-        text = "로그인 시도가 많습니다. 잠시 후 다시 시도하세요."; break;
-      case "auth/network-request-failed":
-        text = "네트워크 오류가 발생했습니다."; break;
-      case "auth/invalid-email":
-        text = "아이디 형식이 올바르지 않습니다."; break;
-    }
-    showMsg(text, "error");
-  }finally{
-    $btn.disabled = false;
-    $btn.textContent = "사용자 로그인";
-  }
-
-});
 
 /* =========================================================
    테스터 진입
    ========================================================= */
-$tester.addEventListener("click", () => {
-  const testerSession = {
-    accessMode: "tester",
-    role: "tester",
-    uid: null,
-    displayName: "공개 테스터",
-    email: "",
-    environment: "test"
-  };
-  sessionStorage.setItem("appSession", JSON.stringify(testerSession));
+$tester.addEventListener(
+  "click",
+  async function(){
+    clearMsg();
 
-  /* ═══════════════════════════════════════════════════
-     세션 키 통일 (인수인계서 5.15항)
-     - 테스터는 관리자 잔재 제거 필수
-     ═══════════════════════════════════════════════════ */
-  sessionStorage.setItem("userName", "공개 테스터");
-  sessionStorage.setItem("userRole", "tester");
-  sessionStorage.removeItem("adminMode");  // 관리자 잔재 제거
+    $tester.disabled = true;
+    $btn.disabled = true;
 
-  console.log("[테스터] 로컬 세션 생성 완료 (appSession + userName/userRole, adminMode 제거)");
-  location.href = "안전관리플랫폼_대시보드_V6_.html";
-});
+    $tester.textContent =
+      "테스터 환경 준비 중...";
 
+    try{
+      await loginPageReady;
+
+      /*
+       * 이전 관리자 또는 일반 사용자의
+       * Firebase 인증을 반드시 종료합니다.
+       */
+      if(auth.currentUser){
+        await auth.signOut();
+      }
+
+      clearApplicationSession();
+
+      var testerSession = {
+        accessMode:
+          "tester",
+
+        role:
+          "tester",
+
+        uid:
+          null,
+
+        displayName:
+          "공개 테스터",
+
+        email:
+          "",
+
+        environment:
+          window.APP_MODE,
+
+        issuedAt:
+          new Date().toISOString(),
+
+        source:
+          "local-tester"
+      };
+
+      saveApplicationSession(
+        testerSession
+      );
+
+      console.log(
+        "[테스터] 로컬 세션 생성 완료:",
+        testerSession
+      );
+
+      window.location.replace(
+        "안전관리플랫폼_대시보드_V6_.html"
+      );
+
+    }catch(error){
+      console.error(
+        "[테스터] 진입 실패:",
+        error
+      );
+
+      clearApplicationSession();
+
+      showMsg(
+        "테스터 환경을 준비하지 못했습니다. 다시 시도하세요.",
+        "error"
+      );
+
+      $tester.disabled = false;
+      $btn.disabled = false;
+
+      $tester.textContent =
+        "🧪 테스터로 체험하기";
+    }
+  }
+);
 
 console.log("[로그인] 페이지 준비 완료", {
   authDomain: firebaseConfig.authDomain,
