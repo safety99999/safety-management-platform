@@ -6797,18 +6797,39 @@ window._workPickerFilter = {
     console.log('[qbClick] 앱:', appType, '오늘 작업:', todayWorks.length + '건');
     
        // 케이스 1: 오늘 작업 0건
-    if(todayWorks.length === 0){
-      showCustomConfirm({
-        icon: '⚠️',
-        title: '오늘 확정 작업 없음',
-        message: appLabel + '(으)로 이동합니다.\n오늘 확정된 작업이 없어\n빈 양식으로 열립니다.',
-        okText: '이동',
-        okType: 'warn'
-      }, function(ok){
-        if(ok) window.location.href = targetUrl;
-      });
-      return;
-    }
+ if(todayWorks.length === 0){
+  /*
+   * TBM은 승인된 허가서가 필요하므로
+   * 빈 양식으로 바로 이동하지 않습니다.
+   */
+  if(appType === 'tbm'){
+    showToast(
+      '승인된 안전작업허가서를 먼저 선택해 주세요.',
+      'warning'
+    );
+
+    return;
+  }
+
+  /*
+   * 위험성평가·안전정보제공서·안전퀴즈는
+   * 오늘 작업이 없어도 바로 시작합니다.
+   */
+  if(
+    typeof window.navigateWithFade ===
+      'function'
+  ){
+    window.navigateWithFade(
+      targetUrl
+    );
+  }else{
+    window.location.href =
+      targetUrl;
+  }
+
+  return;
+}
+
     
     // 케이스 2: 오늘 작업 1건 (자동 선택)
     if(todayWorks.length === 1){
