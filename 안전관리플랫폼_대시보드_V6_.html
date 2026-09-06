@@ -826,15 +826,241 @@ button{touch-action:manipulation}
   }
 
   function formatDate(date){
-    date = date || new Date();
+    date =
+      date || new Date();
 
     return (
       date.getFullYear() +
       '-' +
-      pad(date.getMonth() + 1) +
+      pad(
+        date.getMonth() + 1
+      ) +
       '-' +
-      pad(date.getDate())
+      pad(
+        date.getDate()
+      )
     );
+  }
+
+  /*
+   * 오늘 날짜를 YYYY-MM-DD 형식으로 반환합니다.
+   */
+  function today(){
+    return formatDate(
+      new Date()
+    );
+  }
+
+  /*
+   * 현재 일시를 ISO 문자열로 반환합니다.
+   */
+  function nowIso(){
+    return new Date()
+      .toISOString();
+  }
+
+  /*
+   * 저장된 날짜 또는 Firestore Timestamp를
+   * 한국어 날짜·시간 문자열로 변환합니다.
+   */
+  function formatDateTime(value){
+    if(!value){
+      return '-';
+    }
+
+    if(
+      typeof value === 'object' &&
+      typeof value.toDate ===
+        'function'
+    ){
+      try{
+        value =
+          value.toDate();
+      }catch(error){
+        return '-';
+      }
+    }
+
+    if(
+      value &&
+      typeof value === 'object' &&
+      !(value instanceof Date)
+    ){
+      var seconds =
+        value.seconds !== undefined
+          ? value.seconds
+          : value._seconds;
+
+      if(
+        Number.isFinite(
+          Number(seconds)
+        )
+      ){
+        value =
+          new Date(
+            Number(seconds) * 1000
+          );
+      }
+    }
+
+    var date =
+      value instanceof Date
+        ? value
+        : new Date(value);
+
+    if(
+      !Number.isFinite(
+        date.getTime()
+      )
+    ){
+      return clean(value) || '-';
+    }
+
+    return date.toLocaleString(
+      'ko-KR'
+    );
+  }
+
+  /*
+   * 화면 상단 토스트 알림
+   */
+  function showToast(
+    message,
+    type
+  ){
+    var container =
+      byId('toastWrap');
+
+    if(!container){
+      console.log(
+        '[알림]',
+        message
+      );
+
+      return;
+    }
+
+    var toast =
+      document.createElement(
+        'div'
+      );
+
+    toast.className =
+      'toast ' +
+      (type || 'info');
+
+    toast.textContent =
+      message;
+
+    container.appendChild(
+      toast
+    );
+
+    setTimeout(function(){
+      if(toast.parentNode){
+        toast.parentNode
+          .removeChild(toast);
+      }
+    },3500);
+  }
+
+  /*
+   * 승인·보완·반려 등의 확인창을 엽니다.
+   */
+  function showConfirm(options){
+    options =
+      options || {};
+
+    return new Promise(
+      function(resolve){
+        state.confirmCallback =
+          resolve;
+
+        setText(
+          'confirmIcon',
+          options.icon ||
+          '⚠️'
+        );
+
+        setText(
+          'confirmTitle',
+          options.title ||
+          '확인'
+        );
+
+        setText(
+          'confirmMessage',
+          options.message ||
+          '진행하시겠습니까?'
+        );
+
+        var okButton =
+          byId('confirmOkButton');
+
+        if(okButton){
+          okButton.textContent =
+            options.okText ||
+            '확인';
+
+          okButton.className =
+            'custom-confirm-btn ' +
+            'custom-confirm-btn-confirm';
+
+          if(options.type){
+            okButton.classList.add(
+              options.type
+            );
+          }
+        }
+
+        var overlay =
+          byId('confirmOverlay');
+
+        if(overlay){
+          overlay.classList.add(
+            'active'
+          );
+        }else{
+          resolve({
+            confirmed:
+              window.confirm(
+                options.message ||
+                '진행하시겠습니까?'
+              )
+          });
+        }
+      }
+    );
+  }
+
+  /*
+   * 확인창을 닫고 선택 결과를 반환합니다.
+   */
+  function closeConfirm(confirmed){
+    var callback =
+      state.confirmCallback;
+
+    state.confirmCallback =
+      null;
+
+    var overlay =
+      byId('confirmOverlay');
+
+    if(overlay){
+      overlay.classList.remove(
+        'active'
+      );
+    }
+
+    if(
+      typeof callback ===
+        'function'
+    ){
+      callback({
+        confirmed:
+          confirmed === true
+      });
+    }
   }
 
   function formatShortDate(value){
@@ -843,10 +1069,10 @@ button{touch-action:manipulation}
     }
 
     var parts =
-      value.split('-');
+      String(value).split('-');
 
     if(parts.length !== 3){
-      return value;
+      return String(value);
     }
 
     var date =
@@ -856,8 +1082,22 @@ button{touch-action:manipulation}
         Number(parts[2])
       );
 
+    if(
+      !Number.isFinite(
+        date.getTime()
+      )
+    ){
+      return String(value);
+    }
+
     var days = [
-      '일','월','화','수','목','금','토'
+      '일',
+      '월',
+      '화',
+      '수',
+      '목',
+      '금',
+      '토'
     ];
 
     return (
