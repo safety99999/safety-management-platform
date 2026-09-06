@@ -1082,7 +1082,6 @@ body{
   opacity:1;
 }
   
-@media(prefers-reduced-motion:reduce){
  /* ═══════════════════════════════════════
    작업 수행 구분
    ═══════════════════════════════════════ */
@@ -1845,13 +1844,11 @@ window.firebaseApp = {
   <div class="cl-section">
     <div class="cl-section-header">🔒 ILS 체크리스트</div>
     <div class="cl-items">
-      <div class="cl-item"><div class="cl-num">1</div><div class="cl-text">전기 차단 및 잠금 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(1,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">2</div><div class="cl-text">공유압 차단 및 잠금 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(2,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">3</div><div class="cl-text">잔류에너지 방출(방전)조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(3,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">4</div><div class="cl-text">GIB 운영(ILS열쇠보관)</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(4,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">5</div><div class="cl-text">가스(누출) 조치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(5,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(5,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">6</div><div class="cl-text">차단판(잠금장치) 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(6,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(6,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(6,'na',this)">해당없음</button></div></div>
-      <div class="cl-item"><div class="cl-num">7</div><div class="cl-text">작업구역 설정 및 위험표지 설치</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(7,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(7,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">1</div><div class="cl-text">ILS Order 확인</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(1,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(1,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(1,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">2</div><div class="cl-text">에너지원 차단</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(2,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(2,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(2,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">3</div><div class="cl-text">잠금확인 및 표찰게시</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(3,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(3,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(3,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">4</div><div class="cl-text">작업자 Red Lock 체결상태</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(4,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(4,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(4,'na',this)">해당없음</button></div></div>
+      <div class="cl-item"><div class="cl-num">7</div><div class="cl-text">GIB 운영(열쇠보관)</div><div class="cl-radios"><button class="cl-radio-btn" onclick="setILS(5,'ok',this)">⭕</button><button class="cl-radio-btn" onclick="setILS(7,'no',this)">❌</button><button class="cl-radio-btn na-btn" onclick="setILS(7,'na',this)">해당없음</button></div></div>
     </div>
   </div>
   <div class="btn-row">
@@ -2118,10 +2115,12 @@ window.firebaseApp = {
     <button
       type="button"
       class="btn-primary"
+      id="permitSubmitButton"
       onclick="validateStep7()"
     >
       허가자 승인 요청
     </button>
+
   </div>
 </div>
 
@@ -2206,7 +2205,10 @@ window.firebaseApp = {
     </div>
   </div>
 
-  <div class="btn-row">
+    <div
+    class="btn-row"
+    style="flex-direction:column;"
+  >
 
     <button
       type="button"
@@ -2218,6 +2220,15 @@ window.firebaseApp = {
 
     <button
       type="button"
+      class="btn-secondary"
+      id="refreshPermitApprovalButton"
+      onclick="refreshCurrentPermitApproval()"
+    >
+      🔄 승인 상태 확인
+    </button>
+
+    <button
+      type="button"
       class="btn-success permit-tbm-locked"
       id="goTbmAfterApprovalButton"
       onclick="goToTBM()"
@@ -2225,6 +2236,7 @@ window.firebaseApp = {
     >
       🔒 허가 승인 후 TBM 가능
     </button>
+
 
   </div>
 </div>
@@ -2613,6 +2625,7 @@ var permitData = {
   inspectionNos: [],
 
   status: '대기중',
+  statusCode: 'draft',
   createdAt: '',
   updatedAt: '',
   createdBy: '',
@@ -3179,7 +3192,13 @@ function initSigPad() {
 function initCanvasSig(canvasId){
   var canvas = document.getElementById(canvasId);
   if(!canvas) return;
-  var ctx = canvas.getContext('2d');
+  var ctx = canvas.getContext(
+    '2d',
+    {
+      willReadFrequently: true
+    }
+  );
+
   ctx.strokeStyle='#1C2B3A'; ctx.lineWidth=2.5; ctx.lineCap='round';
   var drawing=false, lx=0, ly=0;
   function getPos(e){
@@ -3207,12 +3226,48 @@ function clearExtSig() {
 }
 
 function hasCanvasSig(canvasId) {
-  var canvas = document.getElementById(canvasId);
-  if(!canvas) return false;
-  var data = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
-  for(var i=3;i<data.length;i+=4) if(data[i]>0) return true;
+  var canvas =
+    document.getElementById(
+      canvasId
+    );
+
+  if(!canvas){
+    return false;
+  }
+
+  var context =
+    canvas.getContext(
+      '2d',
+      {
+        willReadFrequently: true
+      }
+    );
+
+  if(!context){
+    return false;
+  }
+
+  var imageData =
+    context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    ).data;
+
+  for(
+    var index = 3;
+    index < imageData.length;
+    index += 4
+  ){
+    if(imageData[index] > 0){
+      return true;
+    }
+  }
+
   return false;
 }
+
 
 // ═══════════════════════════════════════════════════════
 // VALIDATION
@@ -3567,24 +3622,125 @@ function buildPermitRecord() {
  */
 function savePermitToLocalStorage(record) {
   try {
-    var permits = getPermits();
-    permits.push(record);
-    localStorage.setItem('safetyPermits', JSON.stringify(permits));
+    /*
+     * 유효하지 않은 객체 또는 허가번호가 없는 객체는
+     * localStorage에 저장하지 않습니다.
+     */
+    if (
+      !record ||
+      typeof record !== 'object' ||
+      Array.isArray(record) ||
+      typeof record.permitNo !== 'string' ||
+      !record.permitNo.trim()
+    ) {
+      console.warn(
+        '[허가서] 로컬에 저장할 객체가 올바르지 않습니다.',
+        record
+      );
 
-    // 다른 탭/앱에 변경 알림
+      return {
+        success: false,
+        reason: 'invalid-record'
+      };
+    }
+
+    record.permitNo =
+      record.permitNo.trim();
+
+    var permits =
+      getPermits();
+
+    var existingIndex =
+      permits.findIndex(
+        function(permit) {
+          return (
+            permit &&
+            permit.permitNo ===
+              record.permitNo
+          );
+        }
+      );
+
+    if(existingIndex >= 0) {
+      /*
+       * 동일한 허가번호가 있으면 배열에 추가하지 않고
+       * 기존 문서를 갱신합니다.
+       */
+      permits[existingIndex] =
+        Object.assign(
+          {},
+          permits[existingIndex],
+          record
+        );
+    } else {
+      permits.push(record);
+    }
+
+    localStorage.setItem(
+      'safetyPermits',
+      JSON.stringify(permits)
+    );
+
+    /*
+     * 다른 화면 또는 같은 페이지의 데이터 변경
+     * 감지 기능에 저장 결과를 알립니다.
+     */
     try {
-      window.dispatchEvent(new CustomEvent('app-data-changed', {
-        detail: { key: 'safetyPermits', timestamp: Date.now() }
-      }));
-    } catch (e) {}
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail: {
+              key: 'safetyPermits',
+              permitNo:
+                record.permitNo,
+              operation:
+                existingIndex >= 0
+                  ? 'updated'
+                  : 'created',
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    } catch (eventError) {
+      console.warn(
+        '[허가서] 로컬 변경 이벤트 전달 실패:',
+        eventError
+      );
+    }
 
-    console.log('[허가서] localStorage 저장 완료:', record.permitNo);
-    return { success: true };
+    console.log(
+      '[허가서] localStorage 저장 완료:',
+      record.permitNo,
+      existingIndex >= 0
+        ? '갱신'
+        : '신규'
+    );
+
+    return {
+      success: true,
+      operation:
+        existingIndex >= 0
+          ? 'updated'
+          : 'created'
+    };
+
   } catch (error) {
-    console.error('[허가서] localStorage 저장 실패:', error);
-    return { success: false, error: error };
+    console.error(
+      '[허가서] localStorage 저장 실패:',
+      error
+    );
+
+    return {
+      success: false,
+      reason: 'local-storage-error',
+      error: error
+    };
   }
 }
+
 
 /**
  * ⭐ 허가서 record를 Firestore에 저장한다. (Step 1 신규)
@@ -3600,12 +3756,56 @@ function savePermitToLocalStorage(record) {
  */
 async function savePermitToFirestore(record) {
   try {
+    /*
+     * 잘못된 저장 요청을 Firestore 처리 전에 차단합니다.
+     */
+    if (
+      !record ||
+      typeof record !== 'object' ||
+      Array.isArray(record)
+    ) {
+      console.warn(
+        '[허가서] 저장할 허가서 객체가 올바르지 않습니다.',
+        record
+      );
+
+      return {
+        success: false,
+        reason: 'invalid-record'
+      };
+    }
+
+    /*
+     * 허가번호가 없는 객체는 저장하지 않습니다.
+     */
+    if (
+      typeof record.permitNo !== 'string' ||
+      !record.permitNo.trim()
+    ) {
+      console.warn(
+        '[허가서] permitNo가 없어 저장할 수 없습니다.',
+        record
+      );
+
+      return {
+        success: false,
+        reason: 'no-permit-no'
+      };
+    }
+
+    record.permitNo =
+      record.permitNo.trim();
+
     // Firebase 로드 확인
     if (!window.firebaseApp || !window.firebaseApp.db) {
       console.warn('[허가서] Firebase 미로드 - Firestore 저장 건너뜀');
       return { success: false, reason: 'no-firebase' };
     }
+
     var appSession = null;
+
+    // 이하 기존 코드 유지
+
 
     try {
       appSession = JSON.parse(
@@ -4809,21 +5009,34 @@ document.addEventListener('keydown', function(e){
     return;
   }
 
-  var Workflow = {
-    version: VERSION,
+var Workflow = {
+  version: VERSION,
 
-    state: {
-      requestedRiskId: '',
-      requestedWorkId: '',
-      entry: '',
-      linkedRisk: null,
-      automaticWorkTypes: [],
-      executionType: '',
-      initialized: false
-    },
+  state: {
+    requestedRiskId: '',
+    requestedWorkId: '',
 
-    original: {}
-  };
+    /*
+     * 보완 문서 진입 정보
+     * 예:
+     * ?permitNo=PTW-20260906-354&mode=revision
+     */
+    requestedPermitNo: '',
+    mode: '',
+    isRevisionMode: false,
+    revisionPermit: null,
+    revisionReason: '',
+
+    entry: '',
+    linkedRisk: null,
+    automaticWorkTypes: [],
+    executionType: '',
+    initialized: false
+  },
+
+  original: {}
+};
+
 
   global.PermitWorkflowV2 = Workflow;
 
@@ -5086,19 +5299,67 @@ document.addEventListener('keydown', function(e){
     return assessment.status || '검토중';
   }
 
-  function parseUrlParameters(){
-    var parameters =
-      new URLSearchParams(global.location.search);
+function parseUrlParameters(){
+  var parameters =
+    new URLSearchParams(
+      global.location.search
+    );
 
-    Workflow.state.requestedRiskId =
-      normalizeId(parameters.get('riskId'));
+  Workflow.state.requestedRiskId =
+    normalizeId(
+      parameters.get('riskId')
+    );
 
-    Workflow.state.requestedWorkId =
-      normalizeId(parameters.get('workId'));
+  Workflow.state.requestedWorkId =
+    normalizeId(
+      parameters.get('workId')
+    );
 
-    Workflow.state.entry =
-      clean(parameters.get('entry'));
-  }
+  Workflow.state.requestedPermitNo =
+    clean(
+      parameters.get('permitNo')
+    );
+
+  Workflow.state.mode =
+    clean(
+      parameters.get('mode')
+    ).toLowerCase();
+
+  Workflow.state.entry =
+    clean(
+      parameters.get('entry')
+    );
+
+  Workflow.state.isRevisionMode =
+    Boolean(
+      Workflow.state.requestedPermitNo &&
+      Workflow.state.mode === 'revision'
+    );
+
+  console.log(
+    '[Permit Workflow v2] 진입 파라미터:',
+    {
+      riskId:
+        Workflow.state.requestedRiskId,
+
+      workId:
+        Workflow.state.requestedWorkId,
+
+      permitNo:
+        Workflow.state.requestedPermitNo,
+
+      mode:
+        Workflow.state.mode,
+
+      revision:
+        Workflow.state.isRevisionMode,
+
+      entry:
+        Workflow.state.entry
+    }
+  );
+}
+
 
   Workflow.util = {
     getElement: getElement,
@@ -9778,7 +10039,19 @@ function validateStepOne(){
           }, 100);
         }
 
+        if(
+          Workflow.state
+            .isRevisionMode
+        ){
+          setTimeout(function(){
+            restoreRevisionStepView(
+              stepNumber
+            );
+          }, 150);
+        }
+
         return result;
+
       };
 
     global.goToStep.__permitWorkflowV2 =
@@ -9967,10 +10240,28 @@ function validateStepOne(){
       global.permitData.permitNo
     );
 
+    var submissionState =
+      getSubmissionStatus();
+
     global.setTxt(
       'fin-approval-status',
-      '승인대기'
+      submissionState.status
     );
+
+    global.setTxt(
+      'permitCompleteTitle',
+      submissionState.revision
+        ? '보완 문서 재제출 완료'
+        : '허가 승인 요청 완료'
+    );
+
+    global.setTxt(
+      'permitCompleteDescription',
+      submissionState.revision
+        ? '보완 문서가 재제출되었습니다. 허가자 재승인 후 TBM을 진행할 수 있습니다.'
+        : '허가자 최종 승인 후 TBM을 진행할 수 있습니다.'
+    );
+
 
     global.setTxt(
       'fin-wo',
@@ -10050,18 +10341,374 @@ function validateStepOne(){
       );
     }
   }
+  /* =====================================================
+   * 승인 상태 조회 및 완료 화면 갱신
+   * ===================================================== */
+
+  function isPermitApproved(record){
+    record = record || {};
+
+    return (
+      record.statusCode ===
+        'approved' ||
+      record.status ===
+        '허가완료' ||
+      record.permitStatus ===
+        '허가완료'
+    );
+  }
+
+  function applyPermitApprovalState(
+    record
+  ){
+    if(!record){
+      return false;
+    }
+
+    var approved =
+      isPermitApproved(record);
+
+    var statusText =
+      record.permitStatus ||
+      record.status ||
+      (
+        approved
+          ? '허가완료'
+          : '승인대기'
+      );
+
+    var statusElement =
+      getElement(
+        'fin-approval-status'
+      );
+
+    if(statusElement){
+      statusElement.textContent =
+        statusText;
+
+      statusElement.classList.toggle(
+        'pending',
+        !approved
+      );
+    }
+
+    var tbmButton =
+      getElement(
+        'goTbmAfterApprovalButton'
+      );
+
+    if(tbmButton){
+      tbmButton.disabled =
+        !approved;
+
+      tbmButton.classList.toggle(
+        'permit-tbm-locked',
+        !approved
+      );
+
+      tbmButton.textContent =
+        approved
+          ? '✅ TBM 진행'
+          : '🔒 허가 승인 후 TBM 가능';
+    }
+
+    return approved;
+  }
+
+  async function refreshCurrentPermitApproval(){
+    var refreshButton =
+      getElement(
+        'refreshPermitApprovalButton'
+      );
+
+    if(
+      refreshButton &&
+      refreshButton.dataset.loading ===
+        'true'
+    ){
+      return false;
+    }
+
+    var permitNo =
+      global.permitData &&
+      global.permitData.permitNo;
+
+    if(!permitNo){
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '현재 허가번호를 확인할 수 없습니다.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+
+    var firebaseService =
+      global.firebaseApp;
+
+    if(
+      !firebaseService ||
+      !firebaseService.db ||
+      typeof firebaseService.doc !==
+        'function' ||
+      typeof firebaseService.getDoc !==
+        'function'
+    ){
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          'Firebase 연결 상태를 확인해 주세요.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+
+    if(refreshButton){
+      refreshButton.dataset.loading =
+        'true';
+
+      refreshButton.disabled = true;
+
+      refreshButton.textContent =
+        '조회 중...';
+    }
+
+    try{
+      var collectionName =
+        firebaseService
+          .PERMIT_COLLECTION ||
+        global.getCollectionName(
+          'safetyPermits'
+        );
+
+      var documentReference =
+        firebaseService.doc(
+          firebaseService.db,
+          collectionName,
+          permitNo
+        );
+
+      var snapshot =
+        await firebaseService.getDoc(
+          documentReference
+        );
+
+      if(!snapshot.exists()){
+        throw new Error(
+          'Firestore에서 허가서를 찾을 수 없습니다.'
+        );
+      }
+
+      var record =
+        snapshot.data() || {};
+
+      record.permitNo =
+        record.permitNo ||
+        snapshot.id;
+
+      global.permitData.status =
+        record.status || '';
+
+      global.permitData.permitStatus =
+        record.permitStatus ||
+        record.status ||
+        '';
+
+      global.permitData.statusCode =
+        record.statusCode || '';
+
+      global.permitData
+        .approvalWorkflow =
+        clone(
+          record.approvalWorkflow ||
+          {}
+        );
+
+      global.permitData
+        .permitApproval =
+        clone(
+          record.permitApproval ||
+          {}
+        );
+
+      Workflow.state
+        .lastSavedPermit =
+        clone(record);
+
+      /*
+       * 동일 허가번호를 갱신하므로
+       * localStorage에 중복 추가되지 않습니다.
+       */
+      if(
+        typeof global
+          .savePermitToLocalStorage ===
+          'function'
+      ){
+        global.savePermitToLocalStorage(
+          record
+        );
+      }
+
+      var approved =
+        applyPermitApprovalState(
+          record
+        );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          approved
+            ? '허가가 승인되었습니다. TBM을 진행할 수 있습니다.'
+            : '현재 상태: ' +
+              (
+                record.permitStatus ||
+                record.status ||
+                '승인대기'
+              ),
+          approved
+            ? 'success'
+            : 'info'
+        );
+      }
+
+      return true;
+
+    }catch(error){
+      console.error(
+        '[Permit Workflow v2] 승인 상태 조회 실패:',
+        error
+      );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '승인 상태 조회 실패: ' +
+          error.message,
+          'danger'
+        );
+      }
+
+      return false;
+
+    }finally{
+      if(refreshButton){
+        refreshButton.dataset.loading =
+          'false';
+
+        refreshButton.disabled = false;
+
+        refreshButton.textContent =
+          '🔄 승인 상태 확인';
+      }
+    }
+  }
+
+  global.refreshCurrentPermitApproval =
+    refreshCurrentPermitApproval;
+
+  Workflow.approvalView = {
+    isApproved:
+      isPermitApproved,
+
+    apply:
+      applyPermitApprovalState,
+
+    refresh:
+      refreshCurrentPermitApproval
+  };
 
   /* =====================================================
    * SECTION 25. 7단계 최종 처리
    * ===================================================== */
+  function isRevisionSubmission(){
+    return Boolean(
+      Workflow.state.isRevisionMode &&
+      Workflow.state.revisionPermit &&
+      Workflow.state.requestedPermitNo
+    );
+  }
+
+  function getSubmissionStatus(){
+    var revision =
+      isRevisionSubmission();
+
+    return {
+      revision:
+        revision,
+
+      status:
+        revision
+          ? '재제출'
+          : '승인대기',
+
+      statusCode:
+        revision
+          ? 'resubmitted'
+          : 'pendingApproval',
+
+      workflowStep:
+        revision
+          ? 'PERMIT_APPROVAL_RESUBMITTED'
+          : 'PERMIT_APPROVAL_PENDING',
+
+      action:
+        revision
+          ? 'resubmitted'
+          : 'submitted'
+    };
+  }
 
   function validateStepSeven(){
+    var submitButton =
+      getElement(
+        'permitSubmitButton'
+      );
+
+    /*
+     * 이미 저장 중이면 동일한 제출 요청을
+     * 다시 실행하지 않습니다.
+     */
+    if(
+      submitButton &&
+      submitButton.dataset.submitting ===
+        'true'
+    ){
+      return false;
+    }
+
     var roleData =
       validateStepSevenInputs();
 
     if(!roleData){
       return false;
     }
+
+    /*
+     * 모든 입력 검증이 통과한 뒤
+     * 제출 버튼을 잠급니다.
+     */
+    if(submitButton){
+      submitButton.dataset.submitting =
+        'true';
+
+      submitButton.disabled = true;
+
+      submitButton.textContent =
+        '저장 중...';
+    }
+
 
     global.permitData.supervisorName =
       roleData
@@ -10116,51 +10763,190 @@ function validateStepOne(){
         generatePermitNo();
     }
 
+    var submissionState =
+      getSubmissionStatus();
+
+    var submissionTime =
+      new Date().toISOString();
+
     global.permitData.status =
-      '승인대기';
+      submissionState.status;
 
     global.permitData.permitStatus =
-      '승인대기';
+      submissionState.status;
 
-    global.permitData.permitApproval = {
-      required: true,
-      status: '승인대기',
+    global.permitData.statusCode =
+      submissionState.statusCode;
 
-      requestedAt:
-        new Date().toISOString(),
+    var previousPermitApproval =
+      global.permitData
+        .permitApproval || {};
 
-      requestedBy:
-        roleData
-          .companyWorkManager
-          .name,
+    global.permitData.permitApproval =
+      Object.assign(
+        {},
+        previousPermitApproval,
+        {
+          required: true,
 
-      approvedAt: '',
-      approvedBy: '',
-      comment: ''
-    };
+          status:
+            submissionState.status,
 
-    global.permitData.approvalWorkflow = {
-      version: VERSION,
-      currentStep:
-        'PERMIT_APPROVAL_PENDING',
+          statusCode:
+            submissionState.statusCode,
 
-      companyWorkManagerSigned:
-        true,
+          requestedAt:
+            submissionTime,
 
-      permitApprovalCompleted:
-        false,
+          requestedBy:
+            roleData
+              .companyWorkManager
+              .name,
 
-      tbmLinkDeliveryAllowed:
-        false,
+          approvedAt: '',
+          approvedBy: '',
+          approvedByUid: '',
+          comment: ''
+        }
+      );
 
-      tbmLinkDelivered:
-        false
-    };
+    var previousApprovalWorkflow =
+      global.permitData
+        .approvalWorkflow || {};
 
-    var saveResult =
-      saveIntegratedPermit();
+    global.permitData.approvalWorkflow =
+      Object.assign(
+        {},
+        previousApprovalWorkflow,
+        {
+          version:
+            VERSION,
+
+          currentStep:
+            submissionState
+              .workflowStep,
+
+          currentStatusCode:
+            submissionState
+              .statusCode,
+
+          companyWorkManagerSigned:
+            true,
+
+          permitApprovalCompleted:
+            false,
+
+          tbmLinkDeliveryAllowed:
+            false,
+
+          tbmLinkDelivered:
+            false,
+
+          lastAction:
+            submissionState.action,
+
+          lastActorName:
+            roleData
+              .companyWorkManager
+              .name,
+
+          lastComment:
+            submissionState.revision
+              ? '보완 후 재제출'
+              : '허가 승인 요청',
+
+          lastProcessedAt:
+            submissionTime
+        }
+      );
+
+    var saveResult = null;
+
+    try{
+      saveResult =
+        saveIntegratedPermit();
+
+    }catch(saveError){
+      console.error(
+        '[Permit Workflow v2] 제출 저장 오류:',
+        saveError
+      );
+
+      if(submitButton){
+        submitButton.dataset.submitting =
+          'false';
+
+        submitButton.disabled = false;
+
+        submitButton.textContent =
+          '허가자 승인 요청';
+      }
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '허가서 저장 중 오류가 발생했습니다.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+
+    /*
+     * localStorage 저장이 실패하면
+     * 완료 화면으로 이동하지 않습니다.
+     */
+    if(
+      !saveResult ||
+      saveResult.localSuccess !== true
+    ){
+      if(submitButton){
+        submitButton.dataset.submitting =
+          'false';
+
+        submitButton.disabled = false;
+
+        submitButton.textContent =
+          '허가자 승인 요청';
+      }
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '허가서 로컬 저장에 실패했습니다.',
+          'danger'
+        );
+      }
+
+      return false;
+    }
+    if(
+      saveResult &&
+      saveResult.record
+    ){
+      Object.assign(
+        global.permitData,
+        clone(saveResult.record)
+      );
+
+      Workflow.state.lastSavedPermit =
+        clone(saveResult.record);
+
+      if(
+        submissionState.revision
+      ){
+        Workflow.state.revisionPermit =
+          clone(saveResult.record);
+      }
+    }
 
     renderPermitRequestComplete();
+
 
     if(
       typeof global.showToast ===
@@ -10463,6 +11249,9 @@ function validateStepOne(){
     record.permitStatus =
       '승인대기';
 
+    record.statusCode =
+      'pendingApproval';
+
     record.permitApproval =
       clone(
         global.permitData
@@ -10544,20 +11333,318 @@ function validateStepOne(){
       record.statusHistory = [];
     }
 
-    record.statusHistory.push({
-      from: '',
-      to: '승인대기',
-      changedAt:
-        record.updatedAt,
-      changedBy:
-        roleData
-          .companyWorkManager
-          .name,
-      reason:
-        '당사 작업담당자 확인·서명 후 허가자 승인 요청'
-    });
+    var submissionState =
+      getSubmissionStatus();
+
+    var actorName =
+      roleData
+        .companyWorkManager
+        .name;
+
+    /*
+     * 보완 문서 재제출
+     */
+    if(submissionState.revision){
+      var previousRecord =
+        Workflow.state
+          .revisionPermit || {};
+
+      /*
+       * 기존 문서에 신규 수정 내용을 병합합니다.
+       * 기존 문서에만 존재하는 필드도 보존됩니다.
+       */
+      record =
+        Object.assign(
+          {},
+          clone(previousRecord),
+          record
+        );
+
+      /*
+       * 최초 생성정보는 변경하지 않습니다.
+       */
+      record.createdAt =
+        previousRecord.createdAt ||
+        record.createdAt;
+
+      record.createdBy =
+        previousRecord.createdBy ||
+        record.createdBy;
+
+      record.createdByUid =
+        previousRecord.createdByUid ||
+        record.createdByUid;
+
+      record.permitNo =
+        previousRecord.permitNo ||
+        Workflow.state
+          .requestedPermitNo;
+
+      /*
+       * 재제출 상태로 전환합니다.
+       */
+      record.status =
+        '재제출';
+
+      record.permitStatus =
+        '재제출';
+
+      record.statusCode =
+        'resubmitted';
+
+      record.updatedAt =
+        new Date().toISOString();
+
+      record.resubmittedAt =
+        record.updatedAt;
+
+      record.resubmittedBy =
+        actorName;
+
+      record.resubmittedByUid =
+        record.updatedByUid || '';
+
+      /*
+       * 이전 승인 완료값을 제거하고
+       * 다시 승인대기 상태로 만듭니다.
+       */
+      record.permitApproval =
+        Object.assign(
+          {},
+          previousRecord
+            .permitApproval || {},
+          record.permitApproval || {},
+          {
+            required: true,
+            status: '재제출',
+            statusCode: 'resubmitted',
+            requestedAt:
+              record.updatedAt,
+            requestedBy:
+              actorName,
+            approvedAt: '',
+            approvedBy: '',
+            approvedByUid: '',
+            comment: ''
+          }
+        );
+
+      record.approvalWorkflow =
+        Object.assign(
+          {},
+          previousRecord
+            .approvalWorkflow || {},
+          record.approvalWorkflow || {},
+          {
+            version:
+              VERSION,
+
+            currentStep:
+              'PERMIT_APPROVAL_RESUBMITTED',
+
+            currentStatusCode:
+              'resubmitted',
+
+            companyWorkManagerSigned:
+              true,
+
+            permitApprovalCompleted:
+              false,
+
+            tbmLinkDeliveryAllowed:
+              false,
+
+            tbmLinkDelivered:
+              false,
+
+            lastAction:
+              'resubmitted',
+
+            lastActorName:
+              actorName,
+
+            lastComment:
+              '보완 후 재제출',
+
+            lastProcessedAt:
+              record.updatedAt
+          }
+        );
+
+      /*
+       * 기존 승인 이력을 보존하고
+       * 재제출 이력을 추가합니다.
+       */
+      record.approvalHistory =
+        Array.isArray(
+          previousRecord
+            .approvalHistory
+        )
+          ? clone(
+              previousRecord
+                .approvalHistory
+            )
+          : [];
+
+      record.approvalHistory.push({
+        action:
+          'resubmitted',
+
+        actorUid:
+          record.updatedByUid || '',
+
+        actorName:
+          actorName,
+
+        comment:
+          '보완 후 재제출',
+
+        processedAt:
+          record.updatedAt,
+
+        previousStatus:
+          'revisionRequested',
+
+        nextStatus:
+          'resubmitted',
+
+        environment:
+          global.APP_MODE ||
+          'test',
+
+        isTestAction:
+          global.APP_MODE ===
+          'test'
+      });
+
+      /*
+       * 기존 상태 이력을 보존하고
+       * 상태 전이 이력을 추가합니다.
+       */
+      record.statusHistory =
+        Array.isArray(
+          previousRecord
+            .statusHistory
+        )
+          ? clone(
+              previousRecord
+                .statusHistory
+            )
+          : [];
+
+      record.statusHistory.push({
+        from:
+          'revisionRequested',
+
+        to:
+          'resubmitted',
+
+        changedAt:
+          record.updatedAt,
+
+        changedBy:
+          actorName,
+
+        changedByUid:
+          record.updatedByUid || '',
+
+        reason:
+          '관리자 보완요청 반영 후 재제출',
+
+        environment:
+          global.APP_MODE ||
+          'test'
+      });
+
+      /*
+       * 보완·재제출 이력을 별도로 관리합니다.
+       */
+      record.revisionHistory =
+        Array.isArray(
+          previousRecord
+            .revisionHistory
+        )
+          ? clone(
+              previousRecord
+                .revisionHistory
+            )
+          : [];
+
+      record.revisionHistory.push({
+        revisionNo:
+          record.revisionHistory
+            .length + 1,
+
+        requestedReason:
+          Workflow.state
+            .revisionReason || '',
+
+        resubmittedAt:
+          record.updatedAt,
+
+        resubmittedBy:
+          actorName,
+
+        resubmittedByUid:
+          record.updatedByUid || '',
+
+        status:
+          '재제출',
+
+        statusCode:
+          'resubmitted'
+      });
+
+      record.resubmissionCount =
+        record.revisionHistory.length;
+
+      /*
+       * 재승인 전까지 TBM은 계속 차단합니다.
+       */
+      record.tbmLinkDeliveryAllowed =
+        false;
+
+      record.permitApprovalCompleted =
+        false;
+
+    }else{
+      /*
+       * 신규 제출
+       */
+      record.status =
+        '승인대기';
+
+      record.permitStatus =
+        '승인대기';
+
+      record.statusCode =
+        'pendingApproval';
+
+      record.statusHistory.push({
+        from: '',
+        to:
+          'pendingApproval',
+
+        changedAt:
+          record.updatedAt,
+
+        changedBy:
+          actorName,
+
+        changedByUid:
+          record.updatedByUid || '',
+
+        reason:
+          '당사 작업담당자 확인·서명 후 허가자 승인 요청',
+
+        environment:
+          global.APP_MODE ||
+          'test'
+      });
+    }
 
     return record;
+
   }
 
   /* =====================================================
@@ -10708,10 +11795,32 @@ function validateStepOne(){
   }
 
   function goToTbmWithApprovalGuard(){
-    var status =
-      getCurrentPermitStatus();
+    var lastSaved =
+      Workflow.state
+        .lastSavedPermit ||
+      {};
 
-    if(status !== '허가완료'){
+    var currentPermit =
+      global.permitData || {};
+
+    var status =
+      lastSaved.permitStatus ||
+      lastSaved.status ||
+      currentPermit.permitStatus ||
+      currentPermit.status ||
+      '';
+
+    var statusCode =
+      lastSaved.statusCode ||
+      currentPermit.statusCode ||
+      '';
+
+    var approved =
+      statusCode === 'approved' ||
+      status === '허가완료' ||
+      status === 'approved';
+
+    if(!approved){
       showValidationBanner(
         '허가자 최종 승인 후 TBM을 시작할 수 있습니다.',
         getElement(
@@ -10719,30 +11828,56 @@ function validateStepOne(){
         )
       );
 
-      return;
+      return false;
+    }
+
+    var permitNo =
+      currentPermit.permitNo ||
+      lastSaved.permitNo ||
+      '';
+
+    if(!permitNo){
+      showValidationBanner(
+        '허가번호를 확인할 수 없습니다.',
+        getElement(
+          'goTbmAfterApprovalButton'
+        )
+      );
+
+      return false;
     }
 
     var parameters = [
       'permitNo=' +
       encodeURIComponent(
-        global.permitData.permitNo
+        permitNo
       )
     ];
 
-    if(global.permitData.workId){
+    var workId =
+      currentPermit.workId ||
+      lastSaved.workId ||
+      '';
+
+    if(workId){
       parameters.push(
         'workId=' +
         encodeURIComponent(
-          global.permitData.workId
+          workId
         )
       );
     }
 
-    if(global.permitData.riskId){
+    var riskId =
+      currentPermit.riskId ||
+      lastSaved.riskId ||
+      '';
+
+    if(riskId){
       parameters.push(
         'riskId=' +
         encodeURIComponent(
-          global.permitData.riskId
+          riskId
         )
       );
     }
@@ -10750,7 +11885,10 @@ function validateStepOne(){
     global.location.href =
       'TBM_v2.html?' +
       parameters.join('&');
+
+    return true;
   }
+
 
   if(typeof global.goToTBM === 'function'){
     Workflow.original.goToTBM =
@@ -10767,12 +11905,1459 @@ function validateStepOne(){
     goToTbm:
       goToTbmWithApprovalGuard
   };
+  /* =====================================================
+   * SECTION 28-1. 보완요청 허가서 조회
+   * ===================================================== */
+
+  function getPermitStatusCode(record){
+    if(!record){
+      return '';
+    }
+
+    var statusCode =
+      clean(record.statusCode);
+
+    if(statusCode){
+      return statusCode;
+    }
+
+    var status =
+      clean(
+        record.permitStatus ||
+        record.status
+      );
+
+    var statusMap = {
+      '작성 중':
+        'draft',
+
+      '임시저장':
+        'draft',
+
+      '승인대기':
+        'pendingApproval',
+
+      '재제출':
+        'resubmitted',
+
+      '보완요청':
+        'revisionRequested',
+
+      '허가완료':
+        'approved',
+
+      '승인완료':
+        'approved',
+
+      '반려':
+        'rejected',
+
+      'TBM 완료':
+        'tbmCompleted',
+
+      '작업중':
+        'inProgress',
+
+      '작업완료':
+        'completed',
+
+      '취소':
+        'cancelled'
+    };
+
+    return statusMap[status] || status;
+  }
+
+  function findLocalPermitByNo(
+    permitNo
+  ){
+    if(!permitNo){
+      return null;
+    }
+
+    var records =
+      getPermitRecords();
+
+    return records.find(
+      function(record){
+        return (
+          record &&
+          clean(record.permitNo) ===
+            clean(permitNo)
+        );
+      }
+    ) || null;
+  }
+
+  async function findCloudPermitByNo(
+    permitNo
+  ){
+    if(!permitNo){
+      return null;
+    }
+
+    var session = null;
+
+    try{
+      session =
+        JSON.parse(
+          sessionStorage.getItem(
+            'appSession'
+          ) || 'null'
+        );
+    }catch(error){
+      session = null;
+    }
+
+    /*
+     * 공개 테스터는 Firestore를
+     * 조회하지 않습니다.
+     */
+    if(
+      session &&
+      session.accessMode === 'tester'
+    ){
+      return null;
+    }
+
+    var firebaseService =
+      global.firebaseApp;
+
+    if(
+      !firebaseService ||
+      !firebaseService.db ||
+      typeof firebaseService.doc !==
+        'function' ||
+      typeof firebaseService.getDoc !==
+        'function'
+    ){
+      return null;
+    }
+
+    try{
+      if(global.permitAuthReady){
+        var firebaseUser =
+          await global.permitAuthReady;
+
+        if(
+          !firebaseUser ||
+          !session ||
+          session.accessMode !==
+            'authenticated' ||
+          session.uid !==
+            firebaseUser.uid
+        ){
+          console.warn(
+            '[Permit Workflow v2] ' +
+            '보완 문서 Firebase 인증 불일치'
+          );
+
+          return null;
+        }
+      }
+
+      var collectionName =
+        firebaseService
+          .PERMIT_COLLECTION ||
+        global.getCollectionName(
+          'safetyPermits'
+        );
+
+      var reference =
+        firebaseService.doc(
+          firebaseService.db,
+          collectionName,
+          permitNo
+        );
+
+      var snapshot =
+        await firebaseService.getDoc(
+          reference
+        );
+
+      if(!snapshot.exists()){
+        return null;
+      }
+
+      var record =
+        snapshot.data() || {};
+
+      record.permitNo =
+        record.permitNo ||
+        snapshot.id;
+
+      return record;
+
+    }catch(error){
+      console.warn(
+        '[Permit Workflow v2] ' +
+        '보완 문서 Firestore 조회 실패:',
+        error
+      );
+
+      return null;
+    }
+  }
+
+  function getRevisionReason(record){
+    if(!record){
+      return '';
+    }
+
+    return clean(
+      (
+        record.approvalWorkflow &&
+        record.approvalWorkflow
+          .lastComment
+      ) ||
+      (
+        record.permitApproval &&
+        record.permitApproval
+          .comment
+      ) ||
+      record.revisionReason ||
+      ''
+    );
+  }
+
+  function applyRevisionRecordToState(
+    record
+  ){
+    if(!record){
+      return false;
+    }
+
+    Workflow.state.revisionPermit =
+      clone(record);
+
+    Workflow.state.revisionReason =
+      getRevisionReason(record);
+
+    Workflow.state.requestedPermitNo =
+      record.permitNo ||
+      Workflow.state.requestedPermitNo;
+
+    Workflow.state.requestedRiskId =
+      normalizeId(
+        record.riskId ||
+        Workflow.state.requestedRiskId
+      );
+
+    Workflow.state.requestedWorkId =
+      normalizeId(
+        record.workId ||
+        record.sourceWorkId ||
+        Workflow.state.requestedWorkId
+      );
+
+    if(
+      Workflow.state.requestedRiskId
+    ){
+      Workflow.state.linkedRisk =
+        findRiskById(
+          Workflow.state
+            .requestedRiskId
+        );
+    }
+
+    if(
+      !Workflow.state.linkedRisk &&
+      Workflow.state.requestedWorkId
+    ){
+      Workflow.state.linkedRisk =
+        findLatestRiskByWorkId(
+          Workflow.state
+            .requestedWorkId
+        );
+    }
+
+    if(global.permitData){
+      /*
+       * 기존 permitNo를 반드시 유지합니다.
+       */
+      global.permitData.permitNo =
+        record.permitNo || '';
+
+      global.permitData.workId =
+        record.workId ||
+        record.sourceWorkId ||
+        null;
+
+      global.permitData.sourceWorkId =
+        record.sourceWorkId ||
+        record.workId ||
+        null;
+
+      global.permitData.riskId =
+        record.riskId || null;
+
+      global.permitData.status =
+        record.status ||
+        record.permitStatus ||
+        '';
+
+      global.permitData.permitStatus =
+        record.permitStatus ||
+        record.status ||
+        '';
+
+      global.permitData.statusCode =
+        getPermitStatusCode(record);
+    }
+
+    return true;
+  }
+  /* =====================================================
+   * SECTION 28-2. 보완 문서 화면 복원
+   * ===================================================== */
+
+  function setRevisionField(
+    id,
+    value
+  ){
+    var element =
+      getElement(id);
+
+    if(
+      !element ||
+      value === undefined ||
+      value === null
+    ){
+      return;
+    }
+
+    element.value =
+      String(value);
+
+    element.classList.add(
+      'permit-v2-auto-filled'
+    );
+  }
+
+  function buildRevisionRiskRecord(
+    record
+  ){
+    if(!record){
+      return null;
+    }
+
+    var snapshot =
+      record.riskSnapshot || {};
+
+    if(
+      !record.riskId &&
+      !snapshot.sourceRiskId
+    ){
+      return null;
+    }
+
+    return {
+      riskId:
+        record.riskId ||
+        snapshot.sourceRiskId ||
+        '',
+
+      workId:
+        record.workId ||
+        record.sourceWorkId ||
+        snapshot.sourceWorkId ||
+        '',
+
+      workName:
+        record.workName || '',
+
+      workDescription:
+        record.workDescription || '',
+
+      location:
+        record.location || '',
+
+      detailLocation:
+        record.detailLocation || '',
+
+      company:
+        record.companyName || '',
+
+      workers:
+        record.workerCount || '',
+
+      date:
+        record.startDate || '',
+
+      plannedWorkDate:
+        record.startDate || '',
+
+      finalRiskLevel:
+        snapshot.finalRiskLevel ||
+        record.riskLevel ||
+        record.overallRisk ||
+        '판정불가',
+
+      riskLevel:
+        snapshot.finalRiskLevel ||
+        record.riskLevel ||
+        record.overallRisk ||
+        '판정불가',
+
+      riskScore:
+        snapshot.riskScore ||
+        record.riskScore ||
+        0,
+
+      finalControlAdequacy:
+        snapshot.controlAdequacy ||
+        record.controlAdequacy ||
+        '',
+
+      highRiskWorkAssessment:
+        clone(
+          snapshot.highRiskWorkAssessment ||
+          record.highRiskWorkAssessment ||
+          null
+        ),
+
+      hazardSummary:
+        clone(
+          snapshot.hazardSummary ||
+          record.riskHazardSummary ||
+          null
+        ),
+
+      allMeasures:
+        clone(
+          snapshot.selectedMeasures ||
+          record.riskMeasureDetails ||
+          []
+        ),
+
+      riskMeasures:
+        clone(
+          record.riskMeasures ||
+          []
+        ),
+
+      mappedChecklists:
+        clone(
+          snapshot.mappedChecklists ||
+          record.mappedChecklists ||
+          []
+        ),
+
+      requiredRecords:
+        clone(
+          snapshot.requiredRecords ||
+          record.requiredRecords ||
+          []
+        ),
+
+      status:
+        '평가완료',
+
+      assessor:
+        snapshot.assessor ||
+        record.riskAssessor ||
+        ''
+    };
+  }
+
+  function createRevisionNotice(
+    record
+  ){
+    var oldNotice =
+      getElement(
+        'permitRevisionNotice'
+      );
+
+    if(oldNotice){
+      oldNotice.remove();
+    }
+
+    var stepOne =
+      getElement('screen-step1');
+
+    if(!stepOne){
+      return;
+    }
+
+    var workOrderBox =
+      stepOne.querySelector(
+        '.wo-box'
+      );
+
+    if(!workOrderBox){
+      return;
+    }
+
+    var reason =
+      getRevisionReason(record);
+
+    var notice =
+      document.createElement('div');
+
+    notice.id =
+      'permitRevisionNotice';
+
+    notice.style.cssText =
+      'margin-bottom:16px;' +
+      'padding:16px 17px;' +
+      'border:2px solid var(--warn);' +
+      'border-left-width:6px;' +
+      'border-radius:14px;' +
+      'background:var(--warn-bg);' +
+      'box-shadow:var(--sh);';
+
+    notice.innerHTML =
+      '<div style="' +
+        'margin-bottom:7px;' +
+        'color:var(--warn);' +
+        'font-size:17px;' +
+        'font-weight:900;' +
+      '">' +
+        '🟠 보완요청 문서' +
+      '</div>' +
+
+      '<div style="' +
+        'margin-bottom:8px;' +
+        'color:var(--body);' +
+        'font-size:14px;' +
+        'font-weight:750;' +
+        'line-height:1.6;' +
+      '">' +
+        '허가번호: <strong>' +
+        escapeHtml(record.permitNo || '-') +
+        '</strong>' +
+      '</div>' +
+
+      '<div style="' +
+        'padding:11px 12px;' +
+        'border-radius:9px;' +
+        'background:var(--card);' +
+        'color:var(--warn);' +
+        'font-size:14px;' +
+        'font-weight:800;' +
+        'line-height:1.6;' +
+        'white-space:pre-wrap;' +
+      '">' +
+        '<strong>보완 사유</strong><br>' +
+        escapeHtml(
+          reason ||
+          '등록된 보완 사유가 없습니다.'
+        ) +
+      '</div>' +
+
+      '<div style="' +
+        'margin-top:9px;' +
+        'color:var(--sub);' +
+        'font-size:12.5px;' +
+        'font-weight:700;' +
+        'line-height:1.5;' +
+      '">' +
+        '내용을 수정한 후 마지막 단계에서 다시 서명하고 재제출하세요.' +
+      '</div>';
+
+    workOrderBox.insertAdjacentElement(
+      'beforebegin',
+      notice
+    );
+  }
+
+  function restoreRevisionRoleFields(
+    record
+  ){
+    var manager =
+      record.companyWorkManager || {};
+
+    var companySupervisor =
+      record.companyWorkSupervisor || {};
+
+    var contractorSupervisor =
+      record.contractorWorkSupervisor || {};
+
+    setRevisionField(
+      'company-work-manager-name',
+      manager.name || ''
+    );
+
+    setRevisionField(
+      'company-work-manager-department',
+      manager.department || ''
+    );
+
+    setRevisionField(
+      'company-work-manager-phone',
+      manager.phone || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-name',
+      companySupervisor.name || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-department',
+      companySupervisor.department || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-phone',
+      companySupervisor.phone || ''
+    );
+
+    setRevisionField(
+      'company-work-supervisor-email',
+      companySupervisor.email || ''
+    );
+
+    setRevisionField(
+      'sup-name',
+      contractorSupervisor.name ||
+      record.supervisorName ||
+      ''
+    );
+
+    setRevisionField(
+      'sup-phone',
+      contractorSupervisor.phone ||
+      record.supervisorPhone ||
+      ''
+    );
+
+    setRevisionField(
+      'sup-email',
+      contractorSupervisor.email ||
+      record.supervisorEmail ||
+      ''
+    );
+
+    var sameRole =
+      getElement(
+        'sameAsCompanyWorkManager'
+      );
+
+    if(sameRole){
+      sameRole.checked =
+        companySupervisor
+          .sameAsCompanyWorkManager ===
+          true;
+    }
+  }
+
+  function restoreRevisionConfirmations(
+    record
+  ){
+    var confirmations =
+      (
+        record.companyWorkManager &&
+        record.companyWorkManager
+          .confirmations
+      ) || {};
+
+    var confirmationMap = {
+      'confirm-risk-reviewed':
+        confirmations
+          .riskAssessmentReviewed,
+
+      'confirm-measures-implemented':
+        confirmations
+          .measuresImplemented,
+
+      'confirm-work-condition-matched':
+        confirmations
+          .workConditionsMatched,
+
+      'confirm-no-critical-risk':
+        confirmations
+          .noUnresolvedCriticalRisk
+    };
+
+    Object.keys(
+      confirmationMap
+    ).forEach(function(id){
+      var element =
+        getElement(id);
+
+      if(element){
+        element.checked =
+          confirmationMap[id] === true;
+      }
+    });
+  }
+  function restoreRevisionStepView(
+    step
+  ){
+    if(
+      !Workflow.state
+        .isRevisionMode ||
+      !global.permitData
+    ){
+      return;
+    }
+
+    /*
+     * 2단계: 작업 유형
+     */
+    if(step === 2){
+      var workTypes =
+        Array.isArray(
+          global.permitData.workTypes
+        )
+          ? global.permitData
+              .workTypes
+          : [];
+
+      document
+        .querySelectorAll('.wt-card')
+        .forEach(function(card){
+          card.classList.remove(
+            'active',
+            'disabled'
+          );
+        });
+
+      workTypes.forEach(function(type){
+        var card =
+          getWorkTypeCard(type);
+
+        if(card){
+          card.classList.add(
+            'active'
+          );
+        }
+      });
+
+      if(
+        workTypes.length === 1 &&
+        workTypes[0] === 'general'
+      ){
+        document
+          .querySelectorAll('.wt-card')
+          .forEach(function(card){
+            if(
+              !card.classList
+                .contains('general')
+            ){
+              card.classList.add(
+                'disabled'
+              );
+            }
+          });
+      }
+    }
+
+    /*
+     * 3단계: 특수작업 체크리스트
+     */
+    if(step === 3){
+      Object.keys(
+        global.permitData
+          .checklist || {}
+      ).forEach(function(key){
+        var separator =
+          key.lastIndexOf('-');
+
+        if(separator < 1){
+          return;
+        }
+
+        var type =
+          key.substring(
+            0,
+            separator
+          );
+
+        var number =
+          key.substring(
+            separator + 1
+          );
+
+        var value =
+          global.permitData
+            .checklist[key];
+
+        var item =
+          getElement(
+            'ci-' +
+            type +
+            '-' +
+            number.replace('.', '-')
+          );
+
+        if(!item){
+          return;
+        }
+
+        item.classList.remove(
+          'ok',
+          'no',
+          'na-selected'
+        );
+
+        if(value === 'ok'){
+          item.classList.add('ok');
+        }else if(value === 'no'){
+          item.classList.add('no');
+        }else if(value === 'na'){
+          item.classList.add(
+            'na-selected'
+          );
+        }
+
+        var buttons =
+          item.querySelectorAll(
+            '.cl-radio-btn'
+          );
+
+        if(value === 'ok' && buttons[0]){
+          buttons[0].classList.add(
+            'ok'
+          );
+        }
+
+        if(value === 'no' && buttons[1]){
+          buttons[1].classList.add(
+            'no'
+          );
+        }
+
+        if(
+          value === 'na' &&
+          buttons[2]
+        ){
+          buttons[2].classList.add(
+            'na-active'
+          );
+        }
+      });
+    }
+
+    /*
+     * 5단계: ILS
+     */
+    if(step === 5){
+      var ilsItems =
+        document.querySelectorAll(
+          '#screen-step5 .cl-item'
+        );
+
+      Object.keys(
+        global.permitData
+          .ILSChecklist || {}
+      ).forEach(function(number){
+        var item =
+          ilsItems[
+            Number(number) - 1
+          ];
+
+        if(!item){
+          return;
+        }
+
+        var value =
+          global.permitData
+            .ILSChecklist[number];
+
+        var buttons =
+          item.querySelectorAll(
+            '.cl-radio-btn'
+          );
+
+        if(value === 'ok' && buttons[0]){
+          buttons[0].classList.add(
+            'ok'
+          );
+        }
+
+        if(value === 'no' && buttons[1]){
+          buttons[1].classList.add(
+            'no'
+          );
+        }
+
+        if(value === 'na' && buttons[2]){
+          buttons[2].classList.add(
+            'na-active'
+          );
+        }
+      });
+    }
+
+    /*
+     * 6단계: 안전확인 질문
+     */
+    if(step === 6){
+      Object.keys(
+        global.permitData
+          .questions || {}
+      ).forEach(function(questionId){
+        var item =
+          getElement(
+            'q-' + questionId
+          );
+
+        if(!item){
+          return;
+        }
+
+        var value =
+          global.permitData
+            .questions[
+              questionId
+            ];
+
+        item.classList.remove(
+          'yes-ans',
+          'no-ans'
+        );
+
+        item.classList.add(
+          value + '-ans'
+        );
+
+        var button =
+          item.querySelector(
+            value === 'yes'
+              ? '.q-btn.yes'
+              : '.q-btn.no'
+          );
+
+        if(button){
+          button.classList.add(
+            'active'
+          );
+        }
+      });
+    }
+  }
+
+  function restoreRevisionPermit(
+    record
+  ){
+    if(!record){
+      return false;
+    }
+
+    /*
+     * 기본 객체에 기존 문서 전체를 병합하여
+     * 승인 이력과 생성 정보를 보존합니다.
+     */
+    if(global.permitData){
+      Object.assign(
+        global.permitData,
+        clone(record)
+      );
+
+      global.permitData.permitNo =
+        record.permitNo;
+
+      global.permitData.workerSignature =
+        null;
+
+      global.permitData
+        .workerSignatureProvided =
+        false;
+
+      global.permitData
+        .workerSignatureSaved =
+        false;
+    }
+
+    /*
+     * 위험성평가 원본이 로컬에 없으면
+     * 허가서에 저장된 스냅샷을 사용합니다.
+     */
+    if(!Workflow.state.linkedRisk){
+      Workflow.state.linkedRisk =
+        buildRevisionRiskRecord(
+          record
+        );
+    }
+
+    setRevisionField(
+      'work-name',
+      record.workName || ''
+    );
+
+    setRevisionField(
+      'location',
+      record.location || ''
+    );
+
+    setRevisionField(
+      'detail-location',
+      record.detailLocation || ''
+    );
+
+    setRevisionField(
+      'start-date',
+      record.startDate || ''
+    );
+
+    setRevisionField(
+      'start-time',
+      record.startTime || ''
+    );
+
+    setRevisionField(
+      'end-date',
+      record.endDate || ''
+    );
+
+    setRevisionField(
+      'end-time',
+      record.endTime || ''
+    );
+
+    setRevisionField(
+      'worker-count',
+      record.workerCount || ''
+    );
+
+    setRevisionField(
+      'company-name',
+      record.companyName || ''
+    );
+
+    setRevisionField(
+      'supervisor',
+      record.supervisor || ''
+    );
+
+    setRevisionField(
+      'work-description',
+      record.workDescription || ''
+    );
+
+    /*
+     * 기존 W/O 번호 복원
+     */
+    var workOrderDisplay =
+      getElement('wo-display');
+
+    if(workOrderDisplay){
+      workOrderDisplay.textContent =
+        record.woNumber ||
+        '자동 생성';
+    }
+
+    /*
+     * 작업 수행 구분 복원
+     */
+    var executionType =
+      record.executionType || '';
+
+    if(
+      executionType &&
+      EXECUTION_TYPE_LABELS[
+        executionType
+      ]
+    ){
+      Workflow.state.executionType =
+        executionType;
+
+      global.permitData.executionType =
+        executionType;
+
+      global.permitData
+        .executionTypeLabel =
+        EXECUTION_TYPE_LABELS[
+          executionType
+        ];
+
+      renderExecutionType();
+    }
+
+    /*
+     * 작업 유형과 체크리스트를 복원합니다.
+     */
+    global.permitData.workTypes =
+      Array.isArray(record.workTypes)
+        ? record.workTypes.slice()
+        : [];
+
+    Workflow.state
+      .automaticWorkTypes =
+      global.permitData
+        .workTypes.slice();
+
+    global.permitData.checklist =
+      clone(record.checklist || {});
+
+    global.permitData
+      .checklistReasons =
+      clone(
+        record.checklistReasons ||
+        {}
+      );
+
+    global.permitData.ILSChecklist =
+      clone(
+        record.ILSChecklist ||
+        {}
+      );
+
+    global.permitData.ILSReasons =
+      clone(
+        record.ILSReasons ||
+        {}
+      );
+
+    global.permitData.questions =
+      clone(record.questions || {});
+
+    global.permitData
+      .questionReasons =
+      clone(
+        record.questionReasons ||
+        {}
+      );
+
+    global.permitData
+      .unifiedSafetyChecklist =
+      clone(
+        record.unifiedSafetyChecklist ||
+        null
+      );
+
+    global.permitData
+      .additionalPermitChecklist =
+      clone(
+        record.additionalPermitChecklist ||
+        []
+      );
+
+    restoreRevisionRoleFields(
+      record
+    );
+
+    restoreRevisionConfirmations(
+      record
+    );
+    /*
+     * 보완 후에는 기존 확인과 서명을
+     * 그대로 인정하지 않습니다.
+     */
+    [
+      'confirm-risk-reviewed',
+      'confirm-measures-implemented',
+      'confirm-work-condition-matched',
+      'confirm-no-critical-risk'
+    ].forEach(function(id){
+      var confirmation =
+        getElement(id);
+
+      if(confirmation){
+        confirmation.checked = false;
+      }
+    });
+
+    var submitButton =
+      getElement(
+        'permitSubmitButton'
+      );
+
+    if(submitButton){
+      submitButton.textContent =
+        '보완 완료 · 재제출';
+    }
+
+    createRevisionNotice(
+      record
+    );
+
+    renderRiskSummary();
+
+    /*
+     * 보완 모드에서는 기존 서명을 인정하지 않고
+     * 다시 서명하도록 캔버스를 초기화합니다.
+     */
+    if(
+      typeof global.clearSig ===
+        'function'
+    ){
+      global.clearSig();
+    }
+
+    /*
+     * 입력 가능한 1단계 화면으로 이동합니다.
+     */
+    if(
+      typeof global.goToStep ===
+        'function'
+    ){
+      global.goToStep(1);
+    }
+
+    var title =
+      getElement('topnavTitle');
+
+    if(title){
+      title.textContent =
+        '안전작업허가서 보완';
+    }
+
+    var badge =
+      getElement('permitNoBadge');
+
+    if(badge){
+      badge.textContent =
+        record.permitNo;
+
+      badge.style.display =
+        'block';
+    }
+
+    console.log(
+      '[Permit Workflow v2] ' +
+      '보완 문서 화면 복원 완료:',
+      {
+        permitNo:
+          record.permitNo,
+
+        workName:
+          record.workName,
+
+        riskId:
+          record.riskId || '',
+
+        executionType:
+          executionType,
+
+        workTypes:
+          global.permitData
+            .workTypes
+      }
+    );
+
+    return true;
+  }
+
+  async function loadRevisionPermit(){
+    var permitNo =
+      Workflow.state
+        .requestedPermitNo;
+
+    if(
+      !Workflow.state
+        .isRevisionMode ||
+      !permitNo
+    ){
+      return null;
+    }
+
+    console.log(
+      '[Permit Workflow v2] ' +
+      '보완 문서 조회 시작:',
+      permitNo
+    );
+
+    /*
+     * 화면을 빠르게 표시하기 위해
+     * localStorage를 먼저 확인합니다.
+     */
+    var record =
+      findLocalPermitByNo(
+        permitNo
+      );
+
+    /*
+     * 인증 사용자는 Firestore 최신 문서를
+     * 다시 조회합니다.
+     */
+    var cloudRecord =
+      await findCloudPermitByNo(
+        permitNo
+      );
+
+    if(cloudRecord){
+      record = cloudRecord;
+
+      if(
+        typeof global
+          .savePermitToLocalStorage ===
+          'function'
+      ){
+        global.savePermitToLocalStorage(
+          cloudRecord
+        );
+      }
+    }
+
+    if(!record){
+      console.error(
+        '[Permit Workflow v2] ' +
+        '보완 문서를 찾을 수 없습니다:',
+        permitNo
+      );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '보완요청 허가서를 찾을 수 없습니다.',
+          'danger'
+        );
+      }
+
+      return null;
+    }
+
+    var statusCode =
+      getPermitStatusCode(record);
+
+    if(
+      statusCode !==
+        'revisionRequested'
+    ){
+      console.warn(
+        '[Permit Workflow v2] ' +
+        '보완요청 상태가 아닙니다:',
+        {
+          permitNo:
+            permitNo,
+
+          statusCode:
+            statusCode
+        }
+      );
+
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '현재 문서는 보완요청 상태가 아닙니다.',
+          'warning'
+        );
+      }
+
+      return null;
+    }
+
+    applyRevisionRecordToState(
+      record
+    );
+
+    restoreRevisionPermit(
+      record
+    );
+
+    var badge =
+      getElement('permitNoBadge');
+
+
+    if(badge){
+      badge.textContent =
+        record.permitNo;
+
+      badge.style.display =
+        'block';
+    }
+
+    var title =
+      getElement('topnavTitle');
+
+    if(title){
+      title.textContent =
+        '안전작업허가서 보완';
+    }
+
+    console.log(
+      '[Permit Workflow v2] ' +
+      '보완 문서 조회 완료:',
+      {
+        permitNo:
+          record.permitNo,
+
+        statusCode:
+          statusCode,
+
+        riskId:
+          record.riskId || '',
+
+        workId:
+          record.workId ||
+          record.sourceWorkId ||
+          '',
+
+        revisionReason:
+          Workflow.state
+            .revisionReason
+      }
+    );
+
+    if(
+      typeof global.showToast ===
+        'function'
+    ){
+      global.showToast(
+        '보완요청 허가서를 불러왔습니다.',
+        'success'
+      );
+    }
+
+    return record;
+  }
+
+  Workflow.revision = {
+    load:
+      loadRevisionPermit,
+
+    findLocal:
+      findLocalPermitByNo,
+
+    findCloud:
+      findCloudPermitByNo,
+
+    applyState:
+      applyRevisionRecordToState,
+
+    restore:
+      restoreRevisionPermit,
+
+    getReason:
+      getRevisionReason,
+
+    getStatusCode:
+      getPermitStatusCode
+  };
 
   /* =====================================================
    * SECTION 29. 자동 진입
    * ===================================================== */
 
   function enterFromUrl(){
+    /*
+     * 보완 문서 진입을 신규 작성보다
+     * 먼저 처리합니다.
+     */
+    if(
+      Workflow.state
+        .isRevisionMode
+    ){
+      loadRevisionPermit()
+        .then(function(record){
+          if(!record){
+            return;
+          }
+
+          console.log(
+            '[Permit Workflow v2] ' +
+            '보완 문서 상태 준비 완료:',
+            record.permitNo
+          );
+        })
+        .catch(function(error){
+          console.error(
+            '[Permit Workflow v2] ' +
+            '보완 문서 진입 실패:',
+            error
+          );
+        });
+
+      return;
+    }
+
     var risk =
       Workflow.state.linkedRisk;
 
@@ -11270,6 +13855,24 @@ setTimeout(function(){
         : [];
 
     var results = [
+            {
+        item: '보완 문서 진입',
+        pass:
+          Workflow.state
+            .isRevisionMode
+            ? Boolean(
+                Workflow.state
+                  .requestedPermitNo
+              )
+            : true,
+        actual:
+          Workflow.state
+            .isRevisionMode
+            ? Workflow.state
+                .requestedPermitNo
+            : '신규 작성 모드'
+      },
+
       {
         item: '통합 버전',
         pass:
