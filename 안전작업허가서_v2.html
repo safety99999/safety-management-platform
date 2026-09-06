@@ -3599,12 +3599,56 @@ function savePermitToLocalStorage(record) {
  */
 async function savePermitToFirestore(record) {
   try {
+    /*
+     * 잘못된 저장 요청을 Firestore 처리 전에 차단합니다.
+     */
+    if (
+      !record ||
+      typeof record !== 'object' ||
+      Array.isArray(record)
+    ) {
+      console.warn(
+        '[허가서] 저장할 허가서 객체가 올바르지 않습니다.',
+        record
+      );
+
+      return {
+        success: false,
+        reason: 'invalid-record'
+      };
+    }
+
+    /*
+     * 허가번호가 없는 객체는 저장하지 않습니다.
+     */
+    if (
+      typeof record.permitNo !== 'string' ||
+      !record.permitNo.trim()
+    ) {
+      console.warn(
+        '[허가서] permitNo가 없어 저장할 수 없습니다.',
+        record
+      );
+
+      return {
+        success: false,
+        reason: 'no-permit-no'
+      };
+    }
+
+    record.permitNo =
+      record.permitNo.trim();
+
     // Firebase 로드 확인
     if (!window.firebaseApp || !window.firebaseApp.db) {
       console.warn('[허가서] Firebase 미로드 - Firestore 저장 건너뜀');
       return { success: false, reason: 'no-firebase' };
     }
+
     var appSession = null;
+
+    // 이하 기존 코드 유지
+
 
     try {
       appSession = JSON.parse(
