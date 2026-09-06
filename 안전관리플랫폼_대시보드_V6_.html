@@ -21,7 +21,8 @@
       users:'users',
       permits:'test_safetyPermits',
       riskResults:'test_riskAssessmentResults',
-      workDatabase:'test_작업DB'
+      workDatabase:'test_작업DB',
+      publicWorkSchedule:'test_publicWorkSchedule'
     },
     files:{
       persistPhotos:false,
@@ -628,15 +629,16 @@ button{touch-action:manipulation}
 
     <div class="sec-lbl">작업관리대장</div>
     <div class="db-info">
-      <div class="db-info-txt">
-        엑셀 범위를 복사해 붙여넣은 후 저장합니다.<br>
-        같은 일자와 NO는 신규 추가가 아니라 갱신됩니다.
-      </div>
+<div class="db-info-txt">
+  엑셀 범위를 복사해 붙여넣으면 Firestore 서버에 저장됩니다.<br>
+  같은 일자와 NO는 신규 추가가 아니라 갱신됩니다.<br>
+  서버 저장 성공 후 브라우저 캐시와 테스터 조회용 자료를 갱신합니다.
+</div>
     </div>
     <div class="db-area">
       <div class="db-area-title">📊 작업관리대장 붙여넣기</div>
       <textarea class="db-ta" id="dbPaste" placeholder="엑셀 데이터를 붙여넣기"></textarea>
-      <button type="button" class="db-btn" id="saveDatabaseButton">변환 및 저장</button>
+     <button type="button" class="db-btn" id="saveDatabaseButton">변환 및 서버 저장</button>
     </div>
 
     <div class="sec-lbl">관리자 도구</div>
@@ -6658,7 +6660,30 @@ button{touch-action:manipulation}
     return records;
   }
 
-  function savePastedDatabase(){
+  async function savePastedDatabase(){
+    var saveButton =
+      byId('saveDatabaseButton');
+
+    if(
+      !global.isAdminUser ||
+      !global.isAdminUser()
+    ){
+      showToast(
+        '관리자만 작업관리대장을 서버에 저장할 수 있습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    if(
+      saveButton &&
+      saveButton.dataset.saving ===
+        'true'
+    ){
+      return;
+    }
+
     var text =
       byId('dbPaste').value;
 
@@ -6673,155 +6698,320 @@ button{touch-action:manipulation}
       return;
     }
 
+    var incoming = [];
+
     try{
-      var incoming =
+      incoming =
         parseWorkDatabase(text);
+    }catch(parseError){
+      console.error(
+        '[Dashboard v8] 작업DB 변환 실패:',
+        parseError
+      );
 
-      if(!incoming.length){
-        showToast(
-          '일자·NO·작업명을 확인하세요.',
-          'danger'
+      showToast(
+        '작업관리대장 변환 실패: ' +
+        parseError.message,
+        'danger'
+      );
+
+      return;
+    }
+
+    if(!incoming.length){
+      showToast(
+        '저장할 작업이 없습니다. 일자·NO·작업명을 확인하세요.',
+        'danger'
+      );
+
+      return;
+    }
+
+    if(
+      !global.DashboardFirebase ||
+      typeof global
+        .DashboardFirebase
+        .saveWorkDatabase !==
+          'function'
+    ){
+      showToast(
+        '서버 저장 모듈이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.',
+        'warning'
+      );
+
+      return;
+    }
+
+    var existing =
+      readWorkDatabase();
+
+    var localMap =
+      new Map();
+
+    existing.forEach(
+      function(work){
+        var workId =
+          makeWorkId(work);
+
+        if(workId){
+          localMap.set(
+            workId,
+            Object.assign(
+              {},
+              work,
+              {
+                workId:workId
+              }
+            )
+          );
+        }
+      }
+    );
+
+    var addedCount = 0;
+    var updatedCount = 0;
+    var updatedAt =
+      new Date().toISOString();
+
+    incoming.forEach(
+      function(work){
+        var oldWork =
+          localMap.get(
+            work.workId
+          );
+
+        if(oldWork){
+          updatedCount++;
+
+          localMap.set(
+            work.workId,
+            Object.assign(
+              {},
+              oldWork,
+              work,
+              {
+                workId:
+                  work.workId,
+
+                createdAt:
+                  oldWork.createdAt ||
+                  updatedAt,
+
+                updatedAt:
+                  updatedAt
+              }
+            )
+          );
+
+        }else{
+          addedCount++;
+
+          localMap.set(
+            work.workId,
+            Object.assign(
+              {},
+              work,
+              {
+                createdAt:
+                  updatedAt,
+
+                updatedAt:
+                  updatedAt
+              }
+            )
+          );
+        }
+      }
+    );
+
+    var merged =
+      Array.from(
+        localMap.values()
+      ).sort(
+        function(first,second){
+          var dateCompare =
+            clean(second.date)
+              .localeCompare(
+                clean(first.date)
+              );
+
+          if(dateCompare !== 0){
+            return dateCompare;
+          }
+
+          return clean(
+            first.originalNo
+          ).localeCompare(
+            clean(
+              second.originalNo
+            ),
+            undefined,
+            {
+              numeric:true,
+              sensitivity:'base'
+            }
+          );
+        }
+      );
+
+    if(saveButton){
+      saveButton.dataset.saving =
+        'true';
+
+      saveButton.disabled = true;
+
+      saveButton.textContent =
+        '서버 저장 중...';
+    }
+
+    setText(
+      'syncStatusText',
+      '저장 중'
+    );
+
+    try{
+      /*
+       * 엑셀에서 입력한 작업은 전부 서버에 신규·갱신 저장합니다.
+       * 동시에 공개 테스터용 요약 컬렉션도 갱신합니다.
+       */
+      var result =
+        await global
+          .DashboardFirebase
+          .saveWorkDatabase(
+            incoming,
+            function(progress){
+              if(saveButton){
+                saveButton.textContent =
+                  '서버 저장 중 ' +
+                  progress.current +
+                  '/' +
+                  progress.total;
+              }
+            }
+          );
+
+      if(
+        !result ||
+        result.success !== true
+      ){
+        throw new Error(
+          result &&
+          result.message
+            ? result.message
+            : 'Firestore 저장 결과를 확인할 수 없습니다.'
         );
-
-        return;
       }
 
-      var existing =
-        readWorkDatabase();
-
-      var map =
-        new Map();
-
-      existing.forEach(
-        function(work){
-          var workId =
-            makeWorkId(work);
-
-          if(workId){
-            map.set(
-              workId,
-              Object.assign(
-                {},
-                work,
-                {
-                  workId:workId
-                }
-              )
-            );
-          }
-        }
-      );
-
-      var added = 0;
-      var updated = 0;
-      var currentTime =
-        new Date().toISOString();
-
-      incoming.forEach(
-        function(work){
-          var old =
-            map.get(
-              work.workId
-            );
-
-          if(old){
-            updated++;
-
-            map.set(
-              work.workId,
-              Object.assign(
-                {},
-                old,
-                work,
-                {
-                  createdAt:
-                    old.createdAt ||
-                    currentTime,
-                  updatedAt:
-                    currentTime
-                }
-              )
-            );
-
-          }else{
-            added++;
-
-            map.set(
-              work.workId,
-              Object.assign(
-                {},
-                work,
-                {
-                  createdAt:
-                    currentTime,
-                  updatedAt:
-                    currentTime
-                }
-              )
-            );
-          }
-        }
-      );
-
-      var merged =
-        Array.from(
-          map.values()
-        ).sort(function(a,b){
-          return (
-            clean(b.date)
-              .localeCompare(
-                clean(a.date)
-              )
-          );
-        });
-
+      /*
+       * 서버 저장 성공 후에만 localStorage 캐시를 갱신합니다.
+       */
       localStorage.setItem(
         'safetyDatabase',
         JSON.stringify({
           metadata:{
-            version:'8.0',
+            version:'8.1',
             schemaVersion:1,
             sourceType:
-              'excel-paste',
+              'firestore-write-through',
             lastUpdate:
-              currentTime,
+              updatedAt,
             totalCount:
-              merged.length
+              merged.length,
+            syncedToFirestore:
+              true,
+            serverSavedAt:
+              result.savedAt ||
+              updatedAt,
+            publicScheduleUpdated:
+              true
           },
-          workHistory:merged
+
+          workHistory:
+            merged
         })
       );
 
-      byId('dbPaste').value =
-        '';
+      localStorage.setItem(
+        'workDbLastSync',
+        String(Date.now())
+      );
+
+      byId('dbPaste').value = '';
 
       loadAllData();
       applyDateFilter();
 
+      setText(
+        'syncStatusText',
+        '서버 저장 완료'
+      );
+
       showToast(
-        '신규 ' +
-        added +
+        '서버 저장 완료 · 신규 ' +
+        addedCount +
         '건 · 갱신 ' +
-        updated +
-        '건 · 총 ' +
-        merged.length +
+        updatedCount +
+        '건 · 저장 ' +
+        result.savedCount +
         '건',
         'success'
       );
 
+      console.log(
+        '[Dashboard v8] 작업관리대장 서버 저장 완료:',
+        {
+          incomingCount:
+            incoming.length,
+
+          addedCount:
+            addedCount,
+
+          updatedCount:
+            updatedCount,
+
+          savedCount:
+            result.savedCount,
+
+          publicSavedCount:
+            result.publicSavedCount,
+
+          serverCount:
+            result.serverCount
+        }
+      );
+
     }catch(error){
       console.error(
-        '[Dashboard v8] 작업DB 저장 실패:',
+        '[Dashboard v8] 작업관리대장 서버 저장 실패:',
         error
       );
 
+      setText(
+        'syncStatusText',
+        '서버 저장 실패'
+      );
+
       showToast(
-        '작업DB 저장 실패: ' +
-        error.message,
+        '서버 저장 실패: ' +
+        error.message +
+        ' · 기존 캐시는 유지됩니다.',
         'danger'
       );
+
+    }finally{
+      if(saveButton){
+        saveButton.dataset.saving =
+          'false';
+
+        saveButton.disabled =
+          false;
+
+        saveButton.textContent =
+          '변환 및 서버 저장';
+      }
     }
   }
+
 
   /* =====================================================
    * 승인 관리 연결
@@ -7859,9 +8049,12 @@ import {
   collection,
   doc,
   getDocs,
+  getCountFromServer,
+  writeBatch,
   runTransaction,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
 
 const firebaseConfig = {
   apiKey:
@@ -7934,6 +8127,25 @@ const PERMIT_COLLECTION =
       .collections.permits
   ) ||
   'test_safetyPermits';
+const WORK_COLLECTION =
+  (
+    window.APP_CONFIG &&
+    window.APP_CONFIG
+      .collections &&
+    window.APP_CONFIG
+      .collections.workDatabase
+  ) ||
+  'test_작업DB';
+
+const PUBLIC_WORK_COLLECTION =
+  (
+    window.APP_CONFIG &&
+    window.APP_CONFIG
+      .collections &&
+    window.APP_CONFIG
+      .collections.publicWorkSchedule
+  ) ||
+  'test_publicWorkSchedule';
 
 function waitForAuth(){
   if(auth.currentUser){
@@ -8306,6 +8518,387 @@ function policy(action){
     }
   }[action] || null;
 }
+function cleanFirestoreValue(value){
+  if(value === undefined){
+    return null;
+  }
+
+  if(value === null){
+    return null;
+  }
+
+  if(Array.isArray(value)){
+    return value.map(
+      cleanFirestoreValue
+    );
+  }
+
+  if(
+    typeof value === 'object' &&
+    !(value instanceof Date)
+  ){
+    var result = {};
+
+    Object.keys(value)
+      .forEach(function(key){
+        var cleaned =
+          cleanFirestoreValue(
+            value[key]
+          );
+
+        if(cleaned !== undefined){
+          result[key] =
+            cleaned;
+        }
+      });
+
+    return result;
+  }
+
+  return value;
+}
+
+function buildPublicWorkRecord(work){
+  var executionText = [
+    work.executionType || '',
+    work.executionTypeLabel || '',
+    work.executingCompany || '',
+    work.contractCompany || '',
+    work.company || ''
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  var executionType =
+    executionText.indexOf(
+      '직영'
+    ) >= 0
+      ? 'direct'
+      : work.executionType ||
+        'contracted';
+
+  return {
+    workId:
+      work.workId,
+
+    date:
+      work.date || '',
+
+    originalNo:
+      work.originalNo || '',
+
+    workName:
+      work.workName ||
+      work.workNameFull ||
+      '작업명 미지정',
+
+    location:
+      work.locationRaw ||
+      (
+        typeof work.location ===
+          'string'
+          ? work.location
+          : work.location &&
+            work.location.raw
+            ? work.location.raw
+            : ''
+      ),
+
+    company:
+      work.executingCompany ||
+      work.contractCompany ||
+      work.company ||
+      '미지정',
+
+    department:
+      work.requestingDepartment ||
+      work.operatingDepartment ||
+      '미지정',
+
+    riskLevel:
+      work.riskLevel ||
+      work.risk ||
+      (
+        work.isHighRiskFromSource
+          ? '고위험'
+          : '일반'
+      ),
+
+    executionType:
+      executionType,
+
+    workerCount:
+      Number(
+        work.workerCount || 0
+      ),
+
+    workTimeRaw:
+      work.workTimeRaw || '',
+
+    environment:
+      'test',
+
+    isPublicSummary:
+      true,
+
+    schemaVersion:
+      1,
+
+    updatedAt:
+      new Date().toISOString()
+  };
+}
+
+async function saveWorkDatabase(
+  works,
+  progressCallback
+){
+  var user =
+    await waitForAuth();
+
+  validateUser(
+    user,
+    true
+  );
+
+  if(!Array.isArray(works)){
+    throw new Error(
+      '저장할 작업 배열이 올바르지 않습니다.'
+    );
+  }
+
+  if(!works.length){
+    throw new Error(
+      '저장할 작업이 없습니다.'
+    );
+  }
+
+  /*
+   * 작업 1건당 내부 원본과 공개 요약본 2회 쓰기입니다.
+   * Firestore 배치 한도 500회보다 여유 있게
+   * 200건씩 처리해 배치당 최대 400회로 제한합니다.
+   */
+  var batchSize = 200;
+  var savedCount = 0;
+  var publicSavedCount = 0;
+  var savedAt =
+    new Date().toISOString();
+
+  for(
+    var start = 0;
+    start < works.length;
+    start += batchSize
+  ){
+    var chunk =
+      works.slice(
+        start,
+        start + batchSize
+      );
+
+    var batch =
+      writeBatch(db);
+
+    chunk.forEach(function(work){
+      if(
+        !work ||
+        !work.workId
+      ){
+        throw new Error(
+          'workId가 없는 작업이 포함되어 있습니다.'
+        );
+      }
+
+      if(
+        String(work.workId)
+          .indexOf('/') >= 0
+      ){
+        throw new Error(
+          'Firestore 문서 ID에 사용할 수 없는 workId입니다: ' +
+          work.workId
+        );
+      }
+
+      var internalRecord =
+        cleanFirestoreValue(
+          Object.assign(
+            {},
+            work,
+            {
+              workId:
+                work.workId,
+
+              environment:
+                'test',
+
+              schemaVersion:
+                Number(
+                  work.schemaVersion ||
+                  1
+                ),
+
+              updatedAt:
+                savedAt,
+
+              updatedByUid:
+                user.uid,
+
+              serverWriteSource:
+                'dashboard-v8'
+            }
+          )
+        );
+
+      var publicRecord =
+        cleanFirestoreValue(
+          buildPublicWorkRecord(
+            work
+          )
+        );
+
+      batch.set(
+        doc(
+          db,
+          WORK_COLLECTION,
+          work.workId
+        ),
+        Object.assign(
+          {},
+          internalRecord,
+          {
+            updatedAtServer:
+              serverTimestamp()
+          }
+        ),
+        {
+          merge:true
+        }
+      );
+
+      batch.set(
+        doc(
+          db,
+          PUBLIC_WORK_COLLECTION,
+          work.workId
+        ),
+        Object.assign(
+          {},
+          publicRecord,
+          {
+            updatedAtServer:
+              serverTimestamp()
+          }
+        ),
+        {
+          merge:true
+        }
+      );
+    });
+
+    await batch.commit();
+
+    savedCount +=
+      chunk.length;
+
+    publicSavedCount +=
+      chunk.length;
+
+    if(
+      typeof progressCallback ===
+        'function'
+    ){
+      progressCallback({
+        current:
+          savedCount,
+
+        total:
+          works.length
+      });
+    }
+  }
+
+  var serverCount = null;
+
+  try{
+    var countSnapshot =
+      await getCountFromServer(
+        collection(
+          db,
+          WORK_COLLECTION
+        )
+      );
+
+    serverCount =
+      countSnapshot.data().count;
+
+  }catch(countError){
+    console.warn(
+      '[Dashboard Firebase] 작업DB 건수 확인 실패:',
+      countError
+    );
+  }
+
+  return {
+    success:true,
+    savedCount:savedCount,
+    publicSavedCount:
+      publicSavedCount,
+    serverCount:
+      serverCount,
+    savedAt:savedAt,
+    workCollection:
+      WORK_COLLECTION,
+    publicCollection:
+      PUBLIC_WORK_COLLECTION
+  };
+}
+
+async function loadPublicWorks(){
+  try{
+    var snapshot =
+      await getDocs(
+        collection(
+          db,
+          PUBLIC_WORK_COLLECTION
+        )
+      );
+
+    var works = [];
+
+    snapshot.forEach(
+      function(documentSnapshot){
+        var record =
+          documentSnapshot.data() ||
+          {};
+
+        record.workId =
+          record.workId ||
+          documentSnapshot.id;
+
+        works.push(record);
+      }
+    );
+
+    works.sort(
+      function(first,second){
+        return clean(
+          second.date
+        ).localeCompare(
+          clean(first.date)
+        );
+      }
+    );
+
+    return works;
+
+  }catch(error){
+    console.error(
+      '[Dashboard Firebase] 공개 작업현황 조회 실패:',
+      error
+    );
+
+    throw error;
+  }
+}
 
 async function processPermit(
   permitNo,
@@ -8587,15 +9180,40 @@ async function processPermit(
 }
 
 window.DashboardFirebase = {
-  app:firebaseApp,
-  auth:auth,
-  db:db,
+  app:
+    firebaseApp,
+
+  auth:
+    auth,
+
+  db:
+    db,
+
   collection:
     PERMIT_COLLECTION,
-  waitForAuth:waitForAuth,
-  loadPermits:loadPermits,
-  processPermit:processPermit
+
+  workCollection:
+    WORK_COLLECTION,
+
+  publicWorkCollection:
+    PUBLIC_WORK_COLLECTION,
+
+  waitForAuth:
+    waitForAuth,
+
+  loadPermits:
+    loadPermits,
+
+  processPermit:
+    processPermit,
+
+  saveWorkDatabase:
+    saveWorkDatabase,
+
+  loadPublicWorks:
+    loadPublicWorks
 };
+
 
 window.dispatchEvent(
   new CustomEvent(
@@ -8611,7 +9229,7 @@ console.log(
 
 <script>
 (function(){
-  function sync(){
+  async function sync(){
     if(
       !window.DashboardFirebase ||
       !window.DashboardV8
@@ -8619,36 +9237,103 @@ console.log(
       return;
     }
 
+    /*
+     * 공개 테스터는 내부 작업DB가 아니라
+     * 공개 작업현황 요약 컬렉션을 조회합니다.
+     */
     if(
       window.isPublicTester &&
       window.isPublicTester()
     ){
-      window.DashboardV8
-        .refresh();
+      try{
+        var publicWorks =
+          await window
+            .DashboardFirebase
+            .loadPublicWorks();
 
-      return;
-    }
+        var syncedAt =
+          new Date()
+            .toISOString();
 
-    window.DashboardFirebase
-      .loadPermits(false)
-      .then(function(){
+        localStorage.setItem(
+          'safetyDatabase',
+          JSON.stringify({
+            metadata:{
+              version:
+                '8.1-public',
+              schemaVersion:
+                1,
+              sourceType:
+                'public-firestore',
+              lastUpdate:
+                syncedAt,
+              totalCount:
+                publicWorks.length,
+              readonly:
+                true,
+              publicTesterData:
+                true
+            },
+
+            workHistory:
+              publicWorks
+          })
+        );
+
+        localStorage.setItem(
+          'workDbLastSync',
+          String(Date.now())
+        );
+
         window.DashboardV8
           .refresh();
 
         console.log(
-          '[Dashboard v8] 허가서 동기화 완료'
+          '[Dashboard v8] 테스터 공개 작업현황 조회 완료:',
+          publicWorks.length +
+          '건'
         );
-      })
-      .catch(function(error){
+
+      }catch(error){
         console.warn(
-          '[Dashboard v8] 허가서 동기화 실패 · 캐시 사용:',
+          '[Dashboard v8] 테스터 공개 작업현황 조회 실패 · 기존 캐시 사용:',
           error
         );
 
         window.DashboardV8
           .refresh();
-      });
+      }
+
+      return;
+    }
+
+    /*
+     * 관리자·일반 사용자는 허가서를 동기화합니다.
+     * 작업DB는 관리자가 서버 저장 후 생성한 캐시를 사용합니다.
+     */
+    try{
+      await window
+        .DashboardFirebase
+        .loadPermits(false);
+
+      window.DashboardV8
+        .refresh();
+
+      console.log(
+        '[Dashboard v8] 허가서 동기화 완료'
+      );
+
+    }catch(error){
+      console.warn(
+        '[Dashboard v8] 허가서 동기화 실패 · 캐시 사용:',
+        error
+      );
+
+      window.DashboardV8
+        .refresh();
+    }
   }
+
 
   window.addEventListener(
     'dashboard-firebase-ready',
