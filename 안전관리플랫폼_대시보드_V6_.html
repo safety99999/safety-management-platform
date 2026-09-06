@@ -1597,6 +1597,338 @@ body{
     display:none;
   }
 }
+/* =========================================================
+   작업허가 통합 메뉴 v1.0
+   - 작업허가서와 승인관리 카드 통합
+   ========================================================= */
+
+.permit-workflow-card{
+  position:relative;
+}
+
+.permit-workflow-icon{
+  position:relative;
+}
+
+.permit-card-badge{
+  position:absolute;
+  top:-7px;
+  right:-9px;
+  min-width:21px;
+  height:21px;
+  padding:0 6px;
+  border:2px solid var(--card);
+  border-radius:11px;
+  background:var(--stop);
+  color:#fff;
+  font-size:10.5px;
+  font-weight:900;
+  line-height:17px;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+  box-shadow:0 2px 7px rgba(214,39,61,.3);
+}
+
+.permit-card-sub{
+  margin-top:-6px;
+  color:var(--sub);
+  font-size:10.5px;
+  font-weight:700;
+  line-height:1.2;
+}
+
+.permit-menu-summary{
+  margin-bottom:12px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--posco);
+  border-radius:var(--r-s);
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+
+.permit-menu-summary-title{
+  margin-bottom:5px;
+  color:var(--ink);
+  font-size:15px;
+  font-weight:900;
+  letter-spacing:-.025em;
+}
+
+.permit-menu-summary-text{
+  color:var(--sub);
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.55;
+}
+
+.permit-menu-user{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-bottom:12px;
+  padding:10px 12px;
+  border-radius:var(--r-s);
+  background:var(--tint);
+  color:var(--body);
+}
+
+.permit-menu-user-icon{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  border-radius:50%;
+  background:var(--card);
+  font-size:17px;
+}
+
+.permit-menu-user-name{
+  color:var(--ink);
+  font-size:13.5px;
+  font-weight:850;
+}
+
+.permit-menu-user-role{
+  color:var(--sub);
+  font-size:11.5px;
+  font-weight:650;
+}
+
+.permit-menu-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+}
+
+.permit-menu-item{
+  position:relative;
+  min-height:112px;
+  padding:15px 12px;
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  background:var(--card);
+  box-shadow:var(--sh);
+  color:var(--ink);
+  font-family:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:
+    transform .15s,
+    border-color .15s,
+    background .15s;
+}
+
+.permit-menu-item:active{
+  transform:scale(.97);
+  background:var(--sunk);
+}
+
+.permit-menu-item.primary{
+  border-color:rgba(0,103,177,.3);
+  background:linear-gradient(
+    135deg,
+    var(--tint),
+    var(--card)
+  );
+}
+
+.permit-menu-item.warning{
+  border-left:4px solid var(--warn);
+}
+
+.permit-menu-item.revision{
+  border-left:4px solid var(--run);
+}
+
+.permit-menu-item.all{
+  border-left:4px solid var(--sub);
+}
+
+.permit-menu-icon{
+  margin-bottom:9px;
+  font-size:25px;
+  line-height:1;
+}
+
+.permit-menu-name{
+  margin-bottom:4px;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:-.025em;
+}
+
+.permit-menu-desc{
+  color:var(--sub);
+  font-size:11.5px;
+  font-weight:650;
+  line-height:1.4;
+}
+
+.permit-menu-count{
+  position:absolute;
+  top:10px;
+  right:10px;
+  min-width:24px;
+  height:24px;
+  padding:0 7px;
+  border-radius:12px;
+  background:var(--tint);
+  color:var(--posco);
+  font-size:11px;
+  font-weight:900;
+  line-height:24px;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+
+.permit-menu-count.pending{
+  background:var(--warn-bg);
+  color:var(--warn);
+}
+
+.permit-menu-count.revision{
+  background:var(--run-bg);
+  color:var(--run);
+}
+
+.permit-list-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.permit-list-guide{
+  color:var(--sub);
+  font-size:12px;
+  font-weight:700;
+}
+
+.permit-menu-back{
+  padding:8px 11px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--card);
+  color:var(--posco);
+  font-family:inherit;
+  font-size:12px;
+  font-weight:850;
+  cursor:pointer;
+}
+
+.permit-integrated-card{
+  margin-bottom:9px;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--posco);
+  border-radius:var(--r-s);
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+
+.permit-integrated-card.pending{
+  border-left-color:var(--warn);
+}
+
+.permit-integrated-card.revision{
+  border-left-color:var(--run);
+}
+
+.permit-integrated-card.approved{
+  border-left-color:var(--done);
+}
+
+.permit-integrated-card.rejected{
+  border-left-color:var(--stop);
+}
+
+.permit-integrated-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+
+.permit-integrated-status{
+  padding:3px 8px;
+  border-radius:6px;
+  background:var(--sunk);
+  color:var(--sub);
+  font-size:10.5px;
+  font-weight:900;
+}
+
+.permit-integrated-no{
+  color:var(--posco);
+  font-size:11px;
+  font-weight:800;
+  word-break:break-all;
+}
+
+.permit-integrated-name{
+  margin-bottom:6px;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:900;
+  line-height:1.4;
+}
+
+.permit-integrated-meta{
+  color:var(--sub);
+  font-size:11.5px;
+  font-weight:650;
+  line-height:1.65;
+}
+
+.permit-revision-reason{
+  margin-top:8px;
+  padding:9px 10px;
+  border-radius:8px;
+  background:var(--warn-bg);
+  color:var(--warn);
+  font-size:12px;
+  font-weight:750;
+  line-height:1.5;
+  white-space:pre-wrap;
+}
+
+.permit-integrated-action{
+  display:block;
+  width:100%;
+  margin-top:9px;
+  padding:10px;
+  border:0;
+  border-radius:9px;
+  background:var(--deep);
+  color:#fff;
+  font-family:inherit;
+  font-size:12.5px;
+  font-weight:850;
+  text-align:center;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.permit-integrated-action.secondary{
+  border:1px solid var(--line);
+  background:var(--tint);
+  color:var(--posco);
+}
+
+@media(max-width:360px){
+  .permit-menu-grid{
+    grid-template-columns:1fr;
+  }
+
+  .permit-menu-item{
+    min-height:92px;
+  }
+}
 
 </style>
 
@@ -1898,10 +2230,35 @@ body{
     <div class="qbtn-lbl">AI<br>위험성평가<br><small style="font-size:9px;opacity:.7;">v3.5</small></div>
   </a>
 
-  <a href="안전작업허가서_v2.html" class="qbtn">
-    <div class="qbtn-ico">🔐</div>
-    <div class="qbtn-lbl">작업<br>허가서</div>
-  </a>
+ <a
+  href="#"
+  class="qbtn permit-workflow-card"
+  id="permitWorkflowQuickButton"
+  aria-label="작업허가 통합 메뉴 열기"
+>
+  <div class="qbtn-ico permit-workflow-icon">
+    🔐
+    <span
+      class="permit-card-badge"
+      id="permitPendingBadge"
+      style="display:none"
+    >
+      0
+    </span>
+  </div>
+
+  <div class="qbtn-lbl">
+    작업<br>허가
+  </div>
+
+  <div
+    class="permit-card-sub"
+    id="permitCardSubText"
+  >
+    작성·조회
+  </div>
+</a>
+
   <a href="#" onclick="qbClick('tbm'); return false;" class="qbtn">
     <div class="qbtn-ico">📝</div>
     <div class="qbtn-lbl">TBM<br>일지</div>
@@ -9364,15 +9721,27 @@ import {
         global.updateWorkStatus();
       }
 
-      global.showToast(
-        permitNo +
-        " " +
-        policy.label +
-        " 처리 완료",
-        "success"
-      );
+ global.showToast(
+  permitNo +
+  " " +
+  policy.label +
+  " 처리 완료",
+  "success"
+);
 
-      renderList();
+if(
+  global.PermitWorkflowMenu &&
+  typeof global
+    .PermitWorkflowMenu
+    .refresh === "function"
+){
+  global
+    .PermitWorkflowMenu
+    .refresh();
+}
+
+renderList();
+
 
     }catch(error){
       console.error(
@@ -9643,6 +10012,1321 @@ import {
   ){
     document.addEventListener(
       "DOMContentLoaded",
+      initialize
+    );
+  }else{
+    initialize();
+  }
+
+})(window);
+</script>
+<script>
+/* =========================================================
+   작업허가 통합 메뉴 v1.0.0
+   적용 내용
+   - 작업허가 카드 하나로 통합
+   - 별도 승인관리 카드 제거
+   - 관리자/사용자 역할별 메뉴
+   - 승인대기/보완요청 건수 표시
+   - 기존 PermitApprovalAdmin 재사용
+   ========================================================= */
+
+(function(global){
+  'use strict';
+
+  var PERMIT_PAGE =
+    '안전작업허가서_v2.html';
+
+  var approvalQuickButtonObserver = null;
+
+  function clean(value){
+    return String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    ).trim();
+  }
+
+  function escapeHtml(value){
+    return clean(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function readSession(){
+    try{
+      return JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || 'null'
+      );
+    }catch(error){
+      console.warn(
+        '[작업허가 통합] 세션 파싱 실패:',
+        error
+      );
+
+      return null;
+    }
+  }
+
+  function readLocalPermits(){
+    var storageKey =
+      (
+        typeof global.isPublicTester ===
+          'function' &&
+        global.isPublicTester()
+      )
+        ? 'testerSafetyPermits'
+        : 'safetyPermits';
+
+    try{
+      var parsed =
+        JSON.parse(
+          localStorage.getItem(
+            storageKey
+          ) || '[]'
+        );
+
+      return Array.isArray(parsed)
+        ? parsed
+        : [];
+
+    }catch(error){
+      console.warn(
+        '[작업허가 통합] 허가서 파싱 실패:',
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function getStatusCode(record){
+    if(!record){
+      return '';
+    }
+
+    var statusCode =
+      clean(record.statusCode);
+
+    if(statusCode){
+      return statusCode;
+    }
+
+    var status =
+      clean(
+        record.permitStatus ||
+        record.status
+      );
+
+    var statusMap = {
+      '작성 중': 'draft',
+      '임시저장': 'draft',
+      '승인대기': 'pendingApproval',
+      '재제출': 'resubmitted',
+      '보완요청': 'revisionRequested',
+      '허가완료': 'approved',
+      '승인완료': 'approved',
+      '반려': 'rejected',
+      'TBM 완료': 'tbmCompleted',
+      '작업중': 'inProgress',
+      '작업완료': 'completed',
+      '취소': 'cancelled'
+    };
+
+    return statusMap[status] || status;
+  }
+
+  function getStatusLabel(record){
+    var code =
+      getStatusCode(record);
+
+    var labels = {
+      draft: '작성 중',
+      pendingApproval: '승인대기',
+      resubmitted: '재제출',
+      revisionRequested: '보완요청',
+      approved: '허가완료',
+      rejected: '반려',
+      tbmCompleted: 'TBM 완료',
+      inProgress: '작업중',
+      completed: '작업완료',
+      cancelled: '취소'
+    };
+
+    return (
+      labels[code] ||
+      record.permitStatus ||
+      record.status ||
+      '상태 미확인'
+    );
+  }
+
+  function getRecordTime(record){
+    record = record || {};
+
+    var value =
+      record.updatedAtServer ||
+      record.updatedAt ||
+      record.createdAt ||
+      '';
+
+    if(
+      value &&
+      typeof value.toDate ===
+        'function'
+    ){
+      try{
+        return value
+          .toDate()
+          .getTime();
+      }catch(error){
+        return 0;
+      }
+    }
+
+    if(
+      value &&
+      typeof value === 'object'
+    ){
+      var seconds =
+        value.seconds !== undefined
+          ? value.seconds
+          : value._seconds;
+
+      if(
+        Number.isFinite(
+          Number(seconds)
+        )
+      ){
+        return Number(seconds) *
+          1000;
+      }
+    }
+
+    var timestamp =
+      new Date(value).getTime();
+
+    return Number.isFinite(timestamp)
+      ? timestamp
+      : 0;
+  }
+
+  function getCurrentPermits(){
+    var records =
+      readLocalPermits();
+
+    /*
+     * 관리자 승인 모듈이 Firestore 자료를 이미 조회했다면
+     * 해당 자료도 permitNo 기준으로 병합합니다.
+     */
+    if(
+      global.PermitApprovalAdmin &&
+      Array.isArray(
+        global.PermitApprovalAdmin
+          .records
+      )
+    ){
+      var recordMap = new Map();
+
+      records.forEach(
+        function(record){
+          if(
+            record &&
+            record.permitNo
+          ){
+            recordMap.set(
+              record.permitNo,
+              record
+            );
+          }
+        }
+      );
+
+      global.PermitApprovalAdmin
+        .records
+        .forEach(
+          function(cloudRecord){
+            if(
+              !cloudRecord ||
+              !cloudRecord.permitNo
+            ){
+              return;
+            }
+
+            var localRecord =
+              recordMap.get(
+                cloudRecord.permitNo
+              );
+
+            if(
+              !localRecord ||
+              getRecordTime(
+                cloudRecord
+              ) >=
+              getRecordTime(
+                localRecord
+              )
+            ){
+              recordMap.set(
+                cloudRecord.permitNo,
+                cloudRecord
+              );
+            }
+          }
+        );
+
+      records =
+        Array.from(
+          recordMap.values()
+        );
+    }
+
+    records.sort(
+      function(first, second){
+        return (
+          getRecordTime(second) -
+          getRecordTime(first)
+        );
+      }
+    );
+
+    return records;
+  }
+
+  function isAdmin(){
+    return Boolean(
+      typeof global.isAdminUser ===
+        'function' &&
+      global.isAdminUser()
+    );
+  }
+
+  function isOwnPermit(
+    record,
+    session
+  ){
+    if(!record || !session){
+      return false;
+    }
+
+    if(
+      session.uid &&
+      record.createdByUid
+    ){
+      return (
+        session.uid ===
+        record.createdByUid
+      );
+    }
+
+    /*
+     * 기존 로컬 데이터의 UID가 없는 경우
+     * 이메일 또는 작성자명을 보조 기준으로 사용합니다.
+     */
+    if(
+      session.email &&
+      (
+        record.createdByEmail ||
+        record.email
+      )
+    ){
+      return (
+        clean(session.email)
+          .toLowerCase() ===
+        clean(
+          record.createdByEmail ||
+          record.email
+        ).toLowerCase()
+      );
+    }
+
+    return false;
+  }
+
+  function getVisiblePermits(){
+    var session =
+      readSession();
+
+    var records =
+      getCurrentPermits();
+
+    if(isAdmin()){
+      return records;
+    }
+
+    /*
+     * 테스터는 로컬 테스터 자료 전체를
+     * 본인 자료로 간주합니다.
+     */
+    if(
+      session &&
+      session.role === 'tester'
+    ){
+      return records;
+    }
+
+    return records.filter(
+      function(record){
+        return isOwnPermit(
+          record,
+          session
+        );
+      }
+    );
+  }
+
+  function getCounts(){
+    var records =
+      getVisiblePermits();
+
+    return {
+      total:
+        records.length,
+
+      pending:
+        records.filter(
+          function(record){
+            var code =
+              getStatusCode(record);
+
+            return (
+              code ===
+                'pendingApproval' ||
+              code ===
+                'resubmitted'
+            );
+          }
+        ).length,
+
+      revision:
+        records.filter(
+          function(record){
+            return (
+              getStatusCode(record) ===
+                'revisionRequested'
+            );
+          }
+        ).length
+    };
+  }
+
+  function removeSeparateApprovalCard(){
+    var oldButton =
+      document.getElementById(
+        'permitApprovalQuickButton'
+      );
+
+    if(oldButton){
+      oldButton.remove();
+
+      console.log(
+        '[작업허가 통합] 별도 승인관리 카드 제거'
+      );
+    }
+  }
+
+  function watchSeparateApprovalCard(){
+    if(approvalQuickButtonObserver){
+      return;
+    }
+
+    var quickGrid =
+      document.querySelector(
+        '#pageHome .quick-grid'
+      );
+
+    if(!quickGrid){
+      return;
+    }
+
+    approvalQuickButtonObserver =
+      new MutationObserver(
+        function(){
+          removeSeparateApprovalCard();
+        }
+      );
+
+    approvalQuickButtonObserver
+      .observe(
+        quickGrid,
+        {
+          childList: true
+        }
+      );
+  }
+
+  function updateCardBadge(){
+    var badge =
+      document.getElementById(
+        'permitPendingBadge'
+      );
+
+    var subText =
+      document.getElementById(
+        'permitCardSubText'
+      );
+
+    var counts =
+      getCounts();
+
+    if(badge){
+      /*
+       * 관리자: 승인대기 건수
+       * 일반 사용자: 보완요청 건수
+       */
+      var badgeCount =
+        isAdmin()
+          ? counts.pending
+          : counts.revision;
+
+      if(badgeCount > 0){
+        badge.style.display =
+          'inline-block';
+
+        badge.textContent =
+          badgeCount > 99
+            ? '99+'
+            : String(badgeCount);
+      }else{
+        badge.style.display =
+          'none';
+
+        badge.textContent = '0';
+      }
+    }
+
+    if(subText){
+      if(isAdmin()){
+        subText.textContent =
+          counts.pending > 0
+            ? '승인대기 ' +
+              counts.pending +
+              '건'
+            : '작성·승인';
+      }else{
+        subText.textContent =
+          counts.revision > 0
+            ? '보완요청 ' +
+              counts.revision +
+              '건'
+            : '작성·조회';
+      }
+    }
+
+    return counts;
+  }
+
+  function navigate(url){
+    if(
+      typeof global.navigateWithFade ===
+        'function'
+    ){
+      global.navigateWithFade(url);
+      return;
+    }
+
+    global.location.href = url;
+  }
+
+  function goCreatePermit(){
+    if(
+      typeof global.closeSheet ===
+        'function'
+    ){
+      global.closeSheet('ws');
+    }
+
+    setTimeout(
+      function(){
+        navigate(
+          PERMIT_PAGE +
+          '?mode=create'
+        );
+      },
+      200
+    );
+  }
+
+  function getStatusClass(
+    statusCode
+  ){
+    if(
+      statusCode ===
+        'pendingApproval' ||
+      statusCode ===
+        'resubmitted'
+    ){
+      return 'pending';
+    }
+
+    if(
+      statusCode ===
+        'revisionRequested'
+    ){
+      return 'revision';
+    }
+
+    if(statusCode === 'approved'){
+      return 'approved';
+    }
+
+    if(statusCode === 'rejected'){
+      return 'rejected';
+    }
+
+    return '';
+  }
+
+  function getRevisionReason(record){
+    return clean(
+      (
+        record.approvalWorkflow &&
+        record.approvalWorkflow
+          .lastComment
+      ) ||
+      (
+        record.permitApproval &&
+        record.permitApproval
+          .comment
+      ) ||
+      record.revisionReason ||
+      ''
+    );
+  }
+
+  function renderPermitList(
+    type
+  ){
+    var title =
+      document.getElementById(
+        'wsSheetTitle'
+      );
+
+    var body =
+      document.getElementById(
+        'wsBody'
+      );
+
+    if(!title || !body){
+      return;
+    }
+
+    var records =
+      getVisiblePermits();
+
+    var listTitle =
+      '전체 허가서';
+
+    if(type === 'revision'){
+      listTitle =
+        '보완요청 문서';
+
+      records =
+        records.filter(
+          function(record){
+            return (
+              getStatusCode(record) ===
+                'revisionRequested'
+            );
+          }
+        );
+    }else if(type === 'mine'){
+      listTitle =
+        '내 허가서';
+    }else if(type === 'all'){
+      listTitle =
+        isAdmin()
+          ? '전체 허가서'
+          : '내 허가서';
+    }
+
+    title.innerHTML =
+      escapeHtml(listTitle) +
+      ' <span style="' +
+        'background:var(--tint);' +
+        'color:var(--posco);' +
+        'font-size:12px;' +
+        'font-weight:800;' +
+        'padding:2px 8px;' +
+        'border-radius:5px;' +
+        'margin-left:6px;' +
+      '">' +
+        records.length +
+        '건' +
+      '</span>';
+
+    var html =
+      '<div class="permit-list-toolbar">' +
+        '<div class="permit-list-guide">' +
+          '최신 처리순으로 표시됩니다.' +
+        '</div>' +
+
+        '<button type="button" ' +
+          'class="permit-menu-back" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.open()' +
+          '">' +
+          '‹ 메뉴' +
+        '</button>' +
+      '</div>';
+
+    if(!records.length){
+      html +=
+        '<div class="empty">' +
+          '<div class="empty-ico">📭</div>' +
+          '<div class="empty-txt">' +
+            '해당 허가서가 없습니다.' +
+          '</div>' +
+        '</div>';
+
+      body.innerHTML = html;
+      return;
+    }
+
+    records.forEach(
+      function(record){
+        var permitNo =
+          clean(record.permitNo);
+
+        var statusCode =
+          getStatusCode(record);
+
+        var statusLabel =
+          getStatusLabel(record);
+
+        var location = [
+          record.location || '',
+          record.detailLocation || ''
+        ]
+          .filter(Boolean)
+          .join(' ') || '-';
+
+        var revisionReason =
+          getRevisionReason(record);
+
+        var editUrl =
+          PERMIT_PAGE +
+          '?permitNo=' +
+          encodeURIComponent(
+            permitNo
+          );
+
+        if(
+          statusCode ===
+            'revisionRequested'
+        ){
+          editUrl +=
+            '&mode=revision';
+        }else{
+          editUrl +=
+            '&mode=view';
+        }
+
+        html +=
+          '<article class="' +
+            'permit-integrated-card ' +
+            getStatusClass(
+              statusCode
+            ) +
+          '">' +
+
+            '<div class="' +
+              'permit-integrated-top' +
+            '">' +
+
+              '<span class="' +
+                'permit-integrated-status' +
+              '">' +
+                escapeHtml(
+                  statusLabel
+                ) +
+              '</span>' +
+
+              '<span class="' +
+                'permit-integrated-no' +
+              '">' +
+                escapeHtml(
+                  permitNo || '-'
+                ) +
+              '</span>' +
+
+            '</div>' +
+
+            '<div class="' +
+              'permit-integrated-name' +
+            '">' +
+              escapeHtml(
+                record.workName ||
+                '작업명 없음'
+              ) +
+            '</div>' +
+
+            '<div class="' +
+              'permit-integrated-meta' +
+            '">' +
+
+              '📍 ' +
+              escapeHtml(location) +
+              '<br>' +
+
+              '🏢 ' +
+              escapeHtml(
+                record.companyName ||
+                record.company ||
+                '-'
+              ) +
+
+            '</div>';
+
+        if(
+          statusCode ===
+            'revisionRequested'
+        ){
+          html +=
+            '<div class="' +
+              'permit-revision-reason' +
+            '">' +
+              '🟠 보완 사유<br>' +
+              escapeHtml(
+                revisionReason ||
+                '보완 사유를 확인하세요.'
+              ) +
+            '</div>';
+        }
+
+        html +=
+          '<a href="' +
+            escapeHtml(editUrl) +
+            '" class="' +
+              'permit-integrated-action' +
+              (
+                statusCode ===
+                  'revisionRequested'
+                  ? ''
+                  : ' secondary'
+              ) +
+          '">' +
+            (
+              statusCode ===
+                'revisionRequested'
+                ? '✏️ 보완 문서 열기'
+                : '📄 허가서 보기'
+            ) +
+          '</a>' +
+
+          '</article>';
+      }
+    );
+
+    body.innerHTML = html;
+  }
+
+  async function openPendingApproval(){
+    if(!isAdmin()){
+      if(
+        typeof global.showToast ===
+          'function'
+      ){
+        global.showToast(
+          '관리자만 승인대기 문서를 처리할 수 있습니다.',
+          'error'
+        );
+      }
+
+      return;
+    }
+
+    if(
+      !global.PermitApprovalAdmin ||
+      typeof global
+        .PermitApprovalAdmin
+        .open !== 'function'
+    ){
+      global.showToast(
+        '승인관리 모듈을 불러오지 못했습니다.',
+        'error'
+      );
+
+      return;
+    }
+
+    await global
+      .PermitApprovalAdmin
+      .open();
+
+    updateCardBadge();
+  }
+
+  function renderAdminMenu(
+    body,
+    counts
+  ){
+    body.innerHTML =
+      '<div class="permit-menu-grid">' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item primary" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.create()' +
+          '">' +
+
+          '<div class="permit-menu-icon">' +
+            '📝' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '허가서 작성' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '신규 안전작업허가서 작성' +
+          '</div>' +
+
+        '</button>' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item warning" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.pending()' +
+          '">' +
+
+          '<span class="' +
+            'permit-menu-count pending' +
+          '">' +
+            counts.pending +
+          '</span>' +
+
+          '<div class="permit-menu-icon">' +
+            '⏳' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '승인대기 문서' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '승인·보완·반려 처리' +
+          '</div>' +
+
+        '</button>' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item revision" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.revision()' +
+          '">' +
+
+          '<span class="' +
+            'permit-menu-count revision' +
+          '">' +
+            counts.revision +
+          '</span>' +
+
+          '<div class="permit-menu-icon">' +
+            '🟠' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '보완요청 문서' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '보완 상태 허가서 확인' +
+          '</div>' +
+
+        '</button>' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item all" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.all()' +
+          '">' +
+
+          '<span class="permit-menu-count">' +
+            counts.total +
+          '</span>' +
+
+          '<div class="permit-menu-icon">' +
+            '📚' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '전체 허가서' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '전체 상태 및 처리 결과 확인' +
+          '</div>' +
+
+        '</button>' +
+
+      '</div>';
+  }
+
+  function renderUserMenu(
+    body,
+    counts,
+    isTester
+  ){
+    body.innerHTML =
+      '<div class="permit-menu-grid">' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item primary" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.create()' +
+          '">' +
+
+          '<div class="permit-menu-icon">' +
+            '📝' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '허가서 작성' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            (
+              isTester
+                ? '로컬 테스트 허가서 작성'
+                : '신규 안전작업허가서 작성'
+            ) +
+          '</div>' +
+
+        '</button>' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item revision" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.revision()' +
+          '">' +
+
+          '<span class="' +
+            'permit-menu-count revision' +
+          '">' +
+            counts.revision +
+          '</span>' +
+
+          '<div class="permit-menu-icon">' +
+            '🟠' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '보완요청 문서' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '보완 사유 확인 및 수정' +
+          '</div>' +
+
+        '</button>' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item all" ' +
+          'onclick="' +
+            'PermitWorkflowMenu.mine()' +
+          '">' +
+
+          '<span class="permit-menu-count">' +
+            counts.total +
+          '</span>' +
+
+          '<div class="permit-menu-icon">' +
+            '📂' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '내 허가서' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '내가 작성한 허가서 조회' +
+          '</div>' +
+
+        '</button>' +
+
+      '</div>';
+  }
+
+  function openMenu(){
+    removeSeparateApprovalCard();
+
+    var session =
+      readSession();
+
+    var counts =
+      updateCardBadge();
+
+    var title =
+      document.getElementById(
+        'wsSheetTitle'
+      );
+
+    var body =
+      document.getElementById(
+        'wsBody'
+      );
+
+    if(!title || !body){
+      return;
+    }
+
+    title.textContent =
+      isAdmin()
+        ? '작업허가 관리'
+        : '작업허가';
+
+    body.innerHTML =
+      '<div class="permit-menu-summary">' +
+
+        '<div class="' +
+          'permit-menu-summary-title' +
+        '">' +
+          (
+            isAdmin()
+              ? '🔐 작업허가 통합 관리'
+              : '🔐 작업허가'
+          ) +
+        '</div>' +
+
+        '<div class="' +
+          'permit-menu-summary-text' +
+        '">' +
+          (
+            isAdmin()
+              ? '허가서 작성과 승인업무를 한 화면에서 관리합니다.'
+              : '허가서를 작성하고 제출·보완 상태를 확인합니다.'
+          ) +
+        '</div>' +
+
+      '</div>' +
+
+      '<div class="permit-menu-user">' +
+
+        '<div class="' +
+          'permit-menu-user-icon' +
+        '">' +
+          (
+            isAdmin()
+              ? '👨‍💼'
+              : session &&
+                session.role ===
+                  'tester'
+                ? '🧪'
+                : '👤'
+          ) +
+        '</div>' +
+
+        '<div>' +
+          '<div class="' +
+            'permit-menu-user-name' +
+          '">' +
+            escapeHtml(
+              (
+                session &&
+                session.displayName
+              ) ||
+              '사용자'
+            ) +
+          '</div>' +
+
+          '<div class="' +
+            'permit-menu-user-role' +
+          '">' +
+            (
+              isAdmin()
+                ? '관리자 · 승인 처리 가능'
+                : session &&
+                  session.role ===
+                    'tester'
+                  ? '공개 테스터 · 로컬 저장'
+                  : '일반 사용자'
+            ) +
+          '</div>' +
+        '</div>' +
+
+      '</div>';
+
+    if(isAdmin()){
+      renderAdminMenu(
+        body,
+        counts
+      );
+    }else{
+      renderUserMenu(
+        body,
+        counts,
+        Boolean(
+          session &&
+          session.role === 'tester'
+        )
+      );
+    }
+
+    if(
+      typeof global.openSheet ===
+        'function'
+    ){
+      global.openSheet('ws');
+    }
+  }
+
+  function bindPermitCard(){
+    var card =
+      document.getElementById(
+        'permitWorkflowQuickButton'
+      );
+
+    if(!card){
+      console.warn(
+        '[작업허가 통합] 작업허가 카드를 찾지 못했습니다.'
+      );
+
+      return;
+    }
+
+    if(
+      card.dataset
+        .permitMenuBound ===
+          'true'
+    ){
+      return;
+    }
+
+    card.dataset
+      .permitMenuBound =
+        'true';
+
+    card.addEventListener(
+      'click',
+      function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        openMenu();
+      }
+    );
+  }
+
+  function refresh(){
+    removeSeparateApprovalCard();
+    updateCardBadge();
+  }
+
+  var PermitWorkflowMenu = {
+    version: '1.0.0',
+
+    open:
+      openMenu,
+
+    create:
+      goCreatePermit,
+
+    pending:
+      openPendingApproval,
+
+    revision:
+      function(){
+        renderPermitList(
+          'revision'
+        );
+      },
+
+    all:
+      function(){
+        renderPermitList(
+          'all'
+        );
+      },
+
+    mine:
+      function(){
+        renderPermitList(
+          'mine'
+        );
+      },
+
+    refresh:
+      refresh,
+
+    counts:
+      getCounts
+  };
+
+  global.PermitWorkflowMenu =
+    PermitWorkflowMenu;
+
+  function initialize(){
+    removeSeparateApprovalCard();
+    watchSeparateApprovalCard();
+    bindPermitCard();
+    updateCardBadge();
+
+    console.log(
+      '[작업허가 통합] 적용 완료:',
+      {
+        version:
+          PermitWorkflowMenu.version,
+
+        role:
+          global.getAppRole
+            ? global.getAppRole()
+            : 'unknown',
+
+        counts:
+          getCounts()
+      }
+    );
+  }
+
+  /*
+   * 허가서 및 승인 상태가 변경되면
+   * 카드 배지를 다시 계산합니다.
+   */
+  global.addEventListener(
+    'app-data-changed',
+    function(event){
+      var key =
+        event.detail &&
+        event.detail.key;
+
+      if(key === 'safetyPermits'){
+        setTimeout(
+          refresh,
+          100
+        );
+      }
+    }
+  );
+
+  global.addEventListener(
+    'storage',
+    function(event){
+      if(
+        event.key ===
+          'safetyPermits' ||
+        event.key ===
+          'testerSafetyPermits'
+      ){
+        setTimeout(
+          refresh,
+          100
+        );
+      }
+    }
+  );
+
+  if(
+    document.readyState ===
+      'loading'
+  ){
+    document.addEventListener(
+      'DOMContentLoaded',
       initialize
     );
   }else{
