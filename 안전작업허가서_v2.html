@@ -10422,18 +10422,6 @@ console.log(
       return;
     }
 
-    if(
-      answer.permitNo !==
-      record.permitNo
-    ){
-      showToast(
-        '허가번호가 일치하지 않습니다.',
-        'danger'
-      );
-
-      return;
-    }
-
     var cloudResult =
       await deleteCloudPermit(
         record.permitNo
