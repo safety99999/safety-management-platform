@@ -7351,7 +7351,7 @@ button{touch-action:manipulation}
         parseWorkDatabase(text);
     }catch(parseError){
       console.error(
-        '[Dashboard v8] 작업DB 변환 실패:',
+        '[WorkDB Delta Save] 작업DB 변환 실패:',
         parseError
       );
 
@@ -7388,6 +7388,113 @@ button{touch-action:manipulation}
       return;
     }
 
+    /*
+     * 엑셀 붙여넣기로 관리되는 필드만 비교합니다.
+     * Firestore 저장시각과 기존 업무 연결 필드는
+     * 변경 여부 비교에서 제외합니다.
+     */
+    function sameManagedValue(
+      oldValue,
+      newValue,
+      key
+    ){
+      if(
+        key === 'sourceRowIndex'
+      ){
+        return true;
+      }
+
+      if(
+        newValue === null ||
+        typeof newValue !==
+          'object'
+      ){
+        return oldValue ===
+          newValue;
+      }
+
+      if(Array.isArray(newValue)){
+        if(!Array.isArray(oldValue)){
+          return false;
+        }
+
+        if(
+          oldValue.length !==
+          newValue.length
+        ){
+          return false;
+        }
+
+        for(
+          var arrayIndex = 0;
+          arrayIndex <
+            newValue.length;
+          arrayIndex++
+        ){
+          if(
+            !sameManagedValue(
+              oldValue[arrayIndex],
+              newValue[arrayIndex],
+              ''
+            )
+          ){
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      if(
+        !oldValue ||
+        typeof oldValue !==
+          'object' ||
+        Array.isArray(oldValue)
+      ){
+        return false;
+      }
+
+      var keys =
+        Object.keys(newValue);
+
+      for(
+        var keyIndex = 0;
+        keyIndex <
+          keys.length;
+        keyIndex++
+      ){
+        var childKey =
+          keys[keyIndex];
+
+        if(
+          !sameManagedValue(
+            oldValue[childKey],
+            newValue[childKey],
+            childKey
+          )
+        ){
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function sameManagedWork(
+      oldWork,
+      newWork
+    ){
+      if(!oldWork){
+        return false;
+      }
+
+      return sameManagedValue(
+        oldWork,
+        newWork,
+        ''
+      );
+    }
+
     var existing =
       readWorkDatabase();
 
@@ -7399,23 +7506,28 @@ button{touch-action:manipulation}
         var workId =
           makeWorkId(work);
 
-        if(workId){
-          localMap.set(
-            workId,
-            Object.assign(
-              {},
-              work,
-              {
-                workId:workId
-              }
-            )
-          );
+        if(!workId){
+          return;
         }
+
+        localMap.set(
+          workId,
+          Object.assign(
+            {},
+            work,
+            {
+              workId:workId
+            }
+          )
+        );
       }
     );
 
+    var deltaWorks = [];
     var addedCount = 0;
     var updatedCount = 0;
+    var unchangedCount = 0;
+
     var updatedAt =
       new Date().toISOString();
 
@@ -7426,46 +7538,69 @@ button{touch-action:manipulation}
             work.workId
           );
 
+        if(
+          oldWork &&
+          sameManagedWork(
+            oldWork,
+            work
+          )
+        ){
+          unchangedCount++;
+          return;
+        }
+
+        var originalName =
+          clean(
+            work.workNameFull ||
+            work.workName
+          );
+
+        var mergedWork =
+          Object.assign(
+            {},
+            oldWork || {},
+            work,
+            {
+              workId:
+                work.workId,
+
+              workNameFull:
+                originalName,
+
+              workName:
+                simplifyWorkName(
+                  originalName
+                ),
+
+              createdAt:
+                oldWork &&
+                oldWork.createdAt
+                  ? oldWork.createdAt
+                  : updatedAt,
+
+              updatedAt:
+                updatedAt
+            }
+          );
+
+        mergedWork.locationDisplay =
+          workLocation(
+            mergedWork
+          );
+
+        localMap.set(
+          work.workId,
+          mergedWork
+        );
+
+        deltaWorks.push(
+          mergedWork
+        );
+
         if(oldWork){
           updatedCount++;
-
-          localMap.set(
-            work.workId,
-            Object.assign(
-              {},
-              oldWork,
-              work,
-              {
-                workId:
-                  work.workId,
-
-                createdAt:
-                  oldWork.createdAt ||
-                  updatedAt,
-
-                updatedAt:
-                  updatedAt
-              }
-            )
-          );
-
         }else{
           addedCount++;
-
-          localMap.set(
-            work.workId,
-            Object.assign(
-              {},
-              work,
-              {
-                createdAt:
-                  updatedAt,
-
-                updatedAt:
-                  updatedAt
-              }
-            )
-          );
         }
       }
     );
@@ -7500,6 +7635,58 @@ button{touch-action:manipulation}
         }
       );
 
+    /*
+     * 동일한 자료만 들어온 경우 Firestore 함수를
+     * 호출하지 않고 즉시 종료합니다.
+     */
+    if(!deltaWorks.length){
+      var noChangeResult = {
+        success:true,
+        mode:'delta',
+        inputCount:
+          incoming.length,
+        addedCount:0,
+        updatedCount:0,
+        unchangedCount:
+          unchangedCount,
+        savedCount:0,
+        publicSavedCount:0,
+        deletedCount:0,
+        fullReloadCount:0,
+        totalCacheCount:
+          existing.length,
+        message:
+          '동일 자료이므로 Firestore 쓰기를 생략했습니다.'
+      };
+
+      global.DashboardV8
+        .lastWorkDbSave =
+        noChangeResult;
+
+      byId('dbPaste').value = '';
+
+      setText(
+        'syncStatusText',
+        '변경 없음'
+      );
+
+      console.log(
+        '[WorkDB Delta Save] 저장 생략:',
+        noChangeResult
+      );
+
+      console.table(
+        noChangeResult
+      );
+
+      showToast(
+        '변경된 작업이 없습니다 · Firestore 쓰기 0건',
+        'success'
+      );
+
+      return;
+    }
+
     if(saveButton){
       saveButton.dataset.saving =
         'true';
@@ -7507,71 +7694,34 @@ button{touch-action:manipulation}
       saveButton.disabled = true;
 
       saveButton.textContent =
-        '서버 저장 중...';
+        '변경분 서버 저장 중...';
     }
 
     setText(
       'syncStatusText',
-      '저장 중'
+      '변경분 저장 중'
     );
 
     try{
       /*
-       * 엑셀에서 입력한 작업은 전부 서버에 신규·갱신 저장합니다.
-       * 동시에 공개 테스터용 요약 컬렉션도 갱신합니다.
+       * 전체 캐시가 아니라 신규·변경 문서만
+       * Firestore 저장 함수에 전달합니다.
        */
-      /*
-       * 입력자료만 저장하면 공개 작업현황이 부분 자료로
-       * 축소되므로 병합된 전체 작업을 서버에 동기화합니다.
-       *
-       * workNameFull은 원문으로 유지하고,
-       * workName과 locationDisplay만 화면용으로 정리합니다.
-       */
-      var serverWorks =
-        merged.map(function(work){
-          var originalName =
-            clean(
-              work.workNameFull ||
-              work.workName
-            );
-
-          return Object.assign(
-            {},
-            work,
-            {
-              workId:
-                makeWorkId(work),
-
-              workNameFull:
-                originalName,
-
-              workName:
-                simplifyWorkName(
-                  originalName
-                ),
-
-              locationDisplay:
-                workLocation(work)
-            }
-          );
-        });
-
       var result =
         await global
           .DashboardFirebase
           .saveWorkDatabase(
-            serverWorks,
+            deltaWorks,
             function(progress){
               if(saveButton){
                 saveButton.textContent =
-                  '전체 서버 동기화 중 ' +
+                  '변경분 저장 중 ' +
                   progress.current +
                   '/' +
                   progress.total;
               }
             }
           );
-
 
       if(
         !result ||
@@ -7586,28 +7736,73 @@ button{touch-action:manipulation}
       }
 
       /*
-       * 서버 저장 성공 후에만 localStorage 캐시를 갱신합니다.
+       * 서버 저장에 성공한 경우에만
+       * 관리자 브라우저의 전체 병합 캐시를 갱신합니다.
        */
+      var previousMetadata = {};
+
+      try{
+        var previousDatabase =
+          JSON.parse(
+            localStorage.getItem(
+              'safetyDatabase'
+            ) || '{}'
+          );
+
+        previousMetadata =
+          previousDatabase &&
+          previousDatabase.metadata
+            ? previousDatabase.metadata
+            : {};
+      }catch(metadataError){
+        previousMetadata = {};
+      }
+
       localStorage.setItem(
         'safetyDatabase',
         JSON.stringify({
-          metadata:{
-            version:'8.1',
-            schemaVersion:1,
-            sourceType:
-              'firestore-write-through',
-            lastUpdate:
-              updatedAt,
-            totalCount:
-              merged.length,
-            syncedToFirestore:
-              true,
-            serverSavedAt:
-              result.savedAt ||
-              updatedAt,
-            publicScheduleUpdated:
-              true
-          },
+          metadata:
+            Object.assign(
+              {},
+              previousMetadata,
+              {
+                version:
+                  '8.3-delta-save',
+
+                schemaVersion:1,
+
+                sourceType:
+                  'admin-firestore-delta-cache',
+
+                source:
+                  'local-merged',
+
+                lastUpdate:
+                  updatedAt,
+
+                totalCount:
+                  merged.length,
+
+                syncedToFirestore:
+                  true,
+
+                serverSavedAt:
+                  result.savedAt ||
+                  updatedAt,
+
+                publicScheduleUpdated:
+                  false,
+
+                pendingStaticDeploy:
+                  true,
+
+                readonly:
+                  false,
+
+                staticSnapshot:
+                  false
+              }
+            ),
 
           workHistory:
             merged
@@ -7620,68 +7815,77 @@ button{touch-action:manipulation}
       );
 
       byId('dbPaste').value = '';
+
       /*
-       * 저장된 일부 입력자료뿐 아니라 서버 작업DB 전체를
-       * 다시 읽어 화면과 캐시를 최종 서버 기준으로 맞춥니다.
+       * 저장 직후 Firestore 전체 재조회는 하지 않습니다.
+       * 현재 병합 캐시만 화면에 다시 적용합니다.
        */
-      if(
-        global.DashboardFirebase &&
-        typeof global
-          .DashboardFirebase
-          .loadWorkDatabase ===
-            'function'
-      ){
-        await global
-          .DashboardFirebase
-          .loadWorkDatabase(true);
-      }
-
-
       loadAllData();
       applyDateFilter();
+      updateStaticWorkCounts();
+
+      var summary = {
+        success:true,
+        mode:'delta',
+        inputCount:
+          incoming.length,
+        addedCount:
+          addedCount,
+        updatedCount:
+          updatedCount,
+        unchangedCount:
+          unchangedCount,
+        savedCount:
+          Number(
+            result.savedCount || 0
+          ),
+        publicSavedCount:
+          Number(
+            result.publicSavedCount || 0
+          ),
+        deletedCount:0,
+        fullReloadCount:0,
+        totalCacheCount:
+          merged.length,
+        pendingStaticDeploy:
+          true,
+        savedAt:
+          result.savedAt ||
+          updatedAt
+      };
+
+      global.DashboardV8
+        .lastWorkDbSave =
+        summary;
 
       setText(
         'syncStatusText',
-        '서버 저장 완료'
+        '변경분 저장 완료'
+      );
+
+      console.log(
+        '[WorkDB Delta Save] 저장 완료:',
+        summary
+      );
+
+      console.table(
+        summary
       );
 
       showToast(
-        '서버 저장 완료 · 입력 신규 ' +
+        '변경분 저장 완료 · 신규 ' +
         addedCount +
-        '건 · 입력 갱신 ' +
+        '건 · 변경 ' +
         updatedCount +
-        '건 · 전체 동기화 ' +
-        result.savedCount +
+        '건 · 동일 ' +
+        unchangedCount +
         '건',
         'success'
       );
 
-      console.log(
-        '[Dashboard v8] 작업관리대장 서버 저장 완료:',
-        {
-          incomingCount:
-            incoming.length,
-
-          addedCount:
-            addedCount,
-
-          updatedCount:
-            updatedCount,
-
-          savedCount:
-            result.savedCount,
-
-          publicSavedCount:
-            result.publicSavedCount,
-
-          serverCount:
-            result.serverCount
-        }
-      );
-
     }catch(error){
       console.error(
-        '[Dashboard v8] 작업관리대장 서버 저장 실패:',
+        '[WorkDB Delta Save] 서버 저장 실패:',
         error
       );
 
@@ -7689,6 +7893,26 @@ button{touch-action:manipulation}
         'syncStatusText',
         '서버 저장 실패'
       );
+
+      global.DashboardV8
+        .lastWorkDbSave = {
+          success:false,
+          mode:'delta',
+          inputCount:
+            incoming.length,
+          addedCount:
+            addedCount,
+          updatedCount:
+            updatedCount,
+          unchangedCount:
+            unchangedCount,
+          savedCount:0,
+          publicSavedCount:0,
+          deletedCount:0,
+          fullReloadCount:0,
+          error:
+            error.message
+        };
 
       showToast(
         '서버 저장 실패: ' +
@@ -7710,6 +7934,7 @@ button{touch-action:manipulation}
       }
     }
   }
+
 
   /* =====================================================
    * GitHub 정적 작업DB 내보내기
@@ -10404,19 +10629,33 @@ async function saveWorkDatabase(
   }
 
   if(!works.length){
-    throw new Error(
-      '저장할 작업이 없습니다.'
-    );
+    return {
+      success:true,
+      mode:'delta',
+      savedCount:0,
+      publicSavedCount:0,
+      deletedCount:0,
+      fullReloadCount:0,
+      serverCount:null,
+      savedAt:
+        new Date().toISOString(),
+      workCollection:
+        WORK_COLLECTION,
+      publicCollection:null
+    };
   }
 
   /*
-   * 작업 1건당 내부 원본과 공개 요약본 2회 쓰기입니다.
-   * Firestore 배치 한도 500회보다 여유 있게
-   * 200건씩 처리해 배치당 최대 400회로 제한합니다.
+   * test_작업DB에만 저장합니다.
+   * test_publicWorkSchedule에는 쓰지 않습니다.
+   *
+   * 작업 1건당 Firestore 쓰기 1회이므로
+   * 배치 한도 500회보다 여유 있게
+   * 400건씩 처리합니다.
    */
-  var batchSize = 200;
+  var batchSize = 400;
   var savedCount = 0;
-  var publicSavedCount = 0;
+
   var savedAt =
     new Date().toISOString();
 
@@ -10434,108 +10673,81 @@ async function saveWorkDatabase(
     var batch =
       writeBatch(db);
 
-    chunk.forEach(function(work){
-      if(
-        !work ||
-        !work.workId
-      ){
-        throw new Error(
-          'workId가 없는 작업이 포함되어 있습니다.'
-        );
-      }
+    chunk.forEach(
+      function(work){
+        if(
+          !work ||
+          !work.workId
+        ){
+          throw new Error(
+            'workId가 없는 작업이 포함되어 있습니다.'
+          );
+        }
 
-      if(
-        String(work.workId)
-          .indexOf('/') >= 0
-      ){
-        throw new Error(
-          'Firestore 문서 ID에 사용할 수 없는 workId입니다: ' +
-          work.workId
-        );
-      }
+        if(
+          String(work.workId)
+            .indexOf('/') >= 0
+        ){
+          throw new Error(
+            'Firestore 문서 ID에 사용할 수 없는 workId입니다: ' +
+            work.workId
+          );
+        }
 
-      var internalRecord =
-        cleanFirestoreValue(
+        var internalRecord =
+          cleanFirestoreValue(
+            Object.assign(
+              {},
+              work,
+              {
+                workId:
+                  work.workId,
+
+                environment:
+                  'test',
+
+                schemaVersion:
+                  Number(
+                    work.schemaVersion ||
+                    1
+                  ),
+
+                updatedAt:
+                  savedAt,
+
+                updatedByUid:
+                  user.uid,
+
+                serverWriteSource:
+                  'dashboard-v8-delta'
+              }
+            )
+          );
+
+        batch.set(
+          doc(
+            db,
+            WORK_COLLECTION,
+            work.workId
+          ),
           Object.assign(
             {},
-            work,
+            internalRecord,
             {
-              workId:
-                work.workId,
-
-              environment:
-                'test',
-
-              schemaVersion:
-                Number(
-                  work.schemaVersion ||
-                  1
-                ),
-
-              updatedAt:
-                savedAt,
-
-              updatedByUid:
-                user.uid,
-
-              serverWriteSource:
-                'dashboard-v8'
+              updatedAtServer:
+                serverTimestamp()
             }
-          )
-        );
-
-      var publicRecord =
-        cleanFirestoreValue(
-          buildPublicWorkRecord(
-            work
-          )
-        );
-
-      batch.set(
-        doc(
-          db,
-          WORK_COLLECTION,
-          work.workId
-        ),
-        Object.assign(
-          {},
-          internalRecord,
+          ),
           {
-            updatedAtServer:
-              serverTimestamp()
+            merge:true
           }
-        ),
-        {
-          merge:true
-        }
-      );
-
-      batch.set(
-        doc(
-          db,
-          PUBLIC_WORK_COLLECTION,
-          work.workId
-        ),
-        Object.assign(
-          {},
-          publicRecord,
-          {
-            updatedAtServer:
-              serverTimestamp()
-          }
-        ),
-        {
-          merge:true
-        }
-      );
-    });
+        );
+      }
+    );
 
     await batch.commit();
 
     savedCount +=
-      chunk.length;
-
-    publicSavedCount +=
       chunk.length;
 
     if(
@@ -10545,47 +10757,40 @@ async function saveWorkDatabase(
       progressCallback({
         current:
           savedCount,
-
         total:
           works.length
       });
     }
   }
 
-  var serverCount = null;
-
-  try{
-    var countSnapshot =
-      await getCountFromServer(
-        collection(
-          db,
-          WORK_COLLECTION
-        )
-      );
-
-    serverCount =
-      countSnapshot.data().count;
-
-  }catch(countError){
-    console.warn(
-      '[Dashboard Firebase] 작업DB 건수 확인 실패:',
-      countError
-    );
-  }
-
-  return {
+  /*
+   * 저장 후 전체 컬렉션 조회와
+   * 공개 컬렉션 쓰기를 수행하지 않습니다.
+   */
+  var result = {
     success:true,
-    savedCount:savedCount,
-    publicSavedCount:
-      publicSavedCount,
-    serverCount:
-      serverCount,
+    mode:'delta',
+    savedCount:
+      savedCount,
+    publicSavedCount:0,
+    deletedCount:0,
+    fullReloadCount:0,
+    serverCount:null,
     savedAt:savedAt,
     workCollection:
       WORK_COLLECTION,
-    publicCollection:
-      PUBLIC_WORK_COLLECTION
+    publicCollection:null
   };
+
+  window.DashboardFirebaseLastWorkSave =
+    result;
+
+  console.log(
+    '[Dashboard Firebase] 작업DB 변경분 저장 완료:',
+    result
+  );
+
+  return result;
 }
 async function loadWorkDatabase(
   force
