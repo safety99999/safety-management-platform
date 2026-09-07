@@ -4007,8 +4007,7 @@ button{touch-action:manipulation}
     return state.allWorks
       .filter(function(work){
         return (
-          String(work.date || '')
-            .trim() === localDate()
+          work.date === today()
         );
       });
   }
@@ -8748,8 +8747,20 @@ button{touch-action:manipulation}
     }
 
     global.scrollTo(0,0);
-  
-    function refreshFromCache(){
+  }
+
+  function applyRoleUi(){
+    document
+      .querySelectorAll(
+        '.admin-only'
+      )
+      .forEach(function(element){
+        element.hidden =
+          !global.isAdminUser();
+      });
+  }
+
+  function refreshFromCache(){
     loadAllData();
     applyDateFilter();
     loadInspections();
@@ -8777,7 +8788,727 @@ button{touch-action:manipulation}
         : '캐시'
     );
   }
+  function withTimeout(
+    promise,
+    timeoutMs,
+    message
+  ){
+    return Promise.race([
+      promise,
 
+      new Promise(
+        function(resolve,reject){
+          setTimeout(
+            function(){
+              reject(
+                new Error(
+                  message ||
+                  '서버 응답 시간이 초과되었습니다.'
+                )
+              );
+            },
+            timeoutMs
+          );
+        }
+      )
+    ]);
+  }
+
+
+  async function refreshFromCloud(){
+    var refreshButton =
+      byId('refreshButton');
+
+    var refreshDataButton =
+      byId('refreshDataButton');
+
+    /*
+     * 테스터는 공개 작업현황 컬렉션을 조회합니다.
+     */
+    if(
+      global.isPublicTester()
+    ){
+      if(
+        !global.DashboardFirebase ||
+        typeof global
+          .DashboardFirebase
+          .loadPublicWorks !==
+            'function'
+      ){
+        showToast(
+          '공개 작업현황 조회 모듈이 준비되지 않았습니다.',
+          'warning'
+        );
+
+        return;
+      }
+
+      try{
+        if(refreshButton){
+          refreshButton.disabled =
+            true;
+
+          refreshButton.textContent =
+            '갱신 중...';
+        }
+
+        var publicWorks =
+          await global
+            .DashboardFirebase
+            .loadPublicWorks();
+
+        var testerSyncedAt =
+          new Date().toISOString();
+
+        localStorage.setItem(
+          'safetyDatabase',
+          JSON.stringify({
+            metadata:{
+              version:
+                '8.1-public',
+              schemaVersion:
+                1,
+              sourceType:
+                'public-firestore',
+              lastUpdate:
+                testerSyncedAt,
+              totalCount:
+                publicWorks.length,
+              readonly:
+                true,
+              publicTesterData:
+                true
+            },
+
+            workHistory:
+              publicWorks
+          })
+        );
+
+        localStorage.setItem(
+          'workDbLastSync',
+          String(Date.now())
+        );
+
+        refreshFromCache();
+
+      }catch(error){
+        console.error(
+          '[Dashboard v8] 공개 작업현황 새로고침 실패:',
+          error
+        );
+
+        showToast(
+          '작업현황 최신화에 실패했습니다. 기존 자료를 표시합니다.',
+          'warning'
+        );
+
+        refreshFromCache();
+
+      }finally{
+        if(refreshButton){
+          refreshButton.disabled =
+            false;
+
+          refreshButton.textContent =
+            '↻ 새로고침';
+        }
+      }
+
+      return;
+    }
+
+    if(
+      !global.DashboardFirebase ||
+      typeof global
+        .DashboardFirebase
+        .loadWorkDatabase !==
+          'function'
+    ){
+      showToast(
+        'Firebase 작업DB 모듈이 준비되지 않았습니다.',
+        'warning'
+      );
+
+      return;
+    }
+
+    try{
+      if(refreshButton){
+        refreshButton.disabled =
+          true;
+
+        refreshButton.textContent =
+          '갱신 중...';
+      }
+
+      if(refreshDataButton){
+        refreshDataButton.style
+          .pointerEvents = 'none';
+
+        refreshDataButton.style
+          .opacity = '.6';
+      }
+
+      setText(
+        'syncStatusText',
+        '갱신 중'
+      );
+
+      /*
+       * 수동 새로고침은 캐시 유효시간과 관계없이
+       * 작업DB와 허가서를 서버에서 다시 조회합니다.
+       */
+      var results =
+        await Promise.allSettled([
+          withTimeout(
+            global
+              .DashboardFirebase
+              .loadWorkDatabase(true),
+            20000,
+            '작업DB 서버 조회 시간이 초과되었습니다.'
+          ),
+
+          withTimeout(
+            global
+              .DashboardFirebase
+              .loadPermits(true),
+            20000,
+            '허가서 서버 조회 시간이 초과되었습니다.'
+          )
+        ]);
+
+
+      var workResult =
+        results[0];
+
+      var permitResult =
+        results[1];
+
+      /*
+       * 성공한 서버 자료를 포함하여
+       * localStorage 전체를 다시 읽고 화면을 갱신합니다.
+       */
+      refreshFromCache();
+
+      var syncedAt =
+        new Date();
+
+      setText(
+        'syncStatusText',
+        syncedAt.toLocaleTimeString(
+          'ko-KR',
+          {
+            hour:'2-digit',
+            minute:'2-digit'
+          }
+        )
+      );
+
+      if(
+        workResult.status ===
+          'rejected'
+      ){
+        console.error(
+          '[Dashboard v8] 작업DB 최신화 실패:',
+          workResult.reason
+        );
+
+        showToast(
+          '작업DB 최신화에 실패했습니다. 기존 자료를 표시합니다.',
+          'warning'
+        );
+      }
+
+      if(
+        permitResult.status ===
+          'rejected'
+      ){
+        console.warn(
+          '[Dashboard v8] 허가서 최신화 실패:',
+          permitResult.reason
+        );
+      }
+
+      /*
+       * 정상 완료 시 별도의 토스트를 표시하지 않습니다.
+       * 화면 건수와 동기화 시각만 갱신합니다.
+       */
+      console.log(
+        '[Dashboard v8] 서버 데이터 최신화 결과:',
+        {
+          workDatabase:
+            workResult.status,
+          permits:
+            permitResult.status,
+          works:
+            state.allWorks.length,
+          displayedWorks:
+            state.displayedWorks.length
+        }
+      );
+
+    }catch(error){
+      console.error(
+        '[Dashboard v8] 서버 데이터 최신화 실패:',
+        error
+      );
+
+      setText(
+        'syncStatusText',
+        '갱신 실패'
+      );
+
+      showToast(
+        '데이터 최신화에 실패했습니다. 기존 자료를 표시합니다.',
+        'warning'
+      );
+
+      refreshFromCache();
+
+    }finally{
+      if(refreshButton){
+        refreshButton.disabled =
+          false;
+
+        refreshButton.textContent =
+          '↻ 새로고침';
+      }
+
+      if(refreshDataButton){
+        refreshDataButton.style
+          .pointerEvents = '';
+
+        refreshDataButton.style
+          .opacity = '';
+      }
+    }
+  }
+
+
+
+  function bindEvents(){
+    byId('themeButton')
+      .addEventListener(
+        'click',
+        toggleTheme
+      );
+
+    byId('themeSettingButton')
+      .addEventListener(
+        'click',
+        toggleTheme
+      );
+
+    byId('noticeBanner')
+      .addEventListener(
+        'click',
+        toggleNotice
+      );
+
+    byId('saveNoticeButton')
+      .addEventListener(
+        'click',
+        saveNotice
+      );
+
+    byId('saveDatabaseButton')
+      .addEventListener(
+        'click',
+        savePastedDatabase
+      );
+
+    byId('refreshButton')
+      .addEventListener(
+        'click',
+        refreshFromCloud
+      );
+
+    byId('refreshDataButton')
+      .addEventListener(
+        'click',
+        refreshFromCloud
+      );
+    byId(
+      'exportStaticWorkButton'
+    ).addEventListener(
+      'click',
+      exportStaticWorkDatabase
+    );
+
+    byId(
+      'exportStaticManifestButton'
+    ).addEventListener(
+      'click',
+      exportStaticManifest
+    );
+
+    byId(
+      'checkStaticDatabaseButton'
+    ).addEventListener(
+      'click',
+      checkStaticDatabase
+    );
+
+
+    byId('riskAdminButton')
+      .addEventListener(
+        'click',
+        function(){
+          navigate(
+            URLS.risk +
+            '?view=admin&env=test'
+          );
+        }
+      );
+
+    byId('permitWorkflowButton')
+      .addEventListener(
+        'click',
+        openPermitMenu
+      );
+
+    byId(
+      'inspectionRegisterButton'
+    ).addEventListener(
+      'click',
+      function(){
+        openInspectionForm('');
+      }
+    );
+
+    byId('closeSheetButton')
+      .addEventListener(
+        'click',
+        closeSheet
+      );
+
+    byId('sheetOverlay')
+      .addEventListener(
+        'click',
+        closeSheet
+      );
+
+    byId('confirmCancelButton')
+      .addEventListener(
+        'click',
+        function(){
+          closeConfirm(false);
+        }
+      );
+
+    byId('confirmOkButton')
+      .addEventListener(
+        'click',
+        function(){
+          closeConfirm(true);
+        }
+      );
+
+    byId('confirmOverlay')
+      .addEventListener(
+        'click',
+        function(event){
+          if(event.target === this){
+            closeConfirm(false);
+          }
+        }
+      );
+
+    document.addEventListener(
+      'click',
+      function(event){
+        var tab =
+          event.target.closest(
+            '[data-tab]'
+          );
+
+        if(tab){
+          goTab(
+            tab.dataset.tab
+          );
+          return;
+        }
+
+        var dateButton =
+          event.target.closest(
+            '[data-date-mode]'
+          );
+
+        if(dateButton){
+          var mode =
+            dateButton.dataset
+              .dateMode;
+
+          if(
+            mode === 'upcoming' &&
+            !state.upcomingDate
+          ){
+            return;
+          }
+
+          state.dateMode =
+            mode;
+
+          state.selectedDate = '';
+
+          applyDateFilter();
+          return;
+        }
+
+        var statusButton =
+          event.target.closest(
+            '[data-status-filter]'
+          );
+
+        if(statusButton){
+          openStatusList(
+            statusButton.dataset
+              .statusFilter
+          );
+
+          return;
+        }
+
+        var quickButton =
+          event.target.closest(
+            '[data-quick-app]'
+          );
+
+        if(quickButton){
+          quickAction(
+            quickButton.dataset
+              .quickApp
+          );
+
+          return;
+        }
+
+        var preworkUrl =
+          event.target.closest(
+            '[data-prework-url]'
+          );
+
+        if(preworkUrl){
+          var url =
+            preworkUrl.dataset
+              .preworkUrl;
+
+          if(url){
+            navigate(url);
+          }
+
+          return;
+        }
+
+        var preworkFilter =
+          event.target.closest(
+            '[data-prework-filter]'
+          );
+
+        if(preworkFilter){
+          state.preworkFilter =
+            preworkFilter.dataset
+              .preworkFilter;
+
+          rerenderPreworkSheet();
+          return;
+        }
+
+        var permitMenu =
+          event.target.closest(
+            '[data-permit-menu]'
+          );
+
+        if(permitMenu){
+          var action =
+            permitMenu.dataset
+              .permitMenu;
+
+          if(action === 'menu'){
+            openPermitMenu();
+
+          }else if(action === 'create'){
+            closeSheet();
+
+            setTimeout(function(){
+              navigate(
+                URLS.permit +
+                '?mode=create'
+              );
+            },200);
+
+          }else if(action === 'pending'){
+            openApprovalList();
+
+          }else if(
+            action === 'revision'
+          ){
+            openPermitList(
+              'revision'
+            );
+
+          }else{
+            openPermitList(
+              action
+            );
+          }
+
+          return;
+        }
+
+        var quickUrl =
+          event.target.closest(
+            '[data-quick-work-url]'
+          );
+
+        if(quickUrl){
+          navigate(
+            quickUrl.dataset
+              .quickWorkUrl
+          );
+
+          return;
+        }
+
+        var inspection =
+          event.target.closest(
+            '[data-inspect-work]'
+          );
+
+        if(inspection){
+          openInspectionForm(
+            inspection.dataset
+              .inspectWork
+          );
+
+          return;
+        }
+
+        var submitInspectionButton =
+          event.target.closest(
+            '[data-submit-inspection]'
+          );
+
+        if(
+          submitInspectionButton
+        ){
+          submitInspection(
+            submitInspectionButton
+              .dataset
+              .submitInspection
+          );
+
+          return;
+        }
+
+        var approval =
+          event.target.closest(
+            '[data-approval-action]'
+          );
+
+        if(approval){
+          var card =
+            approval.closest(
+              '[data-approval-permit]'
+            );
+
+          processApproval(
+            card.dataset
+              .approvalPermit,
+            approval.dataset
+              .approvalAction,
+            card
+          );
+        }
+      }
+    );
+
+    byId('datePicker')
+      .addEventListener(
+        'change',
+        function(){
+          if(!this.value){
+            return;
+          }
+
+          state.dateMode =
+            'custom';
+
+          state.selectedDate =
+            this.value;
+
+          applyDateFilter();
+        }
+      );
+
+    document.addEventListener(
+      'input',
+      function(event){
+        if(
+          event.target.id ===
+          'preworkSearchInput'
+        ){
+          state.preworkSearch =
+            event.target.value;
+
+          var position =
+            event.target
+              .selectionStart;
+
+          rerenderPreworkSheet();
+
+          var input =
+            byId(
+              'preworkSearchInput'
+            );
+
+          if(input){
+            input.focus();
+
+            try{
+              input.setSelectionRange(
+                position,
+                position
+              );
+            }catch(error){}
+          }
+        }
+      }
+    );
+
+    global.addEventListener(
+      'storage',
+      function(event){
+        if([
+          'safetyDatabase',
+          'safetyPermits',
+          'testerSafetyPermits',
+          'riskAssessments',
+          'riskAssessmentResults',
+          'safetyProvisions',
+          'safetyQuizzes',
+          'safetyTBM',
+          'safetyViolations'
+        ].indexOf(event.key) >= 0){
+          setTimeout(
+            refreshFromCache,
+            100
+          );
+        }
+      }
+    );
+
+    global.addEventListener(
+      'app-data-changed',
+      function(){
+        setTimeout(
+          refreshFromCache,
+          100
+        );
+      }
+    );
+  }
 
   function initialize(){
     if(state.initialized){
@@ -8793,19 +9524,7 @@ button{touch-action:manipulation}
     );
 
     applyRoleUi();
-    startClock();
-    loadNotice();
-    loadAllData();
-    loadInspections();
-    updateDateControls();
-    applyDateFilter();
-    updatePermitCard();
-    bindEvents();
-
-    /*
-     * 관리자 설정 화면의 정적 JSON 상태를 표시합니다.
-     */
-    if(
+        if(
       global.isAdminUser()
     ){
       updateStaticWorkCounts();
@@ -8815,6 +9534,15 @@ button{touch-action:manipulation}
         300
       );
     }
+
+    startClock();
+    loadNotice();
+    loadAllData();
+    loadInspections();
+    updateDateControls();
+    applyDateFilter();
+    updatePermitCard();
+    bindEvents();
 
     console.log(
       '[Dashboard v8] 초기화 완료:',
@@ -8854,52 +9582,38 @@ button{touch-action:manipulation}
       var result = {
         version:
           DASHBOARD_VERSION,
-
         role:
           appSession.role,
-
         authenticated:
           global
             .isAuthenticatedUser(),
-
         admin:
           global.isAdminUser(),
-
         tester:
           global.isPublicTester(),
-
         works:
           state.allWorks.length,
-
         displayedWorks:
           state.displayedWorks
             .length,
-
         permits:
           state.permits.length,
-
         risks:
           state.risks.length,
-
         safetyInfos:
           state.safetyInfos.length,
-
         quizzes:
           state.quizzes.length,
-
         tbms:
           state.tbms.length,
-
         riskLinks:
           Object.keys(
             indexes.riskByWorkId
           ).length,
-
         safetyInfoLinks:
           Object.keys(
             indexes.safetyByWorkId
           ).length,
-
         quizLinks:
           Object.keys(
             indexes.quizByWorkId
@@ -9218,6 +9932,7 @@ function localPermits(){
     return [];
   }
 }
+
 function saveLocalPermits(
   records
 ){
@@ -9232,39 +9947,18 @@ function saveLocalPermits(
   );
 }
 
-
 async function loadPermits(
   force
 ){
   var session =
     readSession();
 
-  /*
-   * 공개 테스터는 Firestore 허가서를 조회하지 않습니다.
-   * 테스터 허가서는 testerSafetyPermits를 사용합니다.
-   */
   if(
     session &&
     session.role ===
       'tester'
   ){
-    try{
-      var testerRecords =
-        JSON.parse(
-          localStorage.getItem(
-            'testerSafetyPermits'
-          ) || '[]'
-        );
-
-      return Array.isArray(
-        testerRecords
-      )
-        ? testerRecords
-        : [];
-
-    }catch(error){
-      return [];
-    }
+    return [];
   }
 
   var user =
@@ -9289,8 +9983,8 @@ async function loadPermits(
     !force &&
     cached.length &&
     Date.now() -
-      lastSync <
-      10 * 60 * 1000
+    lastSync <
+    10 * 60 * 1000
   ){
     return cached;
   }
@@ -9343,16 +10037,11 @@ async function loadPermits(
           record.permitNo
         );
 
-      /*
-       * 아직 서버 저장이 끝나지 않은 로컬 자료가
-       * 서버 자료보다 최신이면 로컬 자료를 유지합니다.
-       */
       if(
         local &&
-        local.syncPending ===
-          true &&
+        local.syncPending === true &&
         recordTime(local) >
-          recordTime(record)
+        recordTime(record)
       ){
         return;
       }
@@ -9367,14 +10056,12 @@ async function loadPermits(
   var merged =
     Array.from(
       map.values()
-    ).sort(
-      function(first,second){
-        return (
-          recordTime(second) -
-          recordTime(first)
-        );
-      }
-    );
+    ).sort(function(a,b){
+      return (
+        recordTime(b) -
+        recordTime(a)
+      );
+    });
 
   saveLocalPermits(
     merged
@@ -9385,8 +10072,7 @@ async function loadPermits(
       'app-data-changed',
       {
         detail:{
-          key:
-            'safetyPermits',
+          key:'safetyPermits',
           source:
             'firestore-sync',
           timestamp:
@@ -9398,7 +10084,6 @@ async function loadPermits(
 
   return merged;
 }
-
 
 function isPending(record){
   var code =
@@ -9810,8 +10495,7 @@ async function loadWorkDatabase(
   if(
     force !== true &&
     lastSync > 0 &&
-    Date.now() -
-      lastSync <
+    Date.now() - lastSync <
       cacheTtl
   ){
     try{
@@ -9829,28 +10513,7 @@ async function loadWorkDatabase(
           ? cachedDatabase.workHistory
           : [];
 
-      var cachedMetadata =
-        cachedDatabase.metadata ||
-        {};
-
-      /*
-       * 테스터 공개 캐시는 관리자 내부 캐시로
-       * 재사용하지 않습니다.
-       */
-      var publicCache =
-        cachedMetadata
-          .publicTesterData ===
-          true ||
-        cachedMetadata
-          .readonly === true ||
-        cachedMetadata
-          .sourceType ===
-          'public-firestore';
-
-      if(
-        cachedWorks.length &&
-        !publicCache
-      ){
+      if(cachedWorks.length){
         console.log(
           '[Dashboard Firebase] 작업DB 캐시 사용:',
           cachedWorks.length +
@@ -9859,7 +10522,6 @@ async function loadWorkDatabase(
 
         return cachedWorks;
       }
-
     }catch(cacheError){
       console.warn(
         '[Dashboard Firebase] 작업DB 캐시 확인 실패:',
@@ -9898,8 +10560,8 @@ async function loadWorkDatabase(
   );
 
   /*
-   * 서버가 비어 있는데 기존 캐시가 존재하면
-   * 정상 캐시를 빈 배열로 덮어쓰지 않습니다.
+   * 서버 장애나 잘못된 컬렉션명 때문에 조회 결과가
+   * 비어 있을 때 기존 정상 캐시를 삭제하지 않습니다.
    */
   if(!works.length){
     var existingWorks = [];
@@ -9918,7 +10580,6 @@ async function loadWorkDatabase(
         )
           ? existingDatabase.workHistory
           : [];
-
     }catch(readError){
       existingWorks = [];
     }
@@ -9967,10 +10628,8 @@ async function loadWorkDatabase(
     'safetyDatabase',
     JSON.stringify({
       metadata:{
-        version:
-          '8.1',
-        schemaVersion:
-          1,
+        version:'8.1',
+        schemaVersion:1,
         sourceType:
           'firestore-server',
         lastUpdate:
@@ -9979,10 +10638,7 @@ async function loadWorkDatabase(
           works.length,
         syncedFromFirestore:
           true,
-        readonly:
-          false,
-        publicTesterData:
-          false
+        readonly:false
       },
 
       workHistory:
@@ -10003,8 +10659,6 @@ async function loadWorkDatabase(
 
   return works;
 }
-
-
 
 
 async function loadPublicWorks(){
