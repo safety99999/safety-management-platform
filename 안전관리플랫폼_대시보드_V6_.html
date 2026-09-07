@@ -614,11 +614,18 @@ button{touch-action:manipulation}
     <div class="hero-top">
       <div class="hero-brand">
         <span class="hero-logo">🏭</span>
+
         <div class="hero-brand-text">
-          <div class="hero-brand-en">POSCO FUTURE M</div>
-          <div class="hero-brand-ko">포항양극재공장 안전관리</div>
+          <div class="hero-brand-en">
+            POSCO FUTURE M
+          </div>
+
+          <div class="hero-brand-ko">
+            포항양극재공장 안전관리
+          </div>
         </div>
       </div>
+
       <div class="hero-tools">
         <div class="hero-clock">
           <div
@@ -646,42 +653,9 @@ button{touch-action:manipulation}
           ⋮
         </button>
       </div>
-
-
-        <button
-          type="button"
-          class="icon-btn"
-          id="testerResetButton"
-          aria-label="내 테스트 자료 초기화"
-          title="내 테스트 자료 초기화"
-          hidden
-        >
-          🧪
-        </button>
-
-        <button
-          type="button"
-          class="icon-btn"
-          id="logoutButton"
-          aria-label="로그아웃"
-          title="로그아웃"
-        >
-          🚪
-        </button>
-
-        <button
-          type="button"
-          class="icon-btn"
-          id="themeButton"
-          aria-label="테마"
-          title="테마"
-        >
-          🌙
-        </button>
-      </div>
-
     </div>
   </header>
+
 
   <main class="main">
     <div class="notice-banner" id="noticeBanner" hidden>
@@ -9630,44 +9604,33 @@ button{touch-action:manipulation}
 
 
   function bindEvents(){
-    byId('userMenuButton')
-      .addEventListener(
-        'click',
-        openUserMenu
+    var userMenuButton =
+      byId(
+        'userMenuButton'
       );
 
-    byId('themeSettingButton')
-      .addEventListener(
-        'click',
-        toggleTheme
+    if(userMenuButton){
+      userMenuButton
+        .addEventListener(
+          'click',
+          openUserMenu
+        );
+    }
+
+    var themeSettingButton =
+      byId(
+        'themeSettingButton'
       );
 
+    if(themeSettingButton){
+      themeSettingButton
+        .addEventListener(
+          'click',
+          toggleTheme
+        );
+    }
 
 
-    byId('themeSettingButton')
-      .addEventListener(
-        'click',
-        toggleTheme
-      );
-
-    byId('logoutButton')
-      .addEventListener(
-        'click',
-        logoutDashboard
-      );
-
-    byId('testerResetButton')
-      .addEventListener(
-        'click',
-        resetTesterData
-      );
-
-
-    byId('themeSettingButton')
-      .addEventListener(
-        'click',
-        toggleTheme
-      );
 
     byId('noticeBanner')
       .addEventListener(
