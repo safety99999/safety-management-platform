@@ -8748,7 +8748,37 @@ button{touch-action:manipulation}
     }
 
     global.scrollTo(0,0);
+  
+    function refreshFromCache(){
+    loadAllData();
+    applyDateFilter();
+    loadInspections();
+    updatePermitCard();
+
+    var syncTime =
+      Number(
+        localStorage.getItem(
+          'permitsLastSync'
+        ) || 0
+      );
+
+    setText(
+      'syncStatusText',
+      syncTime
+        ? new Date(
+            syncTime
+          ).toLocaleTimeString(
+            'ko-KR',
+            {
+              hour:'2-digit',
+              minute:'2-digit'
+            }
+          )
+        : '캐시'
+    );
   }
+
+
   function initialize(){
     if(state.initialized){
       return;
