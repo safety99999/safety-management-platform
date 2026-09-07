@@ -1685,28 +1685,57 @@ button{touch-action:manipulation}
     }
 
     var text =
-      original;
-
-    /*
-     * 줄바꿈과 탭을 공백으로 변환합니다.
-     */
-    text = text
-      .split('\r').join(' ')
-      .split('\n').join(' ')
-      .split('\t').join(' ');
+      original
+        .split('\r').join(' ')
+        .split('\n').join(' ')
+        .split('\t').join(' ')
+        .trim();
 
     while(
       text.indexOf('  ') >= 0
     ){
-      text = text
-        .split('  ')
-        .join(' ');
+      text =
+        text.split('  ').join(' ');
     }
 
-    text = text.trim();
+    /*
+     * "작업장소: ... 작업내용: ..." 형식이면
+     * 작업내용 뒤의 문구를 실제 작업명으로 사용합니다.
+     */
+    var contentMarkers = [
+      '작업내용:',
+      '작업내용：',
+      '작업 내용:',
+      '작업 내용：'
+    ];
+
+    for(
+      var markerIndex = 0;
+      markerIndex <
+        contentMarkers.length;
+      markerIndex++
+    ){
+      var marker =
+        contentMarkers[
+          markerIndex
+        ];
+
+      var markerPosition =
+        text.indexOf(marker);
+
+      if(markerPosition >= 0){
+        text =
+          text.substring(
+            markerPosition +
+            marker.length
+          ).trim();
+
+        break;
+      }
+    }
 
     /*
-     * 작업명 앞뒤의 따옴표를 제거합니다.
+     * 작업명 앞뒤 따옴표를 제거합니다.
      */
     var quoteCharacters =
       '"\'“”‘’';
@@ -1737,58 +1766,83 @@ button{touch-action:manipulation}
     }
 
     /*
-     * 관리용 접두어를 제거합니다.
+     * 관리·직종 분류용 태그만 제거합니다.
+     * [9C 재연소로] 같은 설비명 태그는 유지합니다.
      */
-    var managementPrefixes = [
+    var removableTags = [
       '[계획]',
       '[예정]',
       '[확정]',
-      '[긴급]'
+      '[긴급]',
+      '[기계]',
+      '[전기]',
+      '[계장]',
+      '[토목]',
+      '[건축]',
+      '[소방]'
     ];
 
-    managementPrefixes.some(
-      function(prefix){
+    var tagRemoved = true;
+
+    while(tagRemoved){
+      tagRemoved = false;
+
+      for(
+        var tagIndex = 0;
+        tagIndex <
+          removableTags.length;
+        tagIndex++
+      ){
+        var tag =
+          removableTags[
+            tagIndex
+          ];
+
         if(
-          text.indexOf(prefix) === 0
+          text.indexOf(tag) === 0
         ){
           text =
             text.substring(
-              prefix.length
+              tag.length
             ).trim();
 
-          return true;
+          tagRemoved = true;
+          break;
         }
-
-        return false;
       }
-    );
+    }
 
     /*
      * 작업명 앞쪽의 공장·단계 문구를 제거합니다.
-     * 긴 문구부터 확인해야 짧은 문구가 먼저
-     * 제거되는 것을 방지할 수 있습니다.
      */
     var locationPrefixes = [
       '포항양극재 2-2 단계공장',
       '포항양극재 2-1 단계공장',
+      '포항양극재 2-2단계공장',
+      '포항양극재 2-1단계공장',
       '포항양극재2-2단계공장',
       '포항양극재2-1단계공장',
+      '포항 양극재 2-2 단계공장',
+      '포항 양극재 2-1 단계공장',
       '포항 양극재 2-2 단계',
       '포항 양극재 2-1 단계',
       '포항양극재 2-2단계',
       '포항양극재 2-1단계',
       '포항양극재 1단계',
-      '포항양극재 2단계',
       '포항양극재공장',
       '포항 양극재',
       '포항양극재',
       '양극재공장',
+      '2-2 단계공장',
+      '2-1 단계공장',
       '2-2단계공장',
       '2-1단계공장',
+      '2-2 단계',
+      '2-1 단계',
       '2-2단계',
       '2-1단계',
       '1단계공장',
-      '2단계공장',
+      '1단계',
       '1공장',
       '2공장'
     ];
@@ -1826,58 +1880,64 @@ button{touch-action:manipulation}
     }
 
     /*
-     * 작업명 선두의 '3라인', '4 라인'과 같은
-     * 위치정보를 제거합니다.
+     * 선두의 층과 라인 위치정보를 제거합니다.
+     * RegExp 생성자를 사용해 편집 과정의
+     * 정규식 줄바꿈 오류를 방지합니다.
      */
-    var linePosition =
-      text.indexOf('라인');
+    var leadingPatterns = [
+      new RegExp(
+        '^\\s*(?:공장동\\s*)?\\d+\\s*층\\s*',
+        'i'
+      ),
 
-    if(
-      linePosition > 0 &&
-      linePosition <= 5
-    ){
-      var linePrefix =
-        text.substring(
-          0,
-          linePosition
-        )
-        .split(' ')
-        .join('');
+      new RegExp(
+        '^\\s*\\d+\\s*[A-C]?' +
+        '(?:\\s*[,·/]\\s*(?:\\d+\\s*)?[A-C]?)*' +
+        '\\s*라인\\s*',
+        'i'
+      ),
 
-      var numericLine =
-        linePrefix.length > 0;
+      new RegExp(
+        '^\\s*\\d+\\s*[A-C]\\s+',
+        'i'
+      )
+    ];
+
+    var leadingLocationRemoved =
+      true;
+
+    while(leadingLocationRemoved){
+      leadingLocationRemoved =
+        false;
 
       for(
-        var numberIndex = 0;
-        numberIndex <
-          linePrefix.length;
-        numberIndex++
+        var patternIndex = 0;
+        patternIndex <
+          leadingPatterns.length;
+        patternIndex++
       ){
-        var character =
-          linePrefix.charAt(
-            numberIndex
-          );
+        var before =
+          text;
 
-        if(
-          character < '0' ||
-          character > '9'
-        ){
-          numericLine = false;
+        text =
+          text.replace(
+            leadingPatterns[
+              patternIndex
+            ],
+            ''
+          ).trim();
+
+        if(before !== text){
+          leadingLocationRemoved =
+            true;
+
           break;
         }
-      }
-
-      if(numericLine){
-        text =
-          text.substring(
-            linePosition +
-            '라인'.length
-          ).trim();
       }
     }
 
     /*
-     * 화면에 불필요한 ILS 관리 상태문구를 제거합니다.
+     * 화면에 불필요한 관리 상태문구를 제거합니다.
      */
     var removableTexts = [
       'ILS 시스템 지정 완료',
@@ -1893,25 +1953,22 @@ button{touch-action:manipulation}
 
     removableTexts.forEach(
       function(removableText){
-        text = text
-          .split(removableText)
-          .join(' ');
+        text =
+          text
+            .split(removableText)
+            .join(' ');
       }
     );
 
     while(
       text.indexOf('  ') >= 0
     ){
-      text = text
-        .split('  ')
-        .join(' ');
+      text =
+        text.split('  ').join(' ');
     }
 
-    /*
-     * 앞쪽에 남은 구분기호를 정리합니다.
-     */
     var leadingCharacters =
-      ',.:;- ';
+      ',.:;·-– ';
 
     while(
       text.length &&
@@ -1929,12 +1986,11 @@ button{touch-action:manipulation}
       text = original;
     }
 
-    return text.length > 40
-      ? text.substring(0,40) +
+    return text.length > 50
+      ? text.substring(0,50) +
         '...'
       : text;
   }
-
 
   function workName(work){
     work = work || {};
@@ -1946,7 +2002,7 @@ button{touch-action:manipulation}
     );
   }
 
-  function appendLocationPart(
+  function addLocationPart(
     parts,
     value
   ){
@@ -1955,20 +2011,15 @@ button{touch-action:manipulation}
 
     if(
       !text ||
-      text === '미지정'
+      text === '미지정' ||
+      text === '-'
     ){
       return;
     }
 
-    var alreadyIncluded =
-      parts.some(function(part){
-        return (
-          part.indexOf(text) >= 0 ||
-          text.indexOf(part) >= 0
-        );
-      });
-
-    if(!alreadyIncluded){
+    if(
+      parts.indexOf(text) < 0
+    ){
       parts.push(text);
     }
   }
@@ -1978,11 +2029,12 @@ button{touch-action:manipulation}
       return '미지정';
     }
 
-    var parts = [];
-
+    /*
+     * 이미 만들어진 locationDisplay보다
+     * 관리대장 원본 위치를 우선합니다.
+     */
     var rawLocation =
       clean(
-        work.locationDisplay ||
         work.locationRaw ||
         work.workPlaceRaw ||
         (
@@ -1993,65 +2045,213 @@ button{touch-action:manipulation}
               work.location.raw
               ? work.location.raw
               : ''
-        )
+        ) ||
+        work.locationDisplay ||
+        ''
       );
-
-    appendLocationPart(
-      parts,
-      rawLocation
-    );
 
     var sourceName =
       clean(
         work.workNameFull ||
-        work.workName
+        work.workName ||
+        ''
       );
 
-    var compactSource =
-      sourceName.replace(/\s+/g,'');
+    var source =
+      (
+        rawLocation +
+        ' ' +
+        sourceName
+      )
+        .split('\r').join(' ')
+        .split('\n').join(' ')
+        .split('\t').join(' ')
+        .trim();
 
+    source =
+      source.replace(
+        /\s+/g,
+        ' '
+      );
+
+
+    var compact =
+      source.split(' ').join('');
+
+    var factory = '';
+
+    /*
+     * 공장 판정 기준:
+     *
+     * 1단계 및 1~3라인 = 1공장
+     * 2-1단계 및 4~5라인 = 1공장
+     * 2-2단계 및 6~9라인 = 2공장
+     */
     if(
-      compactSource.indexOf(
-        '2-2단계'
-      ) >= 0 ||
-      compactSource.indexOf(
+      compact.indexOf(
         '2공장'
+      ) >= 0 ||
+      compact.indexOf(
+        '2-2단계'
       ) >= 0
     ){
-      appendLocationPart(
-        parts,
-        '2공장'
-      );
+      factory = '2공장';
 
     }else if(
-      compactSource.indexOf(
+      compact.indexOf(
+        '1공장'
+      ) >= 0 ||
+      compact.indexOf(
         '2-1단계'
       ) >= 0 ||
-      compactSource.indexOf(
-        '1단계'
-      ) >= 0 ||
-      compactSource.indexOf(
-        '1공장'
-      ) >= 0
+      (
+        compact.indexOf(
+          '1단계'
+        ) >= 0 &&
+        compact.indexOf(
+          '2-1단계'
+        ) < 0
+      )
     ){
-      appendLocationPart(
-        parts,
-        '1공장'
-      );
+      factory = '1공장';
     }
 
-    var lineMatch =
-      sourceName.match(
-        /(\d+)\s*라인/i
+    var lineText = '';
+    var lineNumber = 0;
+
+    /*
+     * 6~9라인과 같은 범위 표기를 먼저 찾습니다.
+     */
+    var rangeExpression =
+      new RegExp(
+        '(?:^|[^0-9])([1-9])\\s*[~～-]\\s*([1-9])\\s*라인',
+        'i'
       );
 
-    if(lineMatch){
-      appendLocationPart(
-        parts,
-        lineMatch[1] +
-        '라인'
+    var rangeMatch =
+      source.match(
+        rangeExpression
       );
+
+    if(rangeMatch){
+      var firstLine =
+        Number(rangeMatch[1]);
+
+      var lastLine =
+        Number(rangeMatch[2]);
+
+      lineText =
+        firstLine +
+        '~' +
+        lastLine +
+        '라인';
+
+      if(!factory){
+        if(
+          firstLine >= 6 &&
+          lastLine <= 9
+        ){
+          factory = '2공장';
+
+        }else if(
+          firstLine >= 1 &&
+          lastLine <= 5
+        ){
+          factory = '1공장';
+        }
+      }
     }
+
+    /*
+     * 9A·9B·9C·9B,C라인은 모두 9라인으로 표시합니다.
+     */
+    if(!lineText){
+      var letterLineExpression =
+        new RegExp(
+          '(?:^|[^0-9])([1-9])\\s*[A-C]' +
+          '(?:\\s*[,·/]\\s*(?:[1-9]\\s*)?[A-C])*' +
+          '\\s*(?:라인)?',
+          'i'
+        );
+
+      var letterLineMatch =
+        source.match(
+          letterLineExpression
+        );
+
+      if(letterLineMatch){
+        lineNumber =
+          Number(
+            letterLineMatch[1]
+          ) || 0;
+
+        if(lineNumber){
+          lineText =
+            lineNumber +
+            '라인';
+        }
+      }
+    }
+
+    /*
+     * 일반적인 1라인~9라인을 찾습니다.
+     */
+    if(!lineText){
+      var lineExpression =
+        new RegExp(
+          '(?:^|[^0-9])([1-9])\\s*라인',
+          'i'
+        );
+
+      var lineMatch =
+        source.match(
+          lineExpression
+        );
+
+      if(lineMatch){
+        lineNumber =
+          Number(
+            lineMatch[1]
+          ) || 0;
+
+        if(lineNumber){
+          lineText =
+            lineNumber +
+            '라인';
+        }
+      }
+    }
+
+    if(
+      !factory &&
+      lineNumber
+    ){
+      factory =
+        lineNumber >= 6
+          ? '2공장'
+          : '1공장';
+    }
+
+    var floorText = '';
+
+    var floorExpression =
+      new RegExp(
+        '(?:공장동\\s*)?(\\d+)\\s*층',
+        'i'
+      );
+
+    var floorMatch =
+      source.match(
+        floorExpression
+      );
+
+    if(floorMatch){
+      floorText =
+        floorMatch[1] +
+        '층';
+    }
+
+    var areaText = '';
 
     [
       '전기실',
@@ -2061,46 +2261,47 @@ button{touch-action:manipulation}
       '창고',
       '유틸리티실',
       '집진기실'
-    ].forEach(function(area){
+    ].some(function(area){
       if(
-        sourceName.indexOf(area) >= 0
+        source.indexOf(area) >= 0
       ){
-        appendLocationPart(
-          parts,
-          area
-        );
+        areaText = area;
+        return true;
       }
+
+      return false;
     });
 
-    if(
-      !parts.length &&
-      work.location &&
-      typeof work.location ===
-        'object'
-    ){
-      appendLocationPart(
-        parts,
-        work.location.factory
-      );
+    var parts = [];
 
-      if(work.location.line){
-        appendLocationPart(
-          parts,
-          work.location.line +
-          '라인'
-        );
-      }
+    addLocationPart(
+      parts,
+      factory
+    );
 
-      appendLocationPart(
-        parts,
-        work.location.stage
-      );
+    addLocationPart(
+      parts,
+      lineText
+    );
+
+    addLocationPart(
+      parts,
+      floorText
+    );
+
+    addLocationPart(
+      parts,
+      areaText
+    );
+
+    if(parts.length){
+      return parts.join(' · ');
     }
 
-    return parts.length
-      ? parts.join(' · ')
-      : '미지정';
+    return rawLocation ||
+      '미지정';
   }
+
 
 
 
