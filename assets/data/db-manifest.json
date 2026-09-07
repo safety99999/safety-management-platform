@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
   "environment": "test",
-  "generatedAt": "2026-09-02T11:04:12.363Z",
-  "generatedBy": "콘솔재생성v2(count보정)",
+  "generatedAt": "2026-09-07T08:06:27.287Z",
+  "generatedBy": "테스트 관리자",
   "repository": "safety99999/safety-management-platform",
   "files": {
     "riskAssessmentDB": {
@@ -15,9 +15,9 @@
     "workDatabase": {
       "filename": "work-database.test.json",
       "schemaVersion": 1,
-      "count": 735,
-      "size": 2110028,
-      "sha256": "31599590c4e421c8862b97fe210923fad325df5060081399b8c3a5b58e584193"
+      "count": 763,
+      "size": 2717921,
+      "sha256": "80040d415ac7677f7ea0aae7742244702a4e7d9cba09252b25dd09be0479895d"
     }
   }
 }
