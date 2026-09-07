@@ -786,6 +786,112 @@ button{touch-action:manipulation}
       <textarea class="db-ta" id="dbPaste" placeholder="엑셀 데이터를 붙여넣기"></textarea>
      <button type="button" class="db-btn" id="saveDatabaseButton">변환 및 서버 저장</button>
     </div>
+    <div class="sec-lbl">GitHub 정적 작업DB 배포</div>
+
+    <div class="db-info">
+      <div class="db-info-txt">
+        <strong>📦 정적 작업DB 배포 순서</strong><br>
+        ① 작업관리대장을 Firestore 원본에 저장합니다.<br>
+        ② 작업DB JSON과 manifest를 순서대로 생성합니다.<br>
+        ③ 다운로드된 두 파일을 GitHub
+        <code>assets/data/</code>에 덮어씁니다.<br>
+        ※ 위험성평가 DB 정보는 기존 manifest 값을 유지합니다.
+      </div>
+    </div>
+
+    <div class="db-area">
+      <div class="db-area-title">
+        📦 작업현황 정적 JSON
+      </div>
+
+      <div class="sets-grp" style="margin:0">
+        <div class="sets-item">
+          <div class="sets-l">
+            <span>💾</span>
+            <span class="sets-name">
+              현재 작업 캐시
+            </span>
+          </div>
+
+          <span
+            class="sets-r"
+            id="staticWorkLocalCount"
+          >
+            0건
+          </span>
+        </div>
+
+        <div class="sets-item">
+          <div class="sets-l">
+            <span>📅</span>
+            <span class="sets-name">
+              오늘 작업
+            </span>
+          </div>
+
+          <span
+            class="sets-r"
+            id="staticWorkTodayCount"
+          >
+            0건
+          </span>
+        </div>
+
+        <div class="sets-item">
+          <div class="sets-l">
+            <span>🌐</span>
+            <span class="sets-name">
+              현재 GitHub manifest
+            </span>
+          </div>
+
+          <span
+            class="sets-r"
+            id="staticManifestWorkCount"
+          >
+            확인 전
+          </span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="db-btn"
+        id="exportStaticWorkButton"
+      >
+        1. work-database.test.json 생성
+      </button>
+
+      <button
+        type="button"
+        class="db-btn"
+        id="exportStaticManifestButton"
+        style="background:var(--done)"
+        disabled
+      >
+        2. db-manifest.json 생성
+      </button>
+
+      <button
+        type="button"
+        class="db-btn"
+        id="checkStaticDatabaseButton"
+        style="background:var(--sub)"
+      >
+        정적 DB 상태 확인
+      </button>
+
+      <div
+        class="db-info"
+        id="staticExportResult"
+        style="display:none;margin:10px 0 0"
+      >
+        <div
+          class="db-info-txt"
+          id="staticExportResultText"
+        ></div>
+      </div>
+    </div>
 
     <div class="sec-lbl">관리자 도구</div>
     <div class="sets-grp">
@@ -7604,6 +7710,637 @@ button{touch-action:manipulation}
     }
   }
 
+  /* =====================================================
+   * GitHub 정적 작업DB 내보내기
+   * ===================================================== */
+
+  var staticExportState = {
+    workFile:null,
+    existingManifest:null
+  };
+
+  function staticWorkHistory(){
+    var works =
+      readWorkDatabase();
+
+    return works
+      .filter(function(work){
+        return Boolean(
+          makeWorkId(work)
+        );
+      })
+      .map(function(work){
+        return Object.assign(
+          {},
+          work,
+          {
+            id:
+              makeWorkId(work),
+
+            workId:
+              makeWorkId(work),
+
+            workName:
+              workName(work),
+
+            workNameFull:
+              clean(
+                work.workNameFull ||
+                work.workName
+              ),
+
+            locationDisplay:
+              workLocation(work)
+          }
+        );
+      })
+      .sort(function(first,second){
+        var dateCompare =
+          clean(second.date)
+            .localeCompare(
+              clean(first.date)
+            );
+
+        if(dateCompare !== 0){
+          return dateCompare;
+        }
+
+        return clean(
+          first.originalNo
+        ).localeCompare(
+          clean(
+            second.originalNo
+          ),
+          undefined,
+          {
+            numeric:true,
+            sensitivity:'base'
+          }
+        );
+      });
+  }
+
+  function staticTodayCount(
+    works
+  ){
+    return works.filter(
+      function(work){
+        return (
+          clean(work.date) ===
+          today()
+        );
+      }
+    ).length;
+  }
+
+  function setStaticExportResult(
+    message,
+    type
+  ){
+    var box =
+      byId('staticExportResult');
+
+    var text =
+      byId(
+        'staticExportResultText'
+      );
+
+    if(!box || !text){
+      return;
+    }
+
+    box.style.display =
+      'block';
+
+    text.textContent =
+      message;
+
+    box.style.borderLeftColor =
+      type === 'error'
+        ? 'var(--stop)'
+        : type === 'success'
+          ? 'var(--done)'
+          : 'var(--posco)';
+  }
+
+  function downloadStaticJson(
+    filename,
+    text
+  ){
+    var blob =
+      new Blob(
+        [text],
+        {
+          type:
+            'application/json;charset=utf-8'
+        }
+      );
+
+    var url =
+      URL.createObjectURL(
+        blob
+      );
+
+    var anchor =
+      document.createElement(
+        'a'
+      );
+
+    anchor.href = url;
+    anchor.download =
+      filename;
+
+    document.body.appendChild(
+      anchor
+    );
+
+    anchor.click();
+    anchor.remove();
+
+    setTimeout(function(){
+      URL.revokeObjectURL(
+        url
+      );
+    },1000);
+  }
+
+  async function sha256Text(
+    text
+  ){
+    if(
+      !global.crypto ||
+      !global.crypto.subtle
+    ){
+      throw new Error(
+        '이 브라우저에서 SHA-256을 생성할 수 없습니다.'
+      );
+    }
+
+    var bytes =
+      new TextEncoder()
+        .encode(text);
+
+    var buffer =
+      await global.crypto.subtle
+        .digest(
+          'SHA-256',
+          bytes
+        );
+
+    return Array.from(
+      new Uint8Array(buffer)
+    )
+      .map(function(value){
+        return value
+          .toString(16)
+          .padStart(2,'0');
+      })
+      .join('');
+  }
+
+  async function loadExistingManifest(){
+    var response =
+      await fetch(
+        './assets/data/db-manifest.json?ts=' +
+        Date.now(),
+        {
+          cache:'no-store'
+        }
+      );
+
+    if(!response.ok){
+      throw new Error(
+        '기존 db-manifest.json 조회 실패: HTTP ' +
+        response.status
+      );
+    }
+
+    var manifest =
+      await response.json();
+
+    if(
+      !manifest ||
+      !manifest.files ||
+      !manifest.files
+        .riskAssessmentDB
+    ){
+      throw new Error(
+        '기존 manifest의 위험성평가 DB 정보를 찾을 수 없습니다.'
+      );
+    }
+
+    staticExportState
+      .existingManifest =
+      manifest;
+
+    return manifest;
+  }
+
+  function updateStaticWorkCounts(){
+    var works =
+      staticWorkHistory();
+
+    setText(
+      'staticWorkLocalCount',
+      works.length +
+      '건'
+    );
+
+    setText(
+      'staticWorkTodayCount',
+      staticTodayCount(
+        works
+      ) +
+      '건'
+    );
+
+    return works;
+  }
+
+  async function checkStaticDatabase(){
+    var button =
+      byId(
+        'checkStaticDatabaseButton'
+      );
+
+    if(button){
+      button.disabled = true;
+      button.textContent =
+        '정적 DB 확인 중...';
+    }
+
+    try{
+      var manifest =
+        await loadExistingManifest();
+
+      var workInfo =
+        manifest.files
+          .workDatabase ||
+        null;
+
+      setText(
+        'staticManifestWorkCount',
+        workInfo
+          ? workInfo.count +
+            '건'
+          : '정보 없음'
+      );
+
+      var works =
+        updateStaticWorkCounts();
+
+      setStaticExportResult(
+        '현재 캐시 ' +
+        works.length +
+        '건 · 오늘 ' +
+        staticTodayCount(works) +
+        '건 · GitHub manifest ' +
+        (
+          workInfo
+            ? workInfo.count +
+              '건'
+            : '정보 없음'
+        ),
+        works.length ===
+          Number(
+            workInfo &&
+            workInfo.count
+          )
+          ? 'success'
+          : 'info'
+      );
+
+    }catch(error){
+      console.error(
+        '[정적 작업DB] 상태 확인 실패:',
+        error
+      );
+
+      setStaticExportResult(
+        '정적 DB 상태 확인 실패: ' +
+        error.message,
+        'error'
+      );
+
+    }finally{
+      if(button){
+        button.disabled = false;
+        button.textContent =
+          '정적 DB 상태 확인';
+      }
+    }
+  }
+
+  async function exportStaticWorkDatabase(){
+    var button =
+      byId(
+        'exportStaticWorkButton'
+      );
+
+    if(button){
+      button.disabled = true;
+      button.textContent =
+        '작업DB JSON 생성 중...';
+    }
+
+    try{
+      var works =
+        updateStaticWorkCounts();
+
+      if(!works.length){
+        throw new Error(
+          '내보낼 작업DB가 없습니다.'
+        );
+      }
+
+      var missingWorkIds =
+        works.filter(
+          function(work){
+            return !clean(
+              work.workId
+            );
+          }
+        );
+
+      var uniqueIds =
+        new Set(
+          works.map(function(work){
+            return clean(
+              work.workId
+            );
+          })
+        );
+
+      if(missingWorkIds.length){
+        throw new Error(
+          'workId가 없는 작업 ' +
+          missingWorkIds.length +
+          '건이 있습니다.'
+        );
+      }
+
+      if(
+        uniqueIds.size !==
+        works.length
+      ){
+        throw new Error(
+          '중복 workId가 있습니다. 전체 ' +
+          works.length +
+          '건 · 고유 ' +
+          uniqueIds.size +
+          '건'
+        );
+      }
+
+      var exportedAt =
+        new Date()
+          .toISOString();
+
+      var session =
+        readSession() || {};
+
+      var payload = {
+        schemaVersion:1,
+        collection:
+          'test_작업DB',
+        environment:'test',
+        exportedAt:
+          exportedAt,
+        exportedBy:
+          session.displayName ||
+          session.email ||
+          'admin',
+        count:
+          works.length,
+        data:
+          works
+      };
+
+      var text =
+        JSON.stringify(
+          payload,
+          null,
+          2
+        );
+
+      var hash =
+        await sha256Text(
+          text
+        );
+
+      var byteSize =
+        new TextEncoder()
+          .encode(text)
+          .length;
+
+      staticExportState
+        .workFile = {
+          filename:
+            'work-database.test.json',
+          schemaVersion:1,
+          count:
+            works.length,
+          size:
+            byteSize,
+          sha256:
+            hash,
+          exportedAt:
+            exportedAt
+        };
+
+      downloadStaticJson(
+        'work-database.test.json',
+        text
+      );
+
+      var manifestButton =
+        byId(
+          'exportStaticManifestButton'
+        );
+
+      if(manifestButton){
+        manifestButton.disabled =
+          false;
+      }
+
+      setStaticExportResult(
+        '작업DB JSON 생성 완료\n' +
+        '작업 ' +
+        works.length +
+        '건 · 오늘 ' +
+        staticTodayCount(works) +
+        '건\nSHA-256: ' +
+        hash,
+        'success'
+      );
+
+      showToast(
+        'work-database.test.json 생성 완료',
+        'success'
+      );
+
+    }catch(error){
+      console.error(
+        '[정적 작업DB] 내보내기 실패:',
+        error
+      );
+
+      setStaticExportResult(
+        '작업DB JSON 생성 실패: ' +
+        error.message,
+        'error'
+      );
+
+      showToast(
+        '작업DB JSON 생성에 실패했습니다.',
+        'danger'
+      );
+
+    }finally{
+      if(button){
+        button.disabled = false;
+        button.textContent =
+          '1. work-database.test.json 생성';
+      }
+    }
+  }
+
+  async function exportStaticManifest(){
+    var button =
+      byId(
+        'exportStaticManifestButton'
+      );
+
+    if(
+      !staticExportState
+        .workFile
+    ){
+      showToast(
+        '먼저 작업DB JSON을 생성하세요.',
+        'warning'
+      );
+
+      return;
+    }
+
+    if(button){
+      button.disabled = true;
+      button.textContent =
+        'manifest 생성 중...';
+    }
+
+    try{
+      var oldManifest =
+        staticExportState
+          .existingManifest ||
+        await loadExistingManifest();
+
+      var session =
+        readSession() || {};
+
+      var manifest = {
+        manifestVersion:
+          Number(
+            oldManifest
+              .manifestVersion ||
+            1
+          ),
+
+        environment:'test',
+
+        generatedAt:
+          new Date()
+            .toISOString(),
+
+        generatedBy:
+          session.displayName ||
+          session.email ||
+          'admin',
+
+        repository:
+          oldManifest.repository ||
+          'safety99999/safety-management-platform',
+
+        files:{
+          riskAssessmentDB:
+            clone(
+              oldManifest.files
+                .riskAssessmentDB
+            ),
+
+          workDatabase:
+            clone(
+              staticExportState
+                .workFile
+            )
+        }
+      };
+
+      /*
+       * manifest에는 파일 정보만 저장하므로
+       * 내보내기 수행 시각 필드는 제거합니다.
+       */
+      delete manifest.files
+        .workDatabase
+        .exportedAt;
+
+      var text =
+        JSON.stringify(
+          manifest,
+          null,
+          2
+        );
+
+      downloadStaticJson(
+        'db-manifest.json',
+        text
+      );
+
+      setStaticExportResult(
+        'manifest 생성 완료\n' +
+        '위험성평가 DB ' +
+        manifest.files
+          .riskAssessmentDB
+          .count +
+        '건 유지\n작업DB ' +
+        manifest.files
+          .workDatabase
+          .count +
+        '건 반영\n\n두 파일을 GitHub assets/data에 업로드하세요.',
+        'success'
+      );
+
+      showToast(
+        'db-manifest.json 생성 완료',
+        'success'
+      );
+
+    }catch(error){
+      console.error(
+        '[정적 작업DB] manifest 생성 실패:',
+        error
+      );
+
+      setStaticExportResult(
+        'manifest 생성 실패: ' +
+        error.message,
+        'error'
+      );
+
+      showToast(
+        'manifest 생성에 실패했습니다.',
+        'danger'
+      );
+
+    }finally{
+      if(button){
+        button.disabled = false;
+        button.textContent =
+          '2. db-manifest.json 생성';
+      }
+    }
+  }
+
 
   /* =====================================================
    * 승인 관리 연결
@@ -8392,6 +9129,27 @@ button{touch-action:manipulation}
         'click',
         refreshFromCloud
       );
+    byId(
+      'exportStaticWorkButton'
+    ).addEventListener(
+      'click',
+      exportStaticWorkDatabase
+    );
+
+    byId(
+      'exportStaticManifestButton'
+    ).addEventListener(
+      'click',
+      exportStaticManifest
+    );
+
+    byId(
+      'checkStaticDatabaseButton'
+    ).addEventListener(
+      'click',
+      checkStaticDatabase
+    );
+
 
     byId('riskAdminButton')
       .addEventListener(
@@ -8766,6 +9524,17 @@ button{touch-action:manipulation}
     );
 
     applyRoleUi();
+        if(
+      global.isAdminUser()
+    ){
+      updateStaticWorkCounts();
+
+      setTimeout(
+        checkStaticDatabase,
+        300
+      );
+    }
+
     startClock();
     loadNotice();
     loadAllData();
