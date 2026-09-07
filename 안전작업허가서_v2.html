@@ -5588,8 +5588,40 @@ console.log(
         .trim();
 
     /*
+     * 관리대장 원문 앞뒤에 남은
+     * 따옴표를 가장 먼저 제거합니다.
+     */
+    var quoteCharacters =
+      '"\'“”‘’';
+
+    while(
+      text.length &&
+      quoteCharacters.indexOf(
+        text.charAt(0)
+      ) >= 0
+    ){
+      text =
+        text.substring(1).trim();
+    }
+
+    while(
+      text.length &&
+      quoteCharacters.indexOf(
+        text.charAt(
+          text.length - 1
+        )
+      ) >= 0
+    ){
+      text =
+        text.substring(
+          0,
+          text.length - 1
+        ).trim();
+    }
+
+    /*
      * "작업장소: ... 작업내용: ..." 형식이면
-     * 작업내용 뒤쪽만 화면 작업명으로 사용합니다.
+     * 작업내용 뒤쪽만 사용합니다.
      */
     var contentExpression =
       new RegExp(
@@ -5611,8 +5643,8 @@ console.log(
     }
 
     /*
-     * 관리·직종 태그를 제거합니다.
-     * 설비명을 의미하는 기타 대괄호 내용은 유지합니다.
+     * 따옴표와 관리 태그가 여러 번 반복될 수 있어
+     * 함께 반복 제거합니다.
      */
     var removableTags = [
       '[계획]',
@@ -5627,10 +5659,22 @@ console.log(
       '[소방]'
     ];
 
-    var tagRemoved = true;
+    var headerRemoved = true;
 
-    while(tagRemoved){
-      tagRemoved = false;
+    while(headerRemoved){
+      headerRemoved = false;
+
+      while(
+        text.length &&
+        quoteCharacters.indexOf(
+          text.charAt(0)
+        ) >= 0
+      ){
+        text =
+          text.substring(1).trim();
+
+        headerRemoved = true;
+      }
 
       for(
         var tagIndex = 0;
@@ -5651,14 +5695,15 @@ console.log(
               tag.length
             ).trim();
 
-          tagRemoved = true;
+          headerRemoved = true;
           break;
         }
       }
     }
 
     /*
-     * 작업명 선두의 공장·단계 정보를 제거합니다.
+     * 작업명 앞쪽 공장·단계 문구를 제거합니다.
+     * 긴 문구부터 검사합니다.
      */
     var prefixes = [
       '포항양극재 2-2 단계공장',
@@ -5723,8 +5768,14 @@ console.log(
     }
 
     /*
-     * 선두의 층·라인·9A/9B/9C 위치정보를
-     * 반복해서 제거합니다.
+     * 작업명 선두의 위치정보를 제거합니다.
+     *
+     * 예:
+     * 3라인
+     * 4,5라인
+     * 9A라인
+     * 9B,C라인
+     * 공장동 3층
      */
     var leadingPatterns = [
       new RegExp(
@@ -5733,8 +5784,10 @@ console.log(
       ),
 
       new RegExp(
-        '^\\s*\\d+\\s*[A-C]?' +
-        '(?:\\s*[,·/]\\s*(?:\\d+\\s*)?[A-C]?)*' +
+        '^\\s*\\d+' +
+        '(?:\\s*[,·/~～-]\\s*\\d+)*' +
+        '\\s*[A-C]?' +
+        '(?:\\s*[,·/]\\s*(?:\\d+\\s*)?[A-C])*' +
         '\\s*라인\\s*',
         'i'
       ),
@@ -5782,6 +5835,44 @@ console.log(
         ).trim();
     }
 
+    /*
+     * 작업명 뒤의 관리정보를 제거합니다.
+     */
+    var managementMarkers = [
+      ' 4) ILS 적용 여부',
+      '4) ILS 적용 여부',
+      ' 5) 장비이용',
+      '5) 장비이용'
+    ];
+
+    var cutPosition = -1;
+
+    managementMarkers.forEach(
+      function(marker){
+        var position =
+          text.indexOf(marker);
+
+        if(
+          position >= 0 &&
+          (
+            cutPosition < 0 ||
+            position < cutPosition
+          )
+        ){
+          cutPosition =
+            position;
+        }
+      }
+    );
+
+    if(cutPosition >= 0){
+      text =
+        text.substring(
+          0,
+          cutPosition
+        ).trim();
+    }
+
     var removableTexts = [
       'ILS 시스템 지정 완료',
       'ILS시스템 지정 완료',
@@ -5803,6 +5894,28 @@ console.log(
       }
     );
 
+    /*
+     * 작업명 끝의 단순 일정 표기를 제거합니다.
+     *
+     * 예:
+     * (9/7)
+     * (8/24~9/10)
+     */
+    var trailingDateExpression =
+      new RegExp(
+        '\\s*\\(' +
+        '\\d{1,2}\\s*\\/\\s*\\d{1,2}' +
+        '(?:\\s*[~～-]\\s*' +
+        '\\d{1,2}\\s*\\/\\s*\\d{1,2})?' +
+        '\\s*\\)\\s*$'
+      );
+
+    text =
+      text.replace(
+        trailingDateExpression,
+        ''
+      );
+
     text =
       text
         .replace(/\s+/g,' ')
@@ -5811,6 +5924,21 @@ console.log(
           ''
         )
         .trim();
+
+    while(
+      text.length &&
+      quoteCharacters.indexOf(
+        text.charAt(
+          text.length - 1
+        )
+      ) >= 0
+    ){
+      text =
+        text.substring(
+          0,
+          text.length - 1
+        ).trim();
+    }
 
     if(!text){
       text = original;
@@ -5821,6 +5949,7 @@ console.log(
         '...'
       : text;
   }
+
 
   function workLocation(work){
     if(!work){
