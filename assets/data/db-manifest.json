@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "environment": "test",
-  "generatedAt": "2026-09-07T08:06:27.287Z",
+  "generatedAt": "2026-09-07T08:26:12.817Z",
   "generatedBy": "테스트 관리자",
   "repository": "safety99999/safety-management-platform",
   "files": {
@@ -17,7 +17,7 @@
       "schemaVersion": 1,
       "count": 763,
       "size": 2717921,
-      "sha256": "80040d415ac7677f7ea0aae7742244702a4e7d9cba09252b25dd09be0479895d"
+      "sha256": "fe6a48dd73aec33cfac54578ff6e66db7587b2a3b3b57ec30be259cdc3786b38"
     }
   }
 }
