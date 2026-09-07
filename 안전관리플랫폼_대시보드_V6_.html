@@ -8770,31 +8770,37 @@ button{touch-action:manipulation}
     updateDateControls();
     applyDateFilter();
     updatePermitCard();
+    bindEvents();
 
     /*
-     * 초기 로드 시 서버에서 데이터를 가져옵니다.
-     * 캐시가 없거나 만료된 경우에만 조회합니다.
+     * 관리자 설정 화면의 정적 JSON 상태를 표시합니다.
      */
     if(
-      !localStorage.getItem(
-        'workDbLastSync'
-      ) ||
-      Date.now() -
-      Number(
-        localStorage.getItem(
-          'workDbLastSync'
-        )
-      ) > 30 * 60 * 1000
+      global.isAdminUser()
     ){
-      /*
-       * 작업DB와 허가서를 서버에서 다시 로드합니다.
-       * 테스터는 공개 작업현황만 로드합니다.
-       */
-      if(
-        global.isPublicTester &&
-        global.isPublicTester()
-      ){
-      
+      updateStaticWorkCounts();
+
+      setTimeout(
+        checkStaticDatabase,
+        300
+      );
+    }
+
+    console.log(
+      '[Dashboard v8] 초기화 완료:',
+      {
+        version:
+          DASHBOARD_VERSION,
+        role:
+          appSession.role,
+        works:
+          state.allWorks.length,
+        permits:
+          state.permits.length
+      }
+    );
+  }
+
   global.DashboardV8.openSheet =
     openSheet;
 
@@ -8818,38 +8824,52 @@ button{touch-action:manipulation}
       var result = {
         version:
           DASHBOARD_VERSION,
+
         role:
           appSession.role,
+
         authenticated:
           global
             .isAuthenticatedUser(),
+
         admin:
           global.isAdminUser(),
+
         tester:
           global.isPublicTester(),
+
         works:
           state.allWorks.length,
+
         displayedWorks:
           state.displayedWorks
             .length,
+
         permits:
           state.permits.length,
+
         risks:
           state.risks.length,
+
         safetyInfos:
           state.safetyInfos.length,
+
         quizzes:
           state.quizzes.length,
+
         tbms:
           state.tbms.length,
+
         riskLinks:
           Object.keys(
             indexes.riskByWorkId
           ).length,
+
         safetyInfoLinks:
           Object.keys(
             indexes.safetyByWorkId
           ).length,
+
         quizLinks:
           Object.keys(
             indexes.quizByWorkId
@@ -9169,7 +9189,6 @@ function localPermits(){
   }
 }
 
-
 async function loadPermits(
   force
 ){
@@ -9177,16 +9196,31 @@ async function loadPermits(
     readSession();
 
   /*
-   * 테스터는 로컬 저장소만 사용합니다.
+   * 공개 테스터는 Firestore 허가서를 조회하지 않습니다.
+   * 테스터 허가서는 testerSafetyPermits를 사용합니다.
    */
   if(
     session &&
     session.role ===
       'tester'
   ){
-    return readArray(
-      storagePermitKey()
-    );
+    try{
+      var testerRecords =
+        JSON.parse(
+          localStorage.getItem(
+            'testerSafetyPermits'
+          ) || '[]'
+        );
+
+      return Array.isArray(
+        testerRecords
+      )
+        ? testerRecords
+        : [];
+
+    }catch(error){
+      return [];
+    }
   }
 
   var user =
@@ -9197,8 +9231,8 @@ async function loadPermits(
     false
   );
 
-  var cacheTtl =
-    30 * 60 * 1000; // 30분 캐시
+  var cached =
+    localPermits();
 
   var lastSync =
     Number(
@@ -9209,114 +9243,118 @@ async function loadPermits(
 
   if(
     !force &&
+    cached.length &&
     Date.now() -
-    lastSync <
-    cacheTtl
+      lastSync <
+      10 * 60 * 1000
   ){
-    var cachedPermits =
-      readArray(
-        storageKey()
-      );
-
-    if(cachedPermits.length){
-      console.log(
-        '[Dashboard Firebase] 허가서 캐시 사용:',
-        cachedPermits.length +
-        '건'
-      );
-
-      return cachedPermits;
-    }
+    return cached;
   }
 
-  console.log(
-    '[Dashboard Firebase] 허가서 서버 조회 시작:',
-    PERMIT_COLLECTION
+  var snapshot =
+    await getDocs(
+      collection(
+        db,
+        PERMIT_COLLECTION
+      )
+    );
+
+  var cloud = [];
+
+  snapshot.forEach(
+    function(documentSnapshot){
+      var record =
+        documentSnapshot.data() ||
+        {};
+
+      record.permitNo =
+        record.permitNo ||
+        documentSnapshot.id;
+
+      cloud.push(record);
+    }
   );
 
-  try{
-    var snapshot =
-      await getDocs(
-        collection(
-          db,
-          PERMIT_COLLECTION
-        )
-      );
-
-    var cloudPermits =
-      [];
-
-    snapshot.forEach(
-      function(documentSnapshot){
-        var record =
-          documentSnapshot.data() ||
-          {};
-
-        record.permitNo =
-          record.permitNo ||
-          documentSnapshot.id;
-
-        cloudPermits.push(record);
-      }
-    );
-
-    var mergedPermits =
-      mergePermits(
-        readArray(
-          storageKey()
-        ),
-        cloudPermits
-      );
-
-    saveLocalPermits(
-      mergedPermits
-    );
-
-    console.log(
-      '[Dashboard Firebase] 허가서 서버 조회 완료:',
-      mergedPermits.length +
-      '건'
-    );
-
-    return mergedPermits;
-
-  }catch(error){
-    console.error(
-      '[Dashboard Firebase] 허가서 서버 조회 실패:',
-      error
-    );
-
-    throw error;
-  }
-}
-
-function mergePermits(local, cloud){
   var map =
     new Map();
 
-  local.forEach(function(record){
-    if(record && record.permitNo){
-      map.set(record.permitNo, record);
+  cached.forEach(
+    function(record){
+      if(
+        record &&
+        record.permitNo
+      ){
+        map.set(
+          record.permitNo,
+          record
+        );
+      }
     }
-  });
+  );
 
-  cloud.forEach(function(record){
-    var localRecord =
-      map.get(record.permitNo);
+  cloud.forEach(
+    function(record){
+      var local =
+        map.get(
+          record.permitNo
+        );
 
-    if(
-      !localRecord ||
-      recordTime(record) >=
-      recordTime(localRecord)
-    ){
-      map.set(record.permitNo, record);
+      /*
+       * 아직 서버 저장이 끝나지 않은 로컬 자료가
+       * 서버 자료보다 최신이면 로컬 자료를 유지합니다.
+       */
+      if(
+        local &&
+        local.syncPending ===
+          true &&
+        recordTime(local) >
+          recordTime(record)
+      ){
+        return;
+      }
+
+      map.set(
+        record.permitNo,
+        record
+      );
     }
-  });
+  );
 
-  return Array.from(map.values()).sort(function(a,b){
-    return recordTime(b) - recordTime(a);
-  });
+  var merged =
+    Array.from(
+      map.values()
+    ).sort(
+      function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      }
+    );
+
+  saveLocalPermits(
+    merged
+  );
+
+  window.dispatchEvent(
+    new CustomEvent(
+      'app-data-changed',
+      {
+        detail:{
+          key:
+            'safetyPermits',
+          source:
+            'firestore-sync',
+          timestamp:
+            Date.now()
+        }
+      }
+    )
+  );
+
+  return merged;
 }
+
 
 function isPending(record){
   var code =
@@ -9716,176 +9754,6 @@ async function loadWorkDatabase(
   );
 
   var cacheTtl =
-    30 * 60 * 1000; // 30분 캐시
-
-  var lastSync =
-    Number(
-      localStorage.getItem(
-        'workDbLastSync'
-      ) || 0
-    );
-
-  if(
-    force !== true &&
-    lastSync > 0 &&
-    Date.now() - lastSync <
-      cacheTtl
-  ){
-    try{
-      var cachedDatabase =
-        JSON.parse(
-          localStorage.getItem(
-            'safetyDatabase'
-          ) || '{}'
-        );
-
-      var cachedWorks =
-        Array.isArray(
-          cachedDatabase.workHistory
-        )
-          ? cachedDatabase.workHistory
-          : [];
-
-      if(cachedWorks.length){
-        console.log(
-          '[Dashboard Firebase] 작업DB 캐시 사용:',
-          cachedWorks.length +
-          '건'
-        );
-
-        return cachedWorks;
-      }
-    }catch(cacheError){
-      console.warn(
-        '[Dashboard Firebase] 작업DB 캐시 확인 실패:',
-        cacheError
-      );
-    }
-  }
-
-  /*
-   * 캐시가 없거나 forceRefresh=true 이면
-   * staticDbLoader를 통해 GitHub에서 로드합니다.
-   */
-  if(
-    !global.staticDbLoader ||
-    typeof global.staticDbLoader.load !== 'function'
-  ){
-    throw new Error(
-      '정적 DB 로더가 준비되지 않았습니다.'
-    );
-  }
-
-  try{
-    var result =
-      await global.staticDbLoader.load(
-        'workDatabase',
-        {
-          forceRefresh: Boolean(force)
-        }
-      );
-
-    var works =
-      result.data || [];
-
-    if(!works.length){
-      throw new Error(
-        '서버 작업DB가 비어 있습니다.'
-      );
-    }
-
-    works.sort(
-      function(first,second){
-        var dateCompare =
-          String(
-            second.date || ''
-          ).trim().localeCompare(
-            String(
-              first.date || ''
-            ).trim()
-          );
-
-        if(dateCompare !== 0){
-          return dateCompare;
-        }
-
-        return String(
-          first.originalNo || ''
-        ).trim().localeCompare(
-          String(
-            second.originalNo || ''
-          ).trim(),
-          undefined,
-          {
-            numeric:true,
-            sensitivity:'base'
-          }
-        );
-      }
-    );
-
-    var syncedAt =
-      new Date().toISOString();
-
-    localStorage.setItem(
-      'safetyDatabase',
-      JSON.stringify({
-        metadata:{
-          version:'8.1',
-          schemaVersion:1,
-          sourceType:
-            'firestore-server', /* 이 부분은 'static-json'으로 변경 필요 */
-          lastUpdate:
-            syncedAt,
-          totalCount:
-            works.length,
-          syncedFromFirestore:
-            false, /* Firestore에서 로드했으므로 false */
-          readonly:
-            true, /* 정적 DB는 읽기 전용 */
-          publicTesterData:
-            true
-        },
-
-        workHistory:
-          works
-      })
-    );
-
-    localStorage.setItem(
-      'workDbLastSync',
-      String(Date.now())
-    );
-
-    console.log(
-      '[Dashboard Firebase] 작업DB 정적 조회 완료:',
-      works.length +
-      '건'
-    );
-
-    return works;
-
-  }catch(error){
-    console.error(
-      '[Dashboard Firebase] 작업DB 정적 조회 실패:',
-      error
-    );
-
-    throw error;
-  }
-}
-
-  force
-){
-  var user =
-    await waitForAuth();
-
-  validateUser(
-    user,
-    false
-  );
-
-  var cacheTtl =
     30 * 60 * 1000;
 
   var lastSync =
@@ -9898,7 +9766,8 @@ async function loadWorkDatabase(
   if(
     force !== true &&
     lastSync > 0 &&
-    Date.now() - lastSync <
+    Date.now() -
+      lastSync <
       cacheTtl
   ){
     try{
@@ -9916,7 +9785,28 @@ async function loadWorkDatabase(
           ? cachedDatabase.workHistory
           : [];
 
-      if(cachedWorks.length){
+      var cachedMetadata =
+        cachedDatabase.metadata ||
+        {};
+
+      /*
+       * 테스터 공개 캐시는 관리자 내부 캐시로
+       * 재사용하지 않습니다.
+       */
+      var publicCache =
+        cachedMetadata
+          .publicTesterData ===
+          true ||
+        cachedMetadata
+          .readonly === true ||
+        cachedMetadata
+          .sourceType ===
+          'public-firestore';
+
+      if(
+        cachedWorks.length &&
+        !publicCache
+      ){
         console.log(
           '[Dashboard Firebase] 작업DB 캐시 사용:',
           cachedWorks.length +
@@ -9925,6 +9815,7 @@ async function loadWorkDatabase(
 
         return cachedWorks;
       }
+
     }catch(cacheError){
       console.warn(
         '[Dashboard Firebase] 작업DB 캐시 확인 실패:',
@@ -9963,8 +9854,8 @@ async function loadWorkDatabase(
   );
 
   /*
-   * 서버 장애나 잘못된 컬렉션명 때문에 조회 결과가
-   * 비어 있을 때 기존 정상 캐시를 삭제하지 않습니다.
+   * 서버가 비어 있는데 기존 캐시가 존재하면
+   * 정상 캐시를 빈 배열로 덮어쓰지 않습니다.
    */
   if(!works.length){
     var existingWorks = [];
@@ -9983,6 +9874,7 @@ async function loadWorkDatabase(
         )
           ? existingDatabase.workHistory
           : [];
+
     }catch(readError){
       existingWorks = [];
     }
@@ -10031,8 +9923,10 @@ async function loadWorkDatabase(
     'safetyDatabase',
     JSON.stringify({
       metadata:{
-        version:'8.1',
-        schemaVersion:1,
+        version:
+          '8.1',
+        schemaVersion:
+          1,
         sourceType:
           'firestore-server',
         lastUpdate:
@@ -10041,7 +9935,10 @@ async function loadWorkDatabase(
           works.length,
         syncedFromFirestore:
           true,
-        readonly:false
+        readonly:
+          false,
+        publicTesterData:
+          false
       },
 
       workHistory:
@@ -10062,6 +9959,8 @@ async function loadWorkDatabase(
 
   return works;
 }
+
+
 
 
 async function loadPublicWorks(){
