@@ -6956,6 +6956,22 @@ button{touch-action:manipulation}
       );
 
       byId('dbPaste').value = '';
+      /*
+       * 저장된 일부 입력자료뿐 아니라 서버 작업DB 전체를
+       * 다시 읽어 화면과 캐시를 최종 서버 기준으로 맞춥니다.
+       */
+      if(
+        global.DashboardFirebase &&
+        typeof global
+          .DashboardFirebase
+          .loadWorkDatabase ===
+            'function'
+      ){
+        await global
+          .DashboardFirebase
+          .loadWorkDatabase(true);
+      }
+
 
       loadAllData();
       applyDateFilter();
@@ -7480,24 +7496,117 @@ button{touch-action:manipulation}
   }
 
   async function refreshFromCloud(){
+    var refreshButton =
+      byId('refreshButton');
+
+    var refreshDataButton =
+      byId('refreshDataButton');
+
+    /*
+     * 테스터는 공개 작업현황 컬렉션을 조회합니다.
+     */
     if(
       global.isPublicTester()
     ){
-      refreshFromCache();
+      if(
+        !global.DashboardFirebase ||
+        typeof global
+          .DashboardFirebase
+          .loadPublicWorks !==
+            'function'
+      ){
+        showToast(
+          '공개 작업현황 조회 모듈이 준비되지 않았습니다.',
+          'warning'
+        );
 
-      showToast(
-        '테스터는 로컬 자료를 사용합니다.',
-        'info'
-      );
+        return;
+      }
+
+      try{
+        if(refreshButton){
+          refreshButton.disabled =
+            true;
+
+          refreshButton.textContent =
+            '갱신 중...';
+        }
+
+        var publicWorks =
+          await global
+            .DashboardFirebase
+            .loadPublicWorks();
+
+        var testerSyncedAt =
+          new Date().toISOString();
+
+        localStorage.setItem(
+          'safetyDatabase',
+          JSON.stringify({
+            metadata:{
+              version:
+                '8.1-public',
+              schemaVersion:
+                1,
+              sourceType:
+                'public-firestore',
+              lastUpdate:
+                testerSyncedAt,
+              totalCount:
+                publicWorks.length,
+              readonly:
+                true,
+              publicTesterData:
+                true
+            },
+
+            workHistory:
+              publicWorks
+          })
+        );
+
+        localStorage.setItem(
+          'workDbLastSync',
+          String(Date.now())
+        );
+
+        refreshFromCache();
+
+      }catch(error){
+        console.error(
+          '[Dashboard v8] 공개 작업현황 새로고침 실패:',
+          error
+        );
+
+        showToast(
+          '작업현황 최신화에 실패했습니다. 기존 자료를 표시합니다.',
+          'warning'
+        );
+
+        refreshFromCache();
+
+      }finally{
+        if(refreshButton){
+          refreshButton.disabled =
+            false;
+
+          refreshButton.textContent =
+            '↻ 새로고침';
+        }
+      }
 
       return;
     }
 
     if(
-      !global.DashboardFirebase
+      !global.DashboardFirebase ||
+      typeof global
+        .DashboardFirebase
+        .loadWorkDatabase !==
+          'function'
     ){
       showToast(
-        'Firebase가 준비되지 않았습니다.',
+        'Firebase 작업DB 모듈이 준비되지 않았습니다.',
         'warning'
       );
 
@@ -7505,29 +7614,149 @@ button{touch-action:manipulation}
     }
 
     try{
-      var records =
-        await global
-          .DashboardFirebase
-          .loadPermits(true);
+      if(refreshButton){
+        refreshButton.disabled =
+          true;
 
-      state.permits =
-        records;
+        refreshButton.textContent =
+          '갱신 중...';
+      }
 
-      applyDateFilter();
-      updatePermitCard();
+      if(refreshDataButton){
+        refreshDataButton.style
+          .pointerEvents = 'none';
 
-      showToast(
-        '허가서 최신화를 완료했습니다.',
-        'success'
+        refreshDataButton.style
+          .opacity = '.6';
+      }
+
+      setText(
+        'syncStatusText',
+        '갱신 중'
+      );
+
+      /*
+       * 수동 새로고침은 캐시 유효시간과 관계없이
+       * 작업DB와 허가서를 서버에서 다시 조회합니다.
+       */
+      var results =
+        await Promise.allSettled([
+          global
+            .DashboardFirebase
+            .loadWorkDatabase(true),
+
+          global
+            .DashboardFirebase
+            .loadPermits(true)
+        ]);
+
+      var workResult =
+        results[0];
+
+      var permitResult =
+        results[1];
+
+      /*
+       * 성공한 서버 자료를 포함하여
+       * localStorage 전체를 다시 읽고 화면을 갱신합니다.
+       */
+      refreshFromCache();
+
+      var syncedAt =
+        new Date();
+
+      setText(
+        'syncStatusText',
+        syncedAt.toLocaleTimeString(
+          'ko-KR',
+          {
+            hour:'2-digit',
+            minute:'2-digit'
+          }
+        )
+      );
+
+      if(
+        workResult.status ===
+          'rejected'
+      ){
+        console.error(
+          '[Dashboard v8] 작업DB 최신화 실패:',
+          workResult.reason
+        );
+
+        showToast(
+          '작업DB 최신화에 실패했습니다. 기존 자료를 표시합니다.',
+          'warning'
+        );
+      }
+
+      if(
+        permitResult.status ===
+          'rejected'
+      ){
+        console.warn(
+          '[Dashboard v8] 허가서 최신화 실패:',
+          permitResult.reason
+        );
+      }
+
+      /*
+       * 정상 완료 시 별도의 토스트를 표시하지 않습니다.
+       * 화면 건수와 동기화 시각만 갱신합니다.
+       */
+      console.log(
+        '[Dashboard v8] 서버 데이터 최신화 결과:',
+        {
+          workDatabase:
+            workResult.status,
+          permits:
+            permitResult.status,
+          works:
+            state.allWorks.length,
+          displayedWorks:
+            state.displayedWorks.length
+        }
       );
 
     }catch(error){
+      console.error(
+        '[Dashboard v8] 서버 데이터 최신화 실패:',
+        error
+      );
+
+      setText(
+        'syncStatusText',
+        '갱신 실패'
+      );
+
       showToast(
-        '최신화 실패 · 기존 캐시를 사용합니다.',
+        '데이터 최신화에 실패했습니다. 기존 자료를 표시합니다.',
         'warning'
       );
+
+      refreshFromCache();
+
+    }finally{
+      if(refreshButton){
+        refreshButton.disabled =
+          false;
+
+        refreshButton.textContent =
+          '↻ 새로고침';
+      }
+
+      if(refreshDataButton){
+        refreshDataButton.style
+          .pointerEvents = '';
+
+        refreshDataButton.style
+          .opacity = '';
+      }
     }
   }
+
+
 
   function bindEvents(){
     byId('themeButton')
@@ -8870,6 +9099,195 @@ async function saveWorkDatabase(
       PUBLIC_WORK_COLLECTION
   };
 }
+async function loadWorkDatabase(
+  force
+){
+  var user =
+    await waitForAuth();
+
+  validateUser(
+    user,
+    false
+  );
+
+  var cacheTtl =
+    30 * 60 * 1000;
+
+  var lastSync =
+    Number(
+      localStorage.getItem(
+        'workDbLastSync'
+      ) || 0
+    );
+
+  if(
+    force !== true &&
+    lastSync > 0 &&
+    Date.now() - lastSync <
+      cacheTtl
+  ){
+    try{
+      var cachedDatabase =
+        JSON.parse(
+          localStorage.getItem(
+            'safetyDatabase'
+          ) || '{}'
+        );
+
+      var cachedWorks =
+        Array.isArray(
+          cachedDatabase.workHistory
+        )
+          ? cachedDatabase.workHistory
+          : [];
+
+      if(cachedWorks.length){
+        console.log(
+          '[Dashboard Firebase] 작업DB 캐시 사용:',
+          cachedWorks.length +
+          '건'
+        );
+
+        return cachedWorks;
+      }
+    }catch(cacheError){
+      console.warn(
+        '[Dashboard Firebase] 작업DB 캐시 확인 실패:',
+        cacheError
+      );
+    }
+  }
+
+  console.log(
+    '[Dashboard Firebase] 작업DB 서버 조회 시작:',
+    WORK_COLLECTION
+  );
+
+  var snapshot =
+    await getDocs(
+      collection(
+        db,
+        WORK_COLLECTION
+      )
+    );
+
+  var works = [];
+
+  snapshot.forEach(
+    function(documentSnapshot){
+      var record =
+        documentSnapshot.data() ||
+        {};
+
+      record.workId =
+        record.workId ||
+        documentSnapshot.id;
+
+      works.push(record);
+    }
+  );
+
+  /*
+   * 서버 장애나 잘못된 컬렉션명 때문에 조회 결과가
+   * 비어 있을 때 기존 정상 캐시를 삭제하지 않습니다.
+   */
+  if(!works.length){
+    var existingWorks = [];
+
+    try{
+      var existingDatabase =
+        JSON.parse(
+          localStorage.getItem(
+            'safetyDatabase'
+          ) || '{}'
+        );
+
+      existingWorks =
+        Array.isArray(
+          existingDatabase.workHistory
+        )
+          ? existingDatabase.workHistory
+          : [];
+    }catch(readError){
+      existingWorks = [];
+    }
+
+    if(existingWorks.length){
+      throw new Error(
+        '서버 작업DB가 비어 있어 기존 캐시를 유지했습니다.'
+      );
+    }
+  }
+
+  works.sort(
+    function(first,second){
+      var dateCompare =
+        String(
+          second.date || ''
+        ).trim().localeCompare(
+          String(
+            first.date || ''
+          ).trim()
+        );
+
+      if(dateCompare !== 0){
+        return dateCompare;
+      }
+
+      return String(
+        first.originalNo || ''
+      ).trim().localeCompare(
+        String(
+          second.originalNo || ''
+        ).trim(),
+        undefined,
+        {
+          numeric:true,
+          sensitivity:'base'
+        }
+      );
+    }
+  );
+
+  var syncedAt =
+    new Date().toISOString();
+
+  localStorage.setItem(
+    'safetyDatabase',
+    JSON.stringify({
+      metadata:{
+        version:'8.1',
+        schemaVersion:1,
+        sourceType:
+          'firestore-server',
+        lastUpdate:
+          syncedAt,
+        totalCount:
+          works.length,
+        syncedFromFirestore:
+          true,
+        readonly:false
+      },
+
+      workHistory:
+        works
+    })
+  );
+
+  localStorage.setItem(
+    'workDbLastSync',
+    String(Date.now())
+  );
+
+  console.log(
+    '[Dashboard Firebase] 작업DB 서버 조회 완료:',
+    works.length +
+    '건'
+  );
+
+  return works;
+}
+
 
 async function loadPublicWorks(){
   try{
@@ -9230,6 +9648,9 @@ window.DashboardFirebase = {
   loadPermits:
     loadPermits,
 
+  loadWorkDatabase:
+    loadWorkDatabase,
+
   processPermit:
     processPermit,
 
@@ -9239,6 +9660,7 @@ window.DashboardFirebase = {
   loadPublicWorks:
     loadPublicWorks
 };
+
 
 
 window.dispatchEvent(
@@ -9264,8 +9686,8 @@ console.log(
     }
 
     /*
-     * dashboard-firebase-ready와 DOMContentLoaded가
-     * 모두 호출되어도 최초 동기화는 한 번만 수행합니다.
+     * Firebase 준비 이벤트와 DOMContentLoaded가
+     * 모두 실행되어도 최초 동기화는 한 번만 수행합니다.
      */
     if(sync.initialSyncStarted){
       return;
@@ -9273,8 +9695,6 @@ console.log(
 
     sync.initialSyncStarted =
       true;
-
-
 
     /*
      * 공개 테스터는 내부 작업DB가 아니라
@@ -9290,9 +9710,8 @@ console.log(
             .DashboardFirebase
             .loadPublicWorks();
 
-        var syncedAt =
-          new Date()
-            .toISOString();
+        var testerSyncedAt =
+          new Date().toISOString();
 
         localStorage.setItem(
           'safetyDatabase',
@@ -9305,7 +9724,7 @@ console.log(
               sourceType:
                 'public-firestore',
               lastUpdate:
-                syncedAt,
+                testerSyncedAt,
               totalCount:
                 publicWorks.length,
               readonly:
@@ -9347,31 +9766,51 @@ console.log(
     }
 
     /*
-     * 관리자·일반 사용자는 허가서를 동기화합니다.
-     * 작업DB는 관리자가 서버 저장 후 생성한 캐시를 사용합니다.
+     * 관리자·일반 사용자는 작업DB와 허가서를
+     * 서버에서 동기화합니다.
+     *
+     * 작업DB는 30분 이내의 정상 캐시가 있으면
+     * 서버 전체 조회를 생략합니다.
      */
-    try{
-      await window
-        .DashboardFirebase
-        .loadPermits(false);
+    var results =
+      await Promise.allSettled([
+        window
+          .DashboardFirebase
+          .loadWorkDatabase(false),
 
-      window.DashboardV8
-        .refresh();
+        window
+          .DashboardFirebase
+          .loadPermits(false)
+      ]);
 
-      console.log(
-        '[Dashboard v8] 허가서 동기화 완료'
-      );
+    window.DashboardV8
+      .refresh();
 
-    }catch(error){
+    if(
+      results[0].status ===
+        'rejected'
+    ){
       console.warn(
-        '[Dashboard v8] 허가서 동기화 실패 · 캐시 사용:',
-        error
+        '[Dashboard v8] 작업DB 초기 동기화 실패 · 기존 캐시 사용:',
+        results[0].reason
       );
-
-      window.DashboardV8
-        .refresh();
     }
+
+    if(
+      results[1].status ===
+        'rejected'
+    ){
+      console.warn(
+        '[Dashboard v8] 허가서 초기 동기화 실패 · 기존 캐시 사용:',
+        results[1].reason
+      );
+    }
+
+    console.log(
+      '[Dashboard v8] 초기 서버 동기화 완료'
+    );
   }
+
 
 
   window.addEventListener(
