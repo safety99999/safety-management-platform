@@ -1465,73 +1465,608 @@ function setupThemeSync(){
 // ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', function(){
-  initTheme();
-  setupThemeSync();
-  
-  // 초기 위험요인 1개 추가
-  addHazard();
-  
-  // 모든 서명 캔버스 초기화
-  initAllSigs();
-  
-  // 현재 시간 설정
-  var el = document.getElementById('tbm-datetime');
-  if(el && !el.value) el.value = fmtDateTime();
-  
-  // URL 파라미터 처리
-  var params = new URLSearchParams(window.location.search);
-  var permitNo = params.get('permitNo');
-  var workId = params.get('workId');
-  
-   if(permitNo){
-    console.log('[TBM v2.0] URL permitNo:', permitNo);
-    tbmData.permitNo = permitNo;
-    
-    // ⭐ 기존 TBM 확인 (2026-08-31 신규)
-    var existingTbm = findExistingTbm(permitNo);
-    if(existingTbm){
-      console.log('[TBM v2.0] 기존 TBM 발견:', existingTbm.tbmNo);
-      // 허가서 정보도 로드 (배너용)
-      loadFromPermit(permitNo);
-      // 그 다음 기존 TBM 데이터 덮어씀 + 읽기 전용
-      setTimeout(function(){
-        loadTbmReadOnly(existingTbm);
-      }, 100);
-    } else {
-      // 기존 TBM 없음 → 신규 작성 모드
-      loadFromPermit(permitNo);
-    }
-  } else if(workId){
-    console.log('[TBM v2.0] URL workId:', workId);
-    tbmData.workId = workId;
-    loadFromWorkId(workId);
+
+function readTbmSession(){
+  try{
+    return JSON.parse(
+      sessionStorage.getItem(
+        'appSession'
+      ) || 'null'
+    );
+  }catch(error){
+    return null;
+  }
+}
+
+function isTbmTester(){
+  var session =
+    readTbmSession();
+
+  return Boolean(
+    session &&
+    session.environment === 'test' &&
+    session.accessMode === 'tester' &&
+    session.role === 'tester'
+  );
+}
+
+function permitStorageKey(){
+  return isTbmTester()
+    ? 'testerSafetyPermits'
+    : 'safetyPermits';
+}
+
+function tbmStorageKey(){
+  return isTbmTester()
+    ? 'testerSafetyTBM'
+    : 'safetyTBM';
+}
+
+function simplifyTbmWorkName(value){
+  var original =
+    String(value || '')
+      .replace(/\r/g,' ')
+      .replace(/\n/g,' ')
+      .replace(/\t/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+
+  if(!original){
+    return '작업명 미지정';
   }
 
-  
-  // 임시저장 복구 시도
-  if(!permitNo && !workId){
-    loadDraft();
+  var text = original;
+
+  /*
+   * "작업장소: ... 작업내용: ..." 형식은
+   * 작업내용 뒤쪽을 우선 사용합니다.
+   */
+  var contentMatch =
+    text.match(
+      /작업\s*내용\s*[:：]\s*(.+)$/i
+    );
+
+  if(contentMatch){
+    text =
+      contentMatch[1].trim();
   }
-  
-  // ESC 키 처리
-  document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape'){
-      var overlay = document.getElementById('customConfirmOverlay');
-      if(overlay && overlay.classList.contains('active')){
-        customConfirmClose(false);
-      }
-    }
+
+  /*
+   * 관리·분류용 선두 태그만 제거합니다.
+   * 설비명 태그는 보존합니다.
+   */
+  text = text.replace(
+    /^\s*
+\[(?:기계|전기|계획|예정|확정|긴급|토목|건축|계장)\]
+\s*/i,
+    ''
+  );
+
+  text = text.replace(
+    /^\s*(?:작업\s*장소|장소)\s*[:：]\s*/i,
+    ''
+  );
+
+  /*
+   * 공장·단계 접두어를 제거합니다.
+   */
+  text = text.replace(
+    /^\s*(?:포항\s*)?(?:양극재\s*)?(?:공장\s*)?/i,
+    ''
+  );
+
+  text = text.replace(
+    /^\s*(?:1\s*단계|2\s*[-–]\s*1\s*단계|2\s*[-–]\s*2\s*단계)(?:\s*공장)?\s*/i,
+    ''
+  );
+
+  /*
+   * 선두 층·라인 위치정보를 반복 제거합니다.
+   */
+  var previous = '';
+
+  while(
+    previous !== text
+  ){
+    previous = text;
+
+    text = text.replace(
+      /^\s*(?:공장동\s*)?\d+\s*층\s*/i,
+      ''
+    );
+
+    text = text.replace(
+      /^\s*\d+\s*[A-C]?(?:\s*[,·\/]\s*\d*\s*[A-C])*\s*라인\s*/i,
+      ''
+    );
+
+    text = text.replace(
+      /^\s*\d+\s*[A-C]\s+/i,
+      ''
+    );
+
+    text = text.replace(
+      /^\s*[,.:;·\-–]+\s*/,
+      ''
+    );
+  }
+
+  /*
+   * 관리용 날짜 범위만 제거합니다.
+   */
+  text = text.replace(
+    /\(\s*\d{1,2}\s*\/\s*\d{1,2}\s*[-~]\s*\d{1,2}\s*\/\s*\d{1,2}\s*\)\s*$/i,
+    ''
+  );
+
+  text = text
+    .replace(/\s+/g,' ')
+    .replace(/^[,.:;·\-–\s]+/,'')
+    .trim();
+
+  if(!text){
+    text = original;
+  }
+
+  return text.length > 60
+    ? text.substring(0,60) + '...'
+    : text;
+}
+
+function normalizeTbmLocation(
+  locationValue,
+  workNameValue
+){
+  var source = [
+    locationValue || '',
+    workNameValue || ''
+  ].join(' ');
+
+  var compact =
+    source.replace(/\s+/g,'');
+
+  var factory = '';
+
+  /*
+   * 명시된 공장·단계를 우선합니다.
+   */
+  if(
+    compact.indexOf('2공장') >= 0 ||
+    compact.indexOf('2-2단계') >= 0
+  ){
+    factory = '2공장';
+
+  }else if(
+    compact.indexOf('1공장') >= 0 ||
+    compact.indexOf('2-1단계') >= 0 ||
+    /(^|[^0-9])1단계/.test(compact)
+  ){
+    factory = '1공장';
+  }
+
+  /*
+   * 9A·9B·9C도 9라인으로 표준화합니다.
+   */
+  var lineMatch =
+    source.match(
+      /(?:^|[^0-9])([1-9])\s*[A-C]?\s*라인/i
+    ) ||
+    source.match(
+      /(?:^|[^0-9])([1-9])\s*[A-C](?:[^A-Z]|$)/i
+    );
+
+  var lineNumber =
+    lineMatch
+      ? Number(lineMatch[1])
+      : 0;
+
+  if(!factory && lineNumber){
+    factory =
+      lineNumber >= 6
+        ? '2공장'
+        : '1공장';
+  }
+
+  var floorMatch =
+    source.match(
+      /(?:공장동\s*)?(\d+)\s*층/i
+    );
+
+  var parts = [];
+
+  if(factory){
+    parts.push(factory);
+  }
+
+  if(lineNumber){
+    parts.push(
+      lineNumber + '라인'
+    );
+  }
+
+  if(floorMatch){
+    parts.push(
+      floorMatch[1] + '층'
+    );
+  }
+
+  if(parts.length){
+    return parts.join(' · ');
+  }
+
+  return String(locationValue || '')
+    .replace(/\s+/g,' ')
+    .trim() ||
+    '위치 미지정';
+}
+
+function fillIfBlank(
+  id,
+  value
+){
+  var element =
+    document.getElementById(id);
+
+  if(
+    !element ||
+    String(element.value || '')
+      .trim()
+  ){
+    return false;
+  }
+
+  element.value = value;
+
+  element.classList.add(
+    'auto-filled'
+  );
+
+  return true;
+}
+
+function drawTesterSignature(
+  canvasId,
+  label
+){
+  var canvas =
+    document.getElementById(
+      canvasId
+    );
+
+  if(
+    !canvas ||
+    hasSig(canvasId)
+  ){
+    return;
+  }
+
+  var context =
+    canvas.getContext('2d');
+
+  context.save();
+  context.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  context.strokeStyle =
+    '#1C2B3A';
+
+  context.fillStyle =
+    '#1C2B3A';
+
+  context.lineWidth = 2.5;
+  context.font =
+    'bold 28px sans-serif';
+
+  context.fillText(
+    label || 'TEST',
+    120,
+    78
+  );
+
+  context.beginPath();
+  context.moveTo(85,95);
+  context.lineTo(310,95);
+  context.stroke();
+  context.restore();
+
+  canvas.dataset
+    .testSignature = 'true';
+}
+
+function applyTesterQuickFill(){
+  if(!isTbmTester()){
+    return;
+  }
+
+  fillIfBlank(
+    'tbm-work-name',
+    'TEST 설비 점검 및 안전조치'
+  );
+
+  fillIfBlank(
+    'tbm-datetime',
+    fmtDateTime()
+  );
+
+  fillIfBlank(
+    'tbm-location',
+    '1공장 · 1라인'
+  );
+
+  fillIfBlank(
+    'tbm-company',
+    'TEST 협력사'
+  );
+
+  fillIfBlank(
+    'tbm-workers',
+    '3'
+  );
+
+  fillIfBlank(
+    'supervisor-name',
+    '테스트 작업책임자'
+  );
+
+  fillIfBlank(
+    'manager-name',
+    '테스트 관리감독자'
+  );
+
+  fillIfBlank(
+    'participants-list',
+    '테스트 작업자1, 테스트 작업자2, 테스트 작업자3'
+  );
+
+  fillIfBlank(
+    'rep-name',
+    '테스트 작업자대표'
+  );
+
+  if(isConfined === null){
+    setConfined(false);
+  }
+
+  var cards =
+    document.querySelectorAll(
+      '.hazard-card'
+    );
+
+  if(!cards.length){
+    addHazard();
+
+    cards =
+      document.querySelectorAll(
+        '.hazard-card'
+      );
+  }
+
+  cards.forEach(function(card,index){
+    var number =
+      card.dataset.num;
+
+    fillIfBlank(
+      'hz-hazard-' + number,
+      index === 0
+        ? '작업 중 설비 접촉 및 협착 위험'
+        : '작업구역 내 이동 중 충돌 위험'
+    );
+
+    fillIfBlank(
+      'hz-measure-' + number,
+      index === 0
+        ? '설비 정지 확인, 작업구역 통제 및 보호구 착용'
+        : '이동통로 확보 및 작업 전 위험요인 공유'
+    );
+
+    fillIfBlank(
+      'hz-person-' + number,
+      '테스트 작업책임자'
+    );
   });
-  
-  // 다이얼로그 오버레이 클릭
-  var overlay = document.getElementById('customConfirmOverlay');
-  if(overlay){
-    overlay.addEventListener('click', function(e){
-      if(e.target === overlay) customConfirmClose(false);
-    });
+
+  fillIfBlank(
+    'g-o2',
+    '20.9'
+  );
+
+  fillIfBlank(
+    'g-co',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-h2s',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-co2',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-lel',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-measurer',
+    '테스트 측정자'
+  );
+
+  drawTesterSignature(
+    'supervisor-sig',
+    'TEST 작업책임자'
+  );
+
+  drawTesterSignature(
+    'manager-sig',
+    'TEST 감독자'
+  );
+
+  drawTesterSignature(
+    'rep-sig',
+    'TEST 대표'
+  );
+
+  console.log(
+    '[TBM TEST] 빠른 입력 완료:',
+    {
+      tester:true,
+      permitStorage:
+        permitStorageKey(),
+      tbmStorage:
+        tbmStorageKey(),
+      firestoreAllowed:false
+    }
+  );
+}
+
+window.addEventListener(
+  'DOMContentLoaded',
+  function(){
+    initTheme();
+    setupThemeSync();
+
+    addHazard();
+    initAllSigs();
+
+    var element =
+      document.getElementById(
+        'tbm-datetime'
+      );
+
+    if(
+      element &&
+      !element.value
+    ){
+      element.value =
+        fmtDateTime();
+    }
+
+    var parameters =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    var permitNo =
+      parameters.get('permitNo');
+
+    var workId =
+      parameters.get('workId');
+
+    var riskId =
+      parameters.get('riskId');
+
+    if(riskId){
+      tbmData.riskId =
+        riskId;
+    }
+
+    if(permitNo){
+      console.log(
+        '[TBM v2.0] URL permitNo:',
+        permitNo
+      );
+
+      tbmData.permitNo =
+        permitNo;
+
+      var existingTbm =
+        findExistingTbm(
+          permitNo
+        );
+
+      if(existingTbm){
+        loadFromPermit(
+          permitNo
+        );
+
+        setTimeout(function(){
+          loadTbmReadOnly(
+            existingTbm
+          );
+        },100);
+
+      }else{
+        loadFromPermit(
+          permitNo
+        );
+      }
+
+    }else if(workId){
+      console.log(
+        '[TBM v2.0] URL workId:',
+        workId
+      );
+
+      tbmData.workId =
+        workId;
+
+      loadFromWorkId(
+        workId
+      );
+    }
+
+    if(
+      !permitNo &&
+      !workId
+    ){
+      loadDraft();
+    }
+
+    /*
+     * 허가서·작업정보 자동 입력이 끝난 다음
+     * 비어 있는 TEST 필드만 채웁니다.
+     */
+    setTimeout(
+      applyTesterQuickFill,
+      180
+    );
+
+    document.addEventListener(
+      'keydown',
+      function(event){
+        if(event.key === 'Escape'){
+          var overlay =
+            document.getElementById(
+              'customConfirmOverlay'
+            );
+
+          if(
+            overlay &&
+            overlay.classList
+              .contains('active')
+          ){
+            customConfirmClose(false);
+          }
+        }
+      }
+    );
+
+    var overlay =
+      document.getElementById(
+        'customConfirmOverlay'
+      );
+
+    if(overlay){
+      overlay.addEventListener(
+        'click',
+        function(event){
+          if(event.target === overlay){
+            customConfirmClose(false);
+          }
+        }
+      );
+    }
   }
-});
+);
+
 
 // ═══════════════════════════════════════════════════
 // 허가서에서 자동 채움
@@ -1543,18 +2078,48 @@ window.addEventListener('DOMContentLoaded', function(){
 // 없으면 → 신규 작성 모드 (기존 로직)
 // ═══════════════════════════════════════════════════
 function findExistingTbm(permitNo){
-  try {
-    var tbms = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-    // 해당 permitNo의 최신 TBM (createdAt 내림차순)
-    var matched = tbms
-      .filter(function(t){ return t.permitNo === permitNo; })
-      .sort(function(a, b){
-        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-      });
-    
-    return matched.length > 0 ? matched[0] : null;
-  } catch(e) {
-    console.error('[findExistingTbm] 오류:', e);
+  try{
+    var records =
+      JSON.parse(
+        localStorage.getItem(
+          tbmStorageKey()
+        ) || '[]'
+      );
+
+    if(!Array.isArray(records)){
+      return null;
+    }
+
+    var matched =
+      records
+        .filter(function(record){
+          return (
+            record &&
+            record.permitNo ===
+              permitNo
+          );
+        })
+        .sort(function(first,second){
+          return (
+            new Date(
+              second.createdAt || 0
+            ).getTime() -
+            new Date(
+              first.createdAt || 0
+            ).getTime()
+          );
+        });
+
+    return matched.length
+      ? matched[0]
+      : null;
+
+  }catch(error){
+    console.error(
+      '[findExistingTbm] 오류:',
+      error
+    );
+
     return null;
   }
 }
@@ -1715,90 +2280,349 @@ function printTbm(){
   
 function loadFromPermit(permitNo){
   try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    var permit = permits.find(function(p){ return p.permitNo === permitNo; });
-    
+    var key =
+      permitStorageKey();
+
+    var permits =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(!Array.isArray(permits)){
+      permits = [];
+    }
+
+    var permit =
+      permits.find(function(record){
+        return (
+          record &&
+          record.permitNo ===
+            permitNo
+        );
+      });
+
     if(!permit){
-      console.warn('[loadFromPermit] 허가서 없음:', permitNo);
-      showToast('⚠️ 연결된 허가서를 찾을 수 없습니다', 'warn');
+      console.warn(
+        '[loadFromPermit] 허가서 없음:',
+        {
+          permitNo:permitNo,
+          storageKey:key,
+          count:permits.length
+        }
+      );
+
+      showToast(
+        '⚠️ 연결된 허가서를 찾을 수 없습니다',
+        'warn'
+      );
+
       return;
     }
-    
+
+    var code =
+      String(
+        permit.statusCode ||
+        ''
+      );
+
+    var approved =
+      code === 'approved' ||
+      code === 'inProgress' ||
+      permit.status === '허가완료' ||
+      permit.permitStatus ===
+        '허가완료' ||
+      (
+        permit.approvalWorkflow &&
+        permit.approvalWorkflow
+          .permitApprovalCompleted ===
+          true
+      );
+
+    if(!approved){
+      console.warn(
+        '[loadFromPermit] 승인되지 않은 허가서:',
+        {
+          permitNo:permitNo,
+          statusCode:code
+        }
+      );
+
+      showToast(
+        '⚠️ 승인된 허가서만 TBM을 진행할 수 있습니다',
+        'warn'
+      );
+
+      return;
+    }
+
     permitData = permit;
-    tbmData.workId = permit.workId || permit.sourceWorkId || '';
-    tbmData.riskId = permit.riskId || '';
-    
-    // 상단 배지 표시
-    var badge = document.getElementById('permitBadge');
+
+    tbmData.workId =
+      permit.workId ||
+      permit.sourceWorkId ||
+      (
+        permit.workflowLink &&
+        permit.workflowLink.workId
+      ) ||
+      '';
+
+    tbmData.riskId =
+      permit.riskId ||
+      (
+        permit.workflowLink &&
+        permit.workflowLink.riskId
+      ) ||
+      tbmData.riskId ||
+      '';
+
+    var badge =
+      document.getElementById(
+        'permitBadge'
+      );
+
     if(badge){
-      badge.textContent = permitNo;
-      badge.classList.add('show');
+      badge.textContent =
+        permitNo;
+
+      badge.classList.add(
+        'show'
+      );
     }
-    
-    // 배너 표시
+
     showPermitBanner(permit);
-    
-    // 필드 자동 채움
+
     var filledCount = 0;
-    
-    if(permit.workName){
-      setValAuto('tbm-work-name', permit.workName);
+
+    var simplifiedName =
+      simplifyTbmWorkName(
+        permit.workNameFull ||
+        permit.workName
+      );
+
+    if(simplifiedName){
+      setValAuto(
+        'tbm-work-name',
+        simplifiedName
+      );
+
       filledCount++;
     }
-    
-    var fullLocation = '';
-    if(permit.location) fullLocation = permit.location;
-    if(permit.detailLocation) fullLocation += (fullLocation ? ' ' : '') + permit.detailLocation;
-    if(fullLocation){
-      setValAuto('tbm-location', fullLocation);
+
+    var rawLocation = [
+      permit.location || '',
+      permit.detailLocation || ''
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    var normalizedLocation =
+      normalizeTbmLocation(
+        rawLocation,
+        permit.workNameFull ||
+        permit.workName
+      );
+
+    if(normalizedLocation){
+      setValAuto(
+        'tbm-location',
+        normalizedLocation
+      );
+
       filledCount++;
     }
-    
-    if(permit.companyName){
-      setValAuto('tbm-company', permit.companyName);
+
+    var company =
+      permit.companyName ||
+      permit.company ||
+      '';
+
+    if(company){
+      setValAuto(
+        'tbm-company',
+        company
+      );
+
       filledCount++;
     }
-    
+
     if(permit.workerCount){
-      setValAuto('tbm-workers', permit.workerCount);
+      setValAuto(
+        'tbm-workers',
+        permit.workerCount
+      );
+
       filledCount++;
     }
-    
-    if(permit.supervisor || permit.supervisorName){
-      setValAuto('supervisor-name', permit.supervisorName || permit.supervisor);
+
+    var supervisor =
+      permit.supervisorName ||
+      permit.supervisor ||
+      (
+        permit
+          .contractorWorkSupervisor &&
+        permit
+          .contractorWorkSupervisor
+          .name
+      ) ||
+      (
+        permit
+          .companyWorkSupervisor &&
+        permit
+          .companyWorkSupervisor
+          .name
+      ) ||
+      '';
+
+    if(supervisor){
+      setValAuto(
+        'supervisor-name',
+        supervisor
+      );
+
       filledCount++;
     }
-    
-    // 밀폐공간 자동 설정
-    if(permit.workTypes && permit.workTypes.indexOf('confined') >= 0){
+
+    var manager =
+      permit.companyWorkManager &&
+      permit.companyWorkManager.name ||
+      '';
+
+    if(manager){
+      setValAuto(
+        'manager-name',
+        manager
+      );
+
+      filledCount++;
+    }
+
+    if(
+      Array.isArray(
+        permit.workTypes
+      ) &&
+      permit.workTypes
+        .indexOf('confined') >= 0
+    ){
       setConfined(true);
       filledCount++;
-      showToast('🔒 허가서 정보 기반: 밀폐공간 작업 자동 설정', 'info');
-    } else if(permit.workTypes && permit.workTypes.length > 0){
+
+    }else if(
+      Array.isArray(
+        permit.workTypes
+      ) &&
+      permit.workTypes.length
+    ){
       setConfined(false);
       filledCount++;
     }
-    
-    // 위험요인 자동 채움 (위험성평가에서)
-    if(permit.riskMeasures && permit.riskMeasures.length > 0){
-      document.getElementById('hazardList').innerHTML = '';
-      hazardCount = 0;
-      permit.riskMeasures.forEach(function(measure){
-        addHazard();
-        setVal('hz-hazard-' + hazardCount, '(위험성평가에서 도출)');
-        setVal('hz-measure-' + hazardCount, measure);
-      });
+
+    var measures = [];
+
+    if(
+      permit.riskSnapshot &&
+      Array.isArray(
+        permit.riskSnapshot
+          .selectedMeasures
+      )
+    ){
+      measures =
+        permit.riskSnapshot
+          .selectedMeasures;
+
+    }else if(
+      Array.isArray(
+        permit.riskMeasures
+      )
+    ){
+      measures =
+        permit.riskMeasures;
     }
-    
+
+    if(measures.length){
+      document.getElementById(
+        'hazardList'
+      ).innerHTML = '';
+
+      hazardCount = 0;
+
+      measures
+        .slice(0,5)
+        .forEach(function(measure){
+          var measureText =
+            typeof measure === 'string'
+              ? measure
+              : (
+                  measure.text ||
+                  measure.measure ||
+                  measure.description ||
+                  ''
+                );
+
+          if(!measureText){
+            return;
+          }
+
+          addHazard();
+
+          setVal(
+            'hz-hazard-' +
+            hazardCount,
+            '위험성평가 연계 위험요인'
+          );
+
+          setVal(
+            'hz-measure-' +
+            hazardCount,
+            measureText
+          );
+
+          setVal(
+            'hz-person-' +
+            hazardCount,
+            supervisor ||
+            '작업책임자'
+          );
+        });
+    }
+
     setTimeout(function(){
-      showToast('✨ 허가서 정보 ' + filledCount + '개 항목 자동 입력', 'success');
-    }, 300);
-    
-    console.log('[loadFromPermit] 완료:', permit.workName);
-    
-  }catch(e){
-    console.error('[loadFromPermit] 오류:', e);
-    showToast('❌ 허가서 정보 로드 실패', 'danger');
+      applyTesterQuickFill();
+
+      showToast(
+        '✨ 허가서 정보 ' +
+        filledCount +
+        '개 항목 자동 입력',
+        'success'
+      );
+    },100);
+
+    console.log(
+      '[loadFromPermit] 완료:',
+      {
+        permitNo:permitNo,
+        storageKey:key,
+        statusCode:
+          permit.statusCode,
+        workName:
+          simplifiedName,
+        location:
+          normalizedLocation,
+        tester:
+          isTbmTester()
+      }
+    );
+
+  }catch(error){
+    console.error(
+      '[loadFromPermit] 오류:',
+      error
+    );
+
+    showToast(
+      '❌ 허가서 정보 로드 실패',
+      'danger'
+    );
   }
 }
 
@@ -1807,54 +2631,148 @@ function loadFromPermit(permitNo){
 // ═══════════════════════════════════════════════════
 function loadFromWorkId(workId){
   try{
-    var raw = localStorage.getItem('safetyDatabase');
-    if(!raw) return;
-    
-    var db = JSON.parse(raw);
-    var works = db.workHistory || [];
-    var work = works.find(function(w){
-      var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
-      return wid === workId;
-    });
-    
-    if(!work) return;
-    
-    // 필드 자동 채움
-    if(work.workName || work.workNameFull){
-      setValAuto('tbm-work-name', work.workName || work.workNameFull);
+    var raw =
+      localStorage.getItem(
+        'safetyDatabase'
+      );
+
+    if(!raw){
+      return;
     }
-    
-    var loc = work.locationRaw || 
-              (work.location && work.location.raw) || '';
-    if(loc){
-      setValAuto('tbm-location', loc);
+
+    var database =
+      JSON.parse(raw);
+
+    var works =
+      Array.isArray(
+        database.workHistory
+      )
+        ? database.workHistory
+        : [];
+
+    var work =
+      works.find(function(record){
+        var id =
+          record.workId ||
+          (
+            record.date +
+            '_' +
+            (
+              record.originalNo ||
+              ''
+            )
+          );
+
+        return id === workId;
+      });
+
+    if(!work){
+      return;
     }
-    
-    if(work.company || work.executingCompany){
-      setValAuto('tbm-company', work.company || work.executingCompany);
+
+    var originalName =
+      work.workNameFull ||
+      work.workName ||
+      '';
+
+    var displayName =
+      simplifyTbmWorkName(
+        originalName
+      );
+
+    if(displayName){
+      setValAuto(
+        'tbm-work-name',
+        displayName
+      );
     }
-    
-    // 배너 표시 (허가서 없이 workId만)
-    var banner = document.getElementById('permitInfoBanner');
+
+    var rawLocation =
+      work.locationDisplay ||
+      work.locationRaw ||
+      (
+        work.location &&
+        work.location.raw
+      ) ||
+      '';
+
+    var displayLocation =
+      normalizeTbmLocation(
+        rawLocation,
+        originalName
+      );
+
+    if(displayLocation){
+      setValAuto(
+        'tbm-location',
+        displayLocation
+      );
+    }
+
+    var company =
+      work.company ||
+      work.executingCompany ||
+      work.contractCompany ||
+      '';
+
+    if(company){
+      setValAuto(
+        'tbm-company',
+        company
+      );
+    }
+
+    if(work.workerCount){
+      setValAuto(
+        'tbm-workers',
+        work.workerCount
+      );
+    }
+
+    var banner =
+      document.getElementById(
+        'permitInfoBanner'
+      );
+
     if(banner){
-      banner.innerHTML = 
+      banner.innerHTML =
         '<div class="permit-info-banner">' +
           '<div class="pib-top">' +
             '<span class="pib-badge">📋 작업 연결</span>' +
-            '<span class="pib-no">' + escHtml(workId) + '</span>' +
+            '<span class="pib-no">' +
+              escHtml(workId) +
+            '</span>' +
           '</div>' +
-          '<div class="pib-name">' + escHtml(work.workName || work.workNameFull || '작업') + '</div>' +
+          '<div class="pib-name">' +
+            escHtml(displayName) +
+          '</div>' +
           '<div class="pib-meta">' +
-            '<div>💡 허가서 발급 후 TBM 진행 권장</div>' +
+            '<div>📍 ' +
+              escHtml(displayLocation) +
+            '</div>' +
+            '<div>💡 승인된 허가서 연결 후 TBM 진행</div>' +
           '</div>' +
         '</div>';
-      banner.style.display = 'block';
+
+      banner.style.display =
+        'block';
     }
-    
-    showToast('✨ 작업 정보 자동 입력됨', 'success');
-    
-  }catch(e){
-    console.error('[loadFromWorkId] 오류:', e);
+
+    setTimeout(
+      applyTesterQuickFill,
+      100
+    );
+
+    showToast(
+      '✨ 작업 정보 자동 입력됨',
+      'success'
+    );
+
+  }catch(error){
+    console.error(
+      '[loadFromWorkId] 오류:',
+      error
+    );
   }
 }
 
@@ -2371,185 +3289,541 @@ function submitTBM(){
   });
 }
 
-function executeSubmit(workName, datetime, location, workers, supervisor, manager,
-                       hazards, participants, repName){
+function executeSubmit(
+  workName,
+  datetime,
+  location,
+  workers,
+  supervisor,
+  manager,
+  hazards,
+  participants,
+  repName
+){
   try{
-    var tbmNo = getNextTbmNo();
-    var now = new Date();
-    var today = fmtDate(now);
-    var userName = sessionStorage.getItem('userName') || supervisor || 'anonymous';
-    
-    // 참여자 명단 파싱
-    var participantsList = participants
-      .split(/[,、，]/)
-      .map(function(s){ return s.trim(); })
-      .filter(function(s){ return s.length > 0; });
-    
-    // 저장 데이터
+    var tbmNo =
+      getNextTbmNo();
+
+    var now =
+      new Date();
+
+    var today =
+      fmtDate(now);
+
+    var session =
+      readTbmSession() || {};
+
+    var userName =
+      session.displayName ||
+      sessionStorage.getItem(
+        'userName'
+      ) ||
+      supervisor ||
+      'anonymous';
+
+    var participantsList =
+      participants
+        .split(/[,、，]/)
+        .map(function(value){
+          return value.trim();
+        })
+        .filter(function(value){
+          return value.length > 0;
+        });
+
     var saveData = {
-      tbmNo: tbmNo,
-      permitNo: tbmData.permitNo || '',
-      workId: tbmData.workId || '',
-      riskId: tbmData.riskId || '',
-      workName: workName,
-      datetime: datetime,
-      location: location,
-      company: getVal('tbm-company'),
-      workers: workers,
-      date: today,
-      supervisor: supervisor,
-      manager: manager,
-      hazards: hazards,
-      isConfined: isConfined,
-      gasMeasurement: tbmData.gasMeasurement || {},
-      supervisorSig: document.getElementById('supervisor-sig').toDataURL(),
-      managerSig: document.getElementById('manager-sig').toDataURL(),
-      stopNotice: {
-        participants: participantsList,
-        participantsText: participants,
-        representativeName: repName,
-        representativeSig: document.getElementById('rep-sig').toDataURL(),
-        noticedAt: now.toISOString(),
-        legalBasis: '산업안전보건법 제52조'
+      tbmNo:tbmNo,
+      permitNo:
+        tbmData.permitNo || '',
+      workId:
+        tbmData.workId || '',
+      riskId:
+        tbmData.riskId || '',
+      workName:
+        simplifyTbmWorkName(
+          workName
+        ),
+      datetime:datetime,
+      location:
+        normalizeTbmLocation(
+          location,
+          workName
+        ),
+      company:
+        getVal('tbm-company'),
+      workers:workers,
+      date:today,
+      supervisor:supervisor,
+      manager:manager,
+      hazards:hazards,
+      isConfined:
+        isConfined,
+      gasMeasurement:
+        tbmData.gasMeasurement ||
+        {},
+      supervisorSig:
+        document
+          .getElementById(
+            'supervisor-sig'
+          )
+          .toDataURL(),
+      managerSig:
+        document
+          .getElementById(
+            'manager-sig'
+          )
+          .toDataURL(),
+      stopNotice:{
+        participants:
+          participantsList,
+        participantsText:
+          participants,
+        representativeName:
+          repName,
+        representativeSig:
+          document
+            .getElementById(
+              'rep-sig'
+            )
+            .toDataURL(),
+        noticedAt:
+          now.toISOString(),
+        legalBasis:
+          '산업안전보건법 제52조'
       },
-      status: '완료',
-      createdAt: now.toISOString(),
-      createdBy: userName,
-      updatedAt: now.toISOString(),
-      updatedBy: userName,
-      schemaVersion: 2
+      status:'완료',
+      statusCode:'completed',
+      createdAt:
+        now.toISOString(),
+      createdBy:
+        userName,
+      updatedAt:
+        now.toISOString(),
+      updatedBy:
+        userName,
+      environment:
+        window.APP_MODE ||
+        'test',
+      isTestData:
+        window.APP_MODE ===
+        'test',
+      testerLocal:
+        isTbmTester(),
+      firestoreWritten:false,
+      schemaVersion:2
     };
-    
-       // localStorage 저장
-    var tbmList = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-    tbmList.push(saveData);
-    localStorage.setItem('safetyTBM', JSON.stringify(tbmList));
-    console.log('[TBM] localStorage 저장 완료:', tbmNo);
-    
-    // ⭐ Firestore 저장 (2026-08-31 신규)
-    saveTbmToFirestore(saveData);
-    
-    // 허가서 상태 업데이트
-    if(tbmData.permitNo){
-      updatePermitStatus(tbmData.permitNo, tbmNo, userName);
+
+    var storageKey =
+      tbmStorageKey();
+
+    var tbmList =
+      JSON.parse(
+        localStorage.getItem(
+          storageKey
+        ) || '[]'
+      );
+
+    if(!Array.isArray(tbmList)){
+      tbmList = [];
     }
 
-    
-    // 임시저장 삭제
-    localStorage.removeItem('tbm-v2-draft');
-    
-    // 이벤트 발행 (대시보드 자동 반영)
+    tbmList.push(saveData);
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(tbmList)
+    );
+
+    console.log(
+      '[TBM] localStorage 저장 완료:',
+      {
+        tbmNo:tbmNo,
+        storageKey:storageKey,
+        tester:isTbmTester()
+      }
+    );
+
+    /*
+     * 테스터는 Firestore 저장을 호출하지 않습니다.
+     */
+    if(!isTbmTester()){
+      saveTbmToFirestore(
+        saveData
+      );
+    }else{
+      console.log(
+        '[TBM TEST] Firestore 쓰기 차단:',
+        tbmNo
+      );
+    }
+
+    if(tbmData.permitNo){
+      updatePermitStatus(
+        tbmData.permitNo,
+        tbmNo,
+        userName
+      );
+    }
+
+    localStorage.removeItem(
+      'tbm-v2-draft'
+    );
+
     try{
-      window.dispatchEvent(new CustomEvent('app-data-changed', {
-        detail: { key: 'safetyTBM', workId: tbmData.workId, timestamp: Date.now() }
-      }));
-      window.dispatchEvent(new CustomEvent('app-data-changed', {
-        detail: { key: 'safetyPermits', timestamp: Date.now() }
-      }));
-    }catch(e){}
-    
-    console.log('✅ TBM 저장 완료:', tbmNo);
-    
-    tbmData.tbmNo = tbmNo;
-    
-    // 완료 화면
-    showCompleteScreen(saveData);
-    
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:storageKey,
+              workId:
+                tbmData.workId,
+              permitNo:
+                tbmData.permitNo,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:
+                permitStorageKey(),
+              permitNo:
+                tbmData.permitNo,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    }catch(eventError){}
+
+    tbmData.tbmNo =
+      tbmNo;
+
+    window.lastTbmSaveResult = {
+      success:true,
+      tbmNo:tbmNo,
+      permitNo:
+        tbmData.permitNo,
+      storageKey:
+        storageKey,
+      permitStorageKey:
+        permitStorageKey(),
+      tester:
+        isTbmTester(),
+      firestoreWriteCount:
+        isTbmTester()
+          ? 0
+          : 1,
+      statusCode:
+        'completed'
+    };
+
+    console.table(
+      window.lastTbmSaveResult
+    );
+
+    showCompleteScreen(
+      saveData
+    );
+
   }catch(error){
-    console.error('❌ TBM 저장 실패:', error);
+    console.error(
+      '❌ TBM 저장 실패:',
+      error
+    );
+
     showCustomAlert({
-      icon: '❌',
-      title: '저장 실패',
-      message: '저장 중 오류가 발생했습니다.\n\n' + error.message,
-      okType: 'danger'
+      icon:'❌',
+      title:'저장 실패',
+      message:
+        '저장 중 오류가 발생했습니다.\n\n' +
+        error.message,
+      okType:'danger'
     });
   }
 }
+
 // ═══════════════════════════════════════════════════
 // ⭐ Firestore에 TBM 저장 (2026-08-31 신규)
 // ═══════════════════════════════════════════════════
 async function saveTbmToFirestore(record){
-  try {
-    if(!window.firebaseApp || !window.firebaseApp.db){
-      console.warn('[TBM] Firebase 미로드 - Firestore 저장 건너뜀');
-      return;
+  if(isTbmTester()){
+    console.log(
+      '[TBM TEST] Firestore 저장 차단:',
+      record &&
+      record.tbmNo
+    );
+
+    return {
+      success:false,
+      reason:'tester-local-only',
+      firestoreWriteCount:0
+    };
+  }
+
+  try{
+    if(
+      !window.firebaseApp ||
+      !window.firebaseApp.db
+    ){
+      console.warn(
+        '[TBM] Firebase 미로드 - Firestore 저장 건너뜀'
+      );
+
+      return {
+        success:false,
+        reason:'firebase-not-ready'
+      };
     }
-    
-    if(!record.tbmNo){
-      console.error('[TBM] tbmNo 없음 - Firestore 저장 불가');
-      return;
+
+    if(
+      !record ||
+      !record.tbmNo
+    ){
+      return {
+        success:false,
+        reason:'missing-tbm-no'
+      };
     }
-    
+
     if(!navigator.onLine){
-      console.warn('[TBM] 오프라인 - Firestore 저장 건너뜀');
-      return;
+      return {
+        success:false,
+        reason:'offline'
+      };
     }
-    
-    var fb = window.firebaseApp;
-    var collectionName = fb.TBM_COLLECTION || window.getCollectionName("safetyTBM");
-    console.log('[TBM] 💾 Firestore 저장 시작 (컬렉션:', collectionName + ')');
-    
-    var docRef = fb.doc(fb.db, collectionName, record.tbmNo);
-    
-    var TIMEOUT_MS = 15000;
-    var savePromise = fb.setDoc(docRef, record);
-    var timeoutPromise = new Promise(function(_, reject){
-      setTimeout(function(){
-        reject(new Error('Firestore 타임아웃 (' + (TIMEOUT_MS/1000) + '초)'));
-      }, TIMEOUT_MS);
-    });
-    
-    await Promise.race([savePromise, timeoutPromise]);
-    
-    console.log('[TBM] ✅ Firestore 저장 완료:', record.tbmNo);
-    
-  } catch(error) {
-    console.error('[TBM] Firestore 저장 실패:', error.message);
-    // 실패해도 localStorage 저장은 이미 완료됨
+
+    var firebase =
+      window.firebaseApp;
+
+    var collectionName =
+      firebase.TBM_COLLECTION ||
+      window.getCollectionName(
+        'safetyTBM'
+      );
+
+    var reference =
+      firebase.doc(
+        firebase.db,
+        collectionName,
+        record.tbmNo
+      );
+
+    var timeoutMs = 15000;
+
+    var savePromise =
+      firebase.setDoc(
+        reference,
+        Object.assign(
+          {},
+          record,
+          {
+            firestoreWritten:true,
+            updatedAtServer:
+              firebase.serverTimestamp()
+          }
+        )
+      );
+
+    var timeoutPromise =
+      new Promise(
+        function(resolve,reject){
+          setTimeout(function(){
+            reject(
+              new Error(
+                'Firestore 타임아웃 (' +
+                timeoutMs / 1000 +
+                '초)'
+              )
+            );
+          },timeoutMs);
+        }
+      );
+
+    await Promise.race([
+      savePromise,
+      timeoutPromise
+    ]);
+
+    console.log(
+      '[TBM] ✅ Firestore 저장 완료:',
+      record.tbmNo
+    );
+
+    return {
+      success:true,
+      firestoreWriteCount:1
+    };
+
+  }catch(error){
+    console.error(
+      '[TBM] Firestore 저장 실패:',
+      error.message
+    );
+
+    return {
+      success:false,
+      reason:'firestore-error',
+      error:error
+    };
   }
 }
 
-function updatePermitStatus(permitNo, tbmNo, userName){
 
+function updatePermitStatus(
+  permitNo,
+  tbmNo,
+  userName
+){
   try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    var srcWorkId = null;
+    var key =
+      permitStorageKey();
+
+    var permits =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(!Array.isArray(permits)){
+      permits = [];
+    }
+
     var updated = false;
-    
-    permits.forEach(function(p){
-      if(p.permitNo === permitNo){
-        p.status = '작업중';
-        p.permitStatus = '작업중';
-        p.tbmNo = tbmNo;
-        p.updatedAt = new Date().toISOString();
-        p.updatedBy = userName;
-        srcWorkId = p.workId || p.sourceWorkId;
+    var processedAt =
+      new Date().toISOString();
+
+    permits.forEach(
+      function(permit){
+        if(
+          !permit ||
+          permit.permitNo !==
+            permitNo
+        ){
+          return;
+        }
+
+        var previousStatus =
+          permit.statusCode ||
+          'approved';
+
+        permit.status =
+          '작업중';
+
+        permit.permitStatus =
+          '작업중';
+
+        permit.statusCode =
+          'inProgress';
+
+        permit.tbmNo =
+          tbmNo;
+
+        permit.tbmCompletedAt =
+          processedAt;
+
+        permit.updatedAt =
+          processedAt;
+
+        permit.updatedBy =
+          userName;
+
+        permit.syncPending =
+          isTbmTester()
+            ? false
+            : true;
+
+        permit.syncStatus =
+          isTbmTester()
+            ? 'tester-local-in-progress'
+            : 'pending';
+
+        permit.approvalWorkflow =
+          Object.assign(
+            {},
+            permit.approvalWorkflow ||
+              {},
+            {
+              currentStep:
+                'WORK_IN_PROGRESS',
+              currentStatusCode:
+                'inProgress',
+              permitApprovalCompleted:
+                true,
+              tbmLinkDeliveryAllowed:
+                true,
+              tbmLinkDelivered:
+                true,
+              lastAction:
+                'tbmCompleted',
+              lastActorName:
+                userName,
+              lastProcessedAt:
+                processedAt,
+              testLocalAction:
+                isTbmTester()
+            }
+          );
+
+        permit.statusHistory =
+          Array.isArray(
+            permit.statusHistory
+          )
+            ? permit.statusHistory
+            : [];
+
+        permit.statusHistory.push({
+          from:
+            previousStatus,
+          to:'inProgress',
+          changedAt:
+            processedAt,
+          changedBy:
+            userName,
+          reason:
+            'TBM 완료 후 작업 시작',
+          environment:
+            window.APP_MODE,
+          isTestAction:
+            isTbmTester(),
+          tbmNo:
+            tbmNo
+        });
+
         updated = true;
       }
-    });
-    
+    );
+
     if(updated){
-      localStorage.setItem('safetyPermits', JSON.stringify(permits));
-      
-      // 작업DB 상태도 업데이트
-      if(srcWorkId){
-        var dbRaw = localStorage.getItem('safetyDatabase');
-        if(dbRaw){
-          var db = JSON.parse(dbRaw);
-          (db.workHistory || []).forEach(function(w){
-            var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
-            if(wid === srcWorkId){
-              w.status = '작업중';
-            }
-          });
-          localStorage.setItem('safetyDatabase', JSON.stringify(db));
+      localStorage.setItem(
+        key,
+        JSON.stringify(permits)
+      );
+
+      console.log(
+        '✅ 허가서 상태 업데이트:',
+        {
+          permitNo:permitNo,
+          statusCode:'inProgress',
+          storageKey:key,
+          tester:isTbmTester()
         }
-      }
-      
-      console.log('✅ 허가서 상태 업데이트:', permitNo, '→ 작업중');
+      );
     }
-  }catch(e){
-    console.warn('허가서 상태 업데이트 실패:', e);
+
+  }catch(error){
+    console.warn(
+      '허가서 상태 업데이트 실패:',
+      error
+    );
   }
 }
 
@@ -2576,12 +3850,60 @@ function showCompleteScreen(data){
 }
 
 function getNextTbmNo(){
-  var today = fmtDate(new Date()).replace(/-/g, '');
-  var list = JSON.parse(localStorage.getItem('safetyTBM') || '[]');
-  var todayCount = list.filter(function(t){
-    return t.tbmNo && t.tbmNo.startsWith('TBM-' + today);
-  }).length;
-  return 'TBM-' + today + '-' + String(todayCount + 1).padStart(3, '0');
+  var dateText =
+    fmtDate(
+      new Date()
+    ).replace(/-/g,'');
+
+  var records =
+    JSON.parse(
+      localStorage.getItem(
+        tbmStorageKey()
+      ) || '[]'
+    );
+
+  if(!Array.isArray(records)){
+    records = [];
+  }
+
+  var prefix =
+    (
+      isTbmTester()
+        ? 'TEST-TBM-'
+        : 'TBM-'
+    ) +
+    dateText +
+    '-';
+
+  var sequence =
+    records
+      .filter(function(record){
+        return (
+          record &&
+          String(
+            record.tbmNo || ''
+          ).indexOf(prefix) === 0
+        );
+      })
+      .map(function(record){
+        return Number(
+          String(record.tbmNo)
+            .split('-')
+            .pop()
+        ) || 0;
+      })
+      .reduce(function(max,value){
+        return Math.max(
+          max,
+          value
+        );
+      },0) + 1;
+
+  return (
+    prefix +
+    String(sequence)
+      .padStart(3,'0')
+  );
 }
 
 // ═══════════════════════════════════════════════════
