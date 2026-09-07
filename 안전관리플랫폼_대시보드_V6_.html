@@ -621,9 +621,32 @@ button{touch-action:manipulation}
       </div>
       <div class="hero-tools">
         <div class="hero-clock">
-          <div class="hero-date" id="navDate">-</div>
-          <div class="hero-time" id="navTime">-</div>
+          <div
+            class="hero-date"
+            id="navDate"
+          >
+            -
+          </div>
+
+          <div
+            class="hero-time"
+            id="navTime"
+          >
+            -
+          </div>
         </div>
+
+        <button
+          type="button"
+          class="icon-btn"
+          id="userMenuButton"
+          aria-label="사용자 메뉴"
+          title="사용자 메뉴"
+        >
+          ⋮
+        </button>
+      </div>
+
 
         <button
           type="button"
@@ -9167,6 +9190,158 @@ button{touch-action:manipulation}
     },700);
   }
 
+   function openUserMenu(){
+    var session =
+      readSession() || {};
+
+    var admin =
+      global.isAdminUser();
+
+    var tester =
+      global.isPublicTester();
+
+    var roleLabel =
+      admin
+        ? '관리자'
+        : tester
+          ? '공개 테스터'
+          : '일반 사용자';
+
+    var displayName =
+      session.displayName ||
+      session.email ||
+      sessionStorage.getItem(
+        'userName'
+      ) ||
+      roleLabel;
+
+    var currentTheme =
+      document.documentElement
+        .getAttribute(
+          'data-theme'
+        ) || 'light';
+
+    var html =
+      '<div class="permit-menu-user">' +
+
+        '<span class="permit-menu-user-icon">' +
+          (
+            admin
+              ? '👨‍💼'
+              : tester
+                ? '🧪'
+                : '👤'
+          ) +
+        '</span>' +
+
+        '<span>' +
+          '<div class="permit-menu-user-name">' +
+            escapeHtml(
+              displayName
+            ) +
+          '</div>' +
+
+          '<div class="permit-menu-user-role">' +
+            escapeHtml(
+              roleLabel
+            ) +
+            ' · TEST 환경' +
+          '</div>' +
+        '</span>' +
+
+      '</div>' +
+
+      (
+        tester
+          ? '<div class="warn-box" ' +
+              'style="margin-bottom:10px">' +
+              '<div class="warn-box-title">' +
+                '🧪 테스터 로컬 모드' +
+              '</div>' +
+              '<div class="warn-box-text">' +
+                '테스트 결과는 이 브라우저에만 저장됩니다.' +
+              '</div>' +
+            '</div>'
+          : ''
+      ) +
+
+      '<div class="permit-menu-grid" ' +
+        'style="grid-template-columns:1fr">' +
+
+        '<button type="button" ' +
+          'class="permit-menu-item primary" ' +
+          'data-user-action="theme">' +
+
+          '<div class="permit-menu-icon">' +
+            (
+              currentTheme === 'dark'
+                ? '☀️'
+                : '🌙'
+            ) +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            (
+              currentTheme === 'dark'
+                ? '라이트 모드'
+                : '다크 모드'
+            ) +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '화면 테마를 변경합니다.' +
+          '</div>' +
+
+        '</button>' +
+
+        (
+          tester
+            ? '<button type="button" ' +
+                'class="permit-menu-item revision" ' +
+                'data-user-action="reset-tester">' +
+
+                '<div class="permit-menu-icon">' +
+                  '🧪' +
+                '</div>' +
+
+                '<div class="permit-menu-name">' +
+                  '내 테스트 자료 초기화' +
+                '</div>' +
+
+                '<div class="permit-menu-desc">' +
+                  '위험성평가·허가서·TBM 로컬 자료 삭제' +
+                '</div>' +
+
+              '</button>'
+            : ''
+        ) +
+
+        '<button type="button" ' +
+          'class="permit-menu-item all" ' +
+          'data-user-action="logout">' +
+
+          '<div class="permit-menu-icon">' +
+            '🚪' +
+          '</div>' +
+
+          '<div class="permit-menu-name">' +
+            '로그아웃' +
+          '</div>' +
+
+          '<div class="permit-menu-desc">' +
+            '업무자료는 유지하고 로그인 세션만 종료' +
+          '</div>' +
+
+        '</button>' +
+
+      '</div>';
+
+    openSheet(
+      '사용자 메뉴',
+      html
+    );
+  }
+
   function goTab(name){
     if(
       name === 'settings' &&
@@ -9216,7 +9391,7 @@ button{touch-action:manipulation}
     global.scrollTo(0,0);
   }
 
-    function applyRoleUi(){
+  function applyRoleUi(){
     document
       .querySelectorAll(
         '.admin-only'
@@ -9226,26 +9401,24 @@ button{touch-action:manipulation}
           !global.isAdminUser();
       });
 
-    var testerResetButton =
+    var userMenuButton =
       byId(
-        'testerResetButton'
+        'userMenuButton'
       );
 
-    if(testerResetButton){
-      testerResetButton.hidden =
-        !global.isPublicTester();
-    }
-
-    var logoutButton =
-      byId(
-        'logoutButton'
-      );
-
-    if(logoutButton){
-      logoutButton.hidden =
+    if(userMenuButton){
+      userMenuButton.hidden =
         false;
+
+      userMenuButton.title =
+        global.isAdminUser()
+          ? '관리자 메뉴'
+          : global.isPublicTester()
+            ? '테스터 메뉴'
+            : '사용자 메뉴';
     }
   }
+
 
 
   function refreshFromCache(){
@@ -9457,11 +9630,19 @@ button{touch-action:manipulation}
 
 
   function bindEvents(){
-    byId('themeButton')
+    byId('userMenuButton')
+      .addEventListener(
+        'click',
+        openUserMenu
+      );
+
+    byId('themeSettingButton')
       .addEventListener(
         'click',
         toggleTheme
       );
+
+
 
     byId('themeSettingButton')
       .addEventListener(
@@ -9606,6 +9787,49 @@ button{touch-action:manipulation}
     document.addEventListener(
       'click',
       function(event){
+        var userAction =
+          event.target.closest(
+            '[data-user-action]'
+          );
+
+        if(userAction){
+          var action =
+            userAction.dataset
+              .userAction;
+
+          if(action === 'theme'){
+            toggleTheme();
+
+            /*
+             * 변경된 테마명을 즉시 다시 표시합니다.
+             */
+            openUserMenu();
+
+          }else if(
+            action ===
+              'reset-tester'
+          ){
+            closeSheet();
+
+            setTimeout(
+              resetTesterData,
+              320
+            );
+
+          }else if(
+            action === 'logout'
+          ){
+            closeSheet();
+
+            setTimeout(
+              logoutDashboard,
+              320
+            );
+          }
+
+          return;
+        }
+
         var tab =
           event.target.closest(
             '[data-tab]'
@@ -9615,8 +9839,11 @@ button{touch-action:manipulation}
           goTab(
             tab.dataset.tab
           );
+
           return;
         }
+
+
 
         var dateButton =
           event.target.closest(
@@ -9965,8 +10192,12 @@ button{touch-action:manipulation}
   global.DashboardV8.openPermitMenu =
     openPermitMenu;
 
+  global.DashboardV8.openUserMenu =
+    openUserMenu;
+
   global.DashboardV8.openApprovalList =
     openApprovalList;
+
 
   global.DashboardV8.diagnose =
     function(){
