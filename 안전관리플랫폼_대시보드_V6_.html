@@ -418,6 +418,66 @@ button{touch-action:manipulation}
 .custom-confirm-btn-confirm.warn{background:var(--warn)}
 .custom-confirm-btn-confirm.danger{background:var(--stop)}
 .custom-confirm-btn-confirm.success{background:var(--done)}
+/* 관리자 전용 요소의 hidden 속성을 확실하게 적용 */
+.admin-only[hidden]{
+  display:none!important;
+}
+
+/* 화면 레이아웃을 밀지 않는 토스트 알림 */
+.toast-wrap{
+  position:fixed;
+  top:12px;
+  left:50%;
+  z-index:1000;
+  width:calc(100% - 32px);
+  max-width:400px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+
+.toast{
+  padding:11px 15px;
+  border-radius:12px;
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.45;
+  text-align:center;
+  box-shadow:0 5px 18px rgba(0,0,0,.2);
+  animation:toastSlideIn .2s ease;
+}
+
+.toast.info{
+  background:var(--deep);
+}
+
+.toast.success{
+  background:var(--done);
+}
+
+.toast.warning{
+  background:var(--warn);
+}
+
+.toast.error,
+.toast.danger{
+  background:var(--stop);
+}
+
+@keyframes toastSlideIn{
+  from{
+    opacity:0;
+    transform:translateY(-8px);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
 
 @media(min-width:768px){
   body{
@@ -1393,12 +1453,125 @@ button{touch-action:manipulation}
     return '';
   }
 
+  function simplifyWorkName(
+    value
+  ){
+    var original =
+      clean(value);
+
+    if(!original){
+      return '작업명 미지정';
+    }
+
+    var text =
+      original
+        .replace(
+          /^["'“”‘’]+|["'“”‘’]+$/g,
+          ''
+        )
+        .trim();
+
+    /*
+     * 계획·예정 등 관리용 접두어를 제거합니다.
+     */
+    text = text.replace(
+      /^\s*
+\[(?:계획|예정|확정|긴급)\]
+\s*/i,
+      ''
+    );
+
+    /*
+     * 작업명 앞쪽의 공장·단계 정보를 제거합니다.
+     * 원문은 workNameFull에 그대로 보존됩니다.
+     */
+    text = text.replace(
+      /^\s*(?:포항\s*)?양극재\s*(?:공장)?\s*/i,
+      ''
+    );
+
+    text = text.replace(
+      /^\s*(?:포항\s*)?양극재\s*(?:1단계|2-1단계|2-2단계)\s*(?:공장)?\s*/i,
+      ''
+    );
+
+    text = text.replace(
+      /^\s*(?:1단계|2-1단계|2-2단계)\s*(?:공장)?\s*/i,
+      ''
+    );
+
+    text = text.replace(
+      /^\s*(?:1공장|2공장)\s*/i,
+      ''
+    );
+
+    /*
+     * 선두 라인 정보는 위치에 표시하므로
+     * 화면용 작업명에서는 제거합니다.
+     */
+    text = text.replace(
+      /^\s*\d+\s*라인\s*/i,
+      ''
+    );
+
+    /*
+     * 관리용 상태문구를 제거합니다.
+     */
+    text = text.replace(
+      /\bILS\s*(?:시스템\s*)?(?:지정\s*완료|지정됨|실시|미실시|불필요)\b/gi,
+      ''
+    );
+
+    text = text
+      .replace(/\s+/g,' ')
+      .replace(/^[,.:;\-\s]+/,'')
+      .trim();
+
+    if(!text){
+      text = original;
+    }
+
+    return text.length > 40
+      ? text.substring(0,40) +
+        '...'
+      : text;
+  }
+
   function workName(work){
-    return clean(
-      work.workName ||
+    work = work || {};
+
+    return simplifyWorkName(
       work.workNameFull ||
+      work.workName ||
       '작업명 미지정'
     );
+  }
+
+  function appendLocationPart(
+    parts,
+    value
+  ){
+    var text =
+      clean(value);
+
+    if(
+      !text ||
+      text === '미지정'
+    ){
+      return;
+    }
+
+    var alreadyIncluded =
+      parts.some(function(part){
+        return (
+          part.indexOf(text) >= 0 ||
+          text.indexOf(part) >= 0
+        );
+      });
+
+    if(!alreadyIncluded){
+      parts.push(text);
+    }
   }
 
   function workLocation(work){
@@ -1406,46 +1579,131 @@ button{touch-action:manipulation}
       return '미지정';
     }
 
-    if(work.locationRaw){
-      return clean(
-        work.locationRaw
-      );
-    }
+    var parts = [];
 
-    if(work.workPlaceRaw){
-      return clean(
-        work.workPlaceRaw
+    var rawLocation =
+      clean(
+        work.locationDisplay ||
+        work.locationRaw ||
+        work.workPlaceRaw ||
+        (
+          typeof work.location ===
+            'string'
+            ? work.location
+            : work.location &&
+              work.location.raw
+              ? work.location.raw
+              : ''
+        )
       );
-    }
+
+    appendLocationPart(
+      parts,
+      rawLocation
+    );
+
+    var sourceName =
+      clean(
+        work.workNameFull ||
+        work.workName
+      );
+
+    var compactSource =
+      sourceName.replace(/\s+/g,'');
 
     if(
-      typeof work.location ===
-        'string'
+      compactSource.indexOf(
+        '2-2단계'
+      ) >= 0 ||
+      compactSource.indexOf(
+        '2공장'
+      ) >= 0
     ){
-      return clean(work.location);
+      appendLocationPart(
+        parts,
+        '2공장'
+      );
+
+    }else if(
+      compactSource.indexOf(
+        '2-1단계'
+      ) >= 0 ||
+      compactSource.indexOf(
+        '1단계'
+      ) >= 0 ||
+      compactSource.indexOf(
+        '1공장'
+      ) >= 0
+    ){
+      appendLocationPart(
+        parts,
+        '1공장'
+      );
     }
 
+    var lineMatch =
+      sourceName.match(
+        /(\d+)\s*라인/i
+      );
+
+    if(lineMatch){
+      appendLocationPart(
+        parts,
+        lineMatch[1] +
+        '라인'
+      );
+    }
+
+    [
+      '전기실',
+      '기계실',
+      '옥외',
+      '옥내',
+      '창고',
+      '유틸리티실',
+      '집진기실'
+    ].forEach(function(area){
+      if(
+        sourceName.indexOf(area) >= 0
+      ){
+        appendLocationPart(
+          parts,
+          area
+        );
+      }
+    });
+
     if(
+      !parts.length &&
       work.location &&
       typeof work.location ===
         'object'
     ){
-      return [
-        work.location.raw || '',
-        work.location.factory || '',
-        work.location.line
-          ? work.location.line +
-            '라인'
-          : '',
-        work.location.stage || ''
-      ]
-        .filter(Boolean)
-        .join(' ') ||
-        '미지정';
+      appendLocationPart(
+        parts,
+        work.location.factory
+      );
+
+      if(work.location.line){
+        appendLocationPart(
+          parts,
+          work.location.line +
+          '라인'
+        );
+      }
+
+      appendLocationPart(
+        parts,
+        work.location.stage
+      );
     }
 
-    return '미지정';
+    return parts.length
+      ? parts.join(' · ')
+      : '미지정';
   }
+
+
 
   function workCompany(work){
     return clean(
@@ -6578,11 +6836,13 @@ button{touch-action:manipulation}
             clean(columns[5]),
 
           workName:
-            fullName.length > 34
-              ? fullName
-                  .substring(0,34) +
-                '...'
-              : fullName,
+            simplifyWorkName(
+              fullName
+            ),
+
+          workNameFull:
+            fullName,
+
 
           workNameFull:
             fullName,
@@ -6893,21 +7153,58 @@ button{touch-action:manipulation}
        * 엑셀에서 입력한 작업은 전부 서버에 신규·갱신 저장합니다.
        * 동시에 공개 테스터용 요약 컬렉션도 갱신합니다.
        */
+      /*
+       * 입력자료만 저장하면 공개 작업현황이 부분 자료로
+       * 축소되므로 병합된 전체 작업을 서버에 동기화합니다.
+       *
+       * workNameFull은 원문으로 유지하고,
+       * workName과 locationDisplay만 화면용으로 정리합니다.
+       */
+      var serverWorks =
+        merged.map(function(work){
+          var originalName =
+            clean(
+              work.workNameFull ||
+              work.workName
+            );
+
+          return Object.assign(
+            {},
+            work,
+            {
+              workId:
+                makeWorkId(work),
+
+              workNameFull:
+                originalName,
+
+              workName:
+                simplifyWorkName(
+                  originalName
+                ),
+
+              locationDisplay:
+                workLocation(work)
+            }
+          );
+        });
+
       var result =
         await global
           .DashboardFirebase
           .saveWorkDatabase(
-            incoming,
+            serverWorks,
             function(progress){
               if(saveButton){
                 saveButton.textContent =
-                  '서버 저장 중 ' +
+                  '전체 서버 동기화 중 ' +
                   progress.current +
                   '/' +
                   progress.total;
               }
             }
           );
+
 
       if(
         !result ||
@@ -6982,11 +7279,11 @@ button{touch-action:manipulation}
       );
 
       showToast(
-        '서버 저장 완료 · 신규 ' +
+        '서버 저장 완료 · 입력 신규 ' +
         addedCount +
-        '건 · 갱신 ' +
+        '건 · 입력 갱신 ' +
         updatedCount +
-        '건 · 저장 ' +
+        '건 · 전체 동기화 ' +
         result.savedCount +
         '건',
         'success'
@@ -8885,6 +9182,7 @@ function buildPublicWorkRecord(work){
       '작업명 미지정',
 
     location:
+      work.locationDisplay ||
       work.locationRaw ||
       (
         typeof work.location ===
@@ -8895,6 +9193,7 @@ function buildPublicWorkRecord(work){
             ? work.location.raw
             : ''
       ),
+
 
     company:
       work.executingCompany ||
