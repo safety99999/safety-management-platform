@@ -1473,6 +1473,7 @@ button{touch-action:manipulation}
 
     /*
      * 계획·예정 등 관리용 접두어를 제거합니다.
+     * 정규식 리터럴은 반드시 한 줄로 유지합니다.
      */
     text = text.replace(
       /^\s*
@@ -1482,32 +1483,21 @@ button{touch-action:manipulation}
     );
 
     /*
-     * 작업명 앞쪽의 공장·단계 정보를 제거합니다.
-     * 원문은 workNameFull에 그대로 보존됩니다.
+     * 작업명 앞부분의 공장·단계 정보를 제거합니다.
+     * 원문은 workNameFull에 유지됩니다.
      */
     text = text.replace(
-      /^\s*(?:포항\s*)?양극재\s*(?:공장)?\s*/i,
+      /^\s*(?:포항\s*)?양극재\s*(?:(?:2-1|2-2|1|2)\s*단계)?\s*(?:공장)?\s*/i,
       ''
     );
 
     text = text.replace(
-      /^\s*(?:포항\s*)?양극재\s*(?:1단계|2-1단계|2-2단계)\s*(?:공장)?\s*/i,
-      ''
-    );
-
-    text = text.replace(
-      /^\s*(?:1단계|2-1단계|2-2단계)\s*(?:공장)?\s*/i,
-      ''
-    );
-
-    text = text.replace(
-      /^\s*(?:1공장|2공장)\s*/i,
+      /^\s*(?:(?:2-1|2-2|1|2)\s*단계|[12]\s*공장)\s*/i,
       ''
     );
 
     /*
-     * 선두 라인 정보는 위치에 표시하므로
-     * 화면용 작업명에서는 제거합니다.
+     * 선두 라인 정보는 위치에서 표시합니다.
      */
     text = text.replace(
       /^\s*\d+\s*라인\s*/i,
@@ -1515,7 +1505,7 @@ button{touch-action:manipulation}
     );
 
     /*
-     * 관리용 상태문구를 제거합니다.
+     * 관리용 ILS 상태문구를 제거합니다.
      */
     text = text.replace(
       /\bILS\s*(?:시스템\s*)?(?:지정\s*완료|지정됨|실시|미실시|불필요)\b/gi,
@@ -1536,6 +1526,7 @@ button{touch-action:manipulation}
         '...'
       : text;
   }
+
 
   function workName(work){
     work = work || {};
@@ -6839,10 +6830,6 @@ button{touch-action:manipulation}
             simplifyWorkName(
               fullName
             ),
-
-          workNameFull:
-            fullName,
-
 
           workNameFull:
             fullName,
