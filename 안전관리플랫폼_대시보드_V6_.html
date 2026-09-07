@@ -1517,16 +1517,10 @@ button{touch-action:manipulation}
      * 계획·예정 등 관리용 접두어를 제거합니다.
      * 정규식 리터럴은 반드시 한 줄로 유지합니다.
      */
-    text = text.replace(
-      new RegExp(
-        '^\\s*\
-\[(?:계획|예정|확정|긴급)\\]
-\\s*',
-        'i'
-      ),
-      ''
-    );
-
+    text = text.replace(/^\s*
+\[(계획|예정|확정|긴급)\]
+\s*/i, '');
+    
     /*
      * 작업명 앞부분의 공장·단계 정보를 제거합니다.
      * 원문은 workNameFull에 유지됩니다.
