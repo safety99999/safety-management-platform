@@ -3708,7 +3708,7 @@ console.log(
 >
   <div id="permitViewContent"></div>
 
-  <div
+    <div
     class="btn-row"
     id="viewPrimaryActions"
     style="flex-direction:column"
@@ -3719,6 +3719,15 @@ console.log(
       id="viewHomeButton"
     >
       🏠 대시보드
+    </button>
+
+    <button
+      type="button"
+      class="btn-warn"
+      id="testLocalApprovalButton"
+      hidden
+    >
+      🧪 TEST 로컬 승인
     </button>
 
     <button
@@ -9809,7 +9818,7 @@ console.log(
     activateScreen('screen-view');
   }
 
-  async function openPermitMode(){
+    async function openPermitMode(){
     if(!state.permitNo){
       showToast(
         '허가번호가 없습니다.',
@@ -9856,6 +9865,25 @@ console.log(
         );
 
         renderPermitView(record);
+
+        var nonRevisionTestButton =
+          byId(
+            'testLocalApprovalButton'
+          );
+
+        if(nonRevisionTestButton){
+          nonRevisionTestButton.hidden =
+            !(
+              isTester() &&
+              [
+                'pendingApproval',
+                'resubmitted'
+              ].indexOf(
+                statusCode(record)
+              ) >= 0
+            );
+        }
+
         return;
       }
 
@@ -9864,7 +9892,35 @@ console.log(
     }
 
     renderPermitView(record);
+
+    var testButton =
+      byId(
+        'testLocalApprovalButton'
+      );
+
+    if(testButton){
+      testButton.hidden =
+        !(
+          isTester() &&
+          [
+            'pendingApproval',
+            'resubmitted'
+          ].indexOf(
+            statusCode(record)
+          ) >= 0
+        );
+    }
+
+    if(
+      isTester() &&
+      isApproved(record)
+    ){
+      byId(
+        'viewTbmButton'
+      ).hidden = false;
+    }
   }
+
 
   /* =====================================================
    * 목록
@@ -10286,8 +10342,391 @@ console.log(
    * 승인 조회·TBM·취소·삭제
    * ===================================================== */
 
+  async function testLocalApprove(){
+    if(!isTester()){
+      showToast(
+        '테스터 로컬 모드에서만 사용할 수 있습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var record =
+      state.currentRecord;
+
+    if(
+      !record ||
+      !clean(record.permitNo)
+    ){
+      showToast(
+        '승인할 로컬 허가서를 찾을 수 없습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var currentStatus =
+      statusCode(record);
+
+    if(currentStatus === 'approved'){
+      showToast(
+        '이미 TEST 로컬 승인된 허가서입니다.',
+        'info'
+      );
+
+      return;
+    }
+
+    if(
+      [
+        'pendingApproval',
+        'resubmitted'
+      ].indexOf(
+        currentStatus
+      ) < 0
+    ){
+      showToast(
+        '승인대기 또는 재제출 허가서만 TEST 승인할 수 있습니다.',
+        'warning'
+      );
+
+      return;
+    }
+
+    var answer =
+      await showConfirm({
+        icon:'🧪',
+        title:'TEST 로컬 승인',
+        message:
+          '이 승인은 테스터 브라우저에만 저장됩니다.\n' +
+          'Firestore에는 저장되지 않으며 실제 작업허가로 사용할 수 없습니다.',
+        okText:'TEST 승인',
+        type:'warn'
+      });
+
+    if(!answer.confirmed){
+      return;
+    }
+
+    var actor =
+      currentActor();
+
+    var processedAt =
+      nowIso();
+
+    var previousStatus =
+      currentStatus;
+
+    var updated =
+      clone(record);
+
+    updated.status =
+      '허가완료';
+
+    updated.permitStatus =
+      '허가완료';
+
+    updated.statusCode =
+      'approved';
+
+    updated.approvedAt =
+      processedAt;
+
+    updated.approvedBy =
+      actor.name ||
+      'TEST 테스터';
+
+    updated.approvedByUid =
+      '';
+
+    updated.updatedAt =
+      processedAt;
+
+    updated.updatedBy =
+      actor.name ||
+      'TEST 테스터';
+
+    updated.updatedByUid =
+      '';
+
+    updated.testLocalApproval =
+      true;
+
+    updated.testLocalApprovalAt =
+      processedAt;
+
+    updated.testLocalApprovalBy =
+      actor.name ||
+      'TEST 테스터';
+
+    updated.testLocalOnly =
+      true;
+
+    updated.firestoreWritten =
+      false;
+
+    updated.syncPending =
+      false;
+
+    updated.syncStatus =
+      'tester-local-approved';
+
+    updated.syncError =
+      '';
+
+    updated.permitApproval =
+      Object.assign(
+        {},
+        updated.permitApproval || {},
+        {
+          required:true,
+          status:'허가완료',
+          statusCode:'approved',
+          approvedAt:
+            processedAt,
+          approvedBy:
+            actor.name ||
+            'TEST 테스터',
+          approvedByUid:'',
+          comment:
+            '🧪 TEST 로컬 승인 · 실제 허가로 사용 불가',
+          testLocalApproval:true,
+          firestoreWritten:false
+        }
+      );
+
+    updated.approvalWorkflow =
+      Object.assign(
+        {},
+        updated.approvalWorkflow || {},
+        {
+          version:VERSION,
+          currentStep:
+            'PERMIT_APPROVED',
+          currentStatusCode:
+            'approved',
+          companyWorkManagerSigned:
+            true,
+          permitApprovalCompleted:
+            true,
+          tbmLinkDeliveryAllowed:
+            true,
+          tbmLinkDelivered:
+            false,
+          lastAction:
+            'testLocalApproved',
+          lastActorUid:'',
+          lastActorName:
+            actor.name ||
+            'TEST 테스터',
+          lastComment:
+            '🧪 TEST 로컬 승인 · 실제 허가로 사용 불가',
+          lastProcessedAt:
+            processedAt,
+          testLocalApproval:
+            true,
+          firestoreWritten:
+            false
+        }
+      );
+
+    updated.approvalHistory =
+      Array.isArray(
+        updated.approvalHistory
+      )
+        ? updated.approvalHistory
+            .slice()
+        : [];
+
+    updated.approvalHistory.push({
+      action:
+        'testLocalApproved',
+      actorUid:'',
+      actorName:
+        actor.name ||
+        'TEST 테스터',
+      actorRole:'tester',
+      comment:
+        '🧪 TEST 로컬 승인 · 실제 허가로 사용 불가',
+      processedAt:
+        processedAt,
+      previousStatus:
+        previousStatus,
+      nextStatus:
+        'approved',
+      environment:'test',
+      isTestAction:true,
+      testLocalApproval:true,
+      firestoreWritten:false
+    });
+
+    updated.statusHistory =
+      Array.isArray(
+        updated.statusHistory
+      )
+        ? updated.statusHistory
+            .slice()
+        : [];
+
+    updated.statusHistory.push({
+      from:
+        previousStatus,
+      to:'approved',
+      changedAt:
+        processedAt,
+      changedBy:
+        actor.name ||
+        'TEST 테스터',
+      changedByUid:'',
+      reason:
+        '🧪 TEST 로컬 승인 · 실제 허가로 사용 불가',
+      environment:'test',
+      isTestAction:true,
+      testLocalApproval:true,
+      firestoreWritten:false
+    });
+
+    var localResult =
+      upsertLocalPermit(
+        updated
+      );
+
+    if(!localResult.success){
+      showToast(
+        'TEST 로컬 승인 저장에 실패했습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    state.currentRecord =
+      clone(updated);
+
+    state.originalRecord =
+      clone(updated);
+
+    Object.assign(
+      permitData,
+      clone(updated)
+    );
+
+    global.permitData =
+      permitData;
+
+    var activeScreen =
+      document.querySelector(
+        '.screen.active'
+      );
+
+    if(
+      activeScreen &&
+      activeScreen.id ===
+        'screen-complete'
+    ){
+      setText(
+        'completeStatus',
+        statusLabel(updated)
+      );
+
+      setText(
+        'completeDateTime',
+        formatDateTime(
+          processedAt
+        )
+      );
+
+      setText(
+        'completeSyncStatus',
+        '🧪 TEST 로컬 승인 완료 · Firestore 쓰기 없음'
+      );
+
+      byId('goTbmButton')
+        .disabled = false;
+
+      byId('goTbmButton')
+        .textContent =
+        '✅ TBM 진행';
+
+      byId(
+        'refreshApprovalButton'
+      ).disabled = true;
+
+      byId(
+        'refreshApprovalButton'
+      ).textContent =
+        '🧪 TEST 로컬 승인 완료';
+
+    }else{
+      renderPermitView(
+        updated
+      );
+
+      byId(
+        'testLocalApprovalButton'
+      ).hidden = true;
+
+      byId(
+        'viewTbmButton'
+      ).hidden = false;
+    }
+
+    global.PermitWorkflowV22
+      .lastTestApproval = {
+        success:true,
+        permitNo:
+          updated.permitNo,
+        previousStatus:
+          previousStatus,
+        statusCode:
+          updated.statusCode,
+        permitApprovalCompleted:
+          updated
+            .approvalWorkflow
+            .permitApprovalCompleted,
+        tbmLinkDeliveryAllowed:
+          updated
+            .approvalWorkflow
+            .tbmLinkDeliveryAllowed,
+        storageKey:
+          storageKey(),
+        firestoreWriteCount:0,
+        approvedAt:
+          processedAt
+      };
+
+    console.log(
+      '[Permit v2.2] TEST 로컬 승인 완료:',
+      global
+        .PermitWorkflowV22
+        .lastTestApproval
+    );
+
+    console.table(
+      global
+        .PermitWorkflowV22
+        .lastTestApproval
+    );
+
+    showToast(
+      'TEST 로컬 승인 완료 · TBM을 진행할 수 있습니다.',
+      'success'
+    );
+  }
+
   async function refreshApproval(){
     if(!state.permitNo){
+      return;
+    }
+
+    /*
+     * 테스터는 Firebase 승인을 조회하지 않고
+     * 현재 로컬 허가서를 TEST 승인합니다.
+     */
+    if(isTester()){
+      await testLocalApprove();
       return;
     }
 
@@ -10334,6 +10773,7 @@ console.log(
       statusLabel(record)
     );
   }
+
 
   function goTbm(record){
     record =
@@ -10666,7 +11106,7 @@ console.log(
    * 초기화와 이벤트
    * ===================================================== */
 
-  function initializeDefaults(){
+   function initializeDefaults(){
     setValue(
       'startDate',
       today()
@@ -10693,10 +11133,24 @@ console.log(
     setText(
       'welcomeSyncStatus',
       isTester()
-        ? '🧪 테스터 로컬 모드'
+        ? '🧪 테스터 로컬 모드 · Firestore 쓰기 없음'
         : '☁️ Firebase 인증 모드'
     );
+
+    var approvalButton =
+      byId(
+        'refreshApprovalButton'
+      );
+
+    if(
+      approvalButton &&
+      isTester()
+    ){
+      approvalButton.textContent =
+        '🧪 TEST 로컬 승인';
+    }
   }
+
 
   function bindEvents(){
     byId('homeButton')
@@ -11107,6 +11561,13 @@ console.log(
         refreshApproval
       );
 
+    byId(
+      'testLocalApprovalButton'
+    ).addEventListener(
+      'click',
+      testLocalApprove
+    );
+
     byId('goTbmButton')
       .addEventListener(
         'click',
@@ -11116,6 +11577,7 @@ console.log(
           );
         }
       );
+
 
     byId('viewHomeButton')
       .addEventListener(
@@ -11257,7 +11719,14 @@ console.log(
       permanentlyDeletePermit,
     refreshApproval:
       refreshApproval,
+
+    testLocalApprove:
+      testLocalApprove,
+
+    lastTestApproval:null,
+
     diagnose:function(){
+
       var result = {
         version:VERSION,
         mode:state.mode,
