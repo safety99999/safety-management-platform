@@ -9560,8 +9560,263 @@ console.log(
   }
 
 
-  async function openPermitMode(){
+  function renderPermitView(record){
+    state.currentRecord =
+      clone(record);
 
+    permitData =
+      Object.assign(
+        permitData,
+        clone(record)
+      );
+
+    global.permitData =
+      permitData;
+
+    var code =
+      statusCode(record);
+
+    var risk =
+      record.riskSnapshot || {};
+
+    var html =
+      '<div class="detail-hero">' +
+        '<div class="detail-hero-top">' +
+          '<div class="detail-hero-title">' +
+            escapeHtml(
+              record.workName ||
+              '작업명 없음'
+            ) +
+          '</div>' +
+          '<span class="status-pill ' +
+            escapeHtml(code) +
+          '">' +
+            escapeHtml(
+              statusLabel(record)
+            ) +
+          '</span>' +
+        '</div>' +
+        '<div class="detail-hero-no">' +
+          escapeHtml(record.permitNo) +
+        '</div>' +
+      '</div>' +
+
+      '<div class="readonly-banner">' +
+        '📄 읽기 전용 허가서입니다.<br>' +
+        '승인된 핵심 내용은 직접 수정할 수 없습니다.' +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '📋 작업 기본정보' +
+        '</div>' +
+        detailRow(
+          'W/O 번호',
+          record.woNumber
+        ) +
+        detailRow(
+          '작업명',
+          record.workName
+        ) +
+        detailRow(
+          '작업장소',
+          [
+            record.location,
+            record.detailLocation
+          ].filter(Boolean).join(' ')
+        ) +
+        detailRow(
+          '작업기간',
+          record.startDate +
+          ' ' +
+          record.startTime +
+          ' ~ ' +
+          record.endDate +
+          ' ' +
+          record.endTime
+        ) +
+        detailRow(
+          '작업인원',
+          record.workerCount
+            ? record.workerCount + '명'
+            : '-'
+        ) +
+        detailRow(
+          '수행업체·조직',
+          record.companyName
+        ) +
+        detailRow(
+          '수행 구분',
+          record.executionTypeLabel ||
+          EXECUTION_LABELS[
+            record.executionType
+          ]
+        ) +
+        detailRow(
+          '작업책임자',
+          record.supervisor
+        ) +
+        detailRow(
+          '작업 내용',
+          record.workDescription
+        ) +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '🛡️ 위험성평가' +
+        '</div>' +
+        detailRow(
+          '평가번호',
+          record.riskId
+        ) +
+        detailRow(
+          '최종 위험도',
+          risk.finalRiskLevel ||
+          record.riskLevel ||
+          record.overallRisk
+        ) +
+        detailRow(
+          '위험점수',
+          risk.riskScore ??
+          record.riskScore ??
+          '-'
+        ) +
+        detailRow(
+          '통제 적정성',
+          risk.controlAdequacy ||
+          record.controlAdequacy
+        ) +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '🔧 작업 유형' +
+        '</div>' +
+        '<div class="detail-list">' +
+          (
+            Array.isArray(
+              record.workTypes
+            ) &&
+            record.workTypes.length
+              ? record.workTypes
+                  .map(function(type){
+                    return (
+                      '<div class="detail-list-item">' +
+                        escapeHtml(
+                          WORK_TYPE_LABELS[type] ||
+                          type
+                        ) +
+                      '</div>'
+                    );
+                  }).join('')
+              : '<div class="detail-list-item">-</div>'
+          ) +
+        '</div>' +
+      '</div>' +
+
+      '<div class="detail-section checklist-section">' +
+        '<div class="detail-section-title">' +
+          '✅ 통합 안전 체크리스트' +
+        '</div>' +
+        '<div class="detail-list">' +
+          renderChecklistDetail(record) +
+        '</div>' +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '👤 담당자 및 서명' +
+        '</div>' +
+        detailRow(
+          '당사 작업담당자',
+          record.companyWorkManager &&
+          record.companyWorkManager.name
+        ) +
+        detailRow(
+          '당사 작업책임자',
+          record.companyWorkSupervisor &&
+          record.companyWorkSupervisor
+            .applicable
+            ? record.companyWorkSupervisor
+                .name
+            : '해당없음'
+        ) +
+        detailRow(
+          '수급인 작업책임자',
+          record.contractorWorkSupervisor &&
+          record.contractorWorkSupervisor
+            .applicable
+            ? record.contractorWorkSupervisor
+                .name
+            : '해당없음'
+        ) +
+        detailRow(
+          'TEST 서명 입력',
+          record.signatureTest &&
+          record.signatureTest.provided
+            ? '확인됨 · 이미지 미저장'
+            : '미확인'
+        ) +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '✅ 승인 이력' +
+        '</div>' +
+        renderHistory(
+          record.approvalHistory,
+          'approval'
+        ) +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '🔄 상태 이력' +
+        '</div>' +
+        renderHistory(
+          record.statusHistory,
+          'status'
+        ) +
+      '</div>' +
+
+      '<div class="detail-section">' +
+        '<div class="detail-section-title">' +
+          '🟠 보완·재제출 이력' +
+        '</div>' +
+        renderHistory(
+          record.revisionHistory,
+          'revision'
+        ) +
+      '</div>';
+
+    byId(
+      'permitViewContent'
+    ).innerHTML = html;
+
+    setTopNavigation(
+      '안전작업허가서 보기',
+      record.permitNo
+    );
+
+    byId('viewTbmButton').hidden =
+      !isApproved(record);
+
+    byId('cancelPermitButton').hidden =
+      !canCancel(record) ||
+      (
+        statusCode(record) ===
+          'approved' &&
+        !isAdmin()
+      );
+
+    byId('testDeleteZone').hidden =
+      !canPermanentlyDelete(
+        record
+      );
+
+    activateScreen('screen-view');
+  }
 
     async function openPermitMode(){
     if(!state.permitNo){
