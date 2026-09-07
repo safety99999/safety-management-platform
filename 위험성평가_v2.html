@@ -2626,6 +2626,37 @@ var authReadyPromise = new Promise(function(resolve){
   );
 });
 
+function readApplicationSession(){
+  try{
+    return JSON.parse(
+      sessionStorage.getItem(
+        'appSession'
+      ) || 'null'
+    );
+  }catch(error){
+    return null;
+  }
+}
+
+function isPublicTesterSession(){
+  var session =
+    readApplicationSession();
+
+  return Boolean(
+    session &&
+    session.environment === 'test' &&
+    session.accessMode ===
+      'tester' &&
+    session.role ===
+      'tester'
+  );
+}
+
+function getPermitStorageKey(){
+  return isPublicTesterSession()
+    ? 'testerSafetyPermits'
+    : 'safetyPermits';
+}
 
 // ═══════════════════════════════════════════════════════
 // 3. 공통 허용값 및 화면 분류
@@ -5635,7 +5666,16 @@ function renderTodayWorkList(){
   filtered.forEach(function(work){
     if(!work.originalNo){ return; }
 
-    var workId = work.date + '_' + work.originalNo;
+    var workId =
+      String(
+        work.workId ||
+        (
+          work.date +
+          '_' +
+          work.originalNo
+        )
+      ).trim();
+
     var existing = assessmentMap[workId];
     var originalRisk = work.risk || '';
     var isHighRisk = originalRisk === '고위험' || originalRisk === '매우고위험';
@@ -6686,37 +6726,105 @@ function addStatusHistory(from, to, reason){
 // ═══════════════════════════════════════════════════════
 
 async function getNextRiskId(){
-  var dateText = formatDateKST(new Date()).replace(/-/g, '');
-  var prefix = 'RA-' + dateText + '-';
+  var dateText =
+    formatDateKST(
+      new Date()
+    ).replace(/-/g,'');
 
-  try {
-    var counterCollection = getCollectionName('counters');
-    var counterReference = db.collection(counterCollection)
-      .doc('riskAssessment_' + dateText);
+  var prefix =
+    isPublicTesterSession()
+      ? 'TEST-RA-' +
+        dateText +
+        '-'
+      : 'RA-' +
+        dateText +
+        '-';
 
-    var sequence = await db.runTransaction(async function(transaction){
-      var snapshot = await transaction.get(counterReference);
-      var current = snapshot.exists ? Number(snapshot.data().sequence || 0) : 0;
-      var next = current + 1;
+  /*
+   * 공개 테스터는 Firebase Authentication을 사용하지
+   * 않으므로 평가번호도 로컬에서 발급합니다.
+   */
+  if(isPublicTesterSession()){
+    return getNextLocalRiskId(
+      prefix
+    );
+  }
 
-      transaction.set(counterReference, {
-        sequence: next,
-        type: 'riskAssessment',
-        date: dateText,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion: SCHEMA_VERSION
-      }, { merge: true });
+  try{
+    var counterCollection =
+      getCollectionName(
+        'counters'
+      );
 
-      return next;
-    });
+    var counterReference =
+      db.collection(
+        counterCollection
+      ).doc(
+        'riskAssessment_' +
+        dateText
+      );
 
-    return prefix + String(sequence).padStart(3, '0');
+    var sequence =
+      await db.runTransaction(
+        async function(transaction){
+          var snapshot =
+            await transaction.get(
+              counterReference
+            );
 
-  } catch(error){
-    console.warn('서버 평가번호 발급 실패, 로컬 번호 사용:', error);
-    return getNextLocalRiskId(prefix);
+          var current =
+            snapshot.exists
+              ? Number(
+                  snapshot.data()
+                    .sequence || 0
+                )
+              : 0;
+
+          var next =
+            current + 1;
+
+          transaction.set(
+            counterReference,
+            {
+              sequence:next,
+              type:
+                'riskAssessment',
+              date:
+                dateText,
+              updatedAt:
+                firebase.firestore
+                  .FieldValue
+                  .serverTimestamp(),
+              schemaVersion:
+                SCHEMA_VERSION
+            },
+            {
+              merge:true
+            }
+          );
+
+          return next;
+        }
+      );
+
+    return (
+      prefix +
+      String(sequence)
+        .padStart(3,'0')
+    );
+
+  }catch(error){
+    console.warn(
+      '서버 평가번호 발급 실패, 로컬 번호 사용:',
+      error
+    );
+
+    return getNextLocalRiskId(
+      prefix
+    );
   }
 }
+
 
 function getNextLocalRiskId(prefix){
   var maximum = 0;
@@ -6755,12 +6863,56 @@ function buildAssessmentSaveObject(includeServerTimestamp){
   });
 
   var saveObject = {
-    riskId: riskData.riskId,
-    parentRiskId: riskData.parentRiskId || '',
-    workId: riskData.workId || '',
-    permitNo: riskData.permitNo || '',
-    linkedPermitNo: riskData.linkedPermitNo || '',
-    safeinfoNo: riskData.safeinfoNo || '',
+    riskId:
+      riskData.riskId,
+
+    parentRiskId:
+      riskData.parentRiskId || '',
+
+    workId:
+      riskData.workId || '',
+
+    sourceWorkId:
+      riskData.workId || '',
+
+    workflowLink:{
+      workId:
+        riskData.workId || '',
+      riskId:
+        riskData.riskId || '',
+      permitNo:
+        riskData.linkedPermitNo ||
+        riskData.permitNo ||
+        ''
+    },
+
+    permitNo:
+      riskData.permitNo || '',
+
+    linkedPermitNo:
+      riskData.linkedPermitNo || '',
+
+    safeinfoNo:
+      riskData.safeinfoNo || '',
+
+    status:
+      '평가완료',
+
+    statusCode:
+      'completed',
+
+    environment:
+      APP_MODE,
+
+    testMode:
+      isPublicTesterSession(),
+
+    storageMode:
+      isPublicTesterSession()
+        ? 'localStorage'
+        : 'firestore',
+
+
     date: riskData.date,
     assessor: riskData.assessor,
     workName: riskData.workName,
@@ -6896,115 +7048,317 @@ async function submitAssessment(){
 }
 
 async function executeAssessmentSave(){
-  if(assessmentSubmitting){ return; }
-
-  var authenticatedUser = await authReadyPromise;
-
-  if(!authenticatedUser){
-    showAlertDialog({
-      icon: '❌',
-      title: '로그인 확인 필요',
-      message:
-        'Firebase 로그인 세션이 없습니다.\n\n' +
-        '동일한 주소에서 다시 로그인해 주세요.'
-    });
-
+  if(assessmentSubmitting){
     return;
+  }
+
+  var tester =
+    isPublicTesterSession();
+
+  var session =
+    readApplicationSession();
+
+  var authenticatedUser =
+    null;
+
+  /*
+   * 관리자·일반 사용자는 Firebase UID까지 확인하고,
+   * 공개 테스터는 현재 appSession만 확인합니다.
+   */
+  if(tester){
+    if(
+      !session ||
+      session.role !== 'tester' ||
+      session.accessMode !==
+        'tester' ||
+      session.environment !== 'test'
+    ){
+      showAlertDialog({
+        icon:'❌',
+        title:'테스터 세션 확인 필요',
+        message:
+          '테스터 세션을 확인할 수 없습니다.\n\n' +
+          '로그인 화면에서 테스터로 다시 진입해 주세요.'
+      });
+
+      return;
+    }
+
+  }else{
+    authenticatedUser =
+      await authReadyPromise;
+
+    if(
+      !authenticatedUser ||
+      !session ||
+      session.accessMode !==
+        'authenticated' ||
+      !session.uid ||
+      authenticatedUser.uid !==
+        session.uid
+    ){
+      showAlertDialog({
+        icon:'❌',
+        title:'로그인 확인 필요',
+        message:
+          'Firebase 로그인 세션을 확인할 수 없습니다.\n\n' +
+          '동일한 주소에서 다시 로그인해 주세요.'
+      });
+
+      return;
+    }
   }
 
   assessmentSubmitting = true;
 
+  var submitButton =
+    getElement(
+      'submitAssessmentButton'
+    );
 
-  var submitButton = getElement('submitAssessmentButton');
   if(submitButton){
     submitButton.disabled = true;
-    submitButton.textContent = '저장 중...';
+
+    submitButton.textContent =
+      tester
+        ? '테스트 결과 저장 중...'
+        : '서버 저장 중...';
   }
 
-  try {
-    riskData.opinion = getInputValue('opinionInput');
-    riskData.linkedPermitNo = getInputValue('permitLinkSelect');
-    riskData.status = '평가완료';
+  try{
+    riskData.opinion =
+      getInputValue(
+        'opinionInput'
+      );
 
-    var now = new Date().toISOString();
-    if(!riskData.createdAt){ riskData.createdAt = now; }
-    riskData.updatedAt = now;
+    riskData.linkedPermitNo =
+      getInputValue(
+        'permitLinkSelect'
+      );
 
-    var userName = sessionStorage.getItem('userName') || riskData.assessor || 'anonymous';
-    if(!riskData.createdBy){ riskData.createdBy = userName; }
-    riskData.updatedBy = userName;
+    riskData.status =
+      '평가완료';
 
-    addStatusHistory('작성중', '평가완료', '위험성평가 제출');
+    var now =
+      new Date().toISOString();
 
-    if(!riskData.riskId){
-      showToast('평가번호를 발급하고 있습니다.', 'info');
-      riskData.riskId = await getNextRiskId();
+    if(!riskData.createdAt){
+      riskData.createdAt =
+        now;
     }
 
-    showToast('위험성평가를 저장하고 있습니다.', 'info');
+    riskData.updatedAt =
+      now;
+
+    var userName =
+      session &&
+      session.displayName
+        ? session.displayName
+        : sessionStorage.getItem(
+            'userName'
+          ) ||
+          riskData.assessor ||
+          'anonymous';
+
+    if(!riskData.createdBy){
+      riskData.createdBy =
+        userName;
+    }
+
+    riskData.updatedBy =
+      userName;
+
+    addStatusHistory(
+      '작성중',
+      '평가완료',
+      tester
+        ? '테스터 로컬 위험성평가 제출'
+        : '위험성평가 제출'
+    );
+
+    if(!riskData.riskId){
+      riskData.riskId =
+        await getNextRiskId();
+    }
+
+    /*
+     * 테스터는 Firestore에 쓰지 않고 로컬에만 저장합니다.
+     */
+    if(tester){
+      saveAssessmentToLocalStorage();
+
+      var testerPermitNo =
+        riskData.linkedPermitNo ||
+        riskData.permitNo;
+
+      if(testerPermitNo){
+        await updateLinkedPermit(
+          testerPermitNo
+        );
+      }
+
+      showCompletionScreen();
+
+      showToast(
+        '테스터 위험성평가가 브라우저에 저장되었습니다.',
+        'success'
+      );
+
+      return;
+    }
 
     await saveAssessmentToFirestore();
     saveAssessmentToLocalStorage();
 
-    var permitNo = riskData.linkedPermitNo || riskData.permitNo;
+    var permitNo =
+      riskData.linkedPermitNo ||
+      riskData.permitNo;
+
     if(permitNo){
-      await updateLinkedPermit(permitNo);
+      await updateLinkedPermit(
+        permitNo
+      );
     }
 
     showCompletionScreen();
-    showToast('위험성평가 제출이 완료되었습니다.', 'success');
 
-  } catch(error){
-    console.error('위험성평가 저장 실패:', error);
+    showToast(
+      '위험성평가 제출이 완료되었습니다.',
+      'success'
+    );
+
+  }catch(error){
+    console.error(
+      '위험성평가 저장 실패:',
+      error
+    );
+
     showAlertDialog({
-      icon: '❌',
-      title: '저장 실패',
-      message: '위험성평가 저장 중 오류가 발생했습니다.\n\n' +
-        (error.message || String(error))
+      icon:'❌',
+      title:'저장 실패',
+      message:
+        '위험성평가 저장 중 오류가 발생했습니다.\n\n' +
+        (
+          error.message ||
+          String(error)
+        )
     });
-  } finally {
+
+  }finally{
     assessmentSubmitting = false;
+
     if(submitButton){
-      submitButton.disabled = false;
-      submitButton.textContent = '✅ 평가 제출';
+      submitButton.disabled =
+        false;
+
+      submitButton.textContent =
+        '✅ 평가 제출';
     }
   }
 }
 
+
+
 async function saveAssessmentToFirestore(){
+  if(isPublicTesterSession()){
+    return {
+      success:false,
+      reason:'tester-local-only'
+    };
+  }
+
+  var session =
+    readApplicationSession();
+
+  var authenticatedUser =
+    await authReadyPromise;
+
+  if(
+    !authenticatedUser ||
+    !session ||
+    session.accessMode !==
+      'authenticated' ||
+    !session.uid ||
+    authenticatedUser.uid !==
+      session.uid
+  ){
+    throw new Error(
+      'Firebase 인증정보가 일치하지 않습니다.'
+    );
+  }
+
   var collectionName =
-    getCollectionName('riskAssessmentResults');
+    getCollectionName(
+      'riskAssessmentResults'
+    );
 
   var saveObject =
-    buildAssessmentSaveObject(true);
+    buildAssessmentSaveObject(
+      true
+    );
 
-  if(typeof saveObject.overrideApplied !== 'boolean'){
-    saveObject.overrideApplied = false;
+  if(
+    typeof saveObject
+      .overrideApplied !==
+      'boolean'
+  ){
+    saveObject.overrideApplied =
+      false;
   }
 
-  if(typeof saveObject.overrideVersion !== 'string'){
-    saveObject.overrideVersion = '';
+  if(
+    typeof saveObject
+      .overrideVersion !==
+      'string'
+  ){
+    saveObject.overrideVersion =
+      '';
   }
 
-  if(!Array.isArray(saveObject.overrideReasons)){
-    saveObject.overrideReasons = [];
+  if(
+    !Array.isArray(
+      saveObject.overrideReasons
+    )
+  ){
+    saveObject.overrideReasons =
+      [];
   }
 
-  if(typeof saveObject.originalRiskLevel !== 'string'){
+  if(
+    typeof saveObject
+      .originalRiskLevel !==
+      'string'
+  ){
     saveObject.originalRiskLevel =
-      saveObject.finalRiskLevel || '';
+      saveObject.finalRiskLevel ||
+      '';
   }
 
-  await db.collection(collectionName)
-    .doc(riskData.riskId)
-    .set(saveObject, { merge:false });
+  await db
+    .collection(
+      collectionName
+    )
+    .doc(
+      riskData.riskId
+    )
+    .set(
+      saveObject,
+      {
+        merge:false
+      }
+    );
 
   console.log(
     '✅ 위험성평가 Firestore 저장:',
     collectionName,
     riskData.riskId
   );
+
+  return {
+    success:true
+  };
 }
+
 
 
 
@@ -7026,66 +7380,210 @@ function saveAssessmentToLocalStorage(){
   dispatchDataChange('riskAssessments');
 }
 
-async function updateLinkedPermit(permitNo){
-  var selectedMeasures = collectAllSelectedMeasures();
+async function updateLinkedPermit(
+  permitNo
+){
+  var selectedMeasures =
+    collectAllSelectedMeasures();
+
   var measuresByCategory = {
-    essential:[], engineering:[], administrative:[], ppe:[]
+    essential:[],
+    engineering:[],
+    administrative:[],
+    ppe:[]
   };
 
-  selectedMeasures.forEach(function(measure){
-    if(measuresByCategory[measure.category]){
-      measuresByCategory[measure.category].push(measure.text);
+  selectedMeasures.forEach(
+    function(measure){
+      if(
+        measuresByCategory[
+          measure.category
+        ]
+      ){
+        measuresByCategory[
+          measure.category
+        ].push(
+          measure.text
+        );
+      }
     }
-  });
+  );
 
   var permitUpdate = {
-    riskId: riskData.riskId,
-    riskLevel: riskData.finalRiskLevel,
-    overallRisk: riskData.finalRiskLevel,
-    riskScore: getRiskScore(riskData.finalRiskLevel),
-    controlAdequacy: riskData.finalControlAdequacy,
-    riskMeasures: selectedMeasures.map(function(m){ return m.text; }),
-    riskMeasuresByCategory: measuresByCategory,
-    riskHazardSummary: clonePlainObject(riskData.hazardSummary),
-    mappedChecklists: clonePlainObject(riskData.mappedChecklists),
-    requiredRecords: clonePlainObject(riskData.requiredRecords),
-    riskOpinion: riskData.opinion || '',
-    riskAssessmentUpdatedAt: new Date().toISOString()
+    riskId:
+      riskData.riskId,
+
+    riskLevel:
+      riskData.finalRiskLevel,
+
+    overallRisk:
+      riskData.finalRiskLevel,
+
+    riskScore:
+      getRiskScore(
+        riskData.finalRiskLevel
+      ),
+
+    controlAdequacy:
+      riskData
+        .finalControlAdequacy,
+
+    riskMeasures:
+      selectedMeasures.map(
+        function(measure){
+          return measure.text;
+        }
+      ),
+
+    riskMeasuresByCategory:
+      measuresByCategory,
+
+    riskHazardSummary:
+      clonePlainObject(
+        riskData.hazardSummary
+      ),
+
+    mappedChecklists:
+      clonePlainObject(
+        riskData.mappedChecklists
+      ),
+
+    requiredRecords:
+      clonePlainObject(
+        riskData.requiredRecords
+      ),
+
+    riskOpinion:
+      riskData.opinion || '',
+
+    riskAssessmentUpdatedAt:
+      new Date().toISOString()
   };
 
-  try {
-    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    if(!Array.isArray(permits)){ permits = []; }
+  var permitStorageKey =
+    getPermitStorageKey();
+
+  try{
+    var permits =
+      JSON.parse(
+        localStorage.getItem(
+          permitStorageKey
+        ) || '[]'
+      );
+
+    if(!Array.isArray(permits)){
+      permits = [];
+    }
 
     var localUpdated = false;
-    permits.forEach(function(permit){
-      if(permit.permitNo !== permitNo){ return; }
-      Object.assign(permit, clonePlainObject(permitUpdate));
-      permit.updatedAt = new Date().toISOString();
-      localUpdated = true;
-    });
+
+    permits.forEach(
+      function(permit){
+        if(
+          permit.permitNo !==
+          permitNo
+        ){
+          return;
+        }
+
+        Object.assign(
+          permit,
+          clonePlainObject(
+            permitUpdate
+          )
+        );
+
+        permit.updatedAt =
+          new Date().toISOString();
+
+        localUpdated = true;
+      }
+    );
 
     if(localUpdated){
-      localStorage.setItem('safetyPermits', JSON.stringify(permits));
-      dispatchDataChange('safetyPermits');
+      localStorage.setItem(
+        permitStorageKey,
+        JSON.stringify(
+          permits
+        )
+      );
+
+      dispatchDataChange(
+        permitStorageKey
+      );
     }
-  } catch(error){
-    console.warn('작업허가서 로컬 연동 실패:', error);
+
+  }catch(error){
+    console.warn(
+      '작업허가서 로컬 연동 실패:',
+      error
+    );
   }
 
-  try {
-    var collectionName = getCollectionName('safetyPermits');
-    var firestoreUpdate = clonePlainObject(permitUpdate);
-    firestoreUpdate.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+  /*
+   * 공개 테스터는 Firestore 허가서를 수정하지 않습니다.
+   */
+  if(isPublicTesterSession()){
+    return {
+      success:true,
+      storage:
+        'localStorage'
+    };
+  }
 
-    await db.collection(collectionName).doc(permitNo)
-      .set(firestoreUpdate, { merge: true });
+  try{
+    var collectionName =
+      getCollectionName(
+        'safetyPermits'
+      );
 
-    showToast('작업허가서 연동을 완료했습니다.', 'success');
+    var firestoreUpdate =
+      clonePlainObject(
+        permitUpdate
+      );
 
-  } catch(error){
-    console.warn('작업허가서 서버 연동 실패:', error);
-    showToast('작업허가서의 로컬 연동만 완료했습니다.', 'warning');
+    firestoreUpdate.updatedAt =
+      firebase.firestore
+        .FieldValue
+        .serverTimestamp();
+
+    await db
+      .collection(
+        collectionName
+      )
+      .doc(permitNo)
+      .set(
+        firestoreUpdate,
+        {
+          merge:true
+        }
+      );
+
+    showToast(
+      '작업허가서 연동을 완료했습니다.',
+      'success'
+    );
+
+    return {
+      success:true,
+      storage:'firestore'
+    };
+
+  }catch(error){
+    console.warn(
+      '작업허가서 서버 연동 실패:',
+      error
+    );
+
+    showToast(
+      '작업허가서의 로컬 연동만 완료했습니다.',
+      'warning'
+    );
+
+    return {
+      success:false,
+      error:error
+    };
   }
 }
 
@@ -8512,16 +9010,26 @@ function initializeFromUrl(){
 }
 
 async function initializeApplication(){
-  var authenticatedUser = await authReadyPromise;
+  var session =
+    readApplicationSession();
 
-  if(!authenticatedUser){
+  var tester =
+    isPublicTesterSession();
+
+  if(
+    !session ||
+    session.environment !==
+      'test' ||
+    [
+      'admin',
+      'user',
+      'tester'
+    ].indexOf(
+      session.role
+    ) < 0
+  ){
     console.error(
-      '[Firebase Auth] 위험성평가 인증 세션 없음'
-    );
-
-    alert(
-      '로그인 인증정보를 확인할 수 없습니다.\n' +
-      '동일한 주소에서 다시 로그인해 주세요.'
+      '[위험성평가] 유효한 앱 세션 없음'
     );
 
     window.location.replace(
@@ -8535,49 +9043,120 @@ async function initializeApplication(){
     return;
   }
 
-  console.log(
-    '[Firebase Auth] 위험성평가 인증 확인 완료:',
-    {
-      uid: authenticatedUser.uid,
-      email: authenticatedUser.email || ''
+  if(!tester){
+    var authenticatedUser =
+      await authReadyPromise;
+
+    if(
+      !authenticatedUser ||
+      session.accessMode !==
+        'authenticated' ||
+      !session.uid ||
+      authenticatedUser.uid !==
+        session.uid
+    ){
+      console.error(
+        '[Firebase Auth] 위험성평가 인증 세션 불일치'
+      );
+
+      showAlertDialog({
+        icon:'❌',
+        title:'로그인 확인 필요',
+        message:
+          '로그인 인증정보를 확인할 수 없습니다.\n\n' +
+          '동일한 주소에서 다시 로그인해 주세요.',
+        onClose:function(){
+          window.location.replace(
+            'login.html?redirect=' +
+            encodeURIComponent(
+              window.location.pathname +
+              window.location.search
+            )
+          );
+        }
+      });
+
+      return;
     }
-  );
+
+    console.log(
+      '[Firebase Auth] 위험성평가 인증 확인 완료:',
+      {
+        uid:
+          authenticatedUser.uid,
+        email:
+          authenticatedUser.email ||
+          ''
+      }
+    );
+
+  }else{
+    console.log(
+      '[위험성평가] 공개 테스터 로컬 모드'
+    );
+  }
 
   initializeTheme();
   bindApplicationEvents();
 
-  riskData.date = formatDateKST(new Date());
+  riskData.date =
+    formatDateKST(
+      new Date()
+    );
 
-  setInputValue('assessmentDateInput', riskData.date);
+  setInputValue(
+    'assessmentDateInput',
+    riskData.date
+  );
 
-  var adminButton = getElement('adminButton');
+  var adminButton =
+    getElement(
+      'adminButton'
+    );
+
   if(adminButton){
-    adminButton.style.display = ADMIN_MODE ? 'flex' : 'none';
+    adminButton.style.display =
+      !tester &&
+      ADMIN_MODE &&
+      isManager()
+        ? 'flex'
+        : 'none';
   }
 
   /*
-   * 위험성평가 기준 DB는 GitHub Pages 정적 JSON에서 로드합니다.
-   * 동일 SHA256 데이터가 IndexedDB에 있으면 캐시를 사용합니다.
-   * 이 과정에서는 Firestore 기준 DB를 조회하지 않습니다.
+   * 기준자료는 관리자·사용자·테스터 모두
+   * GitHub 정적 JSON에서 읽습니다.
+   * 테스터의 Firestore 접근은 발생하지 않습니다.
    */
-  await initializeRiskDatabase(false);
+  await initializeRiskDatabase(
+    false
+  );
 
   loadTodayWorkList();
   renderRecentHistory();
   updateAdminInformation();
   initializeFromUrl();
 
-  console.log('═══════════════════════════════════════════════');
-  console.log('위험성평가 v2 정식 통합본 (정적 DB 로더 적용) 로드 완료');
-  console.log('- APP MODE:', APP_MODE);
-  console.log('- ADMIN MODE:', ADMIN_MODE);
-  console.log('- 참조 DB:', 'GitHub 정적 JSON · riskAssessmentDB');
-  console.log('- 참조 DB 출처:', riskDatabaseState.source || '로드 실패');
-  console.log('- 참조 DB 건수:', riskDatabaseState.count);
-  console.log('- 캐시:', 'IndexedDB · manifest SHA256 기준');
-  console.log('- 스키마:', SCHEMA_VERSION);
-  console.log('═══════════════════════════════════════════════');
+  console.log(
+    '[위험성평가] 초기화 완료:',
+    {
+      appMode:
+        APP_MODE,
+      adminMode:
+        ADMIN_MODE,
+      tester:
+        tester,
+      databaseSource:
+        riskDatabaseState.source ||
+        '로드 실패',
+      databaseCount:
+        riskDatabaseState.count,
+      schemaVersion:
+        SCHEMA_VERSION
+    }
+  );
 }
+
 
 document.addEventListener('DOMContentLoaded', initializeApplication);
 
