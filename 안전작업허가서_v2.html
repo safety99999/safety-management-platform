@@ -11662,6 +11662,9 @@ console.log(
     initializeDefaults();
     bindEvents();
 
+    /*
+     * 상세보기와 보완 문서는 기존 흐름을 유지합니다.
+     */
     if(
       state.mode === 'view' ||
       state.mode === 'revision'
@@ -11670,6 +11673,10 @@ console.log(
       return;
     }
 
+    /*
+     * 위험성평가 번호로 직접 들어온 경우
+     * 해당 평가를 기준으로 작성합니다.
+     */
     if(state.riskId){
       startWithRisk(
         state.riskId
@@ -11678,6 +11685,10 @@ console.log(
       return;
     }
 
+    /*
+     * 작업번호로 직접 들어온 경우
+     * 완료된 위험성평가를 연결합니다.
+     */
     if(state.workId){
       var risk =
         findRiskByWorkId(
@@ -11689,6 +11700,7 @@ console.log(
           state.workId,
           risk.riskId
         );
+
       }else{
         global.location.href =
           RISK_URL +
@@ -11701,12 +11713,56 @@ console.log(
       return;
     }
 
+    /*
+     * 대시보드의 허가서 작성 버튼에서
+     * entry=today로 들어오면 PTW 소개 화면을
+     * 생략하고 오늘 작업목록을 바로 표시합니다.
+     */
+    if(state.entry === 'today'){
+      setTopNavigation(
+        '오늘 작업목록',
+        ''
+      );
+
+      activateScreen(
+        'screen-today-list'
+      );
+
+      renderTodayWorks();
+
+      console.log(
+        '[Permit v2.2] 오늘 작업목록 직접 진입:',
+        {
+          entry:
+            state.entry,
+          tester:
+            isTester(),
+          works:
+            readWorkHistory()
+              .filter(function(work){
+                return (
+                  clean(work.date) ===
+                  today()
+                );
+              }).length
+        }
+      );
+
+      return;
+    }
+
+    /*
+     * 허가서 파일을 직접 열었거나 기타 경로로
+     * 진입한 경우에는 기존 시작 화면을 유지합니다.
+     * 신규평가 목록도 이 화면에서 계속 접근할 수 있습니다.
+     */
     goWelcome();
 
     console.log(
       '[Permit v2.2] 초기화 완료'
     );
   }
+
 
   global.PermitWorkflowV22 = {
     version:VERSION,
