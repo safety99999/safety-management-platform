@@ -7494,6 +7494,32 @@ button{touch-action:manipulation}
         : '캐시'
     );
   }
+  function withTimeout(
+    promise,
+    timeoutMs,
+    message
+  ){
+    return Promise.race([
+      promise,
+
+      new Promise(
+        function(resolve,reject){
+          setTimeout(
+            function(){
+              reject(
+                new Error(
+                  message ||
+                  '서버 응답 시간이 초과되었습니다.'
+                )
+              );
+            },
+            timeoutMs
+          );
+        }
+      )
+    ]);
+  }
+
 
   async function refreshFromCloud(){
     var refreshButton =
@@ -7641,14 +7667,23 @@ button{touch-action:manipulation}
        */
       var results =
         await Promise.allSettled([
-          global
-            .DashboardFirebase
-            .loadWorkDatabase(true),
+          withTimeout(
+            global
+              .DashboardFirebase
+              .loadWorkDatabase(true),
+            20000,
+            '작업DB 서버 조회 시간이 초과되었습니다.'
+          ),
 
-          global
-            .DashboardFirebase
-            .loadPermits(true)
+          withTimeout(
+            global
+              .DashboardFirebase
+              .loadPermits(true),
+            20000,
+            '허가서 서버 조회 시간이 초과되었습니다.'
+          )
         ]);
+
 
       var workResult =
         results[0];
@@ -8329,42 +8364,51 @@ const firebaseApp =
 const auth =
   getAuth(firebaseApp);
 
-const isIOS =
-  /iPad|iPhone|iPod/.test(
-    navigator.userAgent
-  );
-
-const isSafari =
-  /^((?!chrome|android).)*safari/i
-    .test(
-      navigator.userAgent
-    );
-
+/*
+ * PC Edge·사내망에서 Firestore WebChannel Listen 요청이
+ * 중단되는 문제를 방지하기 위해 모든 브라우저에서
+ * Long Polling 통신을 사용합니다.
+ */
 let db;
 
+/*
+ * 사내망·Edge 환경에서 Firestore WebChannel의
+ * Listen 요청이 404로 차단되는 문제를 방지하기 위해
+ * 모든 브라우저에서 Long Polling을 사용합니다.
+ */
 try{
-  if(isIOS || isSafari){
-    db =
-      initializeFirestore(
-        firebaseApp,
-        {
-          experimentalForceLongPolling:
-            true,
-          useFetchStreams:false
-        }
-      );
-  }else{
-    db =
-      getFirestore(
-        firebaseApp
-      );
-  }
+  db =
+    initializeFirestore(
+      firebaseApp,
+      {
+        experimentalForceLongPolling:
+          true,
+        useFetchStreams:
+          false
+      }
+    );
+
+  console.log(
+    '[Dashboard Firebase] Firestore Long Polling 적용'
+  );
+
 }catch(error){
+  /*
+   * 동일 페이지에서 Firestore가 이미 초기화된 경우
+   * 기존 인스턴스를 재사용합니다.
+   */
+  console.warn(
+    '[Dashboard Firebase] 기존 Firestore 인스턴스 재사용:',
+    error.message
+  );
+
   db =
     getFirestore(
       firebaseApp
     );
 }
+
+
 
 const PERMIT_COLLECTION =
   (
