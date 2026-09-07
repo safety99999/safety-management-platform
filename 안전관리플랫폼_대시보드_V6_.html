@@ -6027,58 +6027,35 @@ button{touch-action:manipulation}
     );
   }
 
-  function openPermitMenu(){
+   function openPermitMenu(){
     var counts =
       permitCounts();
 
     var admin =
       global.isAdminUser();
 
+    var tester =
+      global.isPublicTester();
+
     var html =
       '<div class="permit-menu-summary">' +
         '<div class="permit-menu-summary-title">' +
           (
             admin
-              ? '🔐 작업허가 통합 관리'
+              ? '🔐 안전작업허가 관리'
               : '🔐 안전작업허가서'
           ) +
         '</div>' +
+
         '<div class="permit-menu-summary-text">' +
           (
             admin
-              ? '허가서 작성과 승인업무를 한 화면에서 관리합니다.'
-              : '허가서를 작성하고 제출·보완 상태를 확인합니다.'
+              ? '승인대기 문서를 처리하거나 오늘 작업에서 허가서를 작성합니다.'
+              : tester
+                ? 'TEST 허가서를 작성하거나 작성한 허가서의 상태를 확인합니다.'
+                : '오늘 작업에서 허가서를 작성하거나 내 허가서의 상태를 확인합니다.'
           ) +
         '</div>' +
-      '</div>' +
-
-      '<div class="permit-menu-user">' +
-        '<span class="permit-menu-user-icon">' +
-          (
-            admin
-              ? '👨‍💼'
-              : global.isPublicTester()
-                ? '🧪'
-                : '👤'
-          ) +
-        '</span>' +
-        '<span>' +
-          '<div class="permit-menu-user-name">' +
-            escapeHtml(
-              appSession.displayName ||
-              '사용자'
-            ) +
-          '</div>' +
-          '<div class="permit-menu-user-role">' +
-            (
-              admin
-                ? '관리자 · 승인 처리 가능'
-                : global.isPublicTester()
-                  ? '공개 테스터 · 로컬 저장'
-                  : '일반 사용자'
-            ) +
-          '</div>' +
-        '</span>' +
       '</div>' +
 
       '<div class="permit-menu-grid">' +
@@ -6087,9 +6064,12 @@ button{touch-action:manipulation}
           action:'create',
           className:'primary',
           icon:'📝',
-          name:'허가서 작성',
+          name:
+            tester
+              ? 'TEST 허가서 작성'
+              : '오늘 작업에서 작성',
           description:
-            '신규 안전작업허가서 작성'
+            '오늘 작업목록으로 바로 이동'
         }) +
 
         (
@@ -6102,48 +6082,53 @@ button{touch-action:manipulation}
                 countClass:
                   'pending',
                 icon:'⏳',
-                name:
-                  '승인대기 문서',
+                name:'승인대기 문서',
                 description:
                   '승인·보완·반려 처리'
               })
-            : ''
+            : permitMenuCard({
+                action:'mine',
+                className:
+                  counts.revision
+                    ? 'revision'
+                    : 'all',
+                count:
+                  counts.total,
+                countClass:
+                  counts.revision
+                    ? 'revision'
+                    : '',
+                icon:'📂',
+                name:'내 허가서',
+                description:
+                  counts.revision
+                    ? '보완요청 ' +
+                      counts.revision +
+                      '건 포함'
+                    : '상태 및 처리결과 확인'
+              })
         ) +
 
-        permitMenuCard({
-          action:'revision',
-          className:'revision',
-          count:
-            counts.revision,
-          countClass:
-            'revision',
-          icon:'🟠',
-          name:
-            '보완요청 문서',
-          description:
-            '보완 사유 확인 및 수정'
-        }) +
-
-        permitMenuCard({
-          action:
-            admin ? 'all' : 'mine',
-          className:'all',
-          count:counts.total,
-          icon:
-            admin ? '📚' : '📂',
-          name:
-            admin
-              ? '전체 허가서'
-              : '내 허가서',
-          description:
-            '허가서 상태 및 처리결과 확인'
-        }) +
+        (
+          admin
+            ? permitMenuCard({
+                action:'all',
+                className:'all',
+                count:
+                  counts.total,
+                icon:'📚',
+                name:'전체 허가서',
+                description:
+                  '전체 상태 및 처리결과 확인'
+              })
+            : ''
+        ) +
 
       '</div>';
 
     openSheet(
       admin
-        ? '작업허가 관리'
+        ? '안전작업허가 관리'
         : '안전작업허가서',
       html
     );
