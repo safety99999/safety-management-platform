@@ -624,8 +624,39 @@ button{touch-action:manipulation}
           <div class="hero-date" id="navDate">-</div>
           <div class="hero-time" id="navTime">-</div>
         </div>
-        <button type="button" class="icon-btn" id="themeButton" aria-label="테마">🌙</button>
+
+        <button
+          type="button"
+          class="icon-btn"
+          id="testerResetButton"
+          aria-label="내 테스트 자료 초기화"
+          title="내 테스트 자료 초기화"
+          hidden
+        >
+          🧪
+        </button>
+
+        <button
+          type="button"
+          class="icon-btn"
+          id="logoutButton"
+          aria-label="로그아웃"
+          title="로그아웃"
+        >
+          🚪
+        </button>
+
+        <button
+          type="button"
+          class="icon-btn"
+          id="themeButton"
+          aria-label="테마"
+          title="테마"
+        >
+          🌙
+        </button>
       </div>
+
     </div>
   </header>
 
@@ -8897,6 +8928,245 @@ button{touch-action:manipulation}
    * 탭·새로고침·이벤트
    * ===================================================== */
 
+    /* =====================================================
+   * 탭·로그아웃·테스트 초기화·이벤트
+   * ===================================================== */
+
+  async function logoutDashboard(){
+    var session =
+      readSession() || {};
+
+    var answer =
+      await showConfirm({
+        icon:'🚪',
+        title:'로그아웃',
+        message:
+          '로그아웃하시겠습니까?\n\n' +
+          '작업DB 캐시와 작성한 업무자료는 삭제하지 않습니다.',
+        okText:'로그아웃',
+        type:'warn'
+      });
+
+    if(!answer.confirmed){
+      return;
+    }
+
+    var firebaseSignedOut =
+      session.accessMode !==
+        'authenticated';
+
+    try{
+      if(
+        session.accessMode ===
+          'authenticated' &&
+        global.DashboardFirebase &&
+        typeof global
+          .DashboardFirebase
+          .logout ===
+            'function'
+      ){
+        await global
+          .DashboardFirebase
+          .logout();
+
+        firebaseSignedOut = true;
+      }
+
+    }catch(error){
+      console.warn(
+        '[Dashboard Logout] Firebase 로그아웃 실패:',
+        error
+      );
+    }
+
+    /*
+     * 로그인 세션만 삭제합니다.
+     * 작업DB와 업무자료는 유지합니다.
+     */
+    [
+      'appSession',
+      'userName',
+      'userRole',
+      'adminMode'
+    ].forEach(function(key){
+      sessionStorage.removeItem(
+        key
+      );
+    });
+
+    var result = {
+      success:true,
+      role:
+        session.role || '',
+      accessMode:
+        session.accessMode || '',
+      firebaseSignedOut:
+        firebaseSignedOut,
+      sessionCleared:
+        sessionStorage.getItem(
+          'appSession'
+        ) === null,
+      workDatabaseKept:
+        localStorage.getItem(
+          'safetyDatabase'
+        ) !== null,
+      testerPermitsKept:
+        localStorage.getItem(
+          'testerSafetyPermits'
+        ) !== null,
+      testerTbmKept:
+        localStorage.getItem(
+          'testerSafetyTBM'
+        ) !== null
+    };
+
+    global.DashboardV8
+      .lastLogoutResult =
+      result;
+
+    console.log(
+      '[Dashboard Logout] 완료:',
+      result
+    );
+
+    console.table(result);
+
+    global.location.replace(
+      URLS.login
+    );
+  }
+
+  async function resetTesterData(){
+    if(!global.isPublicTester()){
+      showToast(
+        '테스터 로그인에서만 사용할 수 있습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var resetKeys = [
+      'riskAssessments',
+      'riskAssessmentResults',
+      'safetyProvisions',
+      'safetyQuizzes',
+      'testerSafetyPermits',
+      'testerSafetyTBM',
+      'tbm-v2-draft',
+      'safetyViolations'
+    ];
+
+    var existingKeys =
+      resetKeys.filter(
+        function(key){
+          return (
+            localStorage.getItem(
+              key
+            ) !== null
+          );
+        }
+      );
+
+    var answer =
+      await showConfirm({
+        icon:'🧪',
+        title:'내 테스트 자료 초기화',
+        message:
+          '테스터가 작성한 위험성평가·안전정보·퀴즈·허가서·TBM 자료를 삭제합니다.\n\n' +
+          '정적 작업DB와 Firestore 데이터는 삭제하지 않습니다.\n' +
+          '현재 삭제 대상: ' +
+          existingKeys.length +
+          '개 저장 영역',
+        okText:'테스트 자료 삭제',
+        type:'danger'
+      });
+
+    if(!answer.confirmed){
+      return;
+    }
+
+    var before = {};
+
+    resetKeys.forEach(
+      function(key){
+        var value =
+          localStorage.getItem(key);
+
+        if(value === null){
+          before[key] = 0;
+          return;
+        }
+
+        try{
+          var parsed =
+            JSON.parse(value);
+
+          before[key] =
+            Array.isArray(parsed)
+              ? parsed.length
+              : 1;
+
+        }catch(error){
+          before[key] = 1;
+        }
+
+        localStorage.removeItem(
+          key
+        );
+      }
+    );
+
+    /*
+     * 정적 작업DB와 테마는 삭제하지 않습니다.
+     */
+    var result = {
+      success:true,
+      removedStorageAreas:
+        existingKeys.length,
+      removedKeys:
+        existingKeys.join(', '),
+      workDatabaseKept:
+        localStorage.getItem(
+          'safetyDatabase'
+        ) !== null,
+      themeKept:
+        localStorage.getItem(
+          'theme'
+        ) !== null,
+      firestoreWriteCount:0,
+      sessionKept:
+        sessionStorage.getItem(
+          'appSession'
+        ) !== null
+    };
+
+    global.DashboardV8
+      .lastTesterResetResult =
+      result;
+
+    console.log(
+      '[Dashboard Tester Reset] 삭제 전 건수:',
+      before
+    );
+
+    console.log(
+      '[Dashboard Tester Reset] 완료:',
+      result
+    );
+
+    console.table(result);
+
+    showToast(
+      '테스트 자료를 초기화했습니다.',
+      'success'
+    );
+
+    setTimeout(function(){
+      global.location.reload();
+    },700);
+  }
+
   function goTab(name){
     if(
       name === 'settings' &&
@@ -8946,7 +9216,7 @@ button{touch-action:manipulation}
     global.scrollTo(0,0);
   }
 
-  function applyRoleUi(){
+    function applyRoleUi(){
     document
       .querySelectorAll(
         '.admin-only'
@@ -8955,7 +9225,28 @@ button{touch-action:manipulation}
         element.hidden =
           !global.isAdminUser();
       });
+
+    var testerResetButton =
+      byId(
+        'testerResetButton'
+      );
+
+    if(testerResetButton){
+      testerResetButton.hidden =
+        !global.isPublicTester();
+    }
+
+    var logoutButton =
+      byId(
+        'logoutButton'
+      );
+
+    if(logoutButton){
+      logoutButton.hidden =
+        false;
+    }
   }
+
 
   function refreshFromCache(){
     loadAllData();
@@ -9165,13 +9456,31 @@ button{touch-action:manipulation}
 
 
 
-
   function bindEvents(){
     byId('themeButton')
       .addEventListener(
         'click',
         toggleTheme
       );
+
+    byId('themeSettingButton')
+      .addEventListener(
+        'click',
+        toggleTheme
+      );
+
+    byId('logoutButton')
+      .addEventListener(
+        'click',
+        logoutDashboard
+      );
+
+    byId('testerResetButton')
+      .addEventListener(
+        'click',
+        resetTesterData
+      );
+
 
     byId('themeSettingButton')
       .addEventListener(
@@ -9967,8 +10276,10 @@ import {
 
 import {
   getAuth,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
 
 import {
   getFirestore,
@@ -11293,6 +11604,28 @@ async function processPermit(
   );
 }
 
+async function logoutFirebaseUser(){
+  try{
+    await signOut(auth);
+
+    console.log(
+      '[Dashboard Firebase] 로그아웃 완료'
+    );
+
+    return {
+      success:true
+    };
+
+  }catch(error){
+    console.error(
+      '[Dashboard Firebase] 로그아웃 실패:',
+      error
+    );
+
+    throw error;
+  }
+}
+
 window.DashboardFirebase = {
   app:
     firebaseApp,
@@ -11328,8 +11661,12 @@ window.DashboardFirebase = {
     saveWorkDatabase,
 
   loadPublicWorks:
-    loadPublicWorks
+    loadPublicWorks,
+
+  logout:
+    logoutFirebaseUser
 };
+
 
 
 
