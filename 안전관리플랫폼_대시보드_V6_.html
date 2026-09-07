@@ -8794,154 +8794,7 @@ button{touch-action:manipulation}
         global.isPublicTester &&
         global.isPublicTester()
       ){
-        global.DashboardFirebase
-          .loadPublicWorks()
-          .then(function(publicWorks){
-            localStorage.setItem(
-              'safetyDatabase',
-              JSON.stringify({
-                metadata:{
-                  version:'8.1-public',
-                  schemaVersion:1,
-                  sourceType:'public-firestore',
-                  lastUpdate:new Date().toISOString(),
-                  totalCount:publicWorks.length,
-                  readonly:true,
-                  publicTesterData:true
-                },
-                workHistory:publicWorks
-              })
-            );
-
-            localStorage.setItem(
-              'workDbLastSync',
-              String(Date.now())
-            );
-
-            refreshFromCache();
-          })
-          .catch(function(error){
-            console.warn(
-              '[Dashboard v8] 테스터 공개 작업현황 로드 실패:',
-              error
-            );
-
-            refreshFromCache();
-          });
-
-      }else{
-        /* 관리자·일반 사용자 */
-        Promise.allSettled([
-          global
-            .DashboardFirebase
-            .loadWorkDatabase(true),
-
-          global
-            .DashboardFirebase
-            .loadPermits(true)
-        ]).then(function(results){
-          var workResult =
-            results[0];
-
-          var permitResult =
-            results[1];
-
-          if(
-            workResult.status ===
-              'rejected'
-          ){
-            console.error(
-              '[Dashboard v8] 작업DB 초기 로드 실패:',
-              workResult.reason
-            );
-
-            showToast(
-              '작업DB 로드에 실패했습니다. 캐시된 자료를 표시합니다.',
-              'warning'
-            );
-          }
-
-          if(
-            permitResult.status ===
-              'rejected'
-          ){
-            console.warn(
-              '[Dashboard v8] 허가서 초기 로드 실패:',
-              permitResult.reason
-            );
-          }
-
-          refreshFromCache();
-        });
-      }
-    }else{
-      /* 캐시가 유효하면 로컬에서 바로 로드 */
-      refreshFromCache();
-    }
-
-    console.log(
-      '[Dashboard v8] 초기화 완료:',
-      {
-        version:
-          DASHBOARD_VERSION,
-        role:
-          appSession.role,
-        works:
-          state.allWorks.length,
-        permits:
-          state.permits.length
-      }
-    );
-  }
-
-    if(state.initialized){
-      return;
-    }
-
-    state.initialized = true;
-
-    applyTheme(
-      localStorage.getItem(
-        'theme'
-      ) || 'light'
-    );
-
-    applyRoleUi();
-        if(
-      global.isAdminUser()
-    ){
-      updateStaticWorkCounts();
-
-      setTimeout(
-        checkStaticDatabase,
-        300
-      );
-    }
-
-    startClock();
-    loadNotice();
-    loadAllData();
-    loadInspections();
-    updateDateControls();
-    applyDateFilter();
-    updatePermitCard();
-    bindEvents();
-
-    console.log(
-      '[Dashboard v8] 초기화 완료:',
-      {
-        version:
-          DASHBOARD_VERSION,
-        role:
-          appSession.role,
-        works:
-          state.allWorks.length,
-        permits:
-          state.permits.length
-      }
-    );
-  }
-
+      
   global.DashboardV8.openSheet =
     openSheet;
 
@@ -9316,19 +9169,6 @@ function localPermits(){
   }
 }
 
-function saveLocalPermits(
-  records
-){
-  localStorage.setItem(
-    'safetyPermits',
-    JSON.stringify(records)
-  );
-
-  localStorage.setItem(
-    'permitsLastSync',
-    String(Date.now())
-  );
-}
 
 async function loadPermits(
   force
@@ -9477,19 +9317,6 @@ function mergePermits(local, cloud){
     return recordTime(b) - recordTime(a);
   });
 }
-
-function saveLocalPermits(records){
-  localStorage.setItem(
-    storageKey(),
-    JSON.stringify(records)
-  );
-
-  localStorage.setItem(
-    'permitsLastSync',
-    String(Date.now())
-  );
-}
-
 
 function isPending(record){
   var code =
