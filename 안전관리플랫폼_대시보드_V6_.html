@@ -9188,6 +9188,20 @@ function localPermits(){
     return [];
   }
 }
+function saveLocalPermits(
+  records
+){
+  localStorage.setItem(
+    'safetyPermits',
+    JSON.stringify(records)
+  );
+
+  localStorage.setItem(
+    'permitsLastSync',
+    String(Date.now())
+  );
+}
+
 
 async function loadPermits(
   force
