@@ -38,6 +38,48 @@
   console.log('%c[APP MODE] TEST','background:#dc3545;color:#fff;padding:4px 12px;border-radius:4px;font-weight:800');
 })();
 </script>
+<script>
+(function(){
+  'use strict';
+
+  var session = null;
+
+  try{
+    session =
+      JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || 'null'
+      );
+  }catch(error){
+    session = null;
+  }
+
+  var validSession =
+    Boolean(
+      session &&
+      session.environment === 'test' &&
+      (
+        session.role === 'admin' ||
+        session.role === 'user' ||
+        session.role === 'tester'
+      )
+    );
+
+  if(!validSession){
+    /*
+     * 대시보드 본문 스크립트에 오류가 있더라도
+     * 로그인되지 않은 사용자에게 화면을 노출하지 않습니다.
+     */
+    document.documentElement.style
+      .display = 'none';
+
+    window.location.replace(
+      'login.html'
+    );
+  }
+})();
+</script>
 
 <style>
 :root{
@@ -1476,9 +1518,12 @@ button{touch-action:manipulation}
      * 정규식 리터럴은 반드시 한 줄로 유지합니다.
      */
     text = text.replace(
-      /^\s*
-\[(?:계획|예정|확정|긴급)\]
-\s*/i,
+      new RegExp(
+        '^\\s*\
+\[(?:계획|예정|확정|긴급)\\]
+\\s*',
+        'i'
+      ),
       ''
     );
 
