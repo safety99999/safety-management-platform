@@ -5344,9 +5344,10 @@ console.log(
       record &&
       record.riskId &&
       (
-        !record.status ||
         record.status ===
-          '평가완료'
+          '평가완료' ||
+        record.statusCode ===
+          'completed'
       )
     );
   }
@@ -5367,9 +5368,22 @@ console.log(
   ){
     return readRiskAssessments()
       .filter(function(record){
+        var linkedWorkId =
+          clean(
+            record &&
+            (
+              record.workId ||
+              record.sourceWorkId ||
+              (
+                record.workflowLink &&
+                record.workflowLink.workId
+              )
+            )
+          );
+
         return (
           completedRisk(record) &&
-          clean(record.workId) ===
+          linkedWorkId ===
             clean(workId)
         );
       })
@@ -5380,6 +5394,7 @@ console.log(
         );
       })[0] || null;
   }
+
 
   function readWorkHistory(){
     try{
@@ -10509,6 +10524,17 @@ console.log(
     if(answer.reason.length < 2){
       showToast(
         '삭제 사유를 2자 이상 입력하세요.',
+        'warning'
+      );
+
+      return;
+    }
+    if(
+      clean(answer.permitNo) !==
+      clean(record.permitNo)
+    ){
+      showToast(
+        '입력한 허가번호가 일치하지 않습니다.',
         'warning'
       );
 
