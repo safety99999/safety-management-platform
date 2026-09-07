@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
   "environment": "test",
-  "generatedAt": "2026-09-07T11:35:59.119Z",
-  "generatedBy": "TEST SHA256 repair",
+  "generatedAt": "2026-09-07T14:54:22.115Z",
+  "generatedBy": "테스트 관리자",
   "repository": "safety99999/safety-management-platform",
   "files": {
     "riskAssessmentDB": {
@@ -15,9 +15,9 @@
     "workDatabase": {
       "filename": "work-database.test.json",
       "schemaVersion": 1,
-      "count": 763,
-      "size": 2717921,
-      "sha256": "fe6a48dd73aec33cfac54578ff6e66db7587b2a3b3b57ec30be259cdc3786b38"
+      "count": 770,
+      "size": 2729197,
+      "sha256": "6c221785dabebcdcd734b19fbd558eeeedf195706507b2808f3960e2ca78824a"
     }
   }
 }
