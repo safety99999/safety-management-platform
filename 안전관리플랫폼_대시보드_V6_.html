@@ -1769,11 +1769,11 @@ button{touch-action:manipulation}
         record.status ===
           '평가완료' ||
         record.statusCode ===
-          'completed' ||
-        !record.status
+          'completed'
       )
     );
   }
+
 
   function safetyInfoState(record){
     if(!record){
@@ -1826,16 +1826,17 @@ button{touch-action:manipulation}
     };
   }
 
-  function quizState(
+    function quizState(
     record,
     safetyState
   ){
+    /*
+     * 안전정보 확인 또는 서명이 완료되기 전에는
+     * 교육·퀴즈 단계를 잠급니다.
+     */
     if(
       !safetyState ||
-      (
-        safetyState.code ===
-          'none'
-      )
+      safetyState.complete !== true
     ){
       return {
         code:'locked',
@@ -1929,6 +1930,11 @@ button{touch-action:manipulation}
     var direct =
       isDirectWork(work);
 
+    /*
+     * 직영 작업은 위험성평가만 완료하면 됩니다.
+     * 도급·외주 작업은 위험성평가 완료 전까지
+     * 안전정보 단계를 잠급니다.
+     */
     var safety =
       direct
         ? {
@@ -1936,14 +1942,24 @@ button{touch-action:manipulation}
             label:'정보 -',
             complete:true
           }
-        : safetyInfoState(
-            indexes
-              .safetyByWorkId[
-                workId
-              ] ||
-            null
-          );
+        : !riskComplete
+          ? {
+              code:'locked',
+              label:'정보 🔒',
+              complete:false
+            }
+          : safetyInfoState(
+              indexes
+                .safetyByWorkId[
+                  workId
+                ] ||
+              null
+            );
 
+    /*
+     * 교육·퀴즈는 안전정보 확인 또는
+     * 서명이 완료된 후에만 활성화됩니다.
+     */
     var quiz =
       direct
         ? {
@@ -2051,6 +2067,7 @@ button{touch-action:manipulation}
       next:next
     };
   }
+
 
   function preworkChip(
     label,
@@ -2276,14 +2293,16 @@ button{touch-action:manipulation}
               riskUrl
             ) +
 
-            preworkChip(
+                 preworkChip(
               item.safety.label,
               item.safety.code,
-              item.direct
+              item.direct ||
+              item.safety.code ===
+                'locked'
                 ? ''
                 : safetyUrl
             ) +
-
+     
             preworkChip(
               item.quiz.label,
               item.quiz.code,
@@ -7558,7 +7577,7 @@ button{touch-action:manipulation}
         'click',
         function(){
           navigate(
-            RISK_URL +
+            URLS.risk +
             '?view=admin&env=test'
           );
         }
@@ -8878,12 +8897,18 @@ async function loadPublicWorks(){
       }
     );
 
+    /*
+     * module script에서는 앞쪽 IIFE의 clean()에
+     * 접근할 수 없으므로 직접 문자열을 정리합니다.
+     */
     works.sort(
       function(first,second){
-        return clean(
-          second.date
-        ).localeCompare(
-          clean(first.date)
+        return String(
+          second.date || ''
+        ).trim().localeCompare(
+          String(
+            first.date || ''
+          ).trim()
         );
       }
     );
@@ -8899,6 +8924,7 @@ async function loadPublicWorks(){
     throw error;
   }
 }
+
 
 async function processPermit(
   permitNo,
@@ -9236,6 +9262,19 @@ console.log(
     ){
       return;
     }
+
+    /*
+     * dashboard-firebase-ready와 DOMContentLoaded가
+     * 모두 호출되어도 최초 동기화는 한 번만 수행합니다.
+     */
+    if(sync.initialSyncStarted){
+      return;
+    }
+
+    sync.initialSyncStarted =
+      true;
+
+
 
     /*
      * 공개 테스터는 내부 작업DB가 아니라
