@@ -5552,51 +5552,481 @@ console.log(
     return '';
   }
 
+  function permitDisplaySource(
+    work
+  ){
+    work = work || {};
+
+    return clean(
+      work.workNameFull ||
+      work.workName ||
+      ''
+    )
+      .split('\r').join(' ')
+      .split('\n').join(' ')
+      .split('\t').join(' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function simplifyPermitWorkName(
+    value
+  ){
+    var original =
+      clean(value);
+
+    if(!original){
+      return '작업명 미지정';
+    }
+
+    var text =
+      original
+        .split('\r').join(' ')
+        .split('\n').join(' ')
+        .split('\t').join(' ')
+        .replace(/\s+/g,' ')
+        .trim();
+
+    /*
+     * "작업장소: ... 작업내용: ..." 형식이면
+     * 작업내용 뒤쪽만 화면 작업명으로 사용합니다.
+     */
+    var contentExpression =
+      new RegExp(
+        '작업\\s*내용\\s*[:：]',
+        'i'
+      );
+
+    var contentMatch =
+      contentExpression.exec(
+        text
+      );
+
+    if(contentMatch){
+      text =
+        text.substring(
+          contentMatch.index +
+          contentMatch[0].length
+        ).trim();
+    }
+
+    /*
+     * 관리·직종 태그를 제거합니다.
+     * 설비명을 의미하는 기타 대괄호 내용은 유지합니다.
+     */
+    var removableTags = [
+      '[계획]',
+      '[예정]',
+      '[확정]',
+      '[긴급]',
+      '[기계]',
+      '[전기]',
+      '[계장]',
+      '[토목]',
+      '[건축]',
+      '[소방]'
+    ];
+
+    var tagRemoved = true;
+
+    while(tagRemoved){
+      tagRemoved = false;
+
+      for(
+        var tagIndex = 0;
+        tagIndex <
+          removableTags.length;
+        tagIndex++
+      ){
+        var tag =
+          removableTags[
+            tagIndex
+          ];
+
+        if(
+          text.indexOf(tag) === 0
+        ){
+          text =
+            text.substring(
+              tag.length
+            ).trim();
+
+          tagRemoved = true;
+          break;
+        }
+      }
+    }
+
+    /*
+     * 작업명 선두의 공장·단계 정보를 제거합니다.
+     */
+    var prefixes = [
+      '포항양극재 2-2 단계공장',
+      '포항양극재 2-1 단계공장',
+      '포항양극재 2-2단계공장',
+      '포항양극재 2-1단계공장',
+      '포항양극재2-2단계공장',
+      '포항양극재2-1단계공장',
+      '포항 양극재 2-2 단계공장',
+      '포항 양극재 2-1 단계공장',
+      '포항 양극재 2-2 단계',
+      '포항 양극재 2-1 단계',
+      '포항양극재 2-2단계',
+      '포항양극재 2-1단계',
+      '포항양극재 1단계',
+      '포항양극재공장',
+      '포항 양극재',
+      '포항양극재',
+      '양극재공장',
+      '2-2 단계공장',
+      '2-1 단계공장',
+      '2-2단계공장',
+      '2-1단계공장',
+      '2-2 단계',
+      '2-1 단계',
+      '2-2단계',
+      '2-1단계',
+      '1단계공장',
+      '1단계',
+      '1공장',
+      '2공장'
+    ];
+
+    var prefixRemoved = true;
+
+    while(prefixRemoved){
+      prefixRemoved = false;
+
+      for(
+        var prefixIndex = 0;
+        prefixIndex <
+          prefixes.length;
+        prefixIndex++
+      ){
+        var prefix =
+          prefixes[
+            prefixIndex
+          ];
+
+        if(
+          text.indexOf(prefix) === 0
+        ){
+          text =
+            text.substring(
+              prefix.length
+            ).trim();
+
+          prefixRemoved = true;
+          break;
+        }
+      }
+    }
+
+    /*
+     * 선두의 층·라인·9A/9B/9C 위치정보를
+     * 반복해서 제거합니다.
+     */
+    var leadingPatterns = [
+      new RegExp(
+        '^\\s*(?:공장동|공장)?\\s*\\d+\\s*층\\s*',
+        'i'
+      ),
+
+      new RegExp(
+        '^\\s*\\d+\\s*[A-C]?' +
+        '(?:\\s*[,·/]\\s*(?:\\d+\\s*)?[A-C]?)*' +
+        '\\s*라인\\s*',
+        'i'
+      ),
+
+      new RegExp(
+        '^\\s*\\d+\\s*[A-C]' +
+        '(?:\\s*[,·/]\\s*(?:\\d+\\s*)?[A-C])*' +
+        '\\s*',
+        'i'
+      )
+    ];
+
+    var locationRemoved = true;
+
+    while(locationRemoved){
+      locationRemoved = false;
+
+      for(
+        var patternIndex = 0;
+        patternIndex <
+          leadingPatterns.length;
+        patternIndex++
+      ){
+        var before =
+          text;
+
+        text =
+          text.replace(
+            leadingPatterns[
+              patternIndex
+            ],
+            ''
+          ).trim();
+
+        if(before !== text){
+          locationRemoved = true;
+          break;
+        }
+      }
+
+      text =
+        text.replace(
+          /^[,.:;·\-–\s]+/,
+          ''
+        ).trim();
+    }
+
+    var removableTexts = [
+      'ILS 시스템 지정 완료',
+      'ILS시스템 지정 완료',
+      'ILS 시스템 지정됨',
+      'ILS시스템 지정됨',
+      'ILS 지정 완료',
+      'ILS 지정됨',
+      'ILS 미실시',
+      'ILS 불필요',
+      'ILS 실시'
+    ];
+
+    removableTexts.forEach(
+      function(removableText){
+        text =
+          text
+            .split(removableText)
+            .join(' ');
+      }
+    );
+
+    text =
+      text
+        .replace(/\s+/g,' ')
+        .replace(
+          /^[,.:;·\-–\s]+/,
+          ''
+        )
+        .trim();
+
+    if(!text){
+      text = original;
+    }
+
+    return text.length > 55
+      ? text.substring(0,55) +
+        '...'
+      : text;
+  }
+
   function workLocation(work){
     if(!work){
       return '미지정';
     }
 
-    if(work.locationRaw){
-      return clean(
-        work.locationRaw
+    var rawLocation =
+      clean(
+        work.locationRaw ||
+        work.workPlaceRaw ||
+        (
+          typeof work.location ===
+            'string'
+            ? work.location
+            : work.location &&
+              work.location.raw
+              ? work.location.raw
+              : ''
+        ) ||
+        work.locationDisplay ||
+        ''
       );
-    }
 
-    if(work.workPlaceRaw){
-      return clean(
-        work.workPlaceRaw
+    var sourceName =
+      permitDisplaySource(
+        work
       );
-    }
 
+    var source =
+      (
+        rawLocation +
+        ' ' +
+        sourceName
+      )
+        .split('\r').join(' ')
+        .split('\n').join(' ')
+        .split('\t').join(' ')
+        .replace(/\s+/g,' ')
+        .trim();
+
+    var compact =
+      source
+        .split(' ')
+        .join('');
+
+    var factory = '';
+
+    /*
+     * 공장 판정 기준:
+     * 1단계·1~3라인 = 1공장
+     * 2-1단계·4~5라인 = 1공장
+     * 2-2단계·6~9라인 = 2공장
+     */
     if(
-      typeof work.location ===
-        'string'
+      compact.indexOf(
+        '2공장'
+      ) >= 0 ||
+      compact.indexOf(
+        '2-2단계'
+      ) >= 0
     ){
-      return clean(
-        work.location
+      factory = '2공장';
+
+    }else if(
+      compact.indexOf(
+        '1공장'
+      ) >= 0 ||
+      compact.indexOf(
+        '2-1단계'
+      ) >= 0 ||
+      (
+        compact.indexOf(
+          '1단계'
+        ) >= 0 &&
+        compact.indexOf(
+          '2-1단계'
+        ) < 0
+      )
+    ){
+      factory = '1공장';
+    }
+
+    var lineNumber = 0;
+    var lineText = '';
+
+    /*
+     * 9A·9B·9C 및 9B,C라인은
+     * 모두 9라인으로 표준화합니다.
+     */
+    var letterLineExpression =
+      new RegExp(
+        '(?:^|[^0-9])([1-9])\\s*[A-C]' +
+        '(?:\\s*[,·/]\\s*(?:[1-9]\\s*)?[A-C])*' +
+        '\\s*(?:라인)?',
+        'i'
+      );
+
+    var letterLineMatch =
+      source.match(
+        letterLineExpression
+      );
+
+    if(letterLineMatch){
+      lineNumber =
+        Number(
+          letterLineMatch[1]
+        ) || 0;
+    }
+
+    if(!lineNumber){
+      var lineExpression =
+        new RegExp(
+          '(?:^|[^0-9])([1-9])\\s*라인',
+          'i'
+        );
+
+      var lineMatch =
+        source.match(
+          lineExpression
+        );
+
+      if(lineMatch){
+        lineNumber =
+          Number(
+            lineMatch[1]
+          ) || 0;
+      }
+    }
+
+    if(lineNumber){
+      lineText =
+        lineNumber +
+        '라인';
+
+      if(!factory){
+        factory =
+          lineNumber >= 6
+            ? '2공장'
+            : '1공장';
+      }
+    }
+
+    var floorText = '';
+
+    var floorExpression =
+      new RegExp(
+        '(?:공장동\\s*)?(\\d+)\\s*층',
+        'i'
+      );
+
+    var floorMatch =
+      source.match(
+        floorExpression
+      );
+
+    if(floorMatch){
+      floorText =
+        floorMatch[1] +
+        '층';
+    }
+
+    var areaText = '';
+
+    [
+      '전기실',
+      '기계실',
+      '옥외',
+      '옥내',
+      '창고',
+      '유틸리티실',
+      '집진기실'
+    ].some(function(area){
+      if(
+        source.indexOf(area) >= 0
+      ){
+        areaText = area;
+        return true;
+      }
+
+      return false;
+    });
+
+    var parts = [];
+
+    [
+      factory,
+      lineText,
+      floorText,
+      areaText
+    ].forEach(function(value){
+      if(
+        value &&
+        parts.indexOf(value) < 0
+      ){
+        parts.push(value);
+      }
+    });
+
+    if(parts.length){
+      return parts.join(
+        ' · '
       );
     }
 
-    if(
-      work.location &&
-      typeof work.location ===
-        'object'
-    ){
-      return [
-        work.location.raw || '',
-        work.location.factory || '',
-        work.location.line
-          ? work.location.line +
-            '라인'
-          : '',
-        work.location.stage || ''
-      ]
-        .filter(Boolean)
-        .join(' ');
-    }
-
-    return '미지정';
+    return rawLocation ||
+      '미지정';
   }
 
   function workCompany(work){
@@ -5610,38 +6040,43 @@ console.log(
   }
 
   function workName(work){
-    return clean(
-      work.workName ||
+    work = work || {};
+
+    /*
+     * 기존 workName보다 관리대장 원문인
+     * workNameFull을 우선 사용해야 새 간소화 규칙이
+     * 실제 화면에 적용됩니다.
+     */
+    return simplifyPermitWorkName(
       work.workNameFull ||
+      work.workName ||
       '작업명 미지정'
     );
   }
 
   function factoryGroup(work){
-    var text = [
-      workLocation(work),
-      work.workNameFull || '',
-      work.workName || ''
-    ]
-      .join(' ')
-      .replace(/\s+/g,'');
+    var location =
+      workLocation(work);
 
     if(
-      text.indexOf('2-2') >= 0 ||
-      text.indexOf('2공장') >= 0
+      location.indexOf(
+        '2공장'
+      ) >= 0
     ){
       return 'factory2';
     }
 
     if(
-      text.indexOf('2-1') >= 0 ||
-      text.indexOf('1공장') >= 0
+      location.indexOf(
+        '1공장'
+      ) >= 0
     ){
       return 'factory1';
     }
 
     return 'other';
   }
+
 
   function riskLevel(record){
     record = record || {};
