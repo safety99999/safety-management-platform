@@ -1650,6 +1650,101 @@ button:disabled{
   font-weight:700;
   line-height:1.55;
 }
+/* 오늘 작업목록 카드 */
+.ptw-work-card{
+  position:relative;
+  margin-bottom:10px;
+  padding:14px;
+  border:1.5px solid var(--line);
+  border-left:4px solid var(--posco);
+  border-radius:var(--r);
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+
+.ptw-work-name{
+  margin-bottom:7px;
+  color:var(--ink);
+  font-size:15px;
+  font-weight:900;
+  line-height:1.45;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+
+.ptw-work-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 10px;
+  margin-bottom:10px;
+  color:var(--sub);
+  font-size:12px;
+  font-weight:700;
+  line-height:1.5;
+}
+
+.ptw-work-source{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:9px;
+  padding-top:9px;
+  border-top:1px solid var(--line);
+}
+
+.ptw-work-no{
+  overflow:hidden;
+  color:var(--faint);
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:10.5px;
+  font-weight:750;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.ptw-start-btn{
+  min-height:38px;
+  padding:9px 12px;
+  border:0;
+  border-radius:9px;
+  background:var(--deep);
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+  cursor:pointer;
+}
+
+.ptw-start-btn.existing{
+  background:var(--sunk);
+  color:var(--sub);
+}
+
+.ptw-start-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+
+.ptw-empty{
+  padding:34px 16px;
+  border:1.5px dashed var(--line);
+  border-radius:var(--r);
+  background:var(--card);
+  text-align:center;
+}
+
+.ptw-empty-icon{
+  margin-bottom:8px;
+  font-size:38px;
+  opacity:.45;
+}
+
+.ptw-empty-title{
+  color:var(--sub);
+  font-size:14px;
+  font-weight:800;
+}
+
 
 .sync-indicator{
   margin-top:9px;
