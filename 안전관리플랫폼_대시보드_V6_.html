@@ -81,7 +81,51 @@
 })();
 </script>
 
+<script>
+(function(){
+  'use strict';
+
+  var session = null;
+
+  try{
+    session =
+      JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || 'null'
+      );
+  }catch(error){
+    session = null;
+  }
+
+  var validSession =
+    Boolean(
+      session &&
+      session.environment ===
+        'test' &&
+      (
+        session.role ===
+          'admin' ||
+        session.role ===
+          'user' ||
+        session.role ===
+          'tester'
+      )
+    );
+
+  if(!validSession){
+    document.documentElement
+      .style.display = 'none';
+
+    window.location.replace(
+      'login.html'
+    );
+  }
+})();
+</script>
+
 <style>
+
 :root{
   --deep:#003C7E;--posco:#0067B1;--bright:#3FA9F5;--tint:#E7F0FA;
   --bg:#EEF2F7;--card:#FFFFFF;--sunk:#F3F6FA;--ink:#0F1D2B;
@@ -1506,55 +1550,245 @@ button{touch-action:manipulation}
     }
 
     var text =
-      original
-        .replace(
-          /^["'“”‘’]+|["'“”‘’]+$/g,
-          ''
-        )
-        .trim();
+      original;
 
     /*
-     * 계획·예정 등 관리용 접두어를 제거합니다.
-     * 정규식 리터럴은 반드시 한 줄로 유지합니다.
+     * 줄바꿈과 탭을 공백으로 변환합니다.
      */
-    text = text.replace(/^\s*
-\[(계획|예정|확정|긴급)\]
-\s*/i, '');
-    
-    /*
-     * 작업명 앞부분의 공장·단계 정보를 제거합니다.
-     * 원문은 workNameFull에 유지됩니다.
-     */
-    text = text.replace(
-      /^\s*(?:포항\s*)?양극재\s*(?:(?:2-1|2-2|1|2)\s*단계)?\s*(?:공장)?\s*/i,
-      ''
-    );
-
-    text = text.replace(
-      /^\s*(?:(?:2-1|2-2|1|2)\s*단계|[12]\s*공장)\s*/i,
-      ''
-    );
-
-    /*
-     * 선두 라인 정보는 위치에서 표시합니다.
-     */
-    text = text.replace(
-      /^\s*\d+\s*라인\s*/i,
-      ''
-    );
-
-    /*
-     * 관리용 ILS 상태문구를 제거합니다.
-     */
-    text = text.replace(
-      /\bILS\s*(?:시스템\s*)?(?:지정\s*완료|지정됨|실시|미실시|불필요)\b/gi,
-      ''
-    );
-
     text = text
-      .replace(/\s+/g,' ')
-      .replace(/^[,.:;\-\s]+/,'')
-      .trim();
+      .split('\r').join(' ')
+      .split('\n').join(' ')
+      .split('\t').join(' ');
+
+    while(
+      text.indexOf('  ') >= 0
+    ){
+      text = text
+        .split('  ')
+        .join(' ');
+    }
+
+    text = text.trim();
+
+    /*
+     * 작업명 앞뒤의 따옴표를 제거합니다.
+     */
+    var quoteCharacters =
+      '"\'“”‘’';
+
+    while(
+      text.length &&
+      quoteCharacters.indexOf(
+        text.charAt(0)
+      ) >= 0
+    ){
+      text =
+        text.substring(1).trim();
+    }
+
+    while(
+      text.length &&
+      quoteCharacters.indexOf(
+        text.charAt(
+          text.length - 1
+        )
+      ) >= 0
+    ){
+      text =
+        text.substring(
+          0,
+          text.length - 1
+        ).trim();
+    }
+
+    /*
+     * 관리용 접두어를 제거합니다.
+     */
+    var managementPrefixes = [
+      '[계획]',
+      '[예정]',
+      '[확정]',
+      '[긴급]'
+    ];
+
+    managementPrefixes.some(
+      function(prefix){
+        if(
+          text.indexOf(prefix) === 0
+        ){
+          text =
+            text.substring(
+              prefix.length
+            ).trim();
+
+          return true;
+        }
+
+        return false;
+      }
+    );
+
+    /*
+     * 작업명 앞쪽의 공장·단계 문구를 제거합니다.
+     * 긴 문구부터 확인해야 짧은 문구가 먼저
+     * 제거되는 것을 방지할 수 있습니다.
+     */
+    var locationPrefixes = [
+      '포항양극재 2-2 단계공장',
+      '포항양극재 2-1 단계공장',
+      '포항양극재2-2단계공장',
+      '포항양극재2-1단계공장',
+      '포항 양극재 2-2 단계',
+      '포항 양극재 2-1 단계',
+      '포항양극재 2-2단계',
+      '포항양극재 2-1단계',
+      '포항양극재 1단계',
+      '포항양극재 2단계',
+      '포항양극재공장',
+      '포항 양극재',
+      '포항양극재',
+      '양극재공장',
+      '2-2단계공장',
+      '2-1단계공장',
+      '2-2단계',
+      '2-1단계',
+      '1단계공장',
+      '2단계공장',
+      '1공장',
+      '2공장'
+    ];
+
+    var prefixRemoved = true;
+
+    while(prefixRemoved){
+      prefixRemoved = false;
+
+      for(
+        var prefixIndex = 0;
+        prefixIndex <
+          locationPrefixes.length;
+        prefixIndex++
+      ){
+        var locationPrefix =
+          locationPrefixes[
+            prefixIndex
+          ];
+
+        if(
+          text.indexOf(
+            locationPrefix
+          ) === 0
+        ){
+          text =
+            text.substring(
+              locationPrefix.length
+            ).trim();
+
+          prefixRemoved = true;
+          break;
+        }
+      }
+    }
+
+    /*
+     * 작업명 선두의 '3라인', '4 라인'과 같은
+     * 위치정보를 제거합니다.
+     */
+    var linePosition =
+      text.indexOf('라인');
+
+    if(
+      linePosition > 0 &&
+      linePosition <= 5
+    ){
+      var linePrefix =
+        text.substring(
+          0,
+          linePosition
+        )
+        .split(' ')
+        .join('');
+
+      var numericLine =
+        linePrefix.length > 0;
+
+      for(
+        var numberIndex = 0;
+        numberIndex <
+          linePrefix.length;
+        numberIndex++
+      ){
+        var character =
+          linePrefix.charAt(
+            numberIndex
+          );
+
+        if(
+          character < '0' ||
+          character > '9'
+        ){
+          numericLine = false;
+          break;
+        }
+      }
+
+      if(numericLine){
+        text =
+          text.substring(
+            linePosition +
+            '라인'.length
+          ).trim();
+      }
+    }
+
+    /*
+     * 화면에 불필요한 ILS 관리 상태문구를 제거합니다.
+     */
+    var removableTexts = [
+      'ILS 시스템 지정 완료',
+      'ILS시스템 지정 완료',
+      'ILS 시스템 지정됨',
+      'ILS시스템 지정됨',
+      'ILS 지정 완료',
+      'ILS 지정됨',
+      'ILS 미실시',
+      'ILS 불필요',
+      'ILS 실시'
+    ];
+
+    removableTexts.forEach(
+      function(removableText){
+        text = text
+          .split(removableText)
+          .join(' ');
+      }
+    );
+
+    while(
+      text.indexOf('  ') >= 0
+    ){
+      text = text
+        .split('  ')
+        .join(' ');
+    }
+
+    /*
+     * 앞쪽에 남은 구분기호를 정리합니다.
+     */
+    var leadingCharacters =
+      ',.:;- ';
+
+    while(
+      text.length &&
+      leadingCharacters.indexOf(
+        text.charAt(0)
+      ) >= 0
+    ){
+      text =
+        text.substring(1);
+    }
+
+    text = text.trim();
 
     if(!text){
       text = original;
