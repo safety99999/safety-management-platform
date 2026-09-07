@@ -4007,7 +4007,8 @@ button{touch-action:manipulation}
     return state.allWorks
       .filter(function(work){
         return (
-          work.date === today()
+          String(work.date || '')
+            .trim() === localDate()
         );
       });
   }
