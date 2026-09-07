@@ -263,7 +263,22 @@
     
     // 4) SHA256 검증
     if(!skipHashCheck){
-      const actualHash = await sha256Hex(text.replace(/^\uFEFF/, ''));
+            /*
+       * GitHub 업로드 과정에서 LF가 CRLF로 변환되거나
+       * 파일 마지막에 개행이 추가될 수 있으므로,
+       * manifest 생성 기준과 동일하게 정규화한 후 검증합니다.
+       */
+      const normalizedText = text
+        .replace(/^\uFEFF/, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\n+$/, '');
+
+      const actualHash =
+        await sha256Hex(
+          normalizedText
+        );
+
       if(actualHash !== expectedHash){
         error(`[${key}] SHA256 mismatch! expected=${expectedHash.slice(0,10)}.. actual=${actualHash.slice(0,10)}..`);
         throw new Error(`SHA256 검증 실패 (${key})`);
@@ -350,7 +365,7 @@
   // 공개 API 등록
   // ─────────────────────────────────────────────────────────
   global.staticDbLoader = {
-    version: '1.0.0',
+    version: '1.0.1',
     load,
     forceRefresh,
     getStatus,
