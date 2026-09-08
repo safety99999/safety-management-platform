@@ -4105,332 +4105,6 @@ button{touch-action:manipulation}
     },300);
   }
 
-function standardWorkCard(
-  item
-){
-  var work =
-    item.work;
-
-  var status =
-    item.status;
-
-  var permit =
-    status.permit ||
-    null;
-
-  var action = '';
-
-  /*
-   * 오늘 허가 전 작업은 기존처럼
-   * 허가서 작성 버튼을 표시합니다.
-   */
-  if(
-    work.date === today() &&
-    status.code === 'waiting'
-  ){
-    action =
-      '<a class="wi-btn" href="' +
-        URLS.permit +
-        '?workId=' +
-        encodeURIComponent(
-          work.workId
-        ) +
-      '">' +
-        '🔐 안전작업허가서 작성 →' +
-      '</a>';
-
-  /*
-   * 보완요청 문서는 보완 화면으로 연결합니다.
-   */
-  }else if(
-    status.code ===
-      'revisionRequested' &&
-    permit
-  ){
-    action =
-      '<a class="wi-btn" href="' +
-        URLS.permit +
-        '?permitNo=' +
-        encodeURIComponent(
-          permit.permitNo
-        ) +
-        '&mode=revision">' +
-        '✏️ 보완 문서 수정 →' +
-      '</a>';
-
-  /*
-   * 허가서가 있는 작업은
-   * 허가서·TBM·안전점검 바로가기를 표시합니다.
-   */
-  }else if(permit){
-    var permitNo =
-      clean(
-        permit.permitNo
-      );
-
-    var workId =
-      getLinkedWorkId(
-        permit
-      ) ||
-      clean(
-        work.workId
-      );
-
-    var permitUrl =
-      URLS.permit +
-      '?permitNo=' +
-      encodeURIComponent(
-        permitNo
-      ) +
-      '&mode=view';
-
-    var tbmUrl =
-      URLS.tbm +
-      '?permitNo=' +
-      encodeURIComponent(
-        permitNo
-      ) +
-      (
-        workId
-          ? '&workId=' +
-            encodeURIComponent(
-              workId
-            )
-          : ''
-      );
-
-    var inspectionUrl =
-      '안전점검_v2.html' +
-      '?permitNo=' +
-      encodeURIComponent(
-        permitNo
-      ) +
-      (
-        workId
-          ? '&workId=' +
-            encodeURIComponent(
-              workId
-            )
-          : ''
-      ) +
-      '&mode=test';
-
-    var inspections =
-      readArray(
-        'safetyInspections'
-      ).filter(function(record){
-        return (
-          clean(
-            record &&
-            record.permitNo
-          ) === permitNo ||
-          (
-            workId &&
-            clean(
-              record &&
-              record.workId
-            ) === workId
-          )
-        );
-      });
-
-    var violationCount =
-      inspections.filter(
-        function(record){
-          return (
-            Number(
-              record.violationCount ||
-              0
-            ) > 0 ||
-            record.status ===
-              '미준수' ||
-            record.status ===
-              '중대위반'
-          );
-        }
-      ).length;
-
-    var inspectionLabel =
-      inspections.length
-        ? (
-            violationCount
-              ? '⚠️ 점검 ' +
-                inspections.length
-              : '🛡️ 점검 ' +
-                inspections.length
-          )
-        : '🛡️ 점검';
-
-    var permitCode =
-      normalizePermitCode(
-        permit
-      );
-
-    var canUseTbm =
-      [
-        'approved',
-        'tbmCompleted',
-        'inProgress',
-        'completed'
-      ].indexOf(
-        permitCode
-      ) >= 0;
-
-    var canInspect =
-      [
-        'approved',
-        'tbmCompleted',
-        'inProgress'
-      ].indexOf(
-        permitCode
-      ) >= 0;
-
-    action =
-      '<div class="work-mini-actions">' +
-
-        '<a class="work-mini-action permit" href="' +
-          escapeHtml(
-            permitUrl
-          ) +
-        '">' +
-          '📄 허가서' +
-        '</a>' +
-
-        (
-          canUseTbm
-            ? '<a class="work-mini-action tbm" href="' +
-                escapeHtml(
-                  tbmUrl
-                ) +
-              '">' +
-                (
-                  status.tbm
-                    ? '✅ TBM'
-                    : '📝 TBM'
-                ) +
-              '</a>'
-            : '<span class="work-mini-action disabled">' +
-                '🔒 TBM' +
-              '</span>'
-        ) +
-
-        (
-          canInspect
-            ? '<a class="work-mini-action inspection ' +
-                (
-                  violationCount
-                    ? 'warning'
-                    : ''
-                ) +
-                '" href="' +
-                escapeHtml(
-                  inspectionUrl
-                ) +
-              '">' +
-                escapeHtml(
-                  inspectionLabel
-                ) +
-              '</a>'
-            : '<span class="work-mini-action disabled">' +
-                '🔒 점검' +
-              '</span>'
-        ) +
-
-      '</div>';
-
-  }else if(
-    status.code ===
-      'scheduled'
-  ){
-    action =
-      '<button type="button" ' +
-        'class="wi-btn secondary" ' +
-        'data-open-prework="' +
-        escapeHtml(
-          work.workId
-        ) +
-      '">' +
-        '📋 사전 준비 확인 →' +
-      '</button>';
-
-  }else{
-    action =
-      '<div class="wi-btn secondary">' +
-        escapeHtml(
-          status.label
-        ) +
-      '</div>';
-  }
-
-  return (
-    '<article class="work-item compact ' +
-      statusClass(
-        status.code
-      ) +
-      (
-        work.riskLevel ===
-          '고위험'
-          ? ' danger'
-          : ''
-      ) +
-    '">' +
-
-      '<div class="wi-top">' +
-
-        '<span class="wi-badge ' +
-          (
-            work.riskLevel ===
-              '고위험'
-              ? 'r'
-              : 'g'
-          ) +
-        '">' +
-          escapeHtml(
-            work.riskLevel
-          ) +
-        '</span>' +
-
-        '<span class="wi-status ' +
-          statusClass(
-            status.code
-          ) +
-        '">' +
-          escapeHtml(
-            status.label
-          ) +
-        '</span>' +
-
-      '</div>' +
-
-      '<div class="wi-name">' +
-        escapeHtml(
-          work.workName
-        ) +
-      '</div>' +
-
-      '<div class="wi-meta">' +
-
-        '<span>📍 ' +
-          escapeHtml(
-            work.locationDisplay
-          ) +
-        '</span>' +
-
-        '<span>🏢 ' +
-          escapeHtml(
-            work.companyDisplay
-          ) +
-        '</span>' +
-
-      '</div>' +
-
-      action +
-
-    '</article>'
-  );
-}
-
-
   function openStatusList(filter){
     var targetDate =
       selectedWorkDate();
@@ -5907,179 +5581,334 @@ if(
     },300);
   }
 
-  function standardWorkCard(
-    item
+function standardWorkCard(
+  item
+){
+  var work =
+    item.work;
+
+  var status =
+    item.status;
+
+  var permit =
+    status.permit ||
+    null;
+
+  var actionHtml = '';
+
+  /*
+   * 허가서가 없는 오늘 작업
+   */
+  if(
+    work.date === today() &&
+    !permit
   ){
-    var work =
-      item.work;
+    actionHtml =
+      '<a class="wi-btn" href="' +
+        URLS.permit +
+        '?workId=' +
+        encodeURIComponent(
+          work.workId
+        ) +
+      '">' +
+        '🔐 안전작업허가서 작성 →' +
+      '</a>';
 
-    var status =
-      item.status;
+  /*
+   * 보완요청 허가서
+   */
+  }else if(
+    status.code ===
+      'revisionRequested' &&
+    permit
+  ){
+    actionHtml =
+      '<a class="wi-btn" href="' +
+        URLS.permit +
+        '?permitNo=' +
+        encodeURIComponent(
+          permit.permitNo
+        ) +
+        '&mode=revision">' +
+        '✏️ 보완 문서 수정 →' +
+      '</a>';
 
-    var action = '';
+  /*
+   * 허가서가 있는 작업
+   */
+  }else if(permit){
+    var permitNo =
+      clean(
+        permit.permitNo
+      );
 
-    if(
-      work.date === today() &&
-      status.code === 'waiting'
-    ){
-      action =
-        '<a class="wi-btn" href="' +
-          URLS.permit +
-          '?workId=' +
-          encodeURIComponent(
-            work.workId
-          ) +
-        '">' +
-          '🔐 안전작업허가서 작성 →' +
-        '</a>';
+    var workId =
+      getLinkedWorkId(
+        permit
+      ) ||
+      clean(
+        work.workId
+      );
 
-    }else if(
-      status.code ===
-        'revisionRequested' &&
-      status.permit
-    ){
-      action =
-        '<a class="wi-btn" href="' +
-          URLS.permit +
-          '?permitNo=' +
-          encodeURIComponent(
-            status.permit.permitNo
-          ) +
-          '&mode=revision">' +
-          '✏️ 보완 문서 수정 →' +
-        '</a>';
+    var permitCode =
+      normalizePermitCode(
+        permit
+      );
 
-    }else if(
-      status.permit
-    ){
-      action =
-        '<a class="wi-btn secondary" href="' +
-          URLS.permit +
-          '?permitNo=' +
-          encodeURIComponent(
-            status.permit.permitNo
-          ) +
-          '&mode=view">' +
-          '📄 허가서 보기 →' +
-        '</a>';
+    var permitUrl =
+      URLS.permit +
+      '?permitNo=' +
+      encodeURIComponent(
+        permitNo
+      ) +
+      '&mode=view';
 
-    }else if(
-      status.code === 'scheduled'
-    ){
-      action =
-        '<button type="button" ' +
-          'class="wi-btn secondary" ' +
-          'data-open-prework="' +
+    var tbmUrl =
+      URLS.tbm +
+      '?permitNo=' +
+      encodeURIComponent(
+        permitNo
+      ) +
+      (
+        workId
+          ? '&workId=' +
+            encodeURIComponent(
+              workId
+            )
+          : ''
+      );
+
+    var inspectionUrl =
+      '안전점검_v2.html' +
+      '?permitNo=' +
+      encodeURIComponent(
+        permitNo
+      ) +
+      (
+        workId
+          ? '&workId=' +
+            encodeURIComponent(
+              workId
+            )
+          : ''
+      ) +
+      '&mode=test';
+
+    var inspections =
+      readArray(
+        'safetyInspections'
+      ).filter(function(record){
+        return (
+          clean(
+            record &&
+            record.permitNo
+          ) === permitNo
+        );
+      });
+
+    var hasViolation =
+      inspections.some(
+        function(record){
+          return (
+            record.status ===
+              '미준수' ||
+            record.status ===
+              '중대위반' ||
+            Number(
+              record.violationCount ||
+              0
+            ) > 0
+          );
+        }
+      );
+
+    var canUseTbm =
+      [
+        'approved',
+        'tbmCompleted',
+        'inProgress',
+        'stopped',
+        'completed'
+      ].indexOf(
+        permitCode
+      ) >= 0;
+
+    var canInspect =
+      [
+        'approved',
+        'tbmCompleted',
+        'inProgress'
+      ].indexOf(
+        permitCode
+      ) >= 0;
+
+    var tbmButton =
+      canUseTbm
+        ? (
+            '<a class="work-mini-action tbm" href="' +
+              escapeHtml(
+                tbmUrl
+              ) +
+            '">' +
+              (
+                status.tbm
+                  ? '✅ TBM'
+                  : '📝 TBM'
+              ) +
+            '</a>'
+          )
+        : (
+            '<span class="work-mini-action disabled">' +
+              '🔒 TBM' +
+            '</span>'
+          );
+
+    var inspectionButton =
+      canInspect
+        ? (
+            '<a class="work-mini-action inspection ' +
+              (
+                hasViolation
+                  ? 'warning'
+                  : ''
+              ) +
+              '" href="' +
+              escapeHtml(
+                inspectionUrl
+              ) +
+            '">' +
+              (
+                inspections.length
+                  ? (
+                      hasViolation
+                        ? '⚠️ 점검 ' +
+                          inspections.length
+                        : '🛡️ 점검 ' +
+                          inspections.length
+                    )
+                  : '🛡️ 점검'
+              ) +
+            '</a>'
+          )
+        : (
+            '<span class="work-mini-action disabled">' +
+              '🔒 점검' +
+            '</span>'
+          );
+
+    actionHtml =
+      '<div class="work-mini-actions">' +
+
+        '<a class="work-mini-action permit" href="' +
           escapeHtml(
-            work.workId
+            permitUrl
           ) +
         '">' +
-          '📋 사전 준비 확인 →' +
-        '</button>';
+          '📄 허가서' +
+        '</a>' +
 
-    }else{
-      action =
-        '<div class="wi-btn secondary">' +
+        tbmButton +
+
+        inspectionButton +
+
+      '</div>';
+
+  /*
+   * 예정 작업
+   */
+  }else if(
+    status.code ===
+      'scheduled'
+  ){
+    actionHtml =
+      '<button type="button" ' +
+        'class="wi-btn secondary" ' +
+        'data-open-prework="' +
+        escapeHtml(
+          work.workId
+        ) +
+      '">' +
+        '📋 사전 준비 확인 →' +
+      '</button>';
+
+  }else{
+    actionHtml =
+      '<div class="wi-btn secondary">' +
+        escapeHtml(
+          status.label
+        ) +
+      '</div>';
+  }
+
+  return (
+    '<article class="work-item compact ' +
+      statusClass(
+        status.code
+      ) +
+      (
+        work.riskLevel ===
+          '고위험'
+          ? ' danger'
+          : ''
+      ) +
+    '">' +
+
+      '<div class="wi-top">' +
+
+        '<span class="wi-badge ' +
+          (
+            work.riskLevel ===
+              '고위험'
+              ? 'r'
+              : 'g'
+          ) +
+        '">' +
+          escapeHtml(
+            work.riskLevel
+          ) +
+        '</span>' +
+
+        '<span class="wi-status ' +
+          statusClass(
+            status.code
+          ) +
+        '">' +
           escapeHtml(
             status.label
           ) +
-        '</div>';
-    }
+        '</span>' +
 
-    var html =
-      '<article class="work-item ' +
-        statusClass(
-          status.code
+      '</div>' +
+
+      '<div class="wi-name">' +
+        escapeHtml(
+          work.workName
         ) +
-        (
-          work.riskLevel ===
-            '고위험'
-            ? ' danger'
-            : ''
-        ) +
-      '">' +
+      '</div>' +
 
-        '<div class="wi-top">' +
-          '<span class="wi-badge ' +
-            (
-              work.riskLevel ===
-                '고위험'
-                ? 'r'
-                : 'g'
-            ) +
-          '">' +
-            escapeHtml(
-              work.riskLevel
-            ) +
-          '</span>' +
+      '<div class="wi-meta">' +
 
-          '<span class="wi-status ' +
-            statusClass(
-              status.code
-            ) +
-          '">' +
-            escapeHtml(
-              status.label
-            ) +
-          '</span>' +
-        '</div>' +
-
-        '<div class="wi-name">' +
+        '<span>📍 ' +
           escapeHtml(
-            work.workName
+            work.locationDisplay
           ) +
-        '</div>' +
+        '</span>' +
 
-        '<div class="wi-meta">' +
-          '<span>📅 ' +
-            escapeHtml(
-              formatShortDate(
-                work.date
-              )
-            ) +
-          '</span>' +
-
-          '<span>📍 ' +
-            escapeHtml(
-              work.locationDisplay
-            ) +
-          '</span>' +
-
-          '<span>🏢 ' +
-            escapeHtml(
-              work.companyDisplay
-            ) +
-          '</span>' +
-        '</div>' +
-
-        action;
-
-    if(
-      work.date === today() &&
-      (
-        status.code ===
-          'approved' ||
-        status.code ===
-          'inProgress'
-      )
-    ){
-      html +=
-        '<button type="button" ' +
-          'class="wi-btn" ' +
-          'style="margin-top:6px" ' +
-          'data-inspect-work="' +
+        '<span>🏢 ' +
           escapeHtml(
-            work.workId
+            work.companyDisplay
           ) +
-        '">' +
-          '📋 안전 점검 기록' +
-        '</button>';
-    }
+        '</span>' +
 
-    html += '</article>';
+      '</div>' +
 
-    return html;
-  }
+      actionHtml +
+
+    '</article>'
+  );
+}
+
+
 
   function openStatusList(filter){
     var targetDate =
