@@ -601,7 +601,353 @@ function loadSession(){
   }
 }
 
-// ═══ URL 파라미터 처리 ═══
+// ═══ URL·안전작업허가서 연동 ═══
+
+function cleanValue(value){
+  return String(
+    value === undefined ||
+    value === null
+      ? ''
+      : value
+  ).trim();
+}
+
+function readPermitArray(key){
+  try{
+    var parsed =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(Array.isArray(parsed)){
+      return parsed;
+    }
+
+    if(
+      parsed &&
+      typeof parsed === 'object'
+    ){
+      return Object.values(parsed);
+    }
+
+    return [];
+
+  }catch(error){
+    console.warn(
+      '[안전점검] 허가서 자료 파싱 실패:',
+      key,
+      error
+    );
+
+    return [];
+  }
+}
+
+function readInspectionSession(){
+  try{
+    return JSON.parse(
+      sessionStorage.getItem(
+        'appSession'
+      ) ||
+      localStorage.getItem(
+        'appSession'
+      ) ||
+      'null'
+    );
+  }catch(error){
+    return null;
+  }
+}
+
+function readAllPermits(){
+  var session =
+    readInspectionSession();
+
+  var keys =
+    session &&
+    session.role === 'tester'
+      ? [
+          'testerSafetyPermits',
+          'safetyPermits'
+        ]
+      : [
+          'safetyPermits',
+          'testerSafetyPermits'
+        ];
+
+  var permitsByNumber =
+    new Map();
+
+  keys.forEach(function(key){
+    readPermitArray(key)
+      .forEach(function(permit){
+        var permitNo =
+          cleanValue(
+            permit &&
+            permit.permitNo
+          );
+
+        if(
+          permitNo &&
+          !permitsByNumber.has(
+            permitNo
+          )
+        ){
+          permitsByNumber.set(
+            permitNo,
+            permit
+          );
+        }
+      });
+  });
+
+  return Array.from(
+    permitsByNumber.values()
+  );
+}
+
+function inferChecklistCategory(text){
+  var value =
+    cleanValue(text);
+
+  if(
+    /화기|용접|용단|불티|소화기|가연|인화|화재|폭발/.test(
+      value
+    )
+  ){
+    return '화재·폭발';
+  }
+
+  if(
+    /전기|전원|감전|충전부|활선|절연|접지|잠금|LOTO|ILS/i.test(
+      value
+    )
+  ){
+    return '전기·감전';
+  }
+
+  if(
+    /고소|추락|비계|사다리|안전대|난간|작업발판|낙하/.test(
+      value
+    )
+  ){
+    return '추락·낙하';
+  }
+
+  if(
+    /밀폐|맨홀|탱크|산소|환기|질식/.test(
+      value
+    )
+  ){
+    return '밀폐공간';
+  }
+
+  if(
+    /중량물|인양|크레인|지게차|와이어|후크|신호수/.test(
+      value
+    )
+  ){
+    return '중량물';
+  }
+
+  if(
+    /유해가스|황화수소|일산화탄소|LEL|H2S|CO2/i.test(
+      value
+    )
+  ){
+    return '유해가스';
+  }
+
+  return '공통';
+}
+
+function inferRequiredItem(item){
+  item =
+    item || {};
+
+  if(
+    item.required === true ||
+    item.stopWorkCritical === true
+  ){
+    return true;
+  }
+
+  var text =
+    cleanValue(
+      item.text ||
+      item.item ||
+      item.label ||
+      item.checklistText
+    );
+
+  return (
+    /전원 차단|잠금|LOTO|ILS|활선|충전부|추락방지|안전대|안전난간|가스 측정|산소 및 유해가스|화재감시자|가연성|인화성|인양 계획|신호수|출입통제/i
+      .test(text)
+  );
+}
+
+function normalizeInspectionItem(item){
+  item =
+    item || {};
+
+  var text =
+    cleanValue(
+      item.text ||
+      item.item ||
+      item.label ||
+      item.checklistText
+    );
+
+  return {
+    category:
+      cleanValue(
+        item.category
+      ) ||
+      inferChecklistCategory(
+        text
+      ),
+
+    text:
+      text,
+
+    required:
+      inferRequiredItem(
+        item
+      ),
+
+    judgment:
+      '',
+
+    memo:
+      '',
+
+    sourceItemId:
+      cleanValue(
+        item.checklistItemId ||
+        item.sourceItemId ||
+        ''
+      ),
+
+    permitResult:
+      cleanValue(
+        item.result ||
+        item.permitResult ||
+        ''
+      )
+  };
+}
+
+function extractPermitChecklist(permit){
+  permit =
+    permit || {};
+
+  /*
+   * 현재 작업허가서의 통합 안전 체크리스트를
+   * 최우선으로 사용합니다.
+   */
+  if(
+    permit.unifiedSafetyChecklist &&
+    Array.isArray(
+      permit
+        .unifiedSafetyChecklist
+        .items
+    ) &&
+    permit
+      .unifiedSafetyChecklist
+      .items.length
+  ){
+    return permit
+      .unifiedSafetyChecklist
+      .items
+      .map(
+        normalizeInspectionItem
+      )
+      .filter(function(item){
+        return Boolean(
+          item.text
+        );
+      });
+  }
+
+  /*
+   * 다른 버전의 점검 전용 체크리스트 호환
+   */
+  if(
+    Array.isArray(
+      permit.inspectionChecklist
+    ) &&
+    permit.inspectionChecklist.length
+  ){
+    return permit
+      .inspectionChecklist
+      .map(
+        normalizeInspectionItem
+      )
+      .filter(function(item){
+        return Boolean(
+          item.text
+        );
+      });
+  }
+
+  /*
+   * 구버전 허가서 호환
+   */
+  if(
+    Array.isArray(
+      permit.safetyChecklist
+    ) &&
+    permit.safetyChecklist.length
+  ){
+    return permit
+      .safetyChecklist
+      .map(
+        normalizeInspectionItem
+      )
+      .filter(function(item){
+        return Boolean(
+          item.text
+        );
+      });
+  }
+
+  return [];
+}
+
+function permitRecordTime(record){
+  var value =
+    record &&
+    (
+      record.updatedAt ||
+      record.createdAt ||
+      ''
+    );
+
+  var timestamp =
+    new Date(value).getTime();
+
+  return Number.isFinite(
+    timestamp
+  )
+    ? timestamp
+    : 0;
+}
+
+function permitLinkedWorkId(permit){
+  return cleanValue(
+    permit &&
+    (
+      permit.workId ||
+      permit.sourceWorkId ||
+      (
+        permit.workflowLink &&
+        permit.workflowLink.workId
+      )
+    )
+  );
+}
+
 function loadFromUrl(){
   var params =
     new URLSearchParams(
@@ -610,31 +956,30 @@ function loadFromUrl(){
 
   var permitNo =
     cleanValue(
-      params.get(
-        'permitNo'
-      )
+      params.get('permitNo')
     );
 
   var workId =
     cleanValue(
-      params.get(
-        'workId'
-      )
+      params.get('workId')
     );
 
   console.log(
     '[안전점검] URL 연동정보:',
     {
-      permitNo:permitNo,
-      workId:workId,
+      permitNo:
+        permitNo,
+
+      workId:
+        workId,
+
       mode:
         params.get('mode') || ''
     }
   );
 
   /*
-   * 1순위:
-   * 허가번호가 전달된 경우 해당 허가서를 직접 조회합니다.
+   * 허가번호가 전달되면 해당 허가서를 직접 연결합니다.
    */
   if(permitNo){
     inspectionData.permitNo =
@@ -643,12 +988,15 @@ function loadFromUrl(){
     inspectionData.workId =
       workId;
 
-    var loaded =
+    var permitLoaded =
       loadPermitInfo(
         permitNo
       );
 
-    if(!loaded && workId){
+    if(
+      !permitLoaded &&
+      workId
+    ){
       loadWorkInfo(
         workId
       );
@@ -658,56 +1006,27 @@ function loadFromUrl(){
   }
 
   /*
-   * 2순위:
-   * workId만 전달된 경우 연결된 허가서를 검색합니다.
+   * workId만 전달된 경우 최신 연결 허가서를 찾습니다.
    */
   if(workId){
     inspectionData.workId =
       workId;
 
-    var linkedPermits =
+    var linkedPermit =
       readAllPermits()
         .filter(function(permit){
-          var linkedWorkId =
-            cleanValue(
-              permit.workId ||
-              permit.sourceWorkId ||
-              (
-                permit.workflowLink &&
-                permit.workflowLink.workId
-              )
-            );
-
           return (
-            linkedWorkId ===
-            workId
+            permitLinkedWorkId(
+              permit
+            ) === workId
           );
         })
         .sort(function(first,second){
-          function getTime(record){
-            var value =
-              record.updatedAt ||
-              record.createdAt ||
-              '';
-
-            var time =
-              new Date(
-                value
-              ).getTime();
-
-            return Number.isFinite(time)
-              ? time
-              : 0;
-          }
-
           return (
-            getTime(second) -
-            getTime(first)
+            permitRecordTime(second) -
+            permitRecordTime(first)
           );
-        });
-
-    var linkedPermit =
-      linkedPermits[0] ||
+        })[0] ||
       null;
 
     if(linkedPermit){
@@ -720,23 +1039,9 @@ function loadFromUrl(){
         inspectionData.permitNo
       );
 
-      console.log(
-        '[안전점검] workId로 허가서 자동 연결:',
-        {
-          workId:
-            workId,
-
-          permitNo:
-            inspectionData.permitNo
-        }
-      );
-
       return;
     }
 
-    /*
-     * 연결된 허가서가 없으면 작업관리대장 정보만 표시합니다.
-     */
     loadWorkInfo(
       workId
     );
@@ -749,10 +1054,6 @@ function loadFromUrl(){
     return;
   }
 
-  /*
-   * 허가번호와 작업번호가 모두 없는 경우
-   * 기본 체크리스트를 표시합니다.
-   */
   inspectionData.checklist =
     DEFAULT_CHECKLIST
       .map(function(item){
@@ -770,22 +1071,23 @@ function loadFromUrl(){
     '연결된 안전작업허가서가 없습니다.',
     'warn'
   );
-
-  console.warn(
-    '[안전점검] permitNo와 workId가 전달되지 않았습니다.'
-  );
 }
-
-
-/* ═══════════════════════════════════════
- * 허가번호를 이용한 허가서 연동
- * ═══════════════════════════════════════ */
 
 function loadPermitInfo(permitNo){
   try{
     var targetPermitNo =
       cleanValue(
         permitNo
+      );
+
+    var normalPermits =
+      readPermitArray(
+        'safetyPermits'
+      );
+
+    var testerPermits =
+      readPermitArray(
+        'testerSafetyPermits'
       );
 
     var permits =
@@ -810,14 +1112,10 @@ function loadPermitInfo(permitNo){
             targetPermitNo,
 
           safetyPermits:
-            readPermitArray(
-              'safetyPermits'
-            ).length,
+            normalPermits.length,
 
           testerSafetyPermits:
-            readPermitArray(
-              'testerSafetyPermits'
-            ).length
+            testerPermits.length
         }
       );
 
@@ -851,13 +1149,8 @@ function loadPermitInfo(permitNo){
       );
 
     inspectionData.workId =
-      cleanValue(
-        permit.workId ||
-        permit.sourceWorkId ||
-        (
-          permit.workflowLink &&
-          permit.workflowLink.workId
-        )
+      permitLinkedWorkId(
+        permit
       );
 
     inspectionData.workName =
@@ -872,6 +1165,7 @@ function loadPermitInfo(permitNo){
         cleanValue(
           permit.location
         ),
+
         cleanValue(
           permit.detailLocation
         )
@@ -889,7 +1183,7 @@ function loadPermitInfo(permitNo){
         linkedChecklist;
 
       console.log(
-        '[안전점검] 허가서 체크리스트 연동 성공:',
+        '[안전점검] 통합 안전 체크리스트 연동 성공:',
         {
           permitNo:
             inspectionData.permitNo,
@@ -897,25 +1191,11 @@ function loadPermitInfo(permitNo){
           workId:
             inspectionData.workId,
 
-          itemCount:
+          count:
             linkedChecklist.length,
 
           source:
-            Array.isArray(
-              permit.inspectionChecklist
-            ) &&
-            permit.inspectionChecklist
-              .length
-              ? 'inspectionChecklist'
-              : permit
-                  .unifiedSafetyChecklist &&
-                Array.isArray(
-                  permit
-                    .unifiedSafetyChecklist
-                    .items
-                )
-                ? 'unifiedSafetyChecklist.items'
-                : 'safetyChecklist'
+            'unifiedSafetyChecklist.items'
         }
       );
 
@@ -934,12 +1214,12 @@ function loadPermitInfo(permitNo){
           });
 
       console.warn(
-        '[안전점검] 허가서 체크리스트 없음 · 기본 목록 사용:',
+        '[안전점검] 허가서 통합 체크리스트 없음:',
         inspectionData.permitNo
       );
 
       showToast(
-        '허가서 체크리스트가 없어 기본 항목을 사용합니다.',
+        '허가서 통합 체크리스트가 없어 기본 항목을 사용합니다.',
         'warn'
       );
     }
@@ -960,7 +1240,7 @@ function loadPermitInfo(permitNo){
 
   }catch(error){
     console.error(
-      '[안전점검] 허가서 로드 오류:',
+      '[안전점검] 허가서 연동 오류:',
       error
     );
 
@@ -985,6 +1265,7 @@ function loadPermitInfo(permitNo){
     return false;
   }
 }
+
 
 
 function loadWorkInfo(workId){
