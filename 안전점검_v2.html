@@ -481,14 +481,46 @@ body{
     </div>
   </div>
 
-  <!-- 저장 버튼 -->
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="goBack()">취소</button>
-    <button class="btn-primary" style="flex:2;" id="saveBtn" onclick="saveInspection()" disabled>
-      💾 점검 결과 저장
-    </button>
-  </div>
+<!-- 저장·즉시 작업중지 -->
+<div
+  class="btn-row"
+  style="
+    display:grid;
+    grid-template-columns:.75fr 1.15fr 1.45fr;
+    gap:7px;
+  "
+>
+  <button
+    type="button"
+    class="btn-secondary"
+    onclick="goBack()"
+    style="padding:13px 5px"
+  >
+    취소
+  </button>
+
+  <button
+    type="button"
+    class="btn-danger"
+    id="immediateStopButton"
+    onclick="requestImmediateStopWork()"
+    style="padding:13px 5px"
+  >
+    🛑 즉시 중지
+  </button>
+
+  <button
+    type="button"
+    class="btn-primary"
+    id="saveBtn"
+    onclick="saveInspection()"
+    disabled
+    style="padding:13px 5px"
+  >
+    💾 점검 결과 저장
+  </button>
 </div>
+
 
 </div></div></div>
 
@@ -1487,6 +1519,428 @@ function removePhoto(slotIdx){
 }
 
 // ═══ 저장 ═══
+/*
+ * 안전점검 도중 급박한 위험을 발견한 경우
+ * 전체 체크리스트 완료 여부와 관계없이 작업중지권으로 이동합니다.
+ */
+function requestImmediateStopWork(){
+  if(
+    !inspectionData.permitNo &&
+    !inspectionData.workId
+  ){
+    showToast(
+      '연결된 허가서 또는 작업정보가 없습니다.',
+      'danger'
+    );
+
+    return;
+  }
+
+  var violations =
+    inspectionData.checklist
+      .filter(function(item){
+        return (
+          item.judgment === 'ng'
+        );
+      });
+
+  var uncompletedCount =
+    inspectionData.checklist
+      .filter(function(item){
+        return !item.judgment;
+      }).length;
+
+  var message =
+    '현재 점검을 중단하고 작업중지권 화면으로 이동합니다.\n\n';
+
+  if(violations.length){
+    message +=
+      '현재 미준수 항목: ' +
+      violations.length +
+      '건\n';
+  }else{
+    message +=
+      '현재 선택된 미준수 항목은 없습니다.\n';
+  }
+
+  if(uncompletedCount){
+    message +=
+      '미점검 항목: ' +
+      uncompletedCount +
+      '건\n';
+  }
+
+  message +=
+    '\n작성 중인 점검내용은 임시 저장됩니다.';
+
+  showConfirm(
+    {
+      ico:'🛑',
+      title:'즉시 작업중지',
+      msg:message,
+      okText:'작업중지권 행사',
+      okType:'danger'
+    },
+
+    function(confirmed){
+      if(!confirmed){
+        return;
+      }
+
+      createImmediateStopWorkData(
+        violations
+      );
+    }
+  );
+}
+
+/*
+ * 현재 점검내용을 임시 저장하고
+ * 작업중지권 자동 입력 데이터를 생성합니다.
+ */
+function createImmediateStopWorkData(
+  violations
+){
+  try{
+    var now =
+      new Date();
+
+    var draftInspectionNo =
+      inspectionData.inspectionNo ||
+      generateInspectionNo();
+
+    inspectionData.inspectionNo =
+      draftInspectionNo;
+
+    inspectionData.opinion =
+      document.getElementById(
+        'opinionInput'
+      ).value.trim();
+
+    /*
+     * Base64 사진은 localStorage 용량을 크게 사용할 수 있으므로
+     * 임시 점검에는 사진 개수만 기록합니다.
+     */
+    var draft = {
+      inspectionNo:
+        draftInspectionNo,
+
+      workId:
+        inspectionData.workId,
+
+      permitNo:
+        inspectionData.permitNo,
+
+      workName:
+        inspectionData.workName,
+
+      location:
+        inspectionData.location,
+
+      inspectorName:
+        inspectionData.inspectorName,
+
+      inspectorDept:
+        inspectionData.inspectorDept,
+
+      checklist:
+        inspectionData.checklist,
+
+      opinion:
+        inspectionData.opinion,
+
+      photoCount:
+        inspectionData.photos
+          .filter(Boolean)
+          .length,
+
+      status:
+        '작업중지 진행 중',
+
+      draft:
+        true,
+
+      createdAt:
+        now.toISOString(),
+
+      updatedAt:
+        now.toISOString(),
+
+      schemaVersion:
+        1
+    };
+
+    localStorage.setItem(
+      'safetyInspectionDraft',
+      JSON.stringify(draft)
+    );
+
+    var stopReasons =
+      buildImmediateStopReasons(
+        violations
+      );
+
+    var stopDescription =
+      buildImmediateStopDescription(
+        violations,
+        inspectionData.opinion
+      );
+
+    var pendingData = {
+      source:
+        'safety-inspection',
+
+      sourceType:
+        'inspection-immediate-stop',
+
+      inspectionNo:
+        draftInspectionNo,
+
+      workId:
+        inspectionData.workId,
+
+      permitNo:
+        inspectionData.permitNo,
+
+      workName:
+        inspectionData.workName,
+
+      location:
+        inspectionData.location,
+
+      stopReasons:
+        stopReasons,
+
+      stopDescription:
+        stopDescription,
+
+      violations:
+        violations.map(
+          function(item){
+            return {
+              category:
+                item.category ||
+                '기타',
+
+              text:
+                item.text ||
+                '현장 위험요인',
+
+              memo:
+                item.memo ||
+                ''
+            };
+          }
+        ),
+
+      requesterName:
+        inspectionData.inspectorName,
+
+      requesterDept:
+        inspectionData.inspectorDept,
+
+      requesterPosition:
+        '안전점검자',
+
+      requestedAt:
+        now.toISOString()
+    };
+
+    localStorage.setItem(
+      'pendingStopWorkOrder',
+      JSON.stringify(
+        pendingData
+      )
+    );
+
+    console.log(
+      '[안전점검] 즉시 작업중지 연계:',
+      pendingData
+    );
+
+    showToast(
+      '🛑 작업중지권 화면으로 이동합니다.',
+      'danger'
+    );
+
+    setTimeout(function(){
+      var parameters =
+        new URLSearchParams();
+
+      parameters.set(
+        'from',
+        'inspection'
+      );
+
+      if(
+        inspectionData.permitNo
+      ){
+        parameters.set(
+          'permitNo',
+          inspectionData.permitNo
+        );
+      }
+
+      if(
+        inspectionData.workId
+      ){
+        parameters.set(
+          'workId',
+          inspectionData.workId
+        );
+      }
+
+      location.href =
+        '작업중지권_v2.html?' +
+        parameters.toString();
+
+    },500);
+
+  }catch(error){
+    console.error(
+      '[안전점검] 즉시 작업중지 연계 실패:',
+      error
+    );
+
+    showToast(
+      '작업중지권 연계 중 오류가 발생했습니다.',
+      'danger'
+    );
+  }
+}
+
+function buildImmediateStopReasons(
+  violations
+){
+  var reasons = [];
+
+  violations.forEach(
+    function(item){
+      var category =
+        item.category ||
+        '기타';
+
+      if(
+        category ===
+          '화재·폭발'
+      ){
+        reasons.push(
+          '화재·폭발 위험'
+        );
+
+      }else if(
+        category ===
+          '전기·감전'
+      ){
+        reasons.push(
+          '감전 위험'
+        );
+
+      }else if(
+        category ===
+          '추락·낙하'
+      ){
+        reasons.push(
+          '추락 위험'
+        );
+
+      }else if(
+        category ===
+          '밀폐공간'
+      ){
+        reasons.push(
+          '밀폐공간 질식 위험'
+        );
+
+      }else if(
+        category ===
+          '중량물'
+      ){
+        reasons.push(
+          '중량물 낙하 위험'
+        );
+
+      }else if(
+        category ===
+          '유해가스'
+      ){
+        reasons.push(
+          '유해가스 위험'
+        );
+
+      }else{
+        reasons.push(
+          '기타 위험'
+        );
+      }
+    }
+  );
+
+  /*
+   * 아직 미준수를 선택하지 않았더라도
+   * 현장 판단으로 즉시 작업중지를 행사할 수 있습니다.
+   */
+  if(!reasons.length){
+    reasons.push(
+      '현장 급박한 위험'
+    );
+  }
+
+  return reasons.filter(
+    function(reason,index,array){
+      return (
+        array.indexOf(
+          reason
+        ) === index
+      );
+    }
+  );
+}
+
+function buildImmediateStopDescription(
+  violations,
+  opinion
+){
+  var description =
+    '안전점검 중 급박한 위험이 발견되어 즉시 작업중지를 요청합니다.';
+
+  if(violations.length){
+    description +=
+      '\n\n[미준수 항목]\n' +
+      violations.map(
+        function(item,index){
+          return (
+            (index + 1) +
+            '. [' +
+            (
+              item.category ||
+              '기타'
+            ) +
+            '] ' +
+            (
+              item.text ||
+              '현장 위험요인'
+            ) +
+            (
+              item.memo
+                ? '\n   → ' +
+                  item.memo
+                : ''
+            )
+          );
+        }
+      ).join('\n');
+  }
+
+  if(opinion){
+    description +=
+      '\n\n[점검자 의견]\n' +
+      opinion;
+  }
+
+  return description;
+}
+  
 function saveInspection(){
   var total = inspectionData.checklist.length;
   var done = inspectionData.checklist.filter(function(i){ return i.judgment; }).length;
@@ -1678,7 +2132,7 @@ function redirectToStopWork(violations){
   
   // 0.5초 후 이동 (토스트 보여주기)
   setTimeout(function(){
-    var url = 'stop-work.html?from=inspection';
+var url = '작업중지권_v2.html?from=inspection';
     if(inspectionData.permitNo) url += '&permitNo=' + encodeURIComponent(inspectionData.permitNo);
     if(inspectionData.workId) url += '&workId=' + encodeURIComponent(inspectionData.workId);
     
