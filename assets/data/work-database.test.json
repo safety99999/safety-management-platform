@@ -1,11 +1,9 @@
 {
-  "schemaVersion": 1,
-  "collection": "test_작업DB",
+  "version": "1.0",
+  "generatedAt": "2026-09-08T03:15:08.665Z",
   "environment": "test",
-  "exportedAt": "2026-09-08T02:18:46.089Z",
-  "exportedBy": "테스트 관리자",
   "count": 779,
-  "data": [
+  "workHistory": [
     {
       "workId": "2026-09-11_1",
       "originalNo": "1",
