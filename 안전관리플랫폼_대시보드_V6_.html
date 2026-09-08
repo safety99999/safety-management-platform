@@ -124,10 +124,12 @@
   }
 })();
 </script>
-<script>
+
+<style>
 /* ═══════════════════════════════════════
  * 작업종료 버튼
  * ═══════════════════════════════════════ */
+
 
 .work-mini-action.completion{
   border-color:var(--done);
@@ -139,12 +141,10 @@
   transform:scale(.97);
 }
 
-
-
-<style>
 /* ═══════════════════════════════════════
  * 작업종료 확인 팝업
  * ═══════════════════════════════════════ */
+
 
 .completion-overlay{
   position:fixed;
@@ -13703,48 +13703,145 @@ console.log(
   const MANIFEST_PATH = 'assets/data/db-manifest.json';
 
   // ─── DOM 로드 대기 ─────────────────────────────
-  function initAutoDeploy() {
-    var tokenInput = document.getElementById('githubTokenInput');
-    var saveBtn = document.getElementById('saveGithubTokenButton');
-    var deployBtn = document.getElementById('autoDeployButton');
+function initAutoDeploy() {
+  var session = null;
 
-    if (!tokenInput || !saveBtn || !deployBtn) {
-      console.warn('[Auto Deploy] UI 요소를 찾을 수 없음. 500ms 후 재시도.');
-      setTimeout(initAutoDeploy, 500);
-      return;
-    }
+  try {
+    session =
+      JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || 'null'
+      );
+  } catch (error) {
+    session = null;
+  }
 
-    // ─── Token 저장 상태 표시 ────────────────────
-    var savedToken = localStorage.getItem('githubDeployToken');
-    if (savedToken) {
-      tokenInput.placeholder = '✅ Token 저장됨 · 재입력 시 변경됩니다';
-    }
+  /*
+   * 자동 배포 기능은 관리자만 초기화합니다.
+   */
+  if (
+    !session ||
+    session.role !== 'admin'
+  ) {
+    console.log(
+      '[Auto Deploy] 관리자 전용 · 초기화 생략:',
+      session
+        ? session.role
+        : '세션 없음'
+    );
 
-    // ─── Token 저장 버튼 ────────────────────────
-    saveBtn.addEventListener('click', function() {
-      var token = tokenInput.value.trim();
-      
+    return;
+  }
+
+  var tokenInput =
+    document.getElementById(
+      'githubTokenInput'
+    );
+
+  var saveBtn =
+    document.getElementById(
+      'saveGithubTokenButton'
+    );
+
+  var deployBtn =
+    document.getElementById(
+      'autoDeployButton'
+    );
+
+  /*
+   * 요소가 없을 경우 무한 재시도하지 않습니다.
+   */
+  if (
+    !tokenInput ||
+    !saveBtn ||
+    !deployBtn
+  ) {
+    console.warn(
+      '[Auto Deploy] 관리자 UI 요소 없음'
+    );
+
+    return;
+  }
+
+  /*
+   * 이벤트 중복 연결 방지
+   */
+  if (
+    deployBtn.dataset
+      .autoDeployBound === 'true'
+  ) {
+    return;
+  }
+
+  deployBtn.dataset
+    .autoDeployBound = 'true';
+
+  var savedToken =
+    localStorage.getItem(
+      'githubDeployToken'
+    );
+
+  if (savedToken) {
+    tokenInput.placeholder =
+      '✅ Token 저장됨 · 재입력 시 변경됩니다';
+  }
+
+  saveBtn.addEventListener(
+    'click',
+    function() {
+      var token =
+        tokenInput.value.trim();
+
       if (!token) {
         alert('Token을 입력하세요.');
         return;
       }
 
-      if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
-        alert('올바른 GitHub Token 형식이 아닙니다.\nghp_ 또는 github_pat_ 로 시작해야 합니다.');
+      if (
+        !token.startsWith('ghp_') &&
+        !token.startsWith(
+          'github_pat_'
+        )
+      ) {
+        alert(
+          '올바른 GitHub Token 형식이 아닙니다.\n' +
+          'ghp_ 또는 github_pat_ 로 시작해야 합니다.'
+        );
+
         return;
       }
 
-      localStorage.setItem('githubDeployToken', token);
+      localStorage.setItem(
+        'githubDeployToken',
+        token
+      );
+
       tokenInput.value = '';
-      tokenInput.placeholder = '✅ Token 저장됨 · 재입력 시 변경됩니다';
-      alert('✅ Token 저장 완료!\n이제 [🚀 GitHub 자동 배포] 버튼으로 배포 가능합니다.');
-    });
 
-    // ─── 자동 배포 버튼 ─────────────────────────
-    deployBtn.addEventListener('click', runAutoDeploy);
+      tokenInput.placeholder =
+        '✅ Token 저장됨 · 재입력 시 변경됩니다';
 
-    console.log('[Auto Deploy] 초기화 완료:', GITHUB_OWNER + '/' + GITHUB_REPO);
-  }
+      alert(
+        '✅ Token 저장 완료!\n' +
+        '이제 GitHub 자동 배포를 사용할 수 있습니다.'
+      );
+    }
+  );
+
+  deployBtn.addEventListener(
+    'click',
+    runAutoDeploy
+  );
+
+  console.log(
+    '[Auto Deploy] 관리자 모듈 초기화 완료:',
+    GITHUB_OWNER +
+    '/' +
+    GITHUB_REPO
+  );
+}
+
 
   // ─── 상태 표시 ─────────────────────────────
   function showStatus(message, type) {
