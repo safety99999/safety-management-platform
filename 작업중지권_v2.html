@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <script>
 /* 다크모드 사전 적용 (렌더링 전 실행 → 흰 화면 깜빡임 방지) */
-(function(){
+(function(){handleInspectionAutoTrigger()
   try{
     var saved = localStorage.getItem('theme');
     var theme = saved || (window.matchMedia && 
@@ -1618,8 +1618,6 @@ window.addEventListener('DOMContentLoaded', function(){
   handleInspectionAutoTrigger();
 });
  
-});
-
 // ═══════════════════════════════════════════════════
 // 테마
 // ═══════════════════════════════════════════════════
@@ -2467,8 +2465,39 @@ function reportAnother(){
 // ═══════════════════════════════════════════════════
 // 홈 / 뒤로가기
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// 홈 / 뒤로가기 (2026-09-08 수정: 페이드 전환 + 상세 미완료 확인)
+// ═══════════════════════════════════════════════════
 function goHome(){
-  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+  var DASHBOARD_URL = '안전관리플랫폼_대시보드_V6_.html';
+  
+  // 상세 화면에서 긴급 신고만 접수하고 상세 미완료 상태면 확인
+  var isDetail = document.getElementById('screen-detail').classList.contains('active');
+  
+  if(isDetail && isUrgentSubmitted){
+    showCustomConfirm({
+      icon: '⚠️',
+      title: '대시보드로 이동',
+      message: '긴급 신고는 접수되었으나,\n상세 정보가 미입력 상태입니다.\n\n이동하시겠습니까?',
+      okText: '이동',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) navigateToDashboard(DASHBOARD_URL);
+    });
+    return;
+  }
+  
+  navigateToDashboard(DASHBOARD_URL);
+}
+
+function navigateToDashboard(url){
+  // 페이드 전환 적용
+  if(typeof window.navigateWithFade === 'function'){
+    window.navigateWithFade(url);
+  } else {
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){ window.location.href = url; }, 220);
+  }
 }
 
 function goBack(){
@@ -2493,7 +2522,12 @@ function goBack(){
     return;
   }
   
-  history.back();
+  // 이전 히스토리 있으면 back, 없으면 홈
+  if(window.history.length > 1){
+    history.back();
+  } else {
+    goHome();
+  }
 }
 
 // ═══════════════════════════════════════════════════
