@@ -124,6 +124,224 @@
   }
 })();
 </script>
+/* ═══════════════════════════════════════
+ * 작업종료 버튼
+ * ═══════════════════════════════════════ */
+
+.work-mini-action.completion{
+  border-color:var(--done);
+  background:var(--done);
+  color:#fff;
+}
+
+.work-mini-action.completion:active{
+  transform:scale(.97);
+}
+
+/* ═══════════════════════════════════════
+ * 작업종료 확인 팝업
+ * ═══════════════════════════════════════ */
+
+.completion-overlay{
+  position:fixed;
+  inset:0;
+  z-index:700;
+  padding:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  background:rgba(6,17,28,.65);
+  backdrop-filter:blur(4px);
+  transition:.2s;
+}
+
+.completion-overlay.active{
+  opacity:1;
+  pointer-events:auto;
+}
+
+.completion-modal{
+  width:100%;
+  max-width:390px;
+  max-height:88vh;
+  overflow-y:auto;
+  padding:20px;
+  border-radius:20px;
+  background:var(--card);
+  box-shadow:0 24px 65px rgba(0,0,0,.32);
+}
+
+.completion-modal-title{
+  margin-bottom:5px;
+  color:var(--ink);
+  font-size:19px;
+  font-weight:900;
+  text-align:center;
+}
+
+.completion-modal-sub{
+  margin-bottom:14px;
+  color:var(--sub);
+  font-size:12.5px;
+  font-weight:700;
+  line-height:1.5;
+  text-align:center;
+}
+
+.completion-work-info{
+  margin-bottom:13px;
+  padding:11px 12px;
+  border-left:4px solid var(--done);
+  border-radius:10px;
+  background:var(--done-bg);
+}
+
+.completion-work-name{
+  margin-bottom:3px;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:900;
+}
+
+.completion-work-meta{
+  color:var(--sub);
+  font-size:11px;
+  font-weight:700;
+}
+
+.completion-check-list{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  margin-bottom:14px;
+}
+
+.completion-check-item{
+  padding:10px 11px;
+  border:1.5px solid var(--line);
+  border-radius:10px;
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  background:var(--sunk);
+  color:var(--body);
+  font-size:12.5px;
+  font-weight:750;
+  line-height:1.45;
+  cursor:pointer;
+}
+
+.completion-check-item:has(input:checked){
+  border-color:var(--done);
+  background:var(--done-bg);
+}
+
+.completion-check-item input{
+  flex-shrink:0;
+  width:19px;
+  height:19px;
+  margin-top:1px;
+  accent-color:var(--done);
+}
+
+.completion-ils-title{
+  margin-bottom:7px;
+  color:var(--body);
+  font-size:13px;
+  font-weight:900;
+}
+
+.completion-ils-options{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  margin-bottom:13px;
+}
+
+.completion-ils-option{
+  min-width:0;
+  padding:9px 4px;
+  border:1.5px solid var(--line);
+  border-radius:9px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  background:var(--sunk);
+  color:var(--sub);
+  font-size:10.5px;
+  font-weight:850;
+  text-align:center;
+  cursor:pointer;
+}
+
+.completion-ils-option:has(input:checked){
+  border-color:var(--done);
+  background:var(--done-bg);
+  color:var(--done);
+}
+
+.completion-ils-option.pending:has(input:checked){
+  border-color:var(--stop);
+  background:var(--stop-bg);
+  color:var(--stop);
+}
+
+.completion-ils-option input{
+  width:16px;
+  height:16px;
+  accent-color:var(--done);
+}
+
+.completion-opinion{
+  width:100%;
+  min-height:66px;
+  margin-bottom:13px;
+  padding:10px 11px;
+  border:1.5px solid var(--line);
+  border-radius:10px;
+  background:var(--sunk);
+  color:var(--ink);
+  font-family:inherit;
+  font-size:12.5px;
+  resize:vertical;
+}
+
+.completion-buttons{
+  display:grid;
+  grid-template-columns:.8fr 1.4fr;
+  gap:8px;
+}
+
+.completion-button{
+  min-height:46px;
+  padding:11px 8px;
+  border:0;
+  border-radius:11px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.completion-button.cancel{
+  border:1px solid var(--line);
+  background:var(--sunk);
+  color:var(--sub);
+}
+
+.completion-button.confirm{
+  background:var(--done);
+  color:#fff;
+}
+
+.completion-button.confirm:disabled{
+  background:var(--line);
+  color:var(--faint);
+  cursor:not-allowed;
+}
 
 <style>
 
@@ -483,8 +701,8 @@ button{touch-action:manipulation}
 
 .work-mini-actions{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:5px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
   padding-top:7px;
   border-top:1px solid var(--line);
 }
@@ -1137,6 +1355,147 @@ button{touch-action:manipulation}
   </header>
   <div class="sheet-body" id="sheetBody"></div>
 </section>
+<!-- 작업종료 확인 팝업 -->
+<div
+  class="completion-overlay"
+  id="completionOverlay"
+>
+  <div class="completion-modal">
+    <div class="completion-modal-title">
+      🏁 작업종료 확인
+    </div>
+
+    <div class="completion-modal-sub">
+      작업담당자가 종료 전 현장 상태를 최종 확인합니다.
+    </div>
+
+    <div class="completion-work-info">
+      <div
+        class="completion-work-name"
+        id="completionWorkName"
+      >
+        -
+      </div>
+
+      <div
+        class="completion-work-meta"
+        id="completionWorkMeta"
+      >
+        -
+      </div>
+    </div>
+
+    <div class="completion-check-list">
+      <label class="completion-check-item">
+        <input
+          type="checkbox"
+          data-completion-check
+        >
+        <span>
+          작업자 전원이 작업구역에서 철수했습니다.
+        </span>
+      </label>
+
+      <label class="completion-check-item">
+        <input
+          type="checkbox"
+          data-completion-check
+        >
+        <span>
+          사용한 공구·장비·자재 및 폐기물을 회수했습니다.
+        </span>
+      </label>
+
+      <label class="completion-check-item">
+        <input
+          type="checkbox"
+          data-completion-check
+        >
+        <span>
+          작업장 정리정돈과 청소를 완료했습니다.
+        </span>
+      </label>
+
+      <label class="completion-check-item">
+        <input
+          type="checkbox"
+          data-completion-check
+        >
+        <span>
+          안전난간·덮개·방호시설 등 임시 해체 부분을 원상복구했습니다.
+        </span>
+      </label>
+
+      <label class="completion-check-item">
+        <input
+          type="checkbox"
+          data-completion-check
+        >
+        <span>
+          화재·누출·낙하·감전 등 잔류 위험이 없음을 확인했습니다.
+        </span>
+      </label>
+    </div>
+
+    <div class="completion-ils-title">
+      🔒 ILS 상태
+    </div>
+
+    <div class="completion-ils-options">
+      <label class="completion-ils-option">
+        <input
+          type="radio"
+          name="completionIlsStatus"
+          value="released"
+        >
+        <span>해체 완료</span>
+      </label>
+
+      <label class="completion-ils-option">
+        <input
+          type="radio"
+          name="completionIlsStatus"
+          value="notApplicable"
+        >
+        <span>해당 없음</span>
+      </label>
+
+      <label class="completion-ils-option pending">
+        <input
+          type="radio"
+          name="completionIlsStatus"
+          value="pending"
+        >
+        <span>미완료</span>
+      </label>
+    </div>
+
+    <textarea
+      class="completion-opinion"
+      id="completionOpinion"
+      placeholder="종료 의견 또는 특이사항 (선택)"
+    ></textarea>
+
+    <div class="completion-buttons">
+      <button
+        type="button"
+        class="completion-button cancel"
+        id="completionCancelButton"
+      >
+        취소
+      </button>
+
+      <button
+        type="button"
+        class="completion-button confirm"
+        id="completionConfirmButton"
+        disabled
+      >
+        필수 확인사항을 완료하세요
+      </button>
+    </div>
+  </div>
+</div>
 
 <div class="custom-confirm-overlay" id="confirmOverlay">
   <div class="custom-confirm-modal">
@@ -1209,7 +1568,9 @@ button{touch-action:manipulation}
     preworkSearch:'',
     sheetMode:'',
     confirmCallback:null,
-    lastSyncAt:0
+    lastSyncAt:0,
+completionTarget:null
+
   };
 
   global.DashboardV8 = {
@@ -5797,21 +6158,50 @@ function standardWorkCard(
           );
 
     actionHtml =
-      '<div class="work-mini-actions">' +
+actionHtml =
+  '<div class="work-mini-actions">' +
 
-        '<a class="work-mini-action permit" href="' +
-          escapeHtml(
-            permitUrl
-          ) +
-        '">' +
-          '📄 허가서' +
-        '</a>' +
+    '<a class="work-mini-action permit" href="' +
+      escapeHtml(
+        permitUrl
+      ) +
+    '">' +
+      '📄 허가서' +
+    '</a>' +
 
-        tbmButton +
+    tbmButton +
 
-        inspectionButton +
+    inspectionButton +
 
-      '</div>';
+    (
+      [
+        'approved',
+        'tbmCompleted',
+        'inProgress'
+      ].indexOf(
+        permitCode
+      ) >= 0
+        ? '<button type="button" ' +
+            'class="work-mini-action completion" ' +
+            'data-complete-work="' +
+            escapeHtml(
+              workId
+            ) +
+            '" ' +
+            'data-complete-permit="' +
+            escapeHtml(
+              permitNo
+            ) +
+          '">' +
+            '🏁 작업종료' +
+          '</button>'
+        : '<span class="work-mini-action disabled">' +
+            '🔒 작업종료' +
+          '</span>'
+    ) +
+
+  '</div>';
+
 
   /*
    * 예정 작업
@@ -9345,6 +9735,587 @@ function standardWorkCard(
       String(Date.now())
     );
   }
+/* =====================================================
+ * 작업종료
+ * ===================================================== */
+
+function openWorkCompletion(
+  workId,
+  permitNo
+){
+  loadAllData();
+
+  var work =
+    state.allWorks.find(
+      function(item){
+        return (
+          clean(item.workId) ===
+          clean(workId)
+        );
+      }
+    ) ||
+    null;
+
+  var permit =
+    state.permits.find(
+      function(item){
+        return (
+          clean(item.permitNo) ===
+          clean(permitNo)
+        );
+      }
+    ) ||
+    null;
+
+  if(!work || !permit){
+    showToast(
+      '작업 또는 허가서 정보를 찾을 수 없습니다.',
+      'danger'
+    );
+
+    return;
+  }
+
+  if(
+    normalizePermitCode(
+      permit
+    ) === 'stopped'
+  ){
+    showToast(
+      '작업중지 상태에서는 작업종료할 수 없습니다.',
+      'danger'
+    );
+
+    return;
+  }
+
+  state.completionTarget = {
+    work:work,
+    permit:permit
+  };
+
+  setText(
+    'completionWorkName',
+    work.workName ||
+    permit.workName ||
+    '작업명 없음'
+  );
+
+  setText(
+    'completionWorkMeta',
+    permit.permitNo +
+    ' · ' +
+    (
+      work.locationDisplay ||
+      [
+        permit.location || '',
+        permit.detailLocation || ''
+      ]
+        .filter(Boolean)
+        .join(' ') ||
+      '-'
+    )
+  );
+
+  document
+    .querySelectorAll(
+      '[data-completion-check]'
+    )
+    .forEach(function(input){
+      input.checked = false;
+    });
+
+  document
+    .querySelectorAll(
+      '[name="completionIlsStatus"]'
+    )
+    .forEach(function(input){
+      input.checked = false;
+    });
+
+  var opinion =
+    byId('completionOpinion');
+
+  if(opinion){
+    opinion.value = '';
+  }
+
+  updateCompletionConfirmButton();
+
+  byId('completionOverlay')
+    .classList.add('active');
+}
+
+function closeWorkCompletion(){
+  byId('completionOverlay')
+    .classList.remove('active');
+
+  state.completionTarget =
+    null;
+}
+
+function selectedCompletionIlsStatus(){
+  var selected =
+    document.querySelector(
+      '[name="completionIlsStatus"]:checked'
+    );
+
+  return selected
+    ? selected.value
+    : '';
+}
+
+function updateCompletionConfirmButton(){
+  var checks =
+    Array.from(
+      document.querySelectorAll(
+        '[data-completion-check]'
+      )
+    );
+
+  var allChecked =
+    checks.length > 0 &&
+    checks.every(
+      function(input){
+        return input.checked;
+      }
+    );
+
+  var ilsStatus =
+    selectedCompletionIlsStatus();
+
+  var validIls =
+    ilsStatus === 'released' ||
+    ilsStatus === 'notApplicable';
+
+  var button =
+    byId(
+      'completionConfirmButton'
+    );
+
+  if(!button){
+    return;
+  }
+
+  button.disabled =
+    !allChecked ||
+    !validIls;
+
+  button.textContent =
+    button.disabled
+      ? '필수 확인사항을 완료하세요'
+      : '🏁 작업종료 확정';
+}
+
+function generateCompletionNo(){
+  var date =
+    today()
+      .replace(/-/g,'');
+
+  var records =
+    readArray(
+      'workCompletionReports'
+    );
+
+  var count =
+    records.filter(
+      function(record){
+        return (
+          clean(
+            record.completionNo
+          ).indexOf(
+            'WC-' +
+            date +
+            '-'
+          ) === 0
+        );
+      }
+    ).length;
+
+  return (
+    'WC-' +
+    date +
+    '-' +
+    String(
+      count + 1
+    ).padStart(3,'0')
+  );
+}
+
+async function completeCurrentWork(){
+  var target =
+    state.completionTarget;
+
+  if(
+    !target ||
+    !target.work ||
+    !target.permit
+  ){
+    showToast(
+      '종료할 작업정보가 없습니다.',
+      'danger'
+    );
+
+    return;
+  }
+
+  var checks =
+    Array.from(
+      document.querySelectorAll(
+        '[data-completion-check]'
+      )
+    );
+
+  var allChecked =
+    checks.length > 0 &&
+    checks.every(
+      function(input){
+        return input.checked;
+      }
+    );
+
+  var ilsStatus =
+    selectedCompletionIlsStatus();
+
+  if(
+    !allChecked ||
+    (
+      ilsStatus !== 'released' &&
+      ilsStatus !==
+        'notApplicable'
+    )
+  ){
+    showToast(
+      '종료 확인사항과 ILS 상태를 확인하세요.',
+      'warning'
+    );
+
+    return;
+  }
+
+  var session =
+    readSession() || {};
+
+  var completedAt =
+    nowIso();
+
+  var completionNo =
+    generateCompletionNo();
+
+  var completedBy =
+    session.displayName ||
+    session.email ||
+    '작업담당자';
+
+  var work =
+    target.work;
+
+  var permit =
+    target.permit;
+
+  var completionRecord = {
+    completionNo:
+      completionNo,
+
+    workId:
+      work.workId,
+
+    permitNo:
+      permit.permitNo,
+
+    riskId:
+      permit.riskId || '',
+
+    tbmNo:
+      permit.tbmNo || '',
+
+    workName:
+      work.workName ||
+      permit.workName ||
+      '',
+
+    location:
+      work.locationDisplay ||
+      [
+        permit.location || '',
+        permit.detailLocation || ''
+      ]
+        .filter(Boolean)
+        .join(' '),
+
+    companyName:
+      work.companyDisplay ||
+      permit.companyName ||
+      '',
+
+    status:
+      '작업완료',
+
+    statusCode:
+      'completed',
+
+    completionType:
+      'normal',
+
+    checks:{
+      workersExited:true,
+      toolsAndMaterialsRemoved:true,
+      housekeepingCompleted:true,
+      safetyFacilitiesRestored:true,
+      residualRiskChecked:true
+    },
+
+    ilsStatus:
+      ilsStatus,
+
+    opinion:
+      clean(
+        byId(
+          'completionOpinion'
+        ).value
+      ),
+
+    completedAt:
+      completedAt,
+
+    completedBy:
+      completedBy,
+
+    completedByUid:
+      session.uid || '',
+
+    completedByDept:
+      session.department ||
+      session.dept ||
+      '',
+
+    environment:'test',
+    schemaVersion:1,
+    createdAt:
+      completedAt
+  };
+
+  var reports =
+    readArray(
+      'workCompletionReports'
+    );
+
+  reports.push(
+    completionRecord
+  );
+
+  localStorage.setItem(
+    'workCompletionReports',
+    JSON.stringify(
+      reports
+    )
+  );
+
+  /*
+   * 현재 로그인 형태에 맞는 허가서 저장 키를 사용합니다.
+   */
+  var permitKey =
+    global.isPublicTester()
+      ? 'testerSafetyPermits'
+      : 'safetyPermits';
+
+  var permits =
+    readArray(
+      permitKey
+    );
+
+  var permitIndex =
+    permits.findIndex(
+      function(record){
+        return (
+          clean(
+            record.permitNo
+          ) ===
+          clean(
+            permit.permitNo
+          )
+        );
+      }
+    );
+
+  if(permitIndex < 0){
+    showToast(
+      '종료할 허가서를 저장자료에서 찾지 못했습니다.',
+      'danger'
+    );
+
+    return;
+  }
+
+  var previousStatus =
+    normalizePermitCode(
+      permits[permitIndex]
+    );
+
+  permits[permitIndex].status =
+    '작업완료';
+
+  permits[permitIndex].permitStatus =
+    '작업완료';
+
+  permits[permitIndex].statusCode =
+    'completed';
+
+  permits[permitIndex].completionNo =
+    completionNo;
+
+  permits[permitIndex].completedAt =
+    completedAt;
+
+  permits[permitIndex].completedBy =
+    completedBy;
+
+  permits[permitIndex].completedByUid =
+    session.uid || '';
+
+  permits[permitIndex].completion =
+    clone(
+      completionRecord
+    );
+
+  permits[permitIndex].updatedAt =
+    completedAt;
+
+  permits[permitIndex].statusHistory =
+    Array.isArray(
+      permits[permitIndex]
+        .statusHistory
+    )
+      ? permits[permitIndex]
+          .statusHistory
+      : [];
+
+  permits[permitIndex]
+    .statusHistory
+    .push({
+      from:
+        previousStatus,
+
+      to:'completed',
+
+      changedAt:
+        completedAt,
+
+      changedBy:
+        completedBy,
+
+      changedByUid:
+        session.uid || '',
+
+      reason:
+        '작업담당자 종료 확인',
+
+      environment:'test'
+    });
+
+  localStorage.setItem(
+    permitKey,
+    JSON.stringify(
+      permits
+    )
+  );
+
+  /*
+   * 작업관리대장 브라우저 캐시에도 종료 상태를 반영합니다.
+   */
+  try{
+    var database =
+      JSON.parse(
+        localStorage.getItem(
+          'safetyDatabase'
+        ) || '{}'
+      );
+
+    (
+      database.workHistory ||
+      []
+    ).forEach(function(record){
+      if(
+        makeWorkId(record) ===
+        work.workId
+      ){
+        record.status =
+          '작업완료';
+
+        record.workStatus =
+          '작업완료';
+
+        record.statusCode =
+          'completed';
+
+        record.completionNo =
+          completionNo;
+
+        record.completedAt =
+          completedAt;
+      }
+    });
+
+    localStorage.setItem(
+      'safetyDatabase',
+      JSON.stringify(
+        database
+      )
+    );
+
+  }catch(databaseError){
+    console.warn(
+      '[작업종료] 작업DB 캐시 갱신 실패:',
+      databaseError
+    );
+  }
+
+  closeWorkCompletion();
+
+  refreshFromCache();
+
+  try{
+    global.dispatchEvent(
+      new CustomEvent(
+        'app-data-changed',
+        {
+          detail:{
+            key:
+              'workCompletionReports',
+
+            workId:
+              work.workId,
+
+            permitNo:
+              permit.permitNo,
+
+            completionNo:
+              completionNo,
+
+            timestamp:
+              Date.now()
+          }
+        }
+      )
+    );
+  }catch(eventError){}
+
+  showToast(
+    '작업종료 처리가 완료되었습니다.',
+    'success'
+  );
+
+  /*
+   * 열려 있던 작업 목록도 즉시 다시 표시합니다.
+   */
+  setTimeout(function(){
+    if(
+      state.sheetMode
+    ){
+      openStatusList('run');
+    }
+  },100);
+}
 
   /* =====================================================
    * 탭·새로고침·이벤트
@@ -10028,8 +10999,67 @@ function standardWorkCard(
 
 
 
-  function bindEvents(){
+function bindEvents(){
+    /*
+     * 작업종료 팝업 이벤트
+     */
+    var completionCancelButton =
+      byId(
+        'completionCancelButton'
+      );
+
+    if(completionCancelButton){
+      completionCancelButton
+        .addEventListener(
+          'click',
+          closeWorkCompletion
+        );
+    }
+
+    var completionConfirmButton =
+      byId(
+        'completionConfirmButton'
+      );
+
+    if(completionConfirmButton){
+      completionConfirmButton
+        .addEventListener(
+          'click',
+          completeCurrentWork
+        );
+    }
+
+    var completionOverlay =
+      byId(
+        'completionOverlay'
+      );
+
+    if(completionOverlay){
+      completionOverlay
+        .addEventListener(
+          'click',
+          function(event){
+            if(event.target === this){
+              closeWorkCompletion();
+            }
+          }
+        );
+    }
+
+    document
+      .querySelectorAll(
+        '[data-completion-check], ' +
+        '[name="completionIlsStatus"]'
+      )
+      .forEach(function(input){
+        input.addEventListener(
+          'change',
+          updateCompletionConfirmButton
+        );
+      });
+
     var userMenuButton =
+
       byId(
         'userMenuButton'
       );
@@ -10597,6 +11627,22 @@ byId('inspectionRegisterButton')
 
           return;
         }
+var completionButton =
+  event.target.closest(
+    '[data-complete-work]'
+  );
+
+if(completionButton){
+  openWorkCompletion(
+    completionButton.dataset
+      .completeWork,
+
+    completionButton.dataset
+      .completePermit
+  );
+
+  return;
+}
 
         var inspection =
           event.target.closest(
