@@ -620,48 +620,552 @@ function loadFromUrl(){
   }
 }
 
-function loadPermitInfo(permitNo){
+/* ═══════════════════════════════════════
+ * 허가서 저장자료 통합 조회
+ * - 일반 사용자: safetyPermits
+ * - 테스터: testerSafetyPermits
+ * ═══════════════════════════════════════ */
+
+function cleanValue(value){
+  return String(
+    value === undefined ||
+    value === null
+      ? ''
+      : value
+  ).trim();
+}
+
+function readPermitArray(key){
   try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    var permit = permits.find(function(p){ return p.permitNo === permitNo; });
-    if(!permit){
-      console.warn('[안전점검] 허가서 없음:', permitNo);
-      return;
+    var parsed =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(Array.isArray(parsed)){
+      return parsed;
     }
-    
-    selectedPermit = permit;
-    inspectionData.workId = permit.workId || permit.sourceWorkId || '';
-    inspectionData.workName = permit.workName || '';
-    inspectionData.location = (permit.location || '') + 
-                              (permit.detailLocation ? ' ' + permit.detailLocation : '');
-    
-    // 통합 안전 체크리스트 로드 (허가서에 있으면 사용, 없으면 기본)
-    if(permit.safetyChecklist && Array.isArray(permit.safetyChecklist) && permit.safetyChecklist.length > 0){
-      inspectionData.checklist = permit.safetyChecklist.map(function(item){
-        return {
-          category: item.category || '기타',
-          text: item.text || item.item || '',
-          required: !!item.required,
-          judgment: '',
-          memo: ''
-        };
-      });
-      console.log('[안전점검] 허가서 체크리스트 로드:', inspectionData.checklist.length + '건');
-    } else {
-      inspectionData.checklist = DEFAULT_CHECKLIST.map(function(item){
-        return Object.assign({}, item, { judgment:'', memo:'' });
-      });
-      console.log('[안전점검] 기본 체크리스트 사용');
+
+    if(
+      parsed &&
+      typeof parsed === 'object'
+    ){
+      return Object.values(parsed);
     }
-    
-    // 상단 정보 표시
-    updateWorkInfoDisplay();
-    
-  }catch(e){
-    console.error('[안전점검] 허가서 로드 오류:', e);
-    inspectionData.checklist = DEFAULT_CHECKLIST.map(function(i){ return Object.assign({}, i, {judgment:'', memo:''}); });
+
+    return [];
+
+  }catch(error){
+    console.warn(
+      '[안전점검] 허가서 저장자료 파싱 실패:',
+      key,
+      error
+    );
+
+    return [];
   }
 }
+
+function readInspectionSession(){
+  try{
+    return JSON.parse(
+      sessionStorage.getItem(
+        'appSession'
+      ) ||
+      localStorage.getItem(
+        'appSession'
+      ) ||
+      'null'
+    );
+  }catch(error){
+    return null;
+  }
+}
+
+function readAllPermits(){
+  var session =
+    readInspectionSession();
+
+  /*
+   * 테스터는 testerSafetyPermits를 먼저 읽고,
+   * 일반 사용자와 관리자는 safetyPermits를 먼저 읽습니다.
+   */
+  var keys =
+    session &&
+    session.role === 'tester'
+      ? [
+          'testerSafetyPermits',
+          'safetyPermits'
+        ]
+      : [
+          'safetyPermits',
+          'testerSafetyPermits'
+        ];
+
+  var map =
+    new Map();
+
+  keys.forEach(function(key){
+    readPermitArray(key)
+      .forEach(function(permit){
+        var permitNo =
+          cleanValue(
+            permit &&
+            permit.permitNo
+          );
+
+        if(!permitNo){
+          return;
+        }
+
+        /*
+         * 앞에서 읽은 저장 키를 우선합니다.
+         */
+        if(!map.has(permitNo)){
+          map.set(
+            permitNo,
+            permit
+          );
+        }
+      });
+  });
+
+  return Array.from(
+    map.values()
+  );
+}
+
+/* ═══════════════════════════════════════
+ * 허가서 체크리스트 → 안전점검 항목 변환
+ * ═══════════════════════════════════════ */
+
+function inferChecklistCategory(text){
+  var value =
+    cleanValue(text);
+
+  if(
+    /화기|용접|용단|불티|소화기|가연|인화|화재|폭발/.test(
+      value
+    )
+  ){
+    return '화재·폭발';
+  }
+
+  if(
+    /전기|전원|감전|충전부|활선|절연|접지|잠금|LOTO|ILS/i.test(
+      value
+    )
+  ){
+    return '전기·감전';
+  }
+
+  if(
+    /고소|추락|비계|사다리|안전대|난간|작업발판|낙하/.test(
+      value
+    )
+  ){
+    return '추락·낙하';
+  }
+
+  if(
+    /밀폐|맨홀|탱크|산소|환기|질식/.test(
+      value
+    )
+  ){
+    return '밀폐공간';
+  }
+
+  if(
+    /중량물|인양|크레인|지게차|와이어|후크|신호수/.test(
+      value
+    )
+  ){
+    return '중량물';
+  }
+
+  if(
+    /유해가스|황화수소|일산화탄소|LEL|H2S|CO2/i.test(
+      value
+    )
+  ){
+    return '유해가스';
+  }
+
+  if(
+    /보호구|작업구역|출입통제|비상연락|TBM|안전철칙|도구|장비|동시작업/i.test(
+      value
+    )
+  ){
+    return '공통';
+  }
+
+  return '기타';
+}
+
+/*
+ * 현재 허가서에는 required 값이 없는 항목이 있으므로
+ * 중대위험 가능성이 높은 문구를 임시 필수항목으로 판정합니다.
+ */
+function inferRequiredItem(item){
+  item =
+    item || {};
+
+  if(
+    item.required === true ||
+    item.stopWorkCritical === true
+  ){
+    return true;
+  }
+
+  var text =
+    cleanValue(
+      item.text ||
+      item.item ||
+      item.label ||
+      item.checklistText
+    );
+
+  return (
+    /전원 차단|잠금|LOTO|ILS|활선|충전부|추락방지|안전대|안전난간|산소 및 유해가스|가스 측정|화재감시자|가연성|인화성|인양 계획|신호수|출입통제/i
+      .test(text)
+  );
+}
+
+function normalizeInspectionChecklistItem(item){
+  item =
+    item || {};
+
+  var text =
+    cleanValue(
+      item.text ||
+      item.item ||
+      item.label ||
+      item.checklistText
+    );
+
+  return {
+    category:
+      cleanValue(
+        item.category
+      ) ||
+      inferChecklistCategory(
+        text
+      ),
+
+    text:text,
+
+    required:
+      inferRequiredItem(
+        item
+      ),
+
+    judgment:'',
+
+    memo:'',
+
+    sourceItemId:
+      cleanValue(
+        item.checklistItemId ||
+        item.sourceItemId ||
+        ''
+      ),
+
+    sourceResult:
+      cleanValue(
+        item.result ||
+        item.judgment ||
+        item.permitResult ||
+        ''
+      )
+  };
+}
+
+function extractPermitChecklist(permit){
+  permit =
+    permit || {};
+
+  /*
+   * 1순위: 향후 작업허가서에서 저장할 점검 전용 목록
+   */
+  if(
+    Array.isArray(
+      permit.inspectionChecklist
+    ) &&
+    permit.inspectionChecklist.length
+  ){
+    return permit
+      .inspectionChecklist
+      .map(
+        normalizeInspectionChecklistItem
+      )
+      .filter(function(item){
+        return Boolean(
+          item.text
+        );
+      });
+  }
+
+  /*
+   * 2순위: 현재 작업허가서 v2.2 실제 저장 구조
+   */
+  if(
+    permit.unifiedSafetyChecklist &&
+    Array.isArray(
+      permit
+        .unifiedSafetyChecklist
+        .items
+    ) &&
+    permit
+      .unifiedSafetyChecklist
+      .items.length
+  ){
+    return permit
+      .unifiedSafetyChecklist
+      .items
+      .map(
+        normalizeInspectionChecklistItem
+      )
+      .filter(function(item){
+        return Boolean(
+          item.text
+        );
+      });
+  }
+
+  /*
+   * 3순위: 구버전 호환
+   */
+  if(
+    Array.isArray(
+      permit.safetyChecklist
+    ) &&
+    permit.safetyChecklist.length
+  ){
+    return permit
+      .safetyChecklist
+      .map(
+        normalizeInspectionChecklistItem
+      )
+      .filter(function(item){
+        return Boolean(
+          item.text
+        );
+      });
+  }
+
+  return [];
+}
+
+/* ═══════════════════════════════════════
+ * 허가번호를 이용한 허가서 연동
+ * ═══════════════════════════════════════ */
+
+function loadPermitInfo(permitNo){
+  try{
+    var targetPermitNo =
+      cleanValue(
+        permitNo
+      );
+
+    var permits =
+      readAllPermits();
+
+    var permit =
+      permits.find(function(record){
+        return (
+          cleanValue(
+            record &&
+            record.permitNo
+          ) ===
+          targetPermitNo
+        );
+      });
+
+    if(!permit){
+      console.error(
+        '[안전점검] 허가서를 찾을 수 없음:',
+        {
+          requestedPermitNo:
+            targetPermitNo,
+
+          safetyPermits:
+            readPermitArray(
+              'safetyPermits'
+            ).length,
+
+          testerSafetyPermits:
+            readPermitArray(
+              'testerSafetyPermits'
+            ).length
+        }
+      );
+
+      inspectionData.checklist =
+        DEFAULT_CHECKLIST
+          .map(function(item){
+            return Object.assign(
+              {},
+              item,
+              {
+                judgment:'',
+                memo:''
+              }
+            );
+          });
+
+      showToast(
+        '허가서를 찾지 못해 기본 체크리스트를 사용합니다.',
+        'warn'
+      );
+
+      return false;
+    }
+
+    selectedPermit =
+      permit;
+
+    inspectionData.permitNo =
+      cleanValue(
+        permit.permitNo
+      );
+
+    inspectionData.workId =
+      cleanValue(
+        permit.workId ||
+        permit.sourceWorkId ||
+        (
+          permit.workflowLink &&
+          permit.workflowLink.workId
+        )
+      );
+
+    inspectionData.workName =
+      cleanValue(
+        permit.workName ||
+        permit.workTitle ||
+        permit.title
+      );
+
+    inspectionData.location =
+      [
+        cleanValue(
+          permit.location
+        ),
+        cleanValue(
+          permit.detailLocation
+        )
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+    var linkedChecklist =
+      extractPermitChecklist(
+        permit
+      );
+
+    if(linkedChecklist.length){
+      inspectionData.checklist =
+        linkedChecklist;
+
+      console.log(
+        '[안전점검] 허가서 체크리스트 연동 성공:',
+        {
+          permitNo:
+            inspectionData.permitNo,
+
+          workId:
+            inspectionData.workId,
+
+          itemCount:
+            linkedChecklist.length,
+
+          source:
+            Array.isArray(
+              permit.inspectionChecklist
+            ) &&
+            permit.inspectionChecklist
+              .length
+              ? 'inspectionChecklist'
+              : permit
+                  .unifiedSafetyChecklist &&
+                Array.isArray(
+                  permit
+                    .unifiedSafetyChecklist
+                    .items
+                )
+                ? 'unifiedSafetyChecklist.items'
+                : 'safetyChecklist'
+        }
+      );
+
+    }else{
+      inspectionData.checklist =
+        DEFAULT_CHECKLIST
+          .map(function(item){
+            return Object.assign(
+              {},
+              item,
+              {
+                judgment:'',
+                memo:''
+              }
+            );
+          });
+
+      console.warn(
+        '[안전점검] 허가서 체크리스트 없음 · 기본 목록 사용:',
+        inspectionData.permitNo
+      );
+
+      showToast(
+        '허가서 체크리스트가 없어 기본 항목을 사용합니다.',
+        'warn'
+      );
+    }
+
+    var badge =
+      document.getElementById(
+        'permitBadge'
+      );
+
+    if(badge){
+      badge.textContent =
+        inspectionData.permitNo;
+    }
+
+    updateWorkInfoDisplay();
+
+    return true;
+
+  }catch(error){
+    console.error(
+      '[안전점검] 허가서 로드 오류:',
+      error
+    );
+
+    inspectionData.checklist =
+      DEFAULT_CHECKLIST
+        .map(function(item){
+          return Object.assign(
+            {},
+            item,
+            {
+              judgment:'',
+              memo:''
+            }
+          );
+        });
+
+    showToast(
+      '허가서 연동 중 오류가 발생했습니다.',
+      'danger'
+    );
+
+    return false;
+  }
+}
+
 
 function loadWorkInfo(workId){
   try{
