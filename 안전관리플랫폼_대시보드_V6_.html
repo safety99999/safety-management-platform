@@ -1000,9 +1000,9 @@ button{touch-action:manipulation}
   <button type="button" class="nav-tab active" data-tab="home">
     <span class="nav-ti">🏠</span><span class="nav-tl">홈</span>
   </button>
-  <button type="button" class="nav-tab insp-tab" id="inspectionRegisterButton">
-    <span class="nav-ti">🚨</span><span class="nav-tl">점검등록</span>
-  </button>
+<button type="button" class="nav-tab insp-tab" id="inspectionRegisterButton">
+  <span class="nav-ti">📋</span><span class="nav-tl">안전점검</span>
+</button>
   <button type="button" class="nav-tab" data-tab="inspect">
     <span class="nav-ti">📊</span><span class="nav-tl">점검현황</span>
     <span class="nav-badge" id="inspectionBadge" hidden>0</span>
@@ -10013,15 +10013,11 @@ button{touch-action:manipulation}
         openPermitMenu
       );
 
-    byId(
-byId(
-  'inspectionRegisterButton'
-).addEventListener(
-  'click',
-  function(){
+byId('inspectionRegisterButton')
+  .addEventListener('click', function(){
     navigate('안전점검_v2.html');
-  }
-);
+  });
+
 
 
     byId('closeSheetButton')
