@@ -2409,31 +2409,66 @@ button{cursor:pointer;}
       id="adminTsvInput"
       placeholder="위험성평가 DB TSV 데이터를 붙여 넣으세요."></textarea>
 
-    <div class="admin-button-grid">
-      <button type="button" class="admin-button upload" onclick="validateAdminTsv()">
-        🧪 TSV 검증
-      </button>
+  <div class="admin-button-grid">
+  <button
+    type="button"
+    class="admin-button upload"
+    onclick="validateAdminTsv()">
+    🧪 TSV 검증
+  </button>
 
-      <button type="button" class="admin-button upload" onclick="requestAdminUpload()">
-        📤 검증 후 업로드
-      </button>
+  <button
+    type="button"
+    class="admin-button upload"
+    onclick="requestAdminUpload()">
+    📤 검증 후 업로드
+  </button>
 
-      <button type="button" class="admin-button download" onclick="downloadRiskDatabase()">
-        📥 다운로드
-      </button>
+  <button
+    type="button"
+    class="admin-button download"
+    onclick="downloadRiskDatabase()">
+    📥 다운로드
+  </button>
 
-      <button type="button" class="admin-button download" onclick="clearRiskDatabaseCache()">
-        🧹 정적 캐시 삭제
-      </button>
+  <button
+    type="button"
+    class="admin-button download"
+    onclick="clearRiskDatabaseCache()">
+    🧹 정적 캐시 삭제
+  </button>
 
-      <button type="button" class="admin-button neutral" onclick="checkRemoteRiskDatabaseCount()">
-        🔎 서버 건수 확인
-      </button>
+  <button
+    type="button"
+    class="admin-button neutral"
+    onclick="checkRemoteRiskDatabaseCount()">
+    🔎 서버 건수 확인
+  </button>
 
-      <button type="button" class="admin-button neutral" onclick="requestReferenceDatabaseRefresh()">
-        🔄 정적 DB 최신화
-      </button>
-    </div>
+  <button
+    type="button"
+    class="admin-button neutral"
+    onclick="requestReferenceDatabaseRefresh()">
+    🔄 정적 DB 최신화
+  </button>
+
+  <button
+    type="button"
+    class="admin-button download full"
+    id="exportRiskStaticJsonButton"
+    onclick="exportRiskAssessmentStaticJson()">
+    1. risk-assessment-db.v35.json 생성
+  </button>
+
+  <button
+    type="button"
+    class="admin-button upload full"
+    id="exportRiskManifestButton"
+    onclick="exportRiskAssessmentManifest()"
+    disabled>
+    2. db-manifest.json 생성
+  </button>
+</div>
 
     <div class="admin-result" id="adminResult"></div>
     <div id="adminPreview"></div>
@@ -9327,6 +9362,869 @@ document.addEventListener('DOMContentLoaded', initializeApplication);
       arguments
     );
   };
+})(window);
+</script>
+<script id="risk-static-export-v1">
+(function(global){
+  'use strict';
+
+  var EXPORT_VERSION =
+    'risk-static-export-v1.0.0';
+
+  var exportState = {
+    riskFile:null,
+    manifest:null,
+    lastError:''
+  };
+
+  function clean(value){
+    return String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    ).trim();
+  }
+
+  function clone(value){
+    return JSON.parse(
+      JSON.stringify(value)
+    );
+  }
+
+  function getSessionName(){
+    try{
+      var session =
+        JSON.parse(
+          sessionStorage.getItem(
+            'appSession'
+          ) || 'null'
+        );
+
+      return (
+        session &&
+        (
+          session.displayName ||
+          session.email
+        )
+      ) ||
+      sessionStorage.getItem(
+        'userName'
+      ) ||
+      '관리자';
+
+    }catch(error){
+      return (
+        sessionStorage.getItem(
+          'userName'
+        ) ||
+        '관리자'
+      );
+    }
+  }
+
+  function downloadJsonFile(
+    filename,
+    text
+  ){
+    /*
+     * SHA-256 계산에 사용한 문자열과
+     * 실제 다운로드 파일이 완전히 같도록
+     * BOM을 추가하지 않습니다.
+     */
+    var blob =
+      new Blob(
+        [text],
+        {
+          type:
+            'application/json;charset=utf-8'
+        }
+      );
+
+    var url =
+      URL.createObjectURL(blob);
+
+    var anchor =
+      document.createElement('a');
+
+    anchor.href = url;
+    anchor.download = filename;
+
+    document.body.appendChild(
+      anchor
+    );
+
+    anchor.click();
+    anchor.remove();
+
+    setTimeout(function(){
+      URL.revokeObjectURL(url);
+    },1000);
+  }
+
+  async function sha256Text(text){
+    if(
+      !global.crypto ||
+      !global.crypto.subtle
+    ){
+      throw new Error(
+        '이 브라우저에서 SHA-256을 생성할 수 없습니다.'
+      );
+    }
+
+    var bytes =
+      new TextEncoder()
+        .encode(text);
+
+    var hashBuffer =
+      await global.crypto.subtle
+        .digest(
+          'SHA-256',
+          bytes
+        );
+
+    return Array.from(
+      new Uint8Array(
+        hashBuffer
+      )
+    )
+      .map(function(value){
+        return value
+          .toString(16)
+          .padStart(2,'0');
+      })
+      .join('');
+  }
+
+  function readAndValidateTsv(){
+    var textarea =
+      document.getElementById(
+        'adminTsvInput'
+      );
+
+    var text =
+      textarea
+        ? textarea.value
+        : '';
+
+    if(!clean(text)){
+      throw new Error(
+        '위험성평가 DB TSV 데이터를 먼저 붙여 넣어 주세요.'
+      );
+    }
+
+    if(
+      typeof global
+        .parseRiskDatabaseTsv !==
+          'function'
+    ){
+      throw new Error(
+        'TSV 검증 함수를 찾을 수 없습니다.'
+      );
+    }
+
+    var parsed =
+      global.parseRiskDatabaseTsv(
+        text
+      );
+
+    if(
+      parsed.errors &&
+      parsed.errors.length > 0
+    ){
+      throw new Error(
+        'TSV 검증 오류 ' +
+        parsed.errors.length +
+        '건\n\n' +
+        parsed.errors
+          .slice(0,10)
+          .join('\n')
+      );
+    }
+
+    if(
+      !parsed.data ||
+      !parsed.data.length
+    ){
+      throw new Error(
+        '변환할 유효 데이터가 없습니다.'
+      );
+    }
+
+    return parsed;
+  }
+
+  function buildStaticRows(rows){
+    var controlValues = [
+      '○',
+      '△',
+      '×'
+    ];
+
+    var riskValues = [
+      '저위험',
+      '중위험',
+      '고위험',
+      '매우고위험',
+      '판정불가'
+    ];
+
+    var result =
+      rows.map(function(source,index){
+        source = source || {};
+
+        var no =
+          index + 1;
+
+        var classCode =
+          clean(
+            source.classCode
+          ).toUpperCase();
+
+        var safeClassCode =
+          classCode
+            .replace(
+              /[^0-9A-Za-z가-힣_-]/g,
+              ''
+            )
+            .substring(0,20) ||
+          'UNK';
+
+        var docId =
+          'RAD-' +
+          safeClassCode +
+          '-' +
+          String(no)
+            .padStart(6,'0');
+
+        var control =
+          clean(
+            source.controlAdequacy
+          );
+
+        var riskLevel =
+          clean(
+            source.riskLevel
+          );
+
+        if(
+          controlValues.indexOf(
+            control
+          ) < 0
+        ){
+          throw new Error(
+            no +
+            '번 데이터의 통제 적정성이 올바르지 않습니다: ' +
+            control
+          );
+        }
+
+        if(
+          riskValues.indexOf(
+            riskLevel
+          ) < 0
+        ){
+          throw new Error(
+            no +
+            '번 데이터의 위험도가 올바르지 않습니다: ' +
+            riskLevel
+          );
+        }
+
+        return {
+          docId:docId,
+          no:no,
+          classCode:classCode,
+          sheet:
+            clean(source.sheet),
+          workType:
+            clean(source.workType),
+          workSubType:
+            clean(source.workSubType),
+          workName:
+            clean(source.workName),
+          workStage:
+            clean(source.workStage),
+          equipment:
+            clean(source.equipment),
+          materials:
+            clean(source.materials),
+          originalHazard:
+            clean(source.originalHazard),
+          accidentType:
+            clean(source.accidentType),
+          scenario:
+            clean(source.scenario),
+          detailedMeasures:
+            clean(source.detailedMeasures),
+          standardMeasures:
+            clean(source.standardMeasures),
+          controlAdequacy:
+            control,
+          riskLevel:
+            riskLevel,
+          remark:
+            clean(source.remark),
+          status:
+            clean(source.status) ||
+            'active',
+          schemaVersion:35
+        };
+      });
+
+    var uniqueIds =
+      new Set(
+        result.map(function(row){
+          return row.docId;
+        })
+      );
+
+    if(
+      uniqueIds.size !==
+      result.length
+    ){
+      throw new Error(
+        '생성된 정적 DB에 중복 docId가 있습니다.'
+      );
+    }
+
+    return result;
+  }
+
+  function inspectStaticRows(rows){
+    var validControl =
+      rows.filter(function(row){
+        return [
+          '○',
+          '△',
+          '×'
+        ].indexOf(
+          row.controlAdequacy
+        ) >= 0;
+      }).length;
+
+    var validRisk =
+      rows.filter(function(row){
+        return [
+          '저위험',
+          '중위험',
+          '고위험',
+          '매우고위험',
+          '판정불가'
+        ].indexOf(
+          row.riskLevel
+        ) >= 0;
+      }).length;
+
+    var shifted =
+      rows.filter(function(row){
+        return (
+          [
+            '○',
+            '△',
+            '×'
+          ].indexOf(
+            row.controlAdequacy
+          ) < 0 &&
+          [
+            '○',
+            '△',
+            '×'
+          ].indexOf(
+            row.riskLevel
+          ) >= 0
+        );
+      }).length;
+
+    return {
+      count:rows.length,
+      validControl:validControl,
+      validRisk:validRisk,
+      shifted:shifted
+    };
+  }
+
+  async function loadExistingManifest(){
+    var response =
+      await fetch(
+        './assets/data/db-manifest.json?ts=' +
+        Date.now(),
+        {
+          cache:'no-store'
+        }
+      );
+
+    if(!response.ok){
+      throw new Error(
+        '기존 db-manifest.json 조회 실패: HTTP ' +
+        response.status
+      );
+    }
+
+    var manifest =
+      await response.json();
+
+    if(
+      !manifest ||
+      !manifest.files ||
+      !manifest.files.workDatabase
+    ){
+      throw new Error(
+        '기존 manifest의 workDatabase 정보를 찾을 수 없습니다.'
+      );
+    }
+
+    return manifest;
+  }
+
+  async function exportRiskAssessmentStaticJson(){
+    var button =
+      document.getElementById(
+        'exportRiskStaticJsonButton'
+      );
+
+    if(button){
+      button.disabled = true;
+      button.textContent =
+        '정적 JSON 생성 중...';
+    }
+
+    try{
+      var parsed =
+        readAndValidateTsv();
+
+      var rows =
+        buildStaticRows(
+          parsed.data
+        );
+
+      var inspection =
+        inspectStaticRows(
+          rows
+        );
+
+      if(
+        inspection.validControl !==
+          rows.length
+      ){
+        throw new Error(
+          '통제 적정성 유효 건수가 전체 건수와 다릅니다.'
+        );
+      }
+
+      if(
+        inspection.validRisk !==
+          rows.length
+      ){
+        throw new Error(
+          '위험도 유효 건수가 전체 건수와 다릅니다.'
+        );
+      }
+
+      if(
+        inspection.shifted !== 0
+      ){
+        throw new Error(
+          '컬럼 시프트 의심 데이터가 ' +
+          inspection.shifted +
+          '건 있습니다.'
+        );
+      }
+
+      if(
+        rows.length !== 519
+      ){
+        var continueExport =
+          global.confirm(
+            '현재 데이터는 ' +
+            rows.length +
+            '건입니다.\n\n' +
+            '이번 목표인 519건과 다릅니다. 그래도 생성하시겠습니까?'
+          );
+
+        if(!continueExport){
+          throw new Error(
+            '사용자가 건수 불일치로 생성을 취소했습니다.'
+          );
+        }
+      }
+
+      var exportedAt =
+        new Date()
+          .toISOString();
+
+      var payload = {
+        schemaVersion:35,
+        collection:
+          'test_riskAssessmentDB',
+        environment:'test',
+        exportedAt:exportedAt,
+        exportedBy:
+          getSessionName(),
+        count:
+          rows.length,
+        data:rows
+      };
+
+      var text =
+        JSON.stringify(
+          payload,
+          null,
+          2
+        );
+
+      var hash =
+        await sha256Text(
+          text
+        );
+
+      var size =
+        new TextEncoder()
+          .encode(text)
+          .length;
+
+      exportState.riskFile = {
+        filename:
+          'risk-assessment-db.v35.json',
+        schemaVersion:35,
+        count:
+          rows.length,
+        size:size,
+        sha256:hash,
+        exportedAt:exportedAt,
+        inspection:inspection
+      };
+
+      exportState.lastError = '';
+
+      downloadJsonFile(
+        'risk-assessment-db.v35.json',
+        text
+      );
+
+      var manifestButton =
+        document.getElementById(
+          'exportRiskManifestButton'
+        );
+
+      if(manifestButton){
+        manifestButton.disabled =
+          false;
+      }
+
+      if(
+        typeof global.showAdminResult ===
+          'function'
+      ){
+        global.showAdminResult(
+          '✅ 위험성평가 정적 JSON 생성 완료\n' +
+          '· 데이터: ' +
+          rows.length +
+          '건\n' +
+          '· 통제값 정상: ' +
+          inspection.validControl +
+          '건\n' +
+          '· 위험도 정상: ' +
+          inspection.validRisk +
+          '건\n' +
+          '· 컬럼 시프트: ' +
+          inspection.shifted +
+          '건\n' +
+          '· 파일 크기: ' +
+          size +
+          ' bytes\n' +
+          '· SHA-256: ' +
+          hash +
+          '\n\n' +
+          '다음으로 db-manifest.json을 생성하세요.',
+          'success'
+        );
+      }
+
+      console.log(
+        '[Risk Static Export] JSON 생성 완료:',
+        exportState.riskFile
+      );
+
+      console.table({
+        success:true,
+        count:rows.length,
+        validControl:
+          inspection.validControl,
+        validRisk:
+          inspection.validRisk,
+        shifted:
+          inspection.shifted,
+        size:size,
+        sha256:hash,
+        firestoreWriteCount:0
+      });
+
+    }catch(error){
+      exportState.lastError =
+        error.message ||
+        String(error);
+
+      console.error(
+        '[Risk Static Export] JSON 생성 실패:',
+        error
+      );
+
+      if(
+        typeof global.showAdminResult ===
+          'function'
+      ){
+        global.showAdminResult(
+          '정적 JSON 생성 실패: ' +
+          exportState.lastError,
+          'error'
+        );
+      }
+
+    }finally{
+      if(button){
+        button.disabled = false;
+        button.textContent =
+          '1. risk-assessment-db.v35.json 생성';
+      }
+    }
+  }
+
+  async function exportRiskAssessmentManifest(){
+    var button =
+      document.getElementById(
+        'exportRiskManifestButton'
+      );
+
+    if(!exportState.riskFile){
+      if(
+        typeof global.showAdminResult ===
+          'function'
+      ){
+        global.showAdminResult(
+          '먼저 risk-assessment-db.v35.json을 생성하세요.',
+          'warning'
+        );
+      }
+
+      return;
+    }
+
+    if(button){
+      button.disabled = true;
+      button.textContent =
+        'manifest 생성 중...';
+    }
+
+    try{
+      var oldManifest =
+        await loadExistingManifest();
+
+      var preservedWorkDatabase =
+        clone(
+          oldManifest.files
+            .workDatabase
+        );
+
+      var manifest = {
+        manifestVersion:
+          Number(
+            oldManifest
+              .manifestVersion ||
+            1
+          ),
+        environment:
+          oldManifest.environment ||
+          'test',
+        generatedAt:
+          new Date()
+            .toISOString(),
+        generatedBy:
+          getSessionName(),
+        repository:
+          oldManifest.repository ||
+          'safety99999/safety-management-platform',
+        files:{
+          riskAssessmentDB:{
+            filename:
+              exportState.riskFile
+                .filename,
+            schemaVersion:
+              exportState.riskFile
+                .schemaVersion,
+            count:
+              exportState.riskFile
+                .count,
+            size:
+              exportState.riskFile
+                .size,
+            sha256:
+              exportState.riskFile
+                .sha256
+          },
+          workDatabase:
+            preservedWorkDatabase
+        }
+      };
+
+      var text =
+        JSON.stringify(
+          manifest,
+          null,
+          2
+        );
+
+      exportState.manifest =
+        clone(manifest);
+
+      downloadJsonFile(
+        'db-manifest.json',
+        text
+      );
+
+      if(
+        typeof global.showAdminResult ===
+          'function'
+      ){
+        global.showAdminResult(
+          '✅ db-manifest.json 생성 완료\n' +
+          '· 위험성평가 DB: ' +
+          manifest.files
+            .riskAssessmentDB
+            .count +
+          '건\n' +
+          '· 작업DB 유지: ' +
+          manifest.files
+            .workDatabase
+            .count +
+          '건\n' +
+          '· 작업DB SHA-256 유지: ' +
+          manifest.files
+            .workDatabase
+            .sha256 +
+          '\n\n' +
+          '두 파일을 GitHub assets/data에 업로드하세요.',
+          'success'
+        );
+      }
+
+      console.log(
+        '[Risk Static Export] manifest 생성 완료:',
+        manifest
+      );
+
+      console.table({
+        success:true,
+        riskAssessmentCount:
+          manifest.files
+            .riskAssessmentDB
+            .count,
+        workDatabaseCount:
+          manifest.files
+            .workDatabase
+            .count,
+        workDatabasePreserved:
+          JSON.stringify(
+            manifest.files
+              .workDatabase
+          ) ===
+          JSON.stringify(
+            oldManifest.files
+              .workDatabase
+          ),
+        firestoreWriteCount:0
+      });
+
+    }catch(error){
+      exportState.lastError =
+        error.message ||
+        String(error);
+
+      console.error(
+        '[Risk Static Export] manifest 생성 실패:',
+        error
+      );
+
+      if(
+        typeof global.showAdminResult ===
+          'function'
+      ){
+        global.showAdminResult(
+          'manifest 생성 실패: ' +
+          exportState.lastError,
+          'error'
+        );
+      }
+
+    }finally{
+      if(button){
+        button.disabled = false;
+        button.textContent =
+          '2. db-manifest.json 생성';
+      }
+    }
+  }
+
+  global.exportRiskAssessmentStaticJson =
+    exportRiskAssessmentStaticJson;
+
+  global.exportRiskAssessmentManifest =
+    exportRiskAssessmentManifest;
+
+  global.RiskStaticExportV1 = {
+    version:
+      EXPORT_VERSION,
+    state:
+      exportState,
+    validate:
+      readAndValidateTsv,
+    diagnose:function(){
+      var result = {
+        installed:true,
+        version:
+          EXPORT_VERSION,
+        riskFileReady:
+          Boolean(
+            exportState.riskFile
+          ),
+        riskCount:
+          exportState.riskFile
+            ? exportState.riskFile
+                .count
+            : 0,
+        riskSha256:
+          exportState.riskFile
+            ? exportState.riskFile
+                .sha256
+            : '',
+        manifestReady:
+          Boolean(
+            exportState.manifest
+          ),
+        preservedWorkCount:
+          exportState.manifest
+            ? exportState.manifest
+                .files
+                .workDatabase
+                .count
+            : 0,
+        lastError:
+          exportState.lastError,
+        firestoreWriteCount:0
+      };
+
+      console.table(result);
+
+      return result;
+    }
+  };
+
+  console.log(
+    '[Risk Static Export] ' +
+    EXPORT_VERSION +
+    ' 설치 완료'
+  );
+
 })(window);
 </script>
   
