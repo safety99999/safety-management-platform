@@ -1614,6 +1614,10 @@ window.addEventListener('DOMContentLoaded', function(){
       if(e.target === overlay) customConfirmClose(false);
     });
   }
+   // ⭐ 안전점검 중대위반 자동 발동 처리
+  handleInspectionAutoTrigger();
+});
+ 
 });
 
 // ═══════════════════════════════════════════════════
@@ -2530,6 +2534,110 @@ function showToast(msg, type){
     if(t.parentNode) t.parentNode.removeChild(t);
   }, 3500);
 }
+// ═══════════════════════════════════════════════════
+// ⭐ 안전점검 중대위반 → 자동 발동 수신 처리
+// ═══════════════════════════════════════════════════
+function handleInspectionAutoTrigger(){
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if(params.get('from') !== 'inspection') return;
+    
+    var raw = localStorage.getItem('pendingStopWorkOrder');
+    if(!raw) return;
+    
+    var data = JSON.parse(raw);
+    console.log('[작업중지권] 안전점검 자동 발동 수신:', data);
+    
+    // 1. stopData 자동 채움
+    stopData.workId = data.workId || '';
+    stopData.permitNo = data.permitNo || '';
+    stopData.workName = data.workName || '';
+    stopData.location = data.location || '';
+    stopData.reasons = data.stopReasons || ['기타 위험'];
+    
+    // 2. 상단 배지
+    if(data.permitNo){
+      var badge = document.getElementById('permitBadge');
+      if(badge){
+        badge.textContent = data.permitNo;
+        badge.classList.add('show');
+      }
+    }
+    
+    // 3. 긴급 접수 자동 실행 (원터치 신고 대신)
+    createUrgentEmergency();
+    
+    // 4. 상세 화면으로 즉시 이동
+    document.getElementById('screen-welcome').classList.remove('active');
+    document.getElementById('screen-detail').classList.add('active');
+    
+    // 5. 폼 자동 채움
+    setVal('stop-work-name', data.workName || '');
+    setVal('stop-location', data.location || '');
+    setVal('stop-description', data.stopDescription || '');
+    setVal('req-name', data.requesterName || '');
+    setVal('req-dept', data.requesterDept || '');
+    setVal('req-position', data.requesterPosition || '');
+    
+    // 6. 사유 카드 "기타 위험" 자동 선택
+    setTimeout(function(){
+      var reasonCards = document.querySelectorAll('.reason-card');
+      reasonCards.forEach(function(card){
+        var textEl = card.querySelector('.reason-txt');
+        if(textEl && textEl.textContent.indexOf('기타') >= 0){
+          if(!card.classList.contains('selected')){
+            card.classList.add('selected');
+          }
+        }
+      });
+    }, 100);
+    
+    // 7. 상단에 경고 배너 표시
+    showInspectionTriggerBanner(data);
+    
+    // 8. 사용한 데이터 삭제
+    localStorage.removeItem('pendingStopWorkOrder');
+    
+    // 9. 토스트 안내
+    showToast('🚨 안전점검 중대 위반으로 자동 발동됨', 'danger');
+    
+    window.scrollTo(0, 0);
+    
+  } catch(e) {
+    console.error('[handleInspectionAutoTrigger] 오류:', e);
+  }
+}
+
+function showInspectionTriggerBanner(data){
+  var banner = document.getElementById('permitInfoBanner');
+  if(!banner) return;
+  
+  var violationsHtml = (data.violations || []).map(function(v, i){
+    return '<div style="margin-top:6px;padding:8px 10px;background:rgba(255,255,255,.7);border-radius:8px;border-left:3px solid var(--stop);">' +
+             '<strong>' + (i+1) + '. ' + escHtml(v.text) + '</strong>' +
+             (v.memo && v.memo !== '(사유 미기재)' 
+                ? '<div style="margin-top:4px;font-size:11px;color:var(--sub);">사유: ' + escHtml(v.memo) + '</div>' 
+                : '') +
+           '</div>';
+  }).join('');
+  
+  banner.innerHTML = 
+    '<div class="danger-box" style="border-left-width:5px;margin-bottom:14px;">' +
+      '<div class="danger-box-t">🚨 안전점검 중대 위반 - 자동 발동</div>' +
+      '<div class="danger-box-b">' +
+        '<div>허가서: <strong>' + escHtml(data.permitNo || '-') + '</strong></div>' +
+        '<div>점검자: <strong>' + escHtml(data.requesterName || '-') + '</strong>' +
+        (data.requesterDept ? ' (' + escHtml(data.requesterDept) + ')' : '') + '</div>' +
+        '<div style="margin-top:10px;font-weight:800;">위반 항목 ' + (data.violations || []).length + '건:</div>' +
+        violationsHtml +
+        '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(214,39,61,.3);font-size:12px;">' +
+          '💡 하단 상세 정보를 확인/보완 후 <strong>제출</strong>해 주세요.' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  banner.style.display = 'block';
+}
+  
 </script>
 
 </div><!-- /.phone-screen -->
