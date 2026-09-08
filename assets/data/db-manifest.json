@@ -5,12 +5,13 @@
   "generatedBy": "테스트 관리자",
   "repository": "safety99999/safety-management-platform",
   "files": {
-    "riskAssessmentDB": {
-      "filename": "risk-assessment-db.v35.json",
-      "schemaVersion": 35,
-      "count": 519,
-      "size": 618656,
-      "sha256": "aa6b8f9486fd42c85fbffbf9c42fd7f1631a5af15de620b0abef90fa40816a68"
+"workDatabase": {
+  "filename": "work-database.test.json",
+  "schemaVersion": 1,
+  "count": 770,
+  "size": 2729197,
+  "sha256": "6c221785dabebcdcd734b19fbd558eeeedf195706507b2808f3960e2ca78824a"
+}
     },
     "workDatabase": {
       "filename": "work-database.test.json",
