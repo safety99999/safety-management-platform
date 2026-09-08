@@ -1022,60 +1022,171 @@ function loadTodayWorks(){
   var countEl = document.getElementById('todayWorksCount');
   if(!listEl) return;
   
-  // localStorage에서 허가서 목록 로드 (실제 저장 키에 맞춰 조정 필요)
-  var permits = [];
+  // ═══ 세션 확인 (테스터 여부) ═══
+  var isTester = false;
   try {
-    var raw = localStorage.getItem('safetyPermits') || localStorage.getItem('permits') || '[]';
-    permits = JSON.parse(raw);
-    if(!Array.isArray(permits)) permits = [];
-  } catch(e){ permits = []; }
+    var session = JSON.parse(sessionStorage.getItem('appSession') || 'null');
+    isTester = session && session.accessMode === 'tester' && session.role === 'tester';
+  } catch(e){}
   
-  // 오늘 날짜
+  console.log('[안전점검] 세션 모드:', isTester ? '테스터' : '일반');
+  
+  // ═══ 허가서 로드 (테스터/일반 모두 확인) ═══
+  var permits = [];
+  var storageKey = '';
+  
+  // 1순위: 세션에 맞는 키
+  var primaryKey = isTester ? 'testerSafetyPermits' : 'safetyPermits';
+  try {
+    var raw = localStorage.getItem(primaryKey);
+    if(raw){
+      var parsed = JSON.parse(raw);
+      if(Array.isArray(parsed) && parsed.length > 0){
+        permits = parsed;
+        storageKey = primaryKey;
+      }
+    }
+  } catch(e){}
+  
+  // 2순위: 그래도 없으면 반대편도 확인
+  if(permits.length === 0){
+    var altKey = isTester ? 'safetyPermits' : 'testerSafetyPermits';
+    try {
+      var raw2 = localStorage.getItem(altKey);
+      if(raw2){
+        var parsed2 = JSON.parse(raw2);
+        if(Array.isArray(parsed2) && parsed2.length > 0){
+          permits = parsed2;
+          storageKey = altKey;
+        }
+      }
+    } catch(e){}
+  }
+  
+  console.log('[안전점검] 허가서 로드:', storageKey, permits.length + '건');
+  
+  // ═══ 오늘 날짜 ═══
   var today = new Date();
   var todayStr = today.getFullYear() + '-' + 
     String(today.getMonth()+1).padStart(2,'0') + '-' + 
     String(today.getDate()).padStart(2,'0');
   
-  // 필터: 허가완료/작업중 & 오늘 작업일
+  // ═══ 필터링: 허가완료/작업중 & 오늘 작업 ═══
   var todayPermits = permits.filter(function(p){
-    var status = p.status || p.permitStatus || '';
-    var isActive = ['허가완료','작업중','승인완료','승인','approved'].indexOf(status) > -1;
+    if(!p || typeof p !== 'object') return false;
     
-    var workDate = p.workDate || p.workStartDate || p.startDate || '';
-    // 날짜 필터는 유연하게 (필드가 없거나 오늘 포함이면 통과)
-    var isToday = !workDate || workDate.indexOf(todayStr) > -1 || 
-                  (p.workEndDate && workDate <= todayStr && p.workEndDate >= todayStr);
+    // ─── 상태 확인 ───
+    var statusCode = (p.statusCode || '').toString();
+    var status = (p.status || p.permitStatus || '').toString();
     
-    return isActive && isToday;
+    // approved, inProgress, tbmCompleted (승인 후 상태만)
+    var isActive = 
+      statusCode === 'approved' || 
+      statusCode === 'inProgress' || 
+      statusCode === 'tbmCompleted' ||
+      status === '허가완료' || 
+      status === '작업중' ||
+      status === 'TBM 완료';
+    
+    if(!isActive) return false;
+    
+    // ─── 날짜 확인 (startDate ~ endDate 사이에 오늘 포함) ───
+    var startDate = (p.startDate || '').substring(0, 10);
+    var endDate = (p.endDate || startDate).substring(0, 10);
+    
+    // 날짜 필드가 없으면 통과 (개발 편의)
+    if(!startDate) return true;
+    
+    return startDate <= todayStr && todayStr <= endDate;
   });
   
+  console.log('[안전점검] 오늘 진행 중 작업:', todayPermits.length + '건');
   countEl.textContent = todayPermits.length + '건';
   
+  // ═══ 빈 상태 처리 (디버그 정보 포함) ═══
   if(todayPermits.length === 0){
+    var debugInfo = '';
+    if(permits.length > 0){
+      var samplePermit = permits[0];
+      debugInfo = 
+        '<div style="margin-top:12px;padding:10px;background:#FFF3CD;border-radius:8px;font-size:11px;color:#856404;text-align:left;line-height:1.6;">' +
+          '<strong>🔍 디버그 정보</strong><br>' +
+          '━━━━━━━━━━━━━━━━━━━━━<br>' +
+          '<strong>저장 키:</strong> ' + storageKey + '<br>' +
+          '<strong>전체 허가서:</strong> ' + permits.length + '건<br>' +
+          '<strong>오늘 날짜:</strong> ' + todayStr + '<br><br>' +
+          '<strong>첫 번째 허가서 샘플:</strong><br>' +
+          '• 허가번호: ' + (samplePermit.permitNo || '(없음)') + '<br>' +
+          '• 상태코드: ' + (samplePermit.statusCode || '(없음)') + '<br>' +
+          '• 상태명: ' + (samplePermit.status || samplePermit.permitStatus || '(없음)') + '<br>' +
+          '• 시작일: ' + (samplePermit.startDate || '(없음)') + '<br>' +
+          '• 종료일: ' + (samplePermit.endDate || '(없음)') + '<br>' +
+          '• 작업명: ' + (samplePermit.workName || '(없음)') + '<br><br>' +
+          '<em>💡 상태가 <strong>허가완료(approved)</strong> 또는 <strong>작업중(inProgress)</strong>이고,<br>' +
+          '오늘 날짜(' + todayStr + ')가 시작일~종료일 사이여야 표시됩니다.</em>' +
+        '</div>';
+    } else {
+      debugInfo = 
+        '<div style="margin-top:12px;padding:10px;background:#FEE;border-radius:8px;font-size:11px;color:#721C24;text-align:left;">' +
+          '<strong>⚠️ localStorage에서 허가서를 찾지 못함</strong><br><br>' +
+          '<strong>확인 사항:</strong><br>' +
+          '1. 허가서를 저장했는지 확인<br>' +
+          '2. 같은 브라우저에서 실행하는지 확인<br>' +
+          '3. 시크릿 모드가 아닌지 확인' +
+        '</div>';
+    }
+    
     listEl.innerHTML = 
       '<div class="today-works-empty">' +
         '<span class="today-works-empty-ico">📭</span>' +
         '오늘 진행 중인 작업이 없습니다.<br>' +
         '허가서가 <strong>허가완료</strong> 또는 <strong>작업중</strong> 상태여야 합니다.' +
+        debugInfo +
       '</div>';
     return;
   }
   
+  // ═══ 리스트 렌더링 ═══
   var html = '';
   todayPermits.forEach(function(p, idx){
-    var permitNo = p.permitNo || p.no || p.id || ('PTW-' + (idx+1));
-    var workName = p.workName || p.title || p.name || '작업명 미상';
-    var location = p.location || p.workLocation || '-';
-    var company = p.company || p.contractor || '-';
-    var riskLevel = p.riskLevel || p.grade || 'normal';
-    var isHigh = riskLevel === 'high' || riskLevel === '고위험' || riskLevel === 'HIGH';
-    var workTypes = p.workTypes || p.workType || [];
-    if(typeof workTypes === 'string') workTypes = [workTypes];
-    var typesText = workTypes.length ? workTypes.slice(0,2).join('·') : '일반';
+    var permitNo = p.permitNo || ('PTW-' + (idx+1));
+    var workName = p.workName || '작업명 미상';
+    
+    // 장소 조합
+    var location = '';
+    if(p.location) location = p.location;
+    if(p.detailLocation) location += (location ? ' ' : '') + p.detailLocation;
+    if(!location) location = '-';
+    
+    var company = p.companyName || p.company || '-';
+    
+    // 위험도
+    var riskLevel = (p.riskSnapshot && p.riskSnapshot.finalRiskLevel) || 
+                    p.riskLevel || p.overallRisk || '';
+    var isHigh = riskLevel === '고위험' || riskLevel === '매우고위험';
+    
+    // 작업유형
+    var workTypes = p.workTypes || [];
+    if(!Array.isArray(workTypes)) workTypes = [];
+    
+    var WORK_TYPE_LABELS = {
+      general:'일반', fire:'화기', electric:'전기', height:'고소',
+      'electric-live':'충전', heavy:'중량물', confined:'밀폐공간'
+    };
+    var typesText = workTypes.length 
+      ? workTypes.slice(0,2).map(function(t){ return WORK_TYPE_LABELS[t] || t; }).join('·')
+      : '일반';
+    
+    // 상태 표시
+    var statusText = '';
+    var statusCode = p.statusCode || '';
+    if(statusCode === 'approved') statusText = '허가완료';
+    else if(statusCode === 'inProgress') statusText = '작업중';
+    else if(statusCode === 'tbmCompleted') statusText = 'TBM완료';
+    else statusText = p.status || '진행중';
     
     html += 
-      '<div class="today-work-item" data-permitno="' + escapeHtml(permitNo) + '" ' +
-        'data-idx="' + idx + '" onclick="selectTodayWork(this)">' +
+      '<div class="today-work-item" data-idx="' + idx + '" onclick="selectTodayWork(this)">' +
         '<div class="today-work-radio"></div>' +
         '<div class="today-work-body">' +
           '<div class="today-work-name">' + escapeHtml(workName) + '</div>' +
@@ -1083,14 +1194,16 @@ function loadTodayWorks(){
             '<span>📍 ' + escapeHtml(location) + '</span>' +
             '<span>🏢 ' + escapeHtml(company) + '</span>' +
           '</div>' +
-          '<div class="today-work-permit">📋 ' + escapeHtml(permitNo) + ' · ' + escapeHtml(typesText) + '</div>' +
+          '<div class="today-work-permit">📋 ' + escapeHtml(permitNo) + ' · ' + 
+            escapeHtml(typesText) + ' · <strong>' + escapeHtml(statusText) + '</strong>' +
+          '</div>' +
         '</div>' +
         '<span class="today-work-badge ' + (isHigh ? 'high' : 'normal') + '">' +
           (isHigh ? '고위험' : '일반') +
         '</span>' +
       '</div>';
     
-    // 데이터 임시 저장 (선택시 사용)
+    // 데이터 임시 저장
     window['_permit_' + idx] = p;
   });
   
@@ -1114,6 +1227,7 @@ function selectTodayWork(el){
   }
   
   selectedPermit = permit;
+  console.log('[안전점검] 선택된 허가서:', permit.permitNo, permit);
   
   setTimeout(function(){
     startInspection();
@@ -1131,14 +1245,21 @@ function startInspection(){
   // 점검 데이터 초기화
   resetInspectionData();
   inspectionData.inspectionNo = generateInspectionNo();
-  inspectionData.workId = p.workId || p.id || '';
-  inspectionData.permitNo = p.permitNo || p.no || '';
+  inspectionData.workId = p.workId || p.sourceWorkId || '';
+  inspectionData.permitNo = p.permitNo || '';
   inspectionData.riskId = p.riskId || '';
-  inspectionData.workName = p.workName || p.title || '';
-  inspectionData.location = p.location || p.workLocation || '';
-  inspectionData.company = p.company || p.contractor || '';
-  inspectionData.workTypes = p.workTypes || (p.workType ? [p.workType] : []);
-  inspectionData.riskLevel = p.riskLevel || p.grade || 'normal';
+  inspectionData.workName = p.workName || '';
+  
+  // 장소 조합
+  var location = '';
+  if(p.location) location = p.location;
+  if(p.detailLocation) location += (location ? ' ' : '') + p.detailLocation;
+  inspectionData.location = location;
+  
+  inspectionData.company = p.companyName || p.company || '';
+  inspectionData.workTypes = p.workTypes || [];
+  inspectionData.riskLevel = (p.riskSnapshot && p.riskSnapshot.finalRiskLevel) || 
+                              p.riskLevel || 'normal';
   
   // 배너 표시
   renderPermitBanner();
@@ -1156,204 +1277,117 @@ function startInspection(){
   showScreen('screen-inspect');
 }
 
-function renderPermitBanner(){
-  var el = document.getElementById('permitInfoBanner');
-  if(!el) return;
-  
-  var isHigh = inspectionData.riskLevel === 'high' || 
-               inspectionData.riskLevel === '고위험' || 
-               inspectionData.riskLevel === 'HIGH';
-  
-  var typesHtml = '';
-  (inspectionData.workTypes || []).forEach(function(t){
-    typesHtml += '<span class="pib-tag worktype">' + escapeHtml(t) + '</span>';
-  });
-  
-  el.innerHTML = 
-    '<div class="permit-info-banner">' +
-      '<div class="pib-top">' +
-        '<span class="pib-badge">점검 대상</span>' +
-        '<span class="pib-no">' + escapeHtml(inspectionData.permitNo || '-') + '</span>' +
-      '</div>' +
-      '<div class="pib-name">' + escapeHtml(inspectionData.workName || '-') + '</div>' +
-      '<div class="pib-meta">' +
-        '<span>📍 ' + escapeHtml(inspectionData.location || '-') + '</span>' +
-        '<span>🏢 ' + escapeHtml(inspectionData.company || '-') + '</span>' +
-      '</div>' +
-      '<div class="pib-tags">' +
-        '<span class="pib-tag ' + (isHigh ? 'risk-high' : 'risk-normal') + '">' +
-          (isHigh ? '🔴 고위험' : '🔵 일반') +
-        '</span>' +
-        typesHtml +
-      '</div>' +
-    '</div>';
-}
-
-// ═══════════════════════════════════════════════════
-// 체크리스트 렌더링
-// ═══════════════════════════════════════════════════
-function renderChecklist(){
-  var container = document.getElementById('checklistContainer');
-  if(!container) return;
-  
-  // 허가서에서 체크리스트 항목 추출
-  var items = extractChecklistItems(selectedPermit);
-  
-  if(items.length === 0){
-    container.innerHTML = 
-      '<div class="summary-card warning">' +
-        '<div class="summary-title warning">⚠️ 체크리스트 없음</div>' +
-        '<div class="summary-body">이 허가서에는 체크리스트 항목이 없습니다. 기본 항목이 적용됩니다.</div>' +
-      '</div>';
-    items = getDefaultChecklist();
-  }
-  
-  // 카테고리별 그룹화
-  var grouped = {};
-  items.forEach(function(item, i){
-    var cat = item.category || '일반 안전사항';
-    if(!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(Object.assign({}, item, { globalIdx: i }));
-  });
-  
-  inspectionData.items = items.map(function(it){
-    return {
-      id: it.id || ('item_' + Math.random().toString(36).slice(2,8)),
-      category: it.category || '일반 안전사항',
-      text: it.text || it.name || '',
-      required: !!it.required,
-      judge: '',      // '', 'ok', 'ng', 'partial', 'na'
-      memo: '',
-      photo: null
-    };
-  });
-  
-  var html = '';
-  Object.keys(grouped).forEach(function(cat){
-    var arr = grouped[cat];
-    var requiredCount = arr.filter(function(x){ return x.required; }).length;
-    var ico = getCategoryIcon(cat);
-    
-    html += 
-      '<div class="check-category">' +
-        '<div class="check-category-header">' +
-          '<span class="check-category-ico">' + ico + '</span>' +
-          '<span class="check-category-title">' + escapeHtml(cat) + '</span>' +
-          '<span class="check-category-count' + (requiredCount ? ' required' : '') + '">' + 
-            arr.length + '항목' + (requiredCount ? ' · 필수' + requiredCount : '') +
-          '</span>' +
-        '</div>';
-    
-    arr.forEach(function(item){
-      var i = item.globalIdx;
-      html += 
-        '<div class="check-item" id="checkItem' + i + '">' +
-          '<div class="check-item-top">' +
-            '<div class="check-item-num" id="checkNum' + i + '">' + (i+1) + '</div>' +
-            '<div class="check-item-body">' +
-              '<div class="check-item-text">' + escapeHtml(item.text || item.name || '') +
-                (item.required ? '<span class="check-item-required">필수</span>' : '') +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-          
-          '<div class="judge-buttons">' +
-            '<button class="judge-btn" onclick="setJudge(' + i + ', \'ok\', this)">' +
-              '<span class="judge-btn-ico">⭕</span><span>준수</span>' +
-            '</button>' +
-            '<button class="judge-btn" onclick="setJudge(' + i + ', \'ng\', this)">' +
-              '<span class="judge-btn-ico">❌</span><span>미준수</span>' +
-            '</button>' +
-            '<button class="judge-btn" onclick="setJudge(' + i + ', \'partial\', this)">' +
-              '<span class="judge-btn-ico">⚠️</span><span>부분</span>' +
-            '</button>' +
-            '<button class="judge-btn" onclick="setJudge(' + i + ', \'na\', this)">' +
-              '<span class="judge-btn-ico">➖</span><span>해당없음</span>' +
-            '</button>' +
-          '</div>' +
-          
-          '<textarea class="check-memo" id="memo' + i + '" ' +
-            'placeholder="특이사항이 있으면 입력하세요 (선택)" ' +
-            'oninput="updateMemo(' + i + ', this.value)"></textarea>' +
-          
-          '<div class="check-photo">' +
-            '<button class="check-photo-btn" onclick="attachPhoto(' + i + ')">' +
-              '📷 사진 첨부' +
-            '</button>' +
-          '</div>' +
-        '</div>';
-    });
-    
-    html += '</div>';
-  });
-  
-  container.innerHTML = html;
-  updateProgress();
-}
-
-// 허가서에서 체크리스트 항목 추출
 function extractChecklistItems(permit){
   if(!permit) return [];
   var items = [];
   
-  // 다양한 필드명 대응
-  var sources = [
-    permit.checklistItems, permit.checklist, permit.safetyChecklist,
-    permit.integratedChecklist, permit.integratedSafetyChecklist,
-    permit.safetyItems, permit.safetyMatters
-  ];
-  
-  for(var i=0; i<sources.length; i++){
-    var src = sources[i];
-    if(Array.isArray(src) && src.length > 0){
-      src.forEach(function(x){
-        if(typeof x === 'string'){
-          items.push({ text: x, category: '통합 안전 체크리스트', required: false });
-        } else if(x && typeof x === 'object'){
-          items.push({
-            id: x.id || null,
-            text: x.text || x.name || x.title || x.content || x.item || '',
-            category: x.category || x.section || '통합 안전 체크리스트',
-            required: x.required || x.mandatory || false
-          });
-        }
-      });
-      break;
-    }
-  }
-  
-  // 작업유형별 체크리스트가 있는 경우
-  var typeChecklists = permit.workTypeChecklists || permit.workTypeItems;
-  if(typeChecklists && typeof typeChecklists === 'object'){
-    Object.keys(typeChecklists).forEach(function(workType){
-      var typeItems = typeChecklists[workType];
-      if(Array.isArray(typeItems)){
-        typeItems.forEach(function(x){
-          if(typeof x === 'string'){
-            items.push({ text: x, category: workType, required: false });
-          } else if(x){
-            items.push({
-              text: x.text || x.name || x.content || '',
-              category: workType,
-              required: x.required || false
-            });
-          }
-        });
+  // ═══ 1. 통합 안전 체크리스트 (허가서의 핵심 필드) ═══
+  var unified = permit.unifiedSafetyChecklist;
+  if(unified && Array.isArray(unified.items) && unified.items.length > 0){
+    console.log('[안전점검] 통합 안전 체크리스트 로드:', unified.items.length + '건');
+    unified.items.forEach(function(x){
+      // 카테고리 자동 분류 (sources 기반)
+      var category = '통합 안전 체크리스트';
+      if(x.sources && x.sources.length > 0){
+        var srcType = x.sources[0].type;
+        if(srcType === 'risk-assessment') category = '위험성평가 대책';
+        else if(srcType === 'permit-common') category = '허가 공통 항목';
+        else if(srcType === 'permit-additional') category = '현장 추가 항목';
       }
+      
+      items.push({
+        id: x.checklistItemId || x.meaningKey,
+        text: x.text || '',
+        category: category,
+        required: true,  // 통합 체크리스트는 모두 필수로 처리
+        originalResult: x.result || '',  // 허가서 작성 시 판정
+        sources: x.sources || []
+      });
     });
   }
   
-  // 안전사항 필드
-  var safetyMatters = permit.safetyMatters || permit.safety || permit.precautions;
-  if(typeof safetyMatters === 'string' && safetyMatters.trim()){
-    safetyMatters.split(/[\n;·•]/).forEach(function(line){
-      var t = line.trim();
-      if(t.length > 3) items.push({ text: t, category: '안전 유의사항', required: false });
+  // ═══ 2. 특수 작업 체크리스트 (checklist 객체) ═══
+  var specialChecklist = permit.checklist || {};
+  var CHECKLIST_DEF = {
+    general: ['포항양극재 11대 안전철칙 준수', '작업에 적합한 개인보호구 준비 및 착용',
+              '작업구역 설정 및 관계자 외 출입통제', '작업 도구·장비 사전점검',
+              '비상연락체계와 작업중지 방법 확인', 'TBM 전달자료와 참석 대상자 확인',
+              '주변 작업환경과 동시작업 간섭 확인'],
+    fire: ['용접방화포 및 소화기 배치', '가연성·인화성 물질 제거',
+           '화재감시자 배치', '화기작업 전 주변 위험요소 제거'],
+    electric: ['전원 차단 및 잠금 상태 확인', '누전차단기와 접지 상태 확인',
+               '절연 보호구와 감전 예방장비 준비'],
+    height: ['추락방지 안전난간 또는 추락방지망 설치', '안전대 부착설비 및 작업발판 확인',
+             '비계·사다리·고소작업대 상태 확인'],
+    'electric-live': ['활선작업용 절연 기구 사용', '충전부 이격거리 확보',
+                       '감시인 배치 및 인접 충전부 방호'],
+    heavy: ['중량물 인양 계획서 확인', '신호수 배치 및 작업반경 출입통제',
+            '인양장비·와이어·후크 상태 확인'],
+    confined: ['출입인원 및 감시자 배치', '산소 및 유해가스 측정',
+                '환기와 비상연락 수단 확보', '호흡용 보호구와 구조장비 준비']
+  };
+  var CATEGORY_LABELS = {
+    fire:'🔥 화기작업', electric:'⚡ 전기작업', height:'⬆️ 고소작업',
+    'electric-live':'⚡ 전기(충전)작업', heavy:'🏗️ 중량물·유해가스',
+    confined:'🚪 밀폐공간·굴착'
+  };
+  
+  // 선택된 작업유형별 특수 체크리스트 추가
+  var workTypes = permit.workTypes || [];
+  workTypes.forEach(function(type){
+    if(type === 'general') return;
+    var typeItems = CHECKLIST_DEF[type] || [];
+    var categoryLabel = CATEGORY_LABELS[type] || type;
+    
+    typeItems.forEach(function(text, i){
+      var key = type + '-' + (i+1);
+      var originalResult = specialChecklist[key] || '';
+      
+      items.push({
+        id: key,
+        text: text,
+        category: categoryLabel,
+        required: true,  // 특수 작업 체크리스트도 필수
+        originalResult: originalResult
+      });
+    });
+  });
+  
+  // ═══ 3. ILS 체크리스트 (전기/밀폐공간 시) ═══
+  var ilsChecklist = permit.ILSChecklist || {};
+  var ILS_ITEMS = [
+    'ILS Order 확인',
+    '에너지원 차단',
+    '잠금 확인 및 표찰 게시',
+    '작업자 Red Lock 체결 상태',
+    'GIB 운영 및 열쇠 보관'
+  ];
+  var hasIls = workTypes.some(function(t){
+    return ['electric','electric-live','confined'].indexOf(t) >= 0;
+  });
+  
+  if(hasIls){
+    ILS_ITEMS.forEach(function(text, i){
+      var num = String(i+1);
+      var originalResult = ilsChecklist[num] || '';
+      
+      // 'na' 항목은 제외
+      if(originalResult === 'na') return;
+      
+      items.push({
+        id: 'ils-' + num,
+        text: text,
+        category: '🔒 ILS 확인사항',
+        required: true,
+        originalResult: originalResult
+      });
     });
   }
   
-  return items.filter(function(x){ return x.text && x.text.length > 0; });
+  console.log('[안전점검] 추출된 체크리스트 총:', items.length + '건');
+  return items;
 }
+
 
 // 기본 체크리스트 (폴백)
 function getDefaultChecklist(){
