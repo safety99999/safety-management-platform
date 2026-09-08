@@ -1743,8 +1743,8 @@ button{touch-action:manipulation}
     }
 
     /*
-     * "작업장소: ... 작업내용: ..." 형식이면
-     * 작업내용 뒤의 문구를 실제 작업명으로 사용합니다.
+     * "작업내용: ..." 형식이면
+     * 작업내용 뒤의 문구를 실제 작업명으로 사용
      */
     var contentMarkers = [
       '작업내용:',
@@ -1779,7 +1779,7 @@ button{touch-action:manipulation}
     }
 
     /*
-     * 작업명 앞뒤 따옴표를 제거합니다.
+     * 작업명 앞뒤 따옴표 제거
      */
     var quoteCharacters =
       '"\'“”‘’';
@@ -1810,8 +1810,8 @@ button{touch-action:manipulation}
     }
 
     /*
-     * 관리·직종 분류용 태그만 제거합니다.
-     * [9C 재연소로] 같은 설비명 태그는 유지합니다.
+     * 관리·직종 분류용 태그를 제거하되,
+     * 태그만 있고 뒤가 비어있으면 태그를 유지
      */
     var removableTags = [
       '[계획]',
@@ -1845,19 +1845,28 @@ button{touch-action:manipulation}
         if(
           text.indexOf(tag) === 0
         ){
-          text =
+          var afterTag =
             text.substring(
               tag.length
             ).trim();
 
-          tagRemoved = true;
+          /*
+           * 태그 뒤에 실제 내용이 있을 때만 제거
+           * (내용이 없으면 태그를 유지)
+           */
+          if(afterTag.length > 3){
+            text = afterTag;
+            tagRemoved = true;
+          }
+
           break;
         }
       }
     }
 
     /*
-     * 작업명 앞쪽의 공장·단계 문구를 제거합니다.
+     * 작업명 앞쪽의 공장·단계 문구를 제거하되,
+     * 제거 후 내용이 남는 경우에만 적용
      */
     var locationPrefixes = [
       '포항양극재 2-2 단계공장',
@@ -1886,9 +1895,7 @@ button{touch-action:manipulation}
       '2-2단계',
       '2-1단계',
       '1단계공장',
-      '1단계',
-      '1공장',
-      '2공장'
+      '1단계'
     ];
 
     var prefixRemoved = true;
@@ -1912,21 +1919,27 @@ button{touch-action:manipulation}
             locationPrefix
           ) === 0
         ){
-          text =
+          var afterPrefix =
             text.substring(
               locationPrefix.length
             ).trim();
 
-          prefixRemoved = true;
+          /*
+           * 공장명 제거 후 실제 작업명이 있을 때만 적용
+           * (남는 게 없으면 공장명 유지)
+           */
+          if(afterPrefix.length > 3){
+            text = afterPrefix;
+            prefixRemoved = true;
+          }
+
           break;
         }
       }
     }
 
     /*
-     * 선두의 층과 라인 위치정보를 제거합니다.
-     * RegExp 생성자를 사용해 편집 과정의
-     * 정규식 줄바꿈 오류를 방지합니다.
+     * 선두의 층·라인 위치정보 제거
      */
     var leadingPatterns = [
       new RegExp(
@@ -1963,7 +1976,7 @@ button{touch-action:manipulation}
         var before =
           text;
 
-        text =
+        var afterRemoval =
           text.replace(
             leadingPatterns[
               patternIndex
@@ -1971,7 +1984,14 @@ button{touch-action:manipulation}
             ''
           ).trim();
 
-        if(before !== text){
+        /*
+         * 위치정보 제거 후 남는 게 있을 때만 적용
+         */
+        if(
+          before !== afterRemoval &&
+          afterRemoval.length > 3
+        ){
+          text = afterRemoval;
           leadingLocationRemoved =
             true;
 
@@ -1981,7 +2001,7 @@ button{touch-action:manipulation}
     }
 
     /*
-     * 화면에 불필요한 관리 상태문구를 제거합니다.
+     * 불필요한 관리 상태문구 제거
      */
     var removableTexts = [
       'ILS 시스템 지정 완료',
@@ -1992,7 +2012,9 @@ button{touch-action:manipulation}
       'ILS 지정됨',
       'ILS 미실시',
       'ILS 불필요',
-      'ILS 실시'
+      'ILS 실시',
+      '작업장소 :',
+      '작업장소:'
     ];
 
     removableTexts.forEach(
@@ -2012,7 +2034,7 @@ button{touch-action:manipulation}
     }
 
     var leadingCharacters =
-      ',.:;·-– ';
+      ',.:;·-–>》] ';
 
     while(
       text.length &&
@@ -2026,6 +2048,51 @@ button{touch-action:manipulation}
 
     text = text.trim();
 
+    /*
+     * 정리 후 너무 짧아지면 (5자 미만)
+     * 원본에서 첫 번째 의미있는 문장을 추출
+     */
+    if(text.length < 5){
+      var lines =
+        original
+          .split(/[\r\n]+/)
+          .map(function(line){
+            return line.trim();
+          })
+          .filter(function(line){
+            return (
+              line.length > 5 &&
+              line.indexOf(
+                '작업장소'
+              ) < 0
+            );
+          });
+
+      if(lines.length){
+        text = lines[0];
+
+        /*
+         * 다시 태그와 공장명 제거
+         */
+        removableTags.forEach(
+          function(tag){
+            if(
+              text.indexOf(tag) === 0
+            ){
+              var after =
+                text
+                  .substring(tag.length)
+                  .trim();
+
+              if(after.length > 3){
+                text = after;
+              }
+            }
+          }
+        );
+      }
+    }
+
     if(!text){
       text = original;
     }
@@ -2035,6 +2102,7 @@ button{touch-action:manipulation}
         '...'
       : text;
   }
+
 
   function workName(work){
     work = work || {};
