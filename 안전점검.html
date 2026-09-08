@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('theme');
+    var theme = saved || (window.matchMedia && 
+      window.matchMedia('(prefers-color-scheme: dark)').matches 
+      ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0067B1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>안전점검 · Safety Inspection</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="styles/device-frame.css?v=3">
+
+<!-- APP MODE + Firebase 초기화 -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('appmode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+
+<script type="module">
+  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getFirestore, initializeFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+    projectId: "safety-management-platfo-5f413",
+    storageBucket: "safety-management-platfo-5f413.appspot.com",
+    messagingSenderId: "96226952530",
+    appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+  };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const needsLongPolling = isIOS || isSafari;
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  let db;
+  try {
+    if (needsLongPolling) {
+      db = initializeFirestore(app, { experimentalForceLongPolling: true, useFetchStreams: false });
+    } else {
+      db = getFirestore(app);
+    }
+  } catch (e) {
+    db = getFirestore(app);
+  }
+
+  window.firebaseApp = { 
+    db: db, doc: doc, setDoc: setDoc, getDoc: getDoc, serverTimestamp: serverTimestamp
+  };
+  window.firebaseApp.INSPECTION_COLLECTION = window.getCollectionName("safetyInspections");
+  window.firebaseApp.PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
+  console.log("[안전점검 Firebase] 초기화 완료:", window.firebaseApp.INSPECTION_COLLECTION);
+</script>
+
+<style>
+:root{
+  --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
+  --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
+  --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
+  --line:#DFE7EF;
+  --run:#E8590C; --run-bg:#FFF4EC;
+  --stop:#D6273D; --stop-bg:#FFF3F5;
+  --done:#0E8A6B; --done-bg:#EDFAF6;
+  --warn:#B45309; --warn-bg:#FEF6E7;
+  --r:18px; --r-s:14px; --r-xs:10px;
+  --sh:0 2px 10px rgba(15,29,43,.06);
+  --sh-m:0 4px 16px rgba(15,29,43,.09);
+}
+[data-theme="dark"]{
+  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
+  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
+  --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
+  --faint:#5A7288; --line:#1E3145;
+  --run:#FF8A3D; --run-bg:#2A1A0E;
+  --stop:#FF5F70; --stop-bg:#2B1116;
+  --done:#3DD9AE; --done-bg:#0D2620;
+  --warn:#FBBF24; --warn-bg:#2A2010;
+  --sh:0 2px 10px rgba(0,0,0,.35);
+  --sh-m:0 4px 16px rgba(0,0,0,.45);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;overflow-x:hidden;
+  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+
+body{
+  color:var(--ink);line-height:1.5;font-size:16px;
+  padding-bottom:max(20px,env(safe-area-inset-bottom));
+  min-height:100vh;
+  background:linear-gradient(135deg,#003C7E 0%,#0067B1 45%,var(--bg) 45%,var(--bg) 100%);
+  background-attachment:fixed;
+  transition:background .25s,color .25s;
+}
+[data-theme="dark"] body{
+  background:linear-gradient(135deg,#0A1B2E 0%,#12283F 45%,var(--bg) 45%,var(--bg) 100%);
+  background-attachment:fixed;
+}
+
+.app{
+  max-width:480px;margin:0 auto;min-height:100vh;
+  background:var(--bg);position:relative;
+}
+
+@media(min-width:768px){
+  body{padding:24px 0 max(20px,env(safe-area-inset-bottom));}
+  .app{
+    min-height:calc(100vh - 48px);
+    border-radius:24px; overflow:hidden;
+    box-shadow:0 0 40px rgba(0,103,177,.3), 0 20px 60px rgba(0,0,0,.15);
+  }
+}
+
+/* TOP NAV */
+.topnav{
+  position:sticky;top:0;z-index:200;
+  background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
+  height:56px;padding:0 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 16px rgba(0,103,177,.4);
+  overflow:hidden;
+}
+.topnav::after{
+  content:'';position:absolute;right:-40px;top:-46px;width:150px;height:150px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.topnav-l{display:flex;align-items:center;gap:10px;position:relative;z-index:1;min-width:0;}
+.topnav-title{
+  color:#fff;font-size:16px;font-weight:800;
+  letter-spacing:-.03em;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
+}
+.topnav-r{display:flex;align-items:center;gap:8px;position:relative;z-index:1;flex-shrink:0;}
+
+.back-btn,.theme-btn,.home-btn{
+  background:rgba(255,255,255,.16);border:none;color:#fff;
+  border-radius:12px;font-size:20px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+.back-btn{width:40px;height:40px;font-size:22px;}
+.theme-btn{width:34px;height:34px;font-size:16px;}
+.home-btn{width:40px;height:40px;font-size:20px;}
+.back-btn:active,.theme-btn:active,.home-btn:active{
+  transform:scale(.9);background:rgba(255,255,255,.3);
+}
+
+.permit-badge{background:rgba(255,255,255,.18);color:#fff;
+  font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
+  font-family:ui-monospace,monospace;letter-spacing:.02em;display:none;}
+.permit-badge.show{display:inline-block;}
+
+/* SCREEN */
+.screen{display:none;padding:16px 14px;}
+.screen.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+/* HERO */
+.hero-inspection{
+  background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
+  color:#fff;
+  border-radius:22px;padding:24px 22px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 24px rgba(0,103,177,.35);
+}
+.hero-inspection::after{
+  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.hero-ico{
+  font-size:48px;margin-bottom:8px;position:relative;z-index:1;line-height:1;
+}
+.hero-title{
+  font-size:22px;font-weight:900;letter-spacing:-.035em;
+  position:relative;z-index:1;line-height:1.3;
+}
+.hero-sub{
+  font-size:13px;opacity:.95;margin-top:8px;
+  line-height:1.55;font-weight:600;position:relative;z-index:1;
+}
+
+/* 오늘 작업 섹션 */
+.today-works-section{
+  background:var(--card); border-radius:var(--r); padding:16px;
+  margin-bottom:12px; box-shadow:var(--sh); border:2px solid var(--tint);
+}
+.today-works-title{
+  font-size:14px;font-weight:800;color:var(--ink);
+  margin-bottom:8px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--line);
+}
+.today-works-count{
+  margin-left:auto;background:var(--posco);color:#fff;
+  font-size:11px;font-weight:800;padding:3px 10px;
+  border-radius:12px;letter-spacing:.3px;
+}
+.today-works-hint{
+  font-size:12px;color:var(--sub);font-weight:600;
+  line-height:1.6;margin-bottom:12px;
+  padding:10px 12px;background:var(--sunk);
+  border-radius:10px;border-left:3px solid var(--posco);
+}
+.today-works-list{
+  display:flex;flex-direction:column;gap:8px;
+}
+.today-work-item{
+  background:var(--sunk);border:2px solid var(--line);
+  border-radius:12px;padding:12px 14px;
+  cursor:pointer;transition:.15s;
+  display:flex;align-items:center;gap:10px;
+}
+.today-work-item:active{transform:scale(.98);}
+.today-work-item:hover{
+  border-color:var(--posco);background:var(--tint);
+}
+.today-work-item.selected{
+  border-color:var(--done);background:var(--done-bg);
+  box-shadow:0 0 0 3px rgba(14,138,107,.1);
+}
+.today-work-radio{
+  width:22px;height:22px;border-radius:50%;
+  border:2.5px solid var(--faint);flex-shrink:0;
+  display:grid;place-items:center;transition:.15s;
+}
+.today-work-item.selected .today-work-radio{
+  border-color:var(--done);
+}
+.today-work-item.selected .today-work-radio::after{
+  content:'';width:11px;height:11px;border-radius:50%;background:var(--done);
+}
+.today-work-body{flex:1;min-width:0;}
+.today-work-name{
+  font-size:13.5px;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;line-height:1.4;margin-bottom:4px;
+}
+.today-work-meta{
+  font-size:11.5px;color:var(--sub);font-weight:600;
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+}
+.today-work-badge{
+  font-size:10px;font-weight:800;padding:2px 7px;
+  border-radius:6px;letter-spacing:.3px;flex-shrink:0;
+}
+.today-work-badge.high{background:var(--stop-bg);color:var(--stop);}
+.today-work-badge.normal{background:var(--tint);color:var(--posco);}
+.today-work-permit{
+  font-size:10px;font-weight:700;color:var(--sub);
+  font-family:ui-monospace,monospace;margin-top:3px;
+}
+
+.today-works-empty{
+  padding:24px 16px;text-align:center;
+  font-size:12.5px;color:var(--sub);font-weight:600;
+  background:var(--sunk);border-radius:10px;line-height:1.6;
+}
+.today-works-empty-ico{
+  font-size:32px;display:block;margin-bottom:8px;opacity:.5;
+}
+
+/* 선택된 허가서 배너 */
+.permit-info-banner{
+  background:var(--tint);border-left:5px solid var(--posco);
+  border-radius:0 var(--r-s) var(--r-s) 0;padding:14px 16px;margin-bottom:14px;
+}
+.pib-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.pib-badge{background:var(--posco);color:#fff;
+  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
+  letter-spacing:.5px;}
+.pib-no{font-size:12px;font-weight:800;color:var(--posco);
+  font-family:ui-monospace,monospace;}
+[data-theme="dark"] .pib-no{color:var(--bright);}
+.pib-name{font-size:15px;font-weight:800;color:var(--ink);
+  line-height:1.4;margin-bottom:4px;}
+.pib-meta{font-size:12px;color:var(--sub);font-weight:600;
+  display:flex;gap:12px;flex-wrap:wrap;}
+.pib-tags{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+.pib-tag{
+  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
+}
+.pib-tag.risk-high{background:var(--stop);color:#fff;}
+.pib-tag.risk-normal{background:var(--posco);color:#fff;}
+.pib-tag.worktype{background:var(--warn);color:#fff;}
+
+/* 진행률 */
+.progress-card{
+  background:var(--card);border-radius:var(--r);padding:14px 16px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.progress-top{
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;
+}
+.progress-label{font-size:13px;font-weight:800;color:var(--ink);}
+.progress-count{font-size:13px;font-weight:800;color:var(--posco);}
+[data-theme="dark"] .progress-count{color:var(--bright);}
+.progress-bar-wrap{
+  height:10px;background:var(--sunk);border-radius:6px;overflow:hidden;
+}
+.progress-bar{
+  height:100%;background:linear-gradient(90deg,var(--posco),var(--bright));
+  border-radius:6px;transition:width .3s ease;
+}
+
+/* 카테고리 섹션 */
+.check-category{
+  background:var(--card);border-radius:var(--r);
+  margin-bottom:12px;box-shadow:var(--sh);overflow:hidden;
+}
+.check-category-header{
+  padding:14px 16px; background:var(--sunk);
+  border-bottom:1.5px solid var(--line);
+  display:flex;align-items:center;gap:8px;
+}
+.check-category-ico{font-size:20px;}
+.check-category-title{
+  font-size:14px;font-weight:800;color:var(--ink);flex:1;
+  letter-spacing:-.02em;
+}
+.check-category-count{
+  font-size:11px;font-weight:800;padding:3px 8px;
+  border-radius:6px;background:var(--posco);color:#fff;
+}
+.check-category-count.required{background:var(--stop);}
+
+/* 체크 항목 */
+.check-item{
+  padding:14px 16px;border-bottom:1px solid var(--line);
+}
+.check-item:last-child{border-bottom:none;}
+.check-item.violation{background:var(--stop-bg);}
+.check-item-top{
+  display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;
+}
+.check-item-num{
+  flex-shrink:0;width:26px;height:26px;
+  background:var(--posco);color:#fff;
+  border-radius:8px;display:grid;place-items:center;
+  font-size:12px;font-weight:800;
+}
+.check-item-num.required{background:var(--stop);}
+.check-item-num.checked{background:var(--done);}
+.check-item-num.violation-num{background:var(--stop);animation:pulse-red 1.5s infinite;}
+@keyframes pulse-red{
+  0%,100%{box-shadow:0 0 0 0 rgba(214,39,61,.5);}
+  50%{box-shadow:0 0 0 6px rgba(214,39,61,0);}
+}
+.check-item-body{flex:1;min-width:0;}
+.check-item-text{
+  font-size:14px;font-weight:700;color:var(--ink);
+  line-height:1.5;margin-bottom:4px;
+}
+.check-item-required{
+  display:inline-block;font-size:10px;font-weight:800;
+  color:var(--stop);background:var(--stop-bg);
+  padding:2px 6px;border-radius:4px;margin-left:4px;
+  vertical-align:middle;
+}
+
+/* 판정 버튼 4단계 */
+.judge-buttons{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+  margin-bottom:10px;
+}
+.judge-btn{
+  padding:10px 4px;border:2px solid var(--line);
+  border-radius:10px;background:var(--card);
+  font-family:inherit;cursor:pointer;transition:.15s;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:11px;font-weight:700;color:var(--sub);
+}
+.judge-btn:active{transform:scale(.96);}
+.judge-btn-ico{font-size:20px;line-height:1;}
+.judge-btn.selected-ok{border-color:var(--done);background:var(--done-bg);color:var(--done);font-weight:900;}
+.judge-btn.selected-ng{border-color:var(--stop);background:var(--stop-bg);color:var(--stop);font-weight:900;}
+.judge-btn.selected-partial{border-color:var(--warn);background:var(--warn-bg);color:var(--warn);font-weight:900;}
+.judge-btn.selected-na{border-color:var(--sub);background:var(--sunk);color:var(--sub);font-weight:900;}
+
+/* 메모 */
+.check-memo{
+  width:100%;padding:10px 12px;border:1.5px solid var(--line);
+  border-radius:10px;font-size:13px;background:var(--sunk);
+  color:var(--ink);font-family:inherit;font-weight:600;
+  min-height:44px;resize:vertical;
+}
+.check-memo:focus{
+  outline:none;border-color:var(--posco);background:var(--card);
+}
+
+/* 사진 첨부 (자리만) */
+.check-photo{
+  margin-top:8px;
+}
+.check-photo-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 12px;border:1.5px dashed var(--line);
+  border-radius:8px;background:var(--sunk);
+  font-size:12px;font-weight:700;color:var(--sub);
+  cursor:pointer;transition:.15s;font-family:inherit;
+}
+.check-photo-btn:active{transform:scale(.97);}
+.check-photo-btn:hover{
+  border-color:var(--posco);color:var(--posco);background:var(--tint);
+}
+.check-photo-preview{
+  margin-top:8px;padding:20px;background:var(--sunk);
+  border-radius:8px;text-align:center;font-size:11px;
+  color:var(--faint);border:1px dashed var(--line);
+}
+
+/* 종합 의견 */
+.section-title{
+  font-size:15px;font-weight:800;color:var(--ink);
+  margin-bottom:14px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--line);
+}
+.form-section{
+  background:var(--card);border-radius:var(--r);padding:18px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.form-group{margin-bottom:12px;}
+.form-group:last-child{margin-bottom:0;}
+.f-label{
+  font-size:13px;font-weight:800;color:var(--body);
+  margin-bottom:6px;display:block;letter-spacing:-.02em;
+}
+.f-input,.f-textarea{
+  width:100%;padding:12px 14px;border:2px solid var(--line);
+  border-radius:11px;font-size:14px;background:var(--sunk);color:var(--ink);
+  font-family:inherit;font-weight:600;
+  transition:.15s;
+}
+.f-textarea{min-height:80px;resize:vertical;line-height:1.55;}
+.f-input:focus,.f-textarea:focus{
+  outline:none;border-color:var(--posco);background:var(--card);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
+}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* 요약 카드 */
+.summary-card{
+  background:var(--card);border-radius:var(--r);padding:16px;
+  margin-bottom:12px;box-shadow:var(--sh);
+  border-left:4px solid var(--posco);
+}
+.summary-card.warning{border-left-color:var(--warn);background:var(--warn-bg);}
+.summary-card.danger{border-left-color:var(--stop);background:var(--stop-bg);}
+.summary-card.success{border-left-color:var(--done);background:var(--done-bg);}
+.summary-title{
+  font-size:13px;font-weight:800;margin-bottom:6px;letter-spacing:-.02em;
+}
+.summary-title.danger{color:var(--stop);}
+.summary-title.warning{color:var(--warn);}
+.summary-title.success{color:var(--done);}
+.summary-body{
+  font-size:13px;color:var(--body);line-height:1.6;font-weight:600;
+}
+.summary-stat{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;
+}
+.stat-item{
+  text-align:center;padding:8px 4px;
+  background:var(--card);border-radius:8px;
+}
+.stat-num{font-size:20px;font-weight:900;line-height:1;}
+.stat-num.done-c{color:var(--done);}
+.stat-num.stop-c{color:var(--stop);}
+.stat-num.warn-c{color:var(--warn);}
+.stat-num.sub-c{color:var(--sub);}
+.stat-label{font-size:10px;color:var(--sub);font-weight:700;margin-top:4px;}
+
+/* 버튼 */
+.btn-row{display:flex;gap:10px;margin-top:14px;margin-bottom:20px;}
+.btn-primary,.btn-secondary,.btn-danger,.btn-success{
+  flex:1;padding:16px;border:none;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.btn-primary:active,.btn-secondary:active,.btn-danger:active,.btn-success:active{
+  transform:scale(.98);
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--deep),var(--bright));
+  color:#fff;box-shadow:0 4px 14px rgba(0,60,126,.28);
+}
+.btn-primary:disabled{
+  background:var(--line);color:var(--faint);
+  box-shadow:none;cursor:not-allowed;transform:none;
+}
+.btn-secondary{
+  background:var(--card);color:var(--sub);
+  border:2px solid var(--line);
+}
+.btn-danger{
+  background:linear-gradient(135deg,#8B1728,var(--stop));
+  color:#fff;box-shadow:0 4px 14px rgba(214,39,61,.28);
+}
+.btn-success{
+  background:linear-gradient(135deg,#0B7A5F,var(--done));
+  color:#fff;box-shadow:0 4px 14px rgba(14,138,107,.28);
+}
+
+/* 완료 화면 */
+.complete-hero{
+  background:linear-gradient(158deg,#0B7A5F 0%,var(--done) 100%);
+  color:#fff;
+  border-radius:22px;padding:32px 22px 24px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 24px rgba(14,138,107,.35);
+}
+.complete-hero.warning{
+  background:linear-gradient(158deg,#8B5A00 0%,var(--warn) 100%);
+  box-shadow:0 8px 24px rgba(180,83,9,.35);
+}
+.complete-hero::after{
+  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.complete-ico{
+  font-size:64px;margin-bottom:12px;line-height:1;position:relative;z-index:1;
+}
+.complete-title{
+  font-size:24px;font-weight:900;letter-spacing:-.035em;
+  position:relative;z-index:1;
+}
+.complete-sub{
+  font-size:14px;opacity:.9;margin-top:10px;
+  line-height:1.65;font-weight:600;position:relative;z-index:1;
+  white-space:pre-line;
+}
+.complete-no-box{
+  background:var(--card);border:2px solid var(--posco);
+  border-radius:var(--r);padding:18px;
+  text-align:center;margin-bottom:14px;box-shadow:var(--sh);
+}
+.complete-no-label{
+  font-size:11px;font-weight:800;color:var(--posco);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
+}
+.complete-no-value{
+  font-size:22px;font-weight:900;color:var(--posco);
+  font-family:ui-monospace,monospace;letter-spacing:1px;
+}
+
+.info-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--line);
+  font-size:13.5px;gap:12px;
+}
+.info-row:last-child{border-bottom:none;}
+.info-key{color:var(--sub);font-weight:700;flex-shrink:0;}
+.info-val{color:var(--ink);font-weight:800;text-align:right;
+  max-width:60%;word-break:break-word;}
+
+/* TOAST */
+.toast-wrap{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column;gap:7px;
+  pointer-events:none;width:90%;max-width:390px;
+}
+.toast{
+  padding:13px 17px;border-radius:12px;
+  font-size:14px;font-weight:800;color:#fff;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+  animation:tslide .3s ease;pointer-events:all;
+}
+.toast.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
+.toast.danger{background:linear-gradient(135deg,#8B1728,var(--stop));}
+.toast.info{background:linear-gradient(135deg,var(--deep),var(--bright));}
+.toast.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
+@keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+
+/* 다이얼로그 */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:99999;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:360px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+  max-height:85vh;overflow-y:auto;
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--ink);text-align:center;margin-bottom:8px;line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;white-space:pre-wrap;
+}
+.custom-confirm-buttons{display:flex;gap:10px;}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{background:var(--sunk);color:var(--sub);border:2px solid var(--line);}
+.custom-confirm-btn-confirm{background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;}
+.custom-confirm-btn-confirm.danger{background:linear-gradient(135deg,#8B1728,var(--stop));}
+.custom-confirm-btn-confirm.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
+.custom-confirm-btn-confirm.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
+
+@media(max-width:360px){
+  .judge-buttons{grid-template-columns:repeat(2,1fr);}
+  .judge-btn{padding:12px 4px;}
+  .summary-stat{grid-template-columns:repeat(2,1fr);}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
+</style>
+</head>
+<body>
+<div class="phone-frame">
+<div class="phone-screen">
+<div class="app">
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-l">
+    <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
+    <div class="topnav-title">
+      <span>📋</span>
+      <span>안전점검</span>
+    </div>
+  </div>
+  <div class="topnav-r">
+    <div class="permit-badge" id="permitBadge"></div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+    <button class="home-btn" onclick="goHome()">🏠</button>
+  </div>
+</nav>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 1: 작업 선택
+     ═══════════════════════════════════════ -->
+<div class="screen active" id="screen-select">
+  <div class="hero-inspection">
+    <div class="hero-ico">📋</div>
+    <div class="hero-title">안전점검</div>
+    <div class="hero-sub">
+      작업 현장의 안전상태를 점검합니다<br>
+      허가서의 통합 안전 체크리스트를 기준으로 확인하세요
+    </div>
+  </div>
+
+  <div class="today-works-section">
+    <div class="today-works-title">
+      <span>🎯</span>
+      <span>점검 대상 작업 선택</span>
+      <span class="today-works-count" id="todayWorksCount">0건</span>
+    </div>
+    <div class="today-works-hint">
+      💡 <strong>오늘 진행 중인 작업</strong>(허가완료·작업중)만 표시됩니다.<br>
+      점검할 작업을 선택하세요.
+    </div>
+    <div class="today-works-list" id="todayWorksList"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 2: 점검 실시
+     ═══════════════════════════════════════ -->
+<div class="screen" id="screen-inspect">
+  <div id="permitInfoBanner"></div>
+
+  <div class="progress-card">
+    <div class="progress-top">
+      <span class="progress-label">📊 점검 진행률</span>
+      <span class="progress-count"><span id="progressDone">0</span> / <span id="progressTotal">0</span></span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div id="checklistContainer"></div>
+
+  <div class="form-section">
+    <div class="section-title">
+      <span>📝</span>
+      <span>종합 의견 및 조치사항</span>
+    </div>
+    <div class="form-group">
+      <label class="f-label">종합 의견</label>
+      <textarea class="f-textarea" id="opinionInput" 
+                placeholder="점검 결과에 대한 종합 의견을 입력하세요"></textarea>
+    </div>
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">점검자 이름</label>
+        <input class="f-input" id="inspectorName" placeholder="홍길동">
+      </div>
+      <div class="form-group">
+        <label class="f-label">점검자 소속</label>
+        <input class="f-input" id="inspectorDept" placeholder="안전팀">
+      </div>
+    </div>
+  </div>
+
+  <div id="evaluationSummary"></div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="cancelInspection()">취소</button>
+    <button class="btn-primary" style="flex:2" onclick="submitInspection()">
+      ✅ 점검 완료 저장
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 3: 완료
+     ═══════════════════════════════════════ -->
+<div class="screen" id="screen-complete">
+  <div class="complete-hero" id="completeHero">
+    <div class="complete-ico" id="completeIco">✅</div>
+    <div class="complete-title" id="completeTitle">점검 완료</div>
+    <div class="complete-sub" id="completeSub">안전점검이 정상적으로 저장되었습니다.</div>
+  </div>
+
+  <div class="complete-no-box">
+    <div class="complete-no-label">📋 점검 번호</div>
+    <div class="complete-no-value" id="finalInspectionNo">-</div>
+  </div>
+
+  <div class="form-section">
+    <div class="section-title">
+      <span>📊</span>
+      <span>점검 결과 요약</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">작업명</span>
+      <span class="info-val" id="finalWorkName">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">허가서 번호</span>
+      <span class="info-val" id="finalPermitNo">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">점검 항목</span>
+      <span class="info-val" id="finalTotalItems">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">준수 항목</span>
+      <span class="info-val" id="finalOkCount" style="color:var(--done);">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">미준수 항목</span>
+      <span class="info-val" id="finalNgCount" style="color:var(--stop);">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">부분 준수</span>
+      <span class="info-val" id="finalPartialCount" style="color:var(--warn);">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">점검자</span>
+      <span class="info-val" id="finalInspector">-</span>
+    </div>
+    <div class="info-row">
+      <span class="info-key">점검 시각</span>
+      <span class="info-val" id="finalDatetime">-</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="startNewInspection()">추가 점검</button>
+    <button class="btn-primary" style="flex:2" onclick="goHome()">🏠 대시보드</button>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- 커스텀 다이얼로그 -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons" id="customConfirmButtons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" id="customConfirmOk" onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// 안전점검 v2.0 - JavaScript
+// ═══════════════════════════════════════════════════
+
+var inspectionData = {
+  inspectionNo: '',
+  workId: '',
+  permitNo: '',
+  riskId: '',
+  workName: '',
+  location: '',
+  company: '',
+  workTypes: [],
+  riskLevel: '',
+  items: [],
+  opinion: '',
+  inspectorName: '',
+  inspectorDept: '',
+  hasCritical: false,
+  status: '완료',
+  createdAt: '',
+  createdBy: ''
+};
+
+var selectedPermit = null;
+
+// ═══════════════════════════════════════════════════
+// 커스텀 다이얼로그
+// ═══════════════════════════════════════════════════
+var customConfirmCallback = null;
+
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' ? { message: options } : (options || {});
+  var iconEl = document.getElementById('customConfirmIcon');
+  var titleEl = document.getElementById('customConfirmTitle');
+  var messageEl = document.getElementById('customConfirmMessage');
+  var okBtn = document.getElementById('customConfirmOk');
+  var overlay = document.getElementById('customConfirmOverlay');
+  var buttonsEl = document.getElementById('customConfirmButtons');
+  
+  if(!overlay){
+    var r = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+    if(callback) callback(r);
+    return;
+  }
+  
+  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+  if(titleEl) titleEl.textContent = opts.title || '확인';
+  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+  
+  if(okBtn){
+    okBtn.textContent = opts.okText || '확인';
+    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+    if(opts.okType === 'danger') okBtn.classList.add('danger');
+    else if(opts.okType === 'warn') okBtn.classList.add('warn');
+    else if(opts.okType === 'success') okBtn.classList.add('success');
+  }
+  
+  if(buttonsEl){
+    if(opts.alertOnly) buttonsEl.querySelector('.custom-confirm-btn-cancel').style.display = 'none';
+    else buttonsEl.querySelector('.custom-confirm-btn-cancel').style.display = '';
+  }
+  
+  customConfirmCallback = callback || function(){};
+  overlay.classList.add('active');
+}
+
+function customConfirmClose(result){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay) overlay.classList.remove('active');
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function') setTimeout(function(){ cb(result); }, 150);
+}
+
+function showCustomAlert(options, callback){
+  var opts = typeof options === 'string' ? { message: options } : (options || {});
+  opts.alertOnly = true;
+  showCustomConfirm(opts, callback);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function(){
+  initTheme();
+  loadTodayWorks();
+  
+  // URL 파라미터로 permitNo 직접 지정된 경우 자동 선택
+  var params = new URLSearchParams(window.location.search);
+  var permitNo = params.get('permitNo');
+  if(permitNo){
+    setTimeout(function(){
+      var item = document.querySelector('[data-permitno="' + permitNo + '"]');
+      if(item) selectTodayWork(item);
+    }, 500);
+  }
+  
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var overlay = document.getElementById('customConfirmOverlay');
+      if(overlay && overlay.classList.contains('active')){
+          customConfirmClose(false);
+      }
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════
+function initTheme(){
+  var saved = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateThemeBtn(saved);
+}
+function toggleTheme(){
+  var cur = document.documentElement.getAttribute('data-theme');
+  var next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeBtn(next);
+}
+function updateThemeBtn(t){
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg, type){
+  type = type || 'info';
+  var wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(function(){
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-10px)';
+    el.style.transition = '.3s';
+    setTimeout(function(){ el.remove(); }, 300);
+  }, 2500);
+}
+
+// ═══════════════════════════════════════════════════
+// 화면 전환
+// ═══════════════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  var target = document.getElementById(id);
+  if(target){ 
+    target.classList.add('active'); 
+    window.scrollTo(0, 0);
+  }
+}
+
+function goBack(){
+  var currentActive = document.querySelector('.screen.active');
+  if(!currentActive){ goHome(); return; }
+  
+  if(currentActive.id === 'screen-inspect'){
+    showCustomConfirm({
+      icon: '⚠️', title: '점검을 취소하시겠습니까?',
+      message: '작성 중인 내용은 저장되지 않습니다.',
+      okText: '취소하기', okType: 'danger'
+    }, function(ok){
+      if(ok){
+        selectedPermit = null;
+        resetInspectionData();
+        document.getElementById('permitBadge').classList.remove('show');
+        showScreen('screen-select');
+        loadTodayWorks();
+      }
+    });
+  } else if(currentActive.id === 'screen-complete'){
+    goHome();
+  } else {
+    goHome();
+  }
+}
+
+function goHome(){
+  window.location.href = 'dashboard.html';
+}
+
+// ═══════════════════════════════════════════════════
+// 오늘 작업 목록 (허가완료·작업중 허가서)
+// ═══════════════════════════════════════════════════
+function loadTodayWorks(){
+  var listEl = document.getElementById('todayWorksList');
+  var countEl = document.getElementById('todayWorksCount');
+  if(!listEl) return;
+  
+  // localStorage에서 허가서 목록 로드 (실제 저장 키에 맞춰 조정 필요)
+  var permits = [];
+  try {
+    var raw = localStorage.getItem('safetyPermits') || localStorage.getItem('permits') || '[]';
+    permits = JSON.parse(raw);
+    if(!Array.isArray(permits)) permits = [];
+  } catch(e){ permits = []; }
+  
+  // 오늘 날짜
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' + 
+    String(today.getMonth()+1).padStart(2,'0') + '-' + 
+    String(today.getDate()).padStart(2,'0');
+  
+  // 필터: 허가완료/작업중 & 오늘 작업일
+  var todayPermits = permits.filter(function(p){
+    var status = p.status || p.permitStatus || '';
+    var isActive = ['허가완료','작업중','승인완료','승인','approved'].indexOf(status) > -1;
+    
+    var workDate = p.workDate || p.workStartDate || p.startDate || '';
+    // 날짜 필터는 유연하게 (필드가 없거나 오늘 포함이면 통과)
+    var isToday = !workDate || workDate.indexOf(todayStr) > -1 || 
+                  (p.workEndDate && workDate <= todayStr && p.workEndDate >= todayStr);
+    
+    return isActive && isToday;
+  });
+  
+  countEl.textContent = todayPermits.length + '건';
+  
+  if(todayPermits.length === 0){
+    listEl.innerHTML = 
+      '<div class="today-works-empty">' +
+        '<span class="today-works-empty-ico">📭</span>' +
+        '오늘 진행 중인 작업이 없습니다.<br>' +
+        '허가서가 <strong>허가완료</strong> 또는 <strong>작업중</strong> 상태여야 합니다.' +
+      '</div>';
+    return;
+  }
+  
+  var html = '';
+  todayPermits.forEach(function(p, idx){
+    var permitNo = p.permitNo || p.no || p.id || ('PTW-' + (idx+1));
+    var workName = p.workName || p.title || p.name || '작업명 미상';
+    var location = p.location || p.workLocation || '-';
+    var company = p.company || p.contractor || '-';
+    var riskLevel = p.riskLevel || p.grade || 'normal';
+    var isHigh = riskLevel === 'high' || riskLevel === '고위험' || riskLevel === 'HIGH';
+    var workTypes = p.workTypes || p.workType || [];
+    if(typeof workTypes === 'string') workTypes = [workTypes];
+    var typesText = workTypes.length ? workTypes.slice(0,2).join('·') : '일반';
+    
+    html += 
+      '<div class="today-work-item" data-permitno="' + escapeHtml(permitNo) + '" ' +
+        'data-idx="' + idx + '" onclick="selectTodayWork(this)">' +
+        '<div class="today-work-radio"></div>' +
+        '<div class="today-work-body">' +
+          '<div class="today-work-name">' + escapeHtml(workName) + '</div>' +
+          '<div class="today-work-meta">' +
+            '<span>📍 ' + escapeHtml(location) + '</span>' +
+            '<span>🏢 ' + escapeHtml(company) + '</span>' +
+          '</div>' +
+          '<div class="today-work-permit">📋 ' + escapeHtml(permitNo) + ' · ' + escapeHtml(typesText) + '</div>' +
+        '</div>' +
+        '<span class="today-work-badge ' + (isHigh ? 'high' : 'normal') + '">' +
+          (isHigh ? '고위험' : '일반') +
+        '</span>' +
+      '</div>';
+    
+    // 데이터 임시 저장 (선택시 사용)
+    window['_permit_' + idx] = p;
+  });
+  
+  listEl.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// 작업 선택 → 체크리스트 로드
+// ═══════════════════════════════════════════════════
+function selectTodayWork(el){
+  document.querySelectorAll('.today-work-item').forEach(function(i){
+    i.classList.remove('selected');
+  });
+  el.classList.add('selected');
+  
+  var idx = el.getAttribute('data-idx');
+  var permit = window['_permit_' + idx];
+  if(!permit){
+    showToast('허가서 데이터를 불러올 수 없습니다', 'danger');
+    return;
+  }
+  
+  selectedPermit = permit;
+  
+  setTimeout(function(){
+    startInspection();
+  }, 200);
+}
+
+function startInspection(){
+  if(!selectedPermit){
+    showToast('작업을 선택하세요', 'warn');
+    return;
+  }
+  
+  var p = selectedPermit;
+  
+  // 점검 데이터 초기화
+  resetInspectionData();
+  inspectionData.inspectionNo = generateInspectionNo();
+  inspectionData.workId = p.workId || p.id || '';
+  inspectionData.permitNo = p.permitNo || p.no || '';
+  inspectionData.riskId = p.riskId || '';
+  inspectionData.workName = p.workName || p.title || '';
+  inspectionData.location = p.location || p.workLocation || '';
+  inspectionData.company = p.company || p.contractor || '';
+  inspectionData.workTypes = p.workTypes || (p.workType ? [p.workType] : []);
+  inspectionData.riskLevel = p.riskLevel || p.grade || 'normal';
+  
+  // 배너 표시
+  renderPermitBanner();
+  
+  // 체크리스트 렌더
+  renderChecklist();
+  
+  // 상단 뱃지
+  var badge = document.getElementById('permitBadge');
+  if(badge && inspectionData.permitNo){
+    badge.textContent = inspectionData.permitNo;
+    badge.classList.add('show');
+  }
+  
+  showScreen('screen-inspect');
+}
+
+function renderPermitBanner(){
+  var el = document.getElementById('permitInfoBanner');
+  if(!el) return;
+  
+  var isHigh = inspectionData.riskLevel === 'high' || 
+               inspectionData.riskLevel === '고위험' || 
+               inspectionData.riskLevel === 'HIGH';
+  
+  var typesHtml = '';
+  (inspectionData.workTypes || []).forEach(function(t){
+    typesHtml += '<span class="pib-tag worktype">' + escapeHtml(t) + '</span>';
+  });
+  
+  el.innerHTML = 
+    '<div class="permit-info-banner">' +
+      '<div class="pib-top">' +
+        '<span class="pib-badge">점검 대상</span>' +
+        '<span class="pib-no">' + escapeHtml(inspectionData.permitNo || '-') + '</span>' +
+      '</div>' +
+      '<div class="pib-name">' + escapeHtml(inspectionData.workName || '-') + '</div>' +
+      '<div class="pib-meta">' +
+        '<span>📍 ' + escapeHtml(inspectionData.location || '-') + '</span>' +
+        '<span>🏢 ' + escapeHtml(inspectionData.company || '-') + '</span>' +
+      '</div>' +
+      '<div class="pib-tags">' +
+        '<span class="pib-tag ' + (isHigh ? 'risk-high' : 'risk-normal') + '">' +
+          (isHigh ? '🔴 고위험' : '🔵 일반') +
+        '</span>' +
+        typesHtml +
+      '</div>' +
+    '</div>';
+}
+
+// ═══════════════════════════════════════════════════
+// 체크리스트 렌더링
+// ═══════════════════════════════════════════════════
+function renderChecklist(){
+  var container = document.getElementById('checklistContainer');
+  if(!container) return;
+  
+  // 허가서에서 체크리스트 항목 추출
+  var items = extractChecklistItems(selectedPermit);
+  
+  if(items.length === 0){
+    container.innerHTML = 
+      '<div class="summary-card warning">' +
+        '<div class="summary-title warning">⚠️ 체크리스트 없음</div>' +
+        '<div class="summary-body">이 허가서에는 체크리스트 항목이 없습니다. 기본 항목이 적용됩니다.</div>' +
+      '</div>';
+    items = getDefaultChecklist();
+  }
+  
+  // 카테고리별 그룹화
+  var grouped = {};
+  items.forEach(function(item, i){
+    var cat = item.category || '일반 안전사항';
+    if(!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(Object.assign({}, item, { globalIdx: i }));
+  });
+  
+  inspectionData.items = items.map(function(it){
+    return {
+      id: it.id || ('item_' + Math.random().toString(36).slice(2,8)),
+      category: it.category || '일반 안전사항',
+      text: it.text || it.name || '',
+      required: !!it.required,
+      judge: '',      // '', 'ok', 'ng', 'partial', 'na'
+      memo: '',
+      photo: null
+    };
+  });
+  
+  var html = '';
+  Object.keys(grouped).forEach(function(cat){
+    var arr = grouped[cat];
+    var requiredCount = arr.filter(function(x){ return x.required; }).length;
+    var ico = getCategoryIcon(cat);
+    
+    html += 
+      '<div class="check-category">' +
+        '<div class="check-category-header">' +
+          '<span class="check-category-ico">' + ico + '</span>' +
+          '<span class="check-category-title">' + escapeHtml(cat) + '</span>' +
+          '<span class="check-category-count' + (requiredCount ? ' required' : '') + '">' + 
+            arr.length + '항목' + (requiredCount ? ' · 필수' + requiredCount : '') +
+          '</span>' +
+        '</div>';
+    
+    arr.forEach(function(item){
+      var i = item.globalIdx;
+      html += 
+        '<div class="check-item" id="checkItem' + i + '">' +
+          '<div class="check-item-top">' +
+            '<div class="check-item-num" id="checkNum' + i + '">' + (i+1) + '</div>' +
+            '<div class="check-item-body">' +
+              '<div class="check-item-text">' + escapeHtml(item.text || item.name || '') +
+                (item.required ? '<span class="check-item-required">필수</span>' : '') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          
+          '<div class="judge-buttons">' +
+            '<button class="judge-btn" onclick="setJudge(' + i + ', \'ok\', this)">' +
+              '<span class="judge-btn-ico">⭕</span><span>준수</span>' +
+            '</button>' +
+            '<button class="judge-btn" onclick="setJudge(' + i + ', \'ng\', this)">' +
+              '<span class="judge-btn-ico">❌</span><span>미준수</span>' +
+            '</button>' +
+            '<button class="judge-btn" onclick="setJudge(' + i + ', \'partial\', this)">' +
+              '<span class="judge-btn-ico">⚠️</span><span>부분</span>' +
+            '</button>' +
+            '<button class="judge-btn" onclick="setJudge(' + i + ', \'na\', this)">' +
+              '<span class="judge-btn-ico">➖</span><span>해당없음</span>' +
+            '</button>' +
+          '</div>' +
+          
+          '<textarea class="check-memo" id="memo' + i + '" ' +
+            'placeholder="특이사항이 있으면 입력하세요 (선택)" ' +
+            'oninput="updateMemo(' + i + ', this.value)"></textarea>' +
+          
+          '<div class="check-photo">' +
+            '<button class="check-photo-btn" onclick="attachPhoto(' + i + ')">' +
+              '📷 사진 첨부' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+    });
+    
+    html += '</div>';
+  });
+  
+  container.innerHTML = html;
+  updateProgress();
+}
+
+// 허가서에서 체크리스트 항목 추출
+function extractChecklistItems(permit){
+  if(!permit) return [];
+  var items = [];
+  
+  // 다양한 필드명 대응
+  var sources = [
+    permit.checklistItems, permit.checklist, permit.safetyChecklist,
+    permit.integratedChecklist, permit.integratedSafetyChecklist,
+    permit.safetyItems, permit.safetyMatters
+  ];
+  
+  for(var i=0; i<sources.length; i++){
+    var src = sources[i];
+    if(Array.isArray(src) && src.length > 0){
+      src.forEach(function(x){
+        if(typeof x === 'string'){
+          items.push({ text: x, category: '통합 안전 체크리스트', required: false });
+        } else if(x && typeof x === 'object'){
+          items.push({
+            id: x.id || null,
+            text: x.text || x.name || x.title || x.content || x.item || '',
+            category: x.category || x.section || '통합 안전 체크리스트',
+            required: x.required || x.mandatory || false
+          });
+        }
+      });
+      break;
+    }
+  }
+  
+  // 작업유형별 체크리스트가 있는 경우
+  var typeChecklists = permit.workTypeChecklists || permit.workTypeItems;
+  if(typeChecklists && typeof typeChecklists === 'object'){
+    Object.keys(typeChecklists).forEach(function(workType){
+      var typeItems = typeChecklists[workType];
+      if(Array.isArray(typeItems)){
+        typeItems.forEach(function(x){
+          if(typeof x === 'string'){
+            items.push({ text: x, category: workType, required: false });
+          } else if(x){
+            items.push({
+              text: x.text || x.name || x.content || '',
+              category: workType,
+              required: x.required || false
+            });
+          }
+        });
+      }
+    });
+  }
+  
+  // 안전사항 필드
+  var safetyMatters = permit.safetyMatters || permit.safety || permit.precautions;
+  if(typeof safetyMatters === 'string' && safetyMatters.trim()){
+    safetyMatters.split(/[\n;·•]/).forEach(function(line){
+      var t = line.trim();
+      if(t.length > 3) items.push({ text: t, category: '안전 유의사항', required: false });
+    });
+  }
+  
+  return items.filter(function(x){ return x.text && x.text.length > 0; });
+}
+
+// 기본 체크리스트 (폴백)
+function getDefaultChecklist(){
+  return [
+    { text: '작업자 안전보호구(안전모·안전대·안전화) 착용 상태', category: '개인보호구', required: true },
+    { text: '작업 구역 출입통제 및 안전표지 설치 상태', category: '작업환경', required: true },
+    { text: '작업 도구 및 장비 점검 상태', category: '장비/도구', required: false },
+    { text: '비상연락망 및 대피경로 숙지 여부', category: '비상대응', required: true },
+    { text: '작업 전 TBM 실시 여부', category: '작업준비', required: true },
+    { text: '주변 정리정돈 및 미끄러짐 방지 조치', category: '작업환경', required: false }
+  ];
+}
+
+function getCategoryIcon(cat){
+  var icons = {
+    '개인보호구': '🦺', '보호구': '🦺',
+    '작업환경': '🏗️', '환경': '🏗️',
+    '장비/도구': '🔧', '장비': '🔧', '도구': '🔧',
+    '비상대응': '🚨', '비상': '🚨',
+    '작업준비': '📋', 'TBM': '📋',
+    '고소작업': '🪜', '화기작업': '🔥', '밀폐공간': '🚪',
+    '중장비': '🏗️', '전기작업': '⚡', '굴착작업': '⛏️',
+    '통합 안전 체크리스트': '📋',
+    '안전 유의사항': '⚠️',
+    '일반 안전사항': '📌'
+  };
+  return icons[cat] || '📌';
+}
+
+// ═══════════════════════════════════════════════════
+// 판정 처리
+// ═══════════════════════════════════════════════════
+function setJudge(idx, judge, btnEl){
+  if(!inspectionData.items[idx]) return;
+  inspectionData.items[idx].judge = judge;
+  
+  // 버튼 상태 리셋
+  var container = btnEl.parentElement;
+  container.querySelectorAll('.judge-btn').forEach(function(b){
+    b.classList.remove('selected-ok', 'selected-ng', 'selected-partial', 'selected-na');
+  });
+  
+  // 선택 표시
+  var cls = 'selected-' + (judge === 'ok' ? 'ok' : judge === 'ng' ? 'ng' : judge === 'partial' ? 'partial' : 'na');
+  btnEl.classList.add(cls);
+  
+  // 번호 색상 업데이트
+  var numEl = document.getElementById('checkNum' + idx);
+  var itemEl = document.getElementById('checkItem' + idx);
+  if(numEl){
+    numEl.classList.remove('checked', 'violation-num');
+    if(inspectionData.items[idx].required){
+      numEl.classList.remove('required');
+    }
+    
+    if(judge === 'ng' && inspectionData.items[idx].required){
+      numEl.classList.add('violation-num');
+      if(itemEl) itemEl.classList.add('violation');
+    } else {
+      if(itemEl) itemEl.classList.remove('violation');
+      if(inspectionData.items[idx].required){
+        numEl.classList.add('required');
+      }
+      if(judge){
+        numEl.classList.add('checked');
+      }
+    }
+  }
+  
+  updateProgress();
+  updateEvaluationSummary();
+}
+
+function updateMemo(idx, value){
+  if(inspectionData.items[idx]) inspectionData.items[idx].memo = value;
+}
+
+function attachPhoto(idx){
+  showCustomAlert({
+    icon: '📷', title: '사진 첨부 기능',
+    message: '사진 첨부 기능은 추후 구현 예정입니다.\n\n현재는 UI만 배치되어 있습니다.',
+    okText: '확인'
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// 진행률 & 요약
+// ═══════════════════════════════════════════════════
+function updateProgress(){
+  var total = inspectionData.items.length;
+  var done = inspectionData.items.filter(function(x){ return !!x.judge; }).length;
+  var pct = total > 0 ? Math.round((done/total)*100) : 0;
+  
+  document.getElementById('progressDone').textContent = done;
+  document.getElementById('progressTotal').textContent = total;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function updateEvaluationSummary(){
+  var el = document.getElementById('evaluationSummary');
+  if(!el) return;
+  
+  var stats = calcStats();
+  
+  // 중대 위반 판단: 필수 항목 중 미준수(ng)가 하나라도 있으면
+  var criticalViolations = inspectionData.items.filter(function(x){
+    return x.required && x.judge === 'ng';
+  });
+  var hasCritical = criticalViolations.length > 0;
+  inspectionData.hasCritical = hasCritical;
+  
+  var cardClass = 'success';
+  var title = '✅ 안전 상태 양호';
+  var titleClass = 'success';
+  var body = '점검 결과 특이사항이 없습니다.';
+  
+  if(hasCritical){
+    cardClass = 'danger';
+    title = '🚨 중대한 안전 위반 발견';
+    titleClass = 'danger';
+    body = '<strong style="color:var(--stop);">필수 항목 ' + criticalViolations.length + '개가 미준수</strong> 상태입니다.<br>' +
+           '점검 완료 시 <strong>작업중지권</strong> 발동 화면으로 이동합니다.';
+  } else if(stats.ng > 0 || stats.partial > 0){
+    cardClass = 'warning';
+    title = '⚠️ 개선 필요 사항 발견';
+    titleClass = 'warning';
+    body = '미준수 ' + stats.ng + '건, 부분 준수 ' + stats.partial + '건이 확인되었습니다.<br>개선 조치가 필요합니다.';
+  }
+  
+  if(stats.done === 0){
+    el.innerHTML = '';
+    return;
+  }
+  
+  el.innerHTML = 
+    '<div class="summary-card ' + cardClass + '">' +
+      '<div class="summary-title ' + titleClass + '">' + title + '</div>' +
+      '<div class="summary-body">' + body + '</div>' +
+      '<div class="summary-stat">' +
+        '<div class="stat-item"><div class="stat-num done-c">' + stats.ok + '</div><div class="stat-label">준수</div></div>' +
+        '<div class="stat-item"><div class="stat-num stop-c">' + stats.ng + '</div><div class="stat-label">미준수</div></div>' +
+        '<div class="stat-item"><div class="stat-num warn-c">' + stats.partial + '</div><div class="stat-label">부분</div></div>' +
+        '<div class="stat-item"><div class="stat-num sub-c">' + stats.na + '</div><div class="stat-label">해당없음</div></div>' +
+      '</div>' +
+    '</div>';
+}
+
+function calcStats(){
+  var s = { total: inspectionData.items.length, done:0, ok:0, ng:0, partial:0, na:0 };
+  inspectionData.items.forEach(function(x){
+    if(x.judge){ s.done++; }
+    if(x.judge === 'ok') s.ok++;
+    else if(x.judge === 'ng') s.ng++;
+    else if(x.judge === 'partial') s.partial++;
+    else if(x.judge === 'na') s.na++;
+  });
+  return s;
+}
+
+// ═══════════════════════════════════════════════════
+// 저장
+// ═══════════════════════════════════════════════════
+function submitInspection(){
+  var stats = calcStats();
+  
+  if(stats.done < stats.total){
+    showCustomConfirm({
+      icon: '⚠️', title: '미완료 항목이 있습니다',
+      message: '전체 ' + stats.total + '개 중 ' + (stats.total - stats.done) + '개 항목이 미판정 상태입니다.\n\n이대로 저장하시겠습니까?',
+      okText: '계속 저장', okType: 'warn'
+    }, function(ok){
+      if(ok) doSubmit();
+    });
+    return;
+  }
+  
+  doSubmit();
+}
+
+function doSubmit(){
+  // 종합의견
+  inspectionData.opinion = (document.getElementById('opinionInput').value || '').trim();
+  inspectionData.inspectorName = (document.getElementById('inspectorName').value || '').trim();
+  inspectionData.inspectorDept = (document.getElementById('inspectorDept').value || '').trim();
+  
+  if(!inspectionData.inspectorName){
+    showToast('점검자 이름을 입력하세요', 'warn');
+    document.getElementById('inspectorName').focus();
+    return;
+  }
+  
+  var stats = calcStats();
+  inspectionData.createdAt = new Date().toISOString();
+  inspectionData.createdBy = inspectionData.inspectorName;
+  
+  var savedData = {
+    inspectionNo: inspectionData.inspectionNo,
+    workId: inspectionData.workId,
+    permitNo: inspectionData.permitNo,
+    riskId: inspectionData.riskId,
+    workName: inspectionData.workName,
+    location: inspectionData.location,
+    company: inspectionData.company,
+    workTypes: inspectionData.workTypes,
+    riskLevel: inspectionData.riskLevel,
+    items: inspectionData.items,
+    opinion: inspectionData.opinion,
+    inspectorName: inspectionData.inspectorName,
+    inspectorDept: inspectionData.inspectorDept,
+    hasCritical: inspectionData.hasCritical,
+    stats: stats,
+    status: inspectionData.hasCritical ? '중대위반' : (stats.ng > 0 ? '개선필요' : '양호'),
+    createdAt: inspectionData.createdAt,
+    createdBy: inspectionData.createdBy
+  };
+  
+  // ═══ 저장 (localStorage) ═══
+  try {
+    var raw = localStorage.getItem('safetyInspections') || '[]';
+    var list = JSON.parse(raw);
+    if(!Array.isArray(list)) list = [];
+    list.unshift(savedData);
+    localStorage.setItem('safetyInspections', JSON.stringify(list));
+  } catch(e){
+    console.error('localStorage 저장 실패:', e);
+  }
+  
+  // ═══ 저장 (Firebase) ═══
+  saveToFirebase(savedData).then(function(){
+    showFinalScreen(savedData);
+    
+    // 중대 위반 시 작업중지권 연동
+    if(inspectionData.hasCritical){
+      setTimeout(function(){
+        showCustomConfirm({
+          icon: '🚨', title: '중대 안전 위반 확인',
+          message: '필수 항목 미준수가 발견되었습니다.\n\n작업중지권 발동 화면으로 이동하시겠습니까?',
+          okText: '작업중지권 발동', okType: 'danger'
+        }, function(ok){
+          if(ok){
+            // 작업중지권으로 연동 데이터 전달
+            try {
+              localStorage.setItem('pendingStopWorkOrder', JSON.stringify({
+                from: 'inspection',
+                inspectionNo: savedData.inspectionNo,
+                permitNo: savedData.permitNo,
+                workId: savedData.workId,
+                workName: savedData.workName,
+                location: savedData.location,
+                company: savedData.company,
+                riskLevel: savedData.riskLevel,
+                violations: savedData.items.filter(function(x){
+                  return x.required && x.judge === 'ng';
+                }).map(function(x){ return x.text; }),
+                inspectorName: savedData.inspectorName,
+                inspectorDept: savedData.inspectorDept,
+                timestamp: new Date().toISOString()
+              }));
+            } catch(e){}
+            
+            window.location.href = 'stop_work_order.html?from=inspection&permitNo=' + 
+              encodeURIComponent(savedData.permitNo);
+          }
+        });
+      }, 800);
+    }
+  }).catch(function(err){
+    console.error('Firebase 저장 실패:', err);
+    // Firebase 실패해도 localStorage에는 저장됐으므로 진행
+    showFinalScreen(savedData);
+  });
+}
+
+function saveToFirebase(data){
+  if(!window.firebaseApp || !window.firebaseApp.db){
+    console.warn('Firebase 미초기화, 로컬만 저장');
+    return Promise.resolve();
+  }
+  
+  var fb = window.firebaseApp;
+  try {
+    var docRef = fb.doc(fb.db, fb.INSPECTION_COLLECTION, data.inspectionNo);
+    var payload = Object.assign({}, data, { serverTimestamp: fb.serverTimestamp() });
+    return fb.setDoc(docRef, payload);
+  } catch(e){
+    console.error(e);
+    return Promise.resolve();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 완료 화면
+// ═══════════════════════════════════════════════════
+function showFinalScreen(data){
+  var hero = document.getElementById('completeHero');
+  var ico = document.getElementById('completeIco');
+  var title = document.getElementById('completeTitle');
+  var sub = document.getElementById('completeSub');
+  
+  if(data.hasCritical){
+    hero.className = 'complete-hero';
+    hero.style.background = 'linear-gradient(158deg,#8B1728 0%,#D6273D 100%)';
+    hero.style.boxShadow = '0 8px 24px rgba(214,39,61,.35)';
+    ico.textContent = '🚨';
+    title.textContent = '중대 위반 감지';
+    sub.textContent = '필수 항목 미준수 발견\n작업중지권 발동을 검토해주세요';
+  } else if(data.stats.ng > 0 || data.stats.partial > 0){
+    hero.className = 'complete-hero warning';
+    ico.textContent = '⚠️';
+    title.textContent = '점검 완료 (개선 필요)';
+    sub.textContent = '개선 조치가 필요한 항목이 있습니다\n조치 후 재점검을 권장합니다';
+  } else {
+    hero.className = 'complete-hero';
+    ico.textContent = '✅';
+    title.textContent = '점검 완료';
+    sub.textContent = '안전점검이 정상적으로 저장되었습니다\n안전 상태 양호';
+  }
+  
+  document.getElementById('finalInspectionNo').textContent = data.inspectionNo || '-';
+  document.getElementById('finalWorkName').textContent = data.workName || '-';
+  document.getElementById('finalPermitNo').textContent = data.permitNo || '-';
+  document.getElementById('finalTotalItems').textContent = data.stats.total + '개';
+  document.getElementById('finalOkCount').textContent = data.stats.ok + '개';
+  document.getElementById('finalNgCount').textContent = data.stats.ng + '개';
+  document.getElementById('finalPartialCount').textContent = data.stats.partial + '개';
+  document.getElementById('finalInspector').textContent = 
+    (data.inspectorName || '-') + (data.inspectorDept ? ' (' + data.inspectorDept + ')' : '');
+  document.getElementById('finalDatetime').textContent = formatDateTime(data.createdAt);
+  
+  showScreen('screen-complete');
+  showToast('점검이 저장되었습니다', 'success');
+}
+
+// ═══════════════════════════════════════════════════
+// 유틸
+// ═══════════════════════════════════════════════════
+function cancelInspection(){
+  showCustomConfirm({
+    icon: '⚠️', title: '점검을 취소하시겠습니까?',
+    message: '작성 중인 내용은 저장되지 않습니다.',
+    okText: '취소하기', okType: 'danger'
+  }, function(ok){
+    if(ok){
+      selectedPermit = null;
+      resetInspectionData();
+      document.getElementById('permitBadge').classList.remove('show');
+      showScreen('screen-select');
+      loadTodayWorks();
+    }
+  });
+}
+
+function startNewInspection(){
+  selectedPermit = null;
+  resetInspectionData();
+  document.getElementById('permitBadge').classList.remove('show');
+  showScreen('screen-select');
+  loadTodayWorks();
+}
+
+function resetInspectionData(){
+  inspectionData = {
+    inspectionNo: '', workId: '', permitNo: '', riskId: '',
+    workName: '', location: '', company: '',
+    workTypes: [], riskLevel: '',
+    items: [], opinion: '',
+    inspectorName: '', inspectorDept: '',
+    hasCritical: false, status: '완료',
+    createdAt: '', createdBy: ''
+  };
+}
+
+function generateInspectionNo(){
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth()+1).padStart(2,'0');
+  var day = String(d.getDate()).padStart(2,'0');
+  var rnd = String(Math.floor(Math.random()*9999)).padStart(4,'0');
+  return 'INS-' + y + m + day + '-' + rnd;
+}
+
+function formatDateTime(iso){
+  if(!iso) return '-';
+  try {
+    var d = new Date(iso);
+    return d.getFullYear() + '-' + 
+      String(d.getMonth()+1).padStart(2,'0') + '-' + 
+      String(d.getDate()).padStart(2,'0') + ' ' +
+      String(d.getHours()).padStart(2,'0') + ':' + 
+      String(d.getMinutes()).padStart(2,'0');
+  } catch(e){ return iso; }
+}
+
+function escapeHtml(s){
+  if(s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+
+</div><!-- /.phone-screen -->
+</div><!-- /.phone-frame -->
+</body>
+</html>
