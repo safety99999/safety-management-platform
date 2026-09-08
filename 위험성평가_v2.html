@@ -9423,44 +9423,49 @@ document.addEventListener('DOMContentLoaded', initializeApplication);
     }
   }
 
-  function downloadJsonFile(
-    filename,
-    text
-  ){
-    /*
-     * SHA-256 계산에 사용한 문자열과
-     * 실제 다운로드 파일이 완전히 같도록
-     * BOM을 추가하지 않습니다.
-     */
-    var blob =
-      new Blob(
-        [text],
-        {
-          type:
-            'application/json;charset=utf-8'
-        }
-      );
-
-    var url =
-      URL.createObjectURL(blob);
-
-    var anchor =
-      document.createElement('a');
-
-    anchor.href = url;
-    anchor.download = filename;
-
-    document.body.appendChild(
-      anchor
+function downloadJsonFile(
+  filename,
+  text
+){
+  /*
+   * 사내 Edge에서 download 속성 대신 JSON이 열리는 경우에도
+   * 관리자 화면을 유지하도록 새 탭에서 처리합니다.
+   */
+  var blob =
+    new Blob(
+      [text],
+      {
+        type:
+          'application/json;charset=utf-8'
+      }
     );
 
-    anchor.click();
-    anchor.remove();
+  var url =
+    URL.createObjectURL(blob);
 
-    setTimeout(function(){
-      URL.revokeObjectURL(url);
-    },1000);
-  }
+  var anchor =
+    document.createElement('a');
+
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener';
+
+  document.body.appendChild(
+    anchor
+  );
+
+  anchor.click();
+  anchor.remove();
+
+  /*
+   * 새 탭에서 Blob을 읽을 시간을 충분히 둡니다.
+   */
+  setTimeout(function(){
+    URL.revokeObjectURL(url);
+  },60000);
+}
+
 
   async function sha256Text(text){
     if(
