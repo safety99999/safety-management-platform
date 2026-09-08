@@ -3165,6 +3165,12 @@
     if(!riskData || !riskData.workName){
       return riskData;
     }
+        // 🆕 중복 판정 방지 캐시
+    var __cacheKey = (riskData.workId||'') + '|' + (riskData.workName||'') + '|' + (riskData.finalRiskLevel||'');
+    if(riskData.__policyLastKey === __cacheKey){
+      return riskData;
+    }
+    riskData.__policyLastKey = __cacheKey;
 
     var originalLevel =
       rememberAutomaticRisk(riskData);
