@@ -1276,6 +1276,190 @@ function startInspection(){
   
   showScreen('screen-inspect');
 }
+// ═══════════════════════════════════════════════════
+// 허가서 배너 렌더
+// ═══════════════════════════════════════════════════
+function renderPermitBanner(){
+  var banner = document.getElementById('permitInfoBanner');
+  if(!banner) return;
+  
+  var p = selectedPermit;
+  if(!p){ banner.innerHTML = ''; return; }
+  
+  var permitNo = p.permitNo || '-';
+  var workName = p.workName || '-';
+  
+  var location = '';
+  if(p.location) location = p.location;
+  if(p.detailLocation) location += (location ? ' ' : '') + p.detailLocation;
+  if(!location) location = '-';
+  
+  var company = p.companyName || p.company || '-';
+  
+  // 위험도
+  var riskLevel = (p.riskSnapshot && p.riskSnapshot.finalRiskLevel) || 
+                  p.riskLevel || p.overallRisk || '';
+  var isHigh = riskLevel === '고위험' || riskLevel === '매우고위험';
+  
+  // 작업유형
+  var workTypes = p.workTypes || [];
+  if(!Array.isArray(workTypes)) workTypes = [];
+  
+  var WORK_TYPE_LABELS = {
+    general:'일반', fire:'화기', electric:'전기', height:'고소',
+    'electric-live':'충전', heavy:'중량물', confined:'밀폐공간'
+  };
+  
+  var tagsHtml = '';
+  tagsHtml += '<span class="pib-tag ' + (isHigh ? 'risk-high' : 'risk-normal') + '">' + 
+              escapeHtml(riskLevel || '일반') + '</span>';
+  
+  workTypes.forEach(function(t){
+    if(t === 'general') return;
+    var label = WORK_TYPE_LABELS[t] || t;
+    tagsHtml += '<span class="pib-tag worktype">' + escapeHtml(label) + '</span>';
+  });
+  
+  banner.innerHTML = 
+    '<div class="permit-info-banner">' +
+      '<div class="pib-top">' +
+        '<span class="pib-badge">허가서</span>' +
+        '<span class="pib-no">' + escapeHtml(permitNo) + '</span>' +
+      '</div>' +
+      '<div class="pib-name">' + escapeHtml(workName) + '</div>' +
+      '<div class="pib-meta">' +
+        '<span>📍 ' + escapeHtml(location) + '</span>' +
+        '<span>🏢 ' + escapeHtml(company) + '</span>' +
+      '</div>' +
+      '<div class="pib-tags">' + tagsHtml + '</div>' +
+    '</div>';
+}
+
+// ═══════════════════════════════════════════════════
+// 체크리스트 렌더 (카테고리별 그룹핑)
+// ═══════════════════════════════════════════════════
+function renderChecklist(){
+  var container = document.getElementById('checklistContainer');
+  if(!container) return;
+  
+  // 허가서에서 체크리스트 항목 추출
+  var items = extractChecklistItems(selectedPermit);
+  
+  // 폴백: 빈 경우 기본 체크리스트 사용
+  if(items.length === 0){
+    console.warn('[안전점검] 허가서에 체크리스트 없음 - 기본 체크리스트 사용');
+    var defaults = getDefaultChecklist();
+    items = defaults.map(function(x, i){
+      return {
+        id: 'default-' + i,
+        text: x.text,
+        category: x.category,
+        required: x.required || false,
+        originalResult: ''
+      };
+    });
+  }
+  
+  // inspectionData.items에 저장 (판정 결과 담을 배열)
+  inspectionData.items = items.map(function(x){
+    return {
+      id: x.id,
+      text: x.text,
+      category: x.category,
+      required: x.required,
+      originalResult: x.originalResult || '',
+      judge: '',      // 사용자 판정: ok, ng, partial, na
+      memo: '',
+      photo: null
+    };
+  });
+  
+  // 카테고리별로 그룹핑
+  var grouped = {};
+  var categoryOrder = [];
+  
+  inspectionData.items.forEach(function(item, idx){
+    var cat = item.category || '기타';
+    if(!grouped[cat]){
+      grouped[cat] = [];
+      categoryOrder.push(cat);
+    }
+    grouped[cat].push({ item: item, idx: idx });
+  });
+  
+  // HTML 생성
+  var html = '';
+  categoryOrder.forEach(function(cat){
+    var arr = grouped[cat];
+    var reqCount = arr.filter(function(x){ return x.item.required; }).length;
+    var ico = getCategoryIcon(cat);
+    
+    html += '<div class="check-category">';
+    html +=   '<div class="check-category-header">';
+    html +=     '<span class="check-category-ico">' + ico + '</span>';
+    html +=     '<span class="check-category-title">' + escapeHtml(cat) + '</span>';
+    html +=     '<span class="check-category-count' + (reqCount > 0 ? ' required' : '') + '">';
+    html +=       arr.length + '항목';
+    html +=     '</span>';
+    html +=   '</div>';
+    
+    arr.forEach(function(entry){
+      var item = entry.item;
+      var i = entry.idx;
+      
+      html += '<div class="check-item" id="checkItem' + i + '">';
+      html +=   '<div class="check-item-top">';
+      html +=     '<div class="check-item-num' + (item.required ? ' required' : '') + '" id="checkNum' + i + '">';
+      html +=       (i+1);
+      html +=     '</div>';
+      html +=     '<div class="check-item-body">';
+      html +=       '<div class="check-item-text">';
+      html +=         escapeHtml(item.text);
+      if(item.required){
+        html +=       '<span class="check-item-required">필수</span>';
+      }
+      html +=       '</div>';
+      html +=     '</div>';
+      html +=   '</div>';
+      
+      // 판정 버튼 4단계
+      html +=   '<div class="judge-buttons">';
+      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'ok\', this)">';
+      html +=       '<span class="judge-btn-ico">⭕</span><span>준수</span>';
+      html +=     '</button>';
+      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'ng\', this)">';
+      html +=       '<span class="judge-btn-ico">❌</span><span>미준수</span>';
+      html +=     '</button>';
+      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'partial\', this)">';
+      html +=       '<span class="judge-btn-ico">⚠️</span><span>부분</span>';
+      html +=     '</button>';
+      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'na\', this)">';
+      html +=       '<span class="judge-btn-ico">➖</span><span>해당없음</span>';
+      html +=     '</button>';
+      html +=   '</div>';
+      
+      // 메모
+      html +=   '<textarea class="check-memo" placeholder="특이사항이 있으면 메모하세요 (선택)" ' +
+                 'onchange="updateMemo(' + i + ', this.value)"></textarea>';
+      
+      // 사진 첨부 (자리만)
+      html +=   '<div class="check-photo">';
+      html +=     '<button type="button" class="check-photo-btn" onclick="attachPhoto(' + i + ')">';
+      html +=       '📷 사진 첨부';
+      html +=     '</button>';
+      html +=   '</div>';
+      
+      html += '</div>';
+    });
+    
+    html += '</div>';
+  });
+  
+  container.innerHTML = html;
+  
+  // 진행률 초기화
+  updateProgress();
+}
 
 function extractChecklistItems(permit){
   if(!permit) return [];
