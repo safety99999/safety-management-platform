@@ -4340,20 +4340,1004 @@
     enhancePolicySection();
   }
 
-  global.riskHighWorkPolicyUiV321 = {
-    version: V,
-    install: install,
-    toggle: togglePolicyDetail,
-    updateSummary: updatePolicySummary
-  };
+/* ============================================================
+ * risk-workdb-match-patch 긴급 안정화 v3.2.2
+ *
+ * 기준:
+ * 1. 대시보드 safetyDatabase를 최신 작업관리대장으로 사용
+ * 2. workId 정확 일치 + 관리대장 고위험은 하향 불가
+ * 3. 위험성평가 작업명·위치는 대시보드 표시값 우선
+ * 4. 새 평가 시작 시 고위험 기준 입력값 초기화
+ * ============================================================ */
+(function(global){
+  'use strict';
 
-  if(document.readyState === 'loading'){
-    document.addEventListener(
-      'DOMContentLoaded',
-      install
-    );
-  } else {
-    install();
+  var VERSION = '3.2.2-dashboard-authority';
+
+  if(global.riskDashboardAuthorityV322){
+    console.log('[risk dashboard authority] 이미 적용됨');
+    return;
   }
 
+  function clean(value){
+    return String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    ).trim();
+  }
+
+  function normalizeWorkId(value){
+    return clean(value)
+      .replace(/\s+/g, '');
+  }
+
+  function readDashboardWorks(){
+    try{
+      var database =
+        JSON.parse(
+          localStorage.getItem(
+            'safetyDatabase'
+          ) || '{}'
+        );
+
+      return Array.isArray(
+        database.workHistory
+      )
+        ? database.workHistory
+        : [];
+
+    }catch(error){
+      console.warn(
+        '[risk dashboard authority] 작업DB 읽기 실패:',
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function getDashboardWorkId(work){
+    work = work || {};
+
+    var direct =
+      normalizeWorkId(
+        work.workId ||
+        work.id ||
+        work.docId ||
+        ''
+      );
+
+    if(direct){
+      return direct;
+    }
+
+    var date =
+      clean(
+        work.date ||
+        work.workDate ||
+        work.startDate ||
+        ''
+      );
+
+    var originalNo =
+      normalizeWorkId(
+        work.originalNo ||
+        work.workNo ||
+        work.number ||
+        work.no ||
+        ''
+      );
+
+    return (
+      date &&
+      originalNo
+    )
+      ? date + '_' + originalNo
+      : '';
+  }
+
+  function findExactDashboardWork(workId){
+    var targetId =
+      normalizeWorkId(workId);
+
+    if(!targetId){
+      return null;
+    }
+
+    return (
+      readDashboardWorks()
+        .find(function(work){
+          return (
+            getDashboardWorkId(work) ===
+            targetId
+          );
+        }) ||
+      null
+    );
+  }
+
+  function isDashboardHighRisk(work){
+    if(!work){
+      return false;
+    }
+
+    if(
+      work.isHighRiskFromSource ===
+        true
+    ){
+      return true;
+    }
+
+    var value =
+      clean(
+        work.riskLevel ||
+        work.risk ||
+        work.overallRisk ||
+        ''
+      )
+        .replace(/\s+/g, '');
+
+    return (
+      value === '고위험' ||
+      value === '매우고위험'
+    );
+  }
+
+  function getDashboardWorkName(work){
+    if(!work){
+      return '';
+    }
+
+    /*
+     * 대시보드에서 이미 간소화한 workName을 우선합니다.
+     * 원문 workNameFull은 검색용 작업 상세에 유지합니다.
+     */
+    return clean(
+      work.workName ||
+      work.workNameFull ||
+      ''
+    )
+      .replace(
+        /^["'“”‘’]+|["'“”‘’]+$/g,
+        ''
+      )
+      .trim();
+  }
+
+  function getDashboardLocationDisplay(work){
+    if(!work){
+      return '';
+    }
+
+    var display =
+      clean(
+        work.locationDisplay ||
+        work.locationRaw ||
+        work.workPlaceRaw ||
+        work.permitLocation ||
+        ''
+      );
+
+    if(display){
+      return display;
+    }
+
+    if(
+      work.location &&
+      typeof work.location ===
+        'object'
+    ){
+      return [
+        work.location.factory || '',
+        work.location.line || '',
+        work.location.floor || '',
+        work.location.area || '',
+        work.location.detail || ''
+      ]
+        .filter(function(value){
+          return clean(value);
+        })
+        .map(function(value){
+          var text = clean(value);
+
+          if(
+            /^\d+$/.test(text) &&
+            value === work.location.line
+          ){
+            return text + '라인';
+          }
+
+          return text;
+        })
+        .join(' · ');
+    }
+
+    return clean(work.location);
+  }
+
+  function splitDashboardLocation(display){
+    var text =
+      clean(display)
+        .replace(/\s+/g, ' ');
+
+    var factory = '';
+
+    if(
+      text.indexOf('2공장') >= 0 ||
+      text.indexOf('2-2단계') >= 0
+    ){
+      factory = '포항양극재 2공장';
+
+    }else if(
+      text.indexOf('1공장') >= 0 ||
+      text.indexOf('2-1단계') >= 0 ||
+      text.indexOf('1단계') >= 0
+    ){
+      factory = '포항양극재 1공장';
+    }
+
+    var detail =
+      text
+        .replace(
+          /포항\s*양극재/g,
+          ''
+        )
+        .replace(
+          /(?:1공장|2공장)/g,
+          ''
+        )
+        .replace(
+          /(?:2-1단계|2-2단계|1단계)/g,
+          ''
+        )
+        .replace(
+          /^[\s·,./_-]+|[\s·,./_-]+$/g,
+          ''
+        )
+        .replace(
+          /\s*·\s*/g,
+          ' · '
+        )
+        .replace(
+          /\s+/g,
+          ' '
+        )
+        .trim();
+
+    return {
+      factory:factory,
+      detail:detail,
+      display:text
+    };
+  }
+
+  function applyDashboardDisplay(work){
+    if(
+      !work ||
+      !global.riskData
+    ){
+      return false;
+    }
+
+    var displayName =
+      getDashboardWorkName(work);
+
+    var location =
+      splitDashboardLocation(
+        getDashboardLocationDisplay(
+          work
+        )
+      );
+
+    var company =
+      clean(
+        work.executingCompany ||
+        work.subcontractCompany ||
+        work.contractCompany ||
+        work.company ||
+        ''
+      );
+
+    if(displayName){
+      global.riskData.workName =
+        displayName;
+
+      if(
+        typeof global.setAutoInput ===
+          'function'
+      ){
+        global.setAutoInput(
+          'workNameInput',
+          displayName
+        );
+      }
+    }
+
+    /*
+     * 원문은 작업 상세에 유지하여
+     * 위험성평가 DB 검색 정확도가 떨어지지 않게 합니다.
+     */
+    if(
+      clean(work.workNameFull) &&
+      !clean(
+        global.riskData
+          .workDescription
+      )
+    ){
+      global.riskData
+        .workDescription =
+        clean(work.workNameFull);
+
+      if(
+        typeof global.setAutoInput ===
+          'function'
+      ){
+        global.setAutoInput(
+          'workDescriptionInput',
+          global.riskData
+            .workDescription
+        );
+      }
+    }
+
+    if(location.factory){
+      global.riskData.location =
+        location.factory;
+
+      var locationSelect =
+        document.getElementById(
+          'locationSelect'
+        );
+
+      if(locationSelect){
+        locationSelect.value =
+          location.factory;
+
+        locationSelect.classList.add(
+          'auto'
+        );
+      }
+    }
+
+    if(location.detail){
+      global.riskData
+        .detailLocation =
+        location.detail;
+
+      if(
+        typeof global.setAutoInput ===
+          'function'
+      ){
+        global.setAutoInput(
+          'detailLocationInput',
+          location.detail
+        );
+      }
+    }
+
+    if(company){
+      global.riskData.company =
+        company;
+
+      if(
+        typeof global.setAutoInput ===
+          'function'
+      ){
+        global.setAutoInput(
+          'companyInput',
+          company
+        );
+      }
+    }
+
+    return true;
+  }
+
+  function enforceDashboardHighRisk(){
+    if(!global.riskData){
+      return null;
+    }
+
+    var workId =
+      normalizeWorkId(
+        global.riskData.workId ||
+        ''
+      );
+
+    if(!workId){
+      try{
+        workId =
+          normalizeWorkId(
+            new URLSearchParams(
+              global.location.search
+            ).get('workId') ||
+            ''
+          );
+      }catch(error){
+        workId = '';
+      }
+    }
+
+    var work =
+      findExactDashboardWork(
+        workId
+      );
+
+    if(!work){
+      return {
+        matched:false,
+        authoritative:false,
+        highRisk:false,
+        workId:workId
+      };
+    }
+
+    var highRisk =
+      isDashboardHighRisk(
+        work
+      );
+
+    var reference = {
+      matched:true,
+      authoritative:true,
+      workId:
+        getDashboardWorkId(work),
+      workName:
+        getDashboardWorkName(work),
+      risk:
+        highRisk
+          ? '고위험'
+          : '일반',
+      riskOriginal:
+        clean(
+          work.riskLevel ||
+          work.risk ||
+          work.overallRisk ||
+          ''
+        ),
+      isHighRiskFromSource:
+        work.isHighRiskFromSource ===
+        true,
+      method:'workId-exact',
+      source:
+        'dashboard-safetyDatabase',
+      highRiskPriorityApplied:
+        highRisk,
+      reviewedAt:
+        new Date().toISOString()
+    };
+
+    global.riskData
+      .managementLedgerReference =
+      reference;
+
+    global.riskData
+      .dashboardWorkReference =
+      JSON.parse(
+        JSON.stringify(reference)
+      );
+
+    if(!highRisk){
+      return reference;
+    }
+
+    /*
+     * 관리대장 정확 일치 고위험은
+     * 자동판정·키워드·작성자 판정으로 낮출 수 없습니다.
+     */
+    global.riskData.finalRiskLevel =
+      '고위험';
+
+    global.riskData.riskLevel =
+      '고위험';
+
+    global.riskData.overallRisk =
+      '고위험';
+
+    global.riskData.riskScore =
+      15;
+
+    global.riskData
+      .managementHighRiskLocked =
+      true;
+
+    global.riskData
+      .judgmentMethod =
+      'management-ledger-authoritative';
+
+    global.riskData
+      .overrideApplied =
+      true;
+
+    global.riskData
+      .overrideVersion =
+      VERSION;
+
+    if(
+      !Array.isArray(
+        global.riskData
+          .overrideReasons
+      )
+    ){
+      global.riskData
+        .overrideReasons = [];
+    }
+
+    var reason =
+      '대시보드 작업관리대장 workId 정확 일치 고위험 최우선 적용';
+
+    if(
+      global.riskData
+        .overrideReasons
+        .indexOf(reason) < 0
+    ){
+      global.riskData
+        .overrideReasons
+        .push(reason);
+    }
+
+    global.riskData
+      .highRiskWorkAssessment =
+      Object.assign(
+        {},
+        global.riskData
+          .highRiskWorkAssessment ||
+          {},
+        {
+          source:
+            'management-ledger',
+          applicable:true,
+          status:'해당',
+          categories:[
+            'MANAGEMENT_LEDGER_HIGH_RISK'
+          ],
+          categoryLabels:[
+            '관리대장 확정 고위험작업'
+          ],
+          criteria:[
+            '대시보드 작업관리대장 workId 정확 일치'
+          ],
+          assessedBy:
+            '작업관리대장',
+          assessedAt:
+            new Date().toISOString()
+        }
+      );
+
+    if(global.riskData.autoJudgment){
+      global.riskData
+        .autoJudgment
+        .riskLevel =
+        '고위험';
+
+      global.riskData
+        .autoJudgment
+        .basis =
+        reason;
+    }
+
+    return reference;
+  }
+
+  function applyHighRiskToSaveObject(
+    saveObject
+  ){
+    if(!saveObject){
+      return saveObject;
+    }
+
+    var reference =
+      enforceDashboardHighRisk();
+
+    if(
+      !reference ||
+      reference.matched !== true
+    ){
+      return saveObject;
+    }
+
+    saveObject
+      .managementLedgerReference =
+      JSON.parse(
+        JSON.stringify(reference)
+      );
+
+    saveObject
+      .dashboardWorkReference =
+      JSON.parse(
+        JSON.stringify(reference)
+      );
+
+    if(reference.highRisk !== true){
+      return saveObject;
+    }
+
+    saveObject.finalRiskLevel =
+      '고위험';
+
+    saveObject.riskLevel =
+      '고위험';
+
+    saveObject.overallRisk =
+      '고위험';
+
+    saveObject.riskScore = 15;
+
+    saveObject
+      .managementHighRiskLocked =
+      true;
+
+    saveObject.judgmentMethod =
+      'management-ledger-authoritative';
+
+    saveObject.overrideApplied =
+      true;
+
+    saveObject.overrideVersion =
+      VERSION;
+
+    saveObject.overrideReasons =
+      Array.isArray(
+        global.riskData
+          .overrideReasons
+      )
+        ? global.riskData
+            .overrideReasons
+            .slice()
+        : [
+            '대시보드 작업관리대장 workId 정확 일치 고위험 최우선 적용'
+          ];
+
+    saveObject
+      .highRiskWorkAssessment =
+      global.riskData
+        .highRiskWorkAssessment
+        ? JSON.parse(
+            JSON.stringify(
+              global.riskData
+                .highRiskWorkAssessment
+            )
+          )
+        : null;
+
+    return saveObject;
+  }
+
+  function resetPolicyInputs(){
+    [
+      'hrFireCriterion',
+      'hrConfinedCriterion',
+      'hrConfinedShortException',
+      'hrConfinedCo2Exception',
+      'hrChemicalCriterion',
+      'hrChemicalReagentException',
+      'hrHeightCriterion',
+      'hrHeightPlatformException',
+      'hrLiftingCriterion',
+      'hrLiftingChainBlockException',
+      'hrElectricalCriterion',
+      'hrElectricalBranchException',
+      'highRiskPolicyReviewed'
+    ].forEach(function(id){
+      var element =
+        document.getElementById(id);
+
+      if(element){
+        element.checked = false;
+      }
+    });
+
+    var additionalReason =
+      document.getElementById(
+        'highRiskAdditionalReason'
+      );
+
+    if(additionalReason){
+      additionalReason.value = '';
+    }
+
+    var detail =
+      document.getElementById(
+        'highRiskPolicyDetail'
+      );
+
+    if(detail){
+      detail.classList.remove(
+        'expanded'
+      );
+    }
+
+    var toggle =
+      document.getElementById(
+        'highRiskPolicyToggle'
+      );
+
+    if(toggle){
+      toggle.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+    }
+
+    var toggleLabel =
+      document.getElementById(
+        'highRiskPolicyToggleLabel'
+      );
+
+    if(toggleLabel){
+      toggleLabel.textContent =
+        '세부 기준 보기';
+    }
+
+    var policyResult =
+      document.getElementById(
+        'highRiskPolicyResult'
+      );
+
+    if(policyResult){
+      policyResult.style.display =
+        'none';
+
+      policyResult.innerHTML = '';
+    }
+
+    if(
+      global.riskHighWorkPolicyUiV321 &&
+      typeof global
+        .riskHighWorkPolicyUiV321
+        .updateSummary ===
+          'function'
+    ){
+      global
+        .riskHighWorkPolicyUiV321
+        .updateSummary();
+    }
+  }
+
+  function installImmediateHooks(){
+    /*
+     * 작업 선택 직후 대시보드 표시값을 적용합니다.
+     */
+    if(
+      typeof global
+        .startAssessmentFromWork ===
+          'function' &&
+      !global
+        .startAssessmentFromWork
+        .__dashboardV322
+    ){
+      var previousStart =
+        global
+          .startAssessmentFromWork;
+
+      var wrappedStart =
+        function(workId){
+          var result =
+            previousStart.apply(
+              this,
+              arguments
+            );
+
+          var work =
+            findExactDashboardWork(
+              workId
+            );
+
+          if(work){
+            applyDashboardDisplay(
+              work
+            );
+
+            enforceDashboardHighRisk();
+          }
+
+          return result;
+        };
+
+      wrappedStart.__dashboardV322 =
+        true;
+
+      wrappedStart.__previous =
+        previousStart;
+
+      global.startAssessmentFromWork =
+        wrappedStart;
+    }
+
+    /*
+     * 새 평가 시작 시 이전 평가의
+     * 고위험 체크 상태를 제거합니다.
+     */
+    if(
+      typeof global.resetAssessment ===
+        'function' &&
+      !global.resetAssessment
+        .__dashboardV322
+    ){
+      var previousReset =
+        global.resetAssessment;
+
+      var wrappedReset =
+        function(){
+          var result =
+            previousReset.apply(
+              this,
+              arguments
+            );
+
+          resetPolicyInputs();
+
+          return result;
+        };
+
+      wrappedReset.__dashboardV322 =
+        true;
+
+      wrappedReset.__previous =
+        previousReset;
+
+      global.resetAssessment =
+        wrappedReset;
+    }
+  }
+
+  function installFinalHooks(){
+    /*
+     * 기존 v3.1·v3.2 저장 패치가 모두 설치된 뒤
+     * 마지막 저장 보호장치로 등록합니다.
+     */
+    if(
+      typeof global
+        .buildAssessmentSaveObject ===
+          'function' &&
+      !global
+        .buildAssessmentSaveObject
+        .__dashboardV322
+    ){
+      var previousBuild =
+        global
+          .buildAssessmentSaveObject;
+
+      var wrappedBuild =
+        function(){
+          var saveObject =
+            previousBuild.apply(
+              this,
+              arguments
+            );
+
+          return applyHighRiskToSaveObject(
+            saveObject
+          );
+        };
+
+      wrappedBuild.__dashboardV322 =
+        true;
+
+      wrappedBuild.__previous =
+        previousBuild;
+
+      global.buildAssessmentSaveObject =
+        wrappedBuild;
+    }
+  }
+
+  /*
+   * 작업 선택·초기화 훅은 URL 자동 진입 전에
+   * 사용할 수 있도록 즉시 설치합니다.
+   */
+  installImmediateHooks();
+
+  /*
+   * 저장 훅은 기존 누적 패치보다 마지막에
+   * 설치되도록 DOM 준비 후 등록합니다.
+   */
+  if(
+    document.readyState ===
+      'loading'
+  ){
+    document.addEventListener(
+      'DOMContentLoaded',
+      function(){
+        installImmediateHooks();
+        installFinalHooks();
+
+        console.log(
+          '[risk dashboard authority] ' +
+          VERSION +
+          ' 적용 완료'
+        );
+      }
+    );
+
+  }else{
+    installImmediateHooks();
+    installFinalHooks();
+
+    console.log(
+      '[risk dashboard authority] ' +
+      VERSION +
+      ' 적용 완료'
+    );
+  }
+
+  global.riskDashboardAuthorityV322 = {
+    version:VERSION,
+
+    findExact:
+      findExactDashboardWork,
+
+    isHighRisk:
+      isDashboardHighRisk,
+
+    applyDisplay:
+      applyDashboardDisplay,
+
+    enforce:
+      enforceDashboardHighRisk,
+
+    resetPolicy:
+      resetPolicyInputs,
+
+    diagnose:
+      function(){
+        var riskData =
+          global.riskData || {};
+
+        var work =
+          findExactDashboardWork(
+            riskData.workId
+          );
+
+        var result = {
+          success:
+            Boolean(work),
+          version:VERSION,
+          workId:
+            riskData.workId || '',
+          dashboardWorkFound:
+            Boolean(work),
+          dashboardRisk:
+            work
+              ? clean(
+                  work.riskLevel ||
+                  work.risk
+                )
+              : '',
+          isHighRiskFromSource:
+            Boolean(
+              work &&
+              work
+                .isHighRiskFromSource ===
+                  true
+            ),
+          authoritativeHighRisk:
+            isDashboardHighRisk(work),
+          finalRiskLevel:
+            riskData
+              .finalRiskLevel ||
+            '',
+          managementHighRiskLocked:
+            riskData
+              .managementHighRiskLocked ===
+            true,
+          workName:
+            riskData.workName || '',
+          location:
+            riskData.location || '',
+          detailLocation:
+            riskData
+              .detailLocation ||
+            ''
+        };
+
+        console.table(result);
+
+        return result;
+      }
+  };
+
 })(window);
+
