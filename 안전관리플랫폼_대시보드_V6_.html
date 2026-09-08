@@ -10014,9 +10014,229 @@ button{touch-action:manipulation}
       );
 
 byId('inspectionRegisterButton')
-  .addEventListener('click', function(){
-    navigate('안전점검_v2.html');
-  });
+  .addEventListener(
+    'click',
+    function(){
+      /*
+       * 버튼 클릭 시 localStorage의 최신 허가서를
+       * state.permits에 다시 반영합니다.
+       */
+      loadAllData();
+
+      var currentDate =
+        today();
+
+      var todayWorkIds =
+        new Set(
+          state.allWorks
+            .filter(function(work){
+              return (
+                clean(work.date) ===
+                currentDate
+              );
+            })
+            .map(function(work){
+              return clean(
+                work.workId
+              );
+            })
+        );
+
+      /*
+       * 안전점검 대상:
+       * - 허가완료
+       * - TBM 완료
+       * - 작업중
+       * - 오늘 작업
+       */
+      var permits =
+        state.permits
+          .filter(function(permit){
+            var permitNo =
+              clean(
+                permit &&
+                permit.permitNo
+              );
+
+            var workId =
+              getLinkedWorkId(
+                permit
+              );
+
+            var code =
+              normalizePermitCode(
+                permit
+              );
+
+            var allowedStatus =
+              [
+                'approved',
+                'tbmCompleted',
+                'inProgress'
+              ].indexOf(code) >= 0;
+
+            var todayPermit =
+              clean(
+                permit.startDate
+              ) === currentDate ||
+              todayWorkIds.has(
+                workId
+              );
+
+            return (
+              permitNo &&
+              allowedStatus &&
+              todayPermit
+            );
+          })
+          .sort(function(first,second){
+            return (
+              recordTime(second) -
+              recordTime(first)
+            );
+          });
+
+      if(!permits.length){
+        showToast(
+          '오늘 안전점검 가능한 승인 허가서가 없습니다.',
+          'warning'
+        );
+
+        return;
+      }
+
+      function makeInspectionUrl(
+        permit
+      ){
+        var params =
+          new URLSearchParams();
+
+        params.set(
+          'permitNo',
+          clean(
+            permit.permitNo
+          )
+        );
+
+        var workId =
+          getLinkedWorkId(
+            permit
+          );
+
+        if(workId){
+          params.set(
+            'workId',
+            workId
+          );
+        }
+
+        params.set(
+          'mode',
+          'test'
+        );
+
+        return (
+          '안전점검_v2.html?' +
+          params.toString()
+        );
+      }
+
+      /*
+       * 대상 허가서가 1건이면 바로 이동합니다.
+       */
+      if(permits.length === 1){
+        navigate(
+          makeInspectionUrl(
+            permits[0]
+          )
+        );
+
+        return;
+      }
+
+      /*
+       * 대상 허가서가 여러 건이면 선택 목록을 표시합니다.
+       */
+      var html =
+        '<div class="prework-summary">' +
+          '안전점검할 승인 허가서를 선택하세요.' +
+        '</div>';
+
+      html +=
+        permits
+          .map(function(permit){
+            var location =
+              [
+                permit.location || '',
+                permit.detailLocation || ''
+              ]
+                .filter(Boolean)
+                .join(' ');
+
+            return (
+              '<article class="work-item run">' +
+
+                '<div class="wi-top">' +
+                  '<span class="wi-badge g">' +
+                    '점검 가능' +
+                  '</span>' +
+
+                  '<span class="wi-status run">' +
+                    escapeHtml(
+                      permitLabel(
+                        permit
+                      )
+                    ) +
+                  '</span>' +
+                '</div>' +
+
+                '<div class="wi-name">' +
+                  escapeHtml(
+                    permit.workName ||
+                    '작업명 없음'
+                  ) +
+                '</div>' +
+
+                '<div class="wi-meta">' +
+                  '<span>📄 ' +
+                    escapeHtml(
+                      permit.permitNo
+                    ) +
+                  '</span>' +
+
+                  '<span>📍 ' +
+                    escapeHtml(
+                      location || '-'
+                    ) +
+                  '</span>' +
+                '</div>' +
+
+                '<button type="button" ' +
+                  'class="wi-btn" ' +
+                  'data-quick-work-url="' +
+                  escapeHtml(
+                    makeInspectionUrl(
+                      permit
+                    )
+                  ) +
+                '">' +
+                  '📋 안전점검 시작 →' +
+                '</button>' +
+
+              '</article>'
+            );
+          })
+          .join('');
+
+      openSheet(
+        '안전점검 허가서 선택 · ' +
+        permits.length +
+        '건',
+        html
+      );
+    }
+  );
+
 
 
 
