@@ -1690,6 +1690,80 @@ button{cursor:pointer;}
   
 </head>
 <body>
+<!-- 🆕 판정 처리 중 로딩 오버레이 -->
+<div id="riskLoadingOverlay" style="
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  z-index:99999;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:15px;
+">
+  <div style="
+    width:60px; height:60px;
+    border:6px solid #fff;
+    border-top:6px solid #003C7E;
+    border-radius:50%;
+    animation:spinRisk 0.8s linear infinite;
+  "></div>
+  <div id="riskLoadingText" style="
+    color:#fff;
+    font-size:16px;
+    font-weight:800;
+    text-shadow:0 2px 4px rgba(0,0,0,0.5);
+  ">위험도 분석 중...</div>
+</div>
+
+<style>
+@keyframes spinRisk {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+#riskLoadingOverlay.active {
+  display: flex !important;
+}
+</style>
+
+<script>
+// 로딩 표시 헬퍼
+window.showRiskLoading = function(text){
+  var overlay = document.getElementById('riskLoadingOverlay');
+  var textEl = document.getElementById('riskLoadingText');
+  if(overlay){
+    if(text && textEl) textEl.textContent = text;
+    overlay.classList.add('active');
+  }
+};
+
+window.hideRiskLoading = function(){
+  var overlay = document.getElementById('riskLoadingOverlay');
+  if(overlay) overlay.classList.remove('active');
+};
+
+// "진행" 버튼 클릭 시 자동 표시
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('button').forEach(function(btn){
+    var text = btn.textContent.trim();
+    if(/위험성평가 진행|다음/.test(text)){
+      btn.addEventListener('click', function(){
+        window.showRiskLoading('위험도 분석 중...');
+        setTimeout(window.hideRiskLoading, 3000); // 3초 후 자동 해제
+      });
+    }
+    if(/평가 제출|제출/.test(text)){
+      btn.addEventListener('click', function(){
+        window.showRiskLoading('평가 저장 중...');
+        setTimeout(window.hideRiskLoading, 3000);
+      });
+    }
+  });
+});
+</script>
+  
 <div class="app">
 
 <!-- 상단 내비게이션 -->
