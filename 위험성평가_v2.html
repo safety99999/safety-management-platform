@@ -16,6 +16,23 @@
 
 <!-- GitHub 정적 JSON 공통 로더 -->
 <script src="./assets/js/db-loader.js?v=1.0.1"></script>
+  <!-- 🧪 테스터 자동입력 (테스터 로그인 시에만 동작) -->
+<script>
+window.TESTER_AUTOFILL_CONFIG = {
+  // 위험성평가 페이지 커스터마이징
+  'workNameInput': 'TEST 설비 점검 및 안전조치',
+  'detailLocationInput': '1층 A구역',
+  'assessorInput': 'TEST 평가자',
+  'companyInput': 'TEST 협력사',
+  'workerCountInput': '3',
+  'workDescriptionInput': '전기 계통 정비 작업. ILS 실시 후 진행. 테스트용 작업 상세 내용입니다.',
+  'userMeasureInput': '작업 전 위험요인 재확인 및 TBM 실시',
+  'opinionInput': 'TEST 종합의견입니다. 안전작업 절차를 준수하여 진행합니다.'
+};
+window.TESTER_AUTOFILL_DELAY = 500; // 위험성평가는 DB 로드 후 실행
+</script>
+<script src="./assets/js/tester-autofill.js?v=1.0"></script>
+
 
 <link
   rel="stylesheet"
