@@ -13,11 +13,11 @@
       "sha256": "3d3e3b4625bbc1df2f33c32aa92e07605ad76937da195be57988198d714b923e"
     },
     "workDatabase": {
-      "filename": "work-database.test.json",
-      "schemaVersion": 1,
+      "path": "assets/data/work-database.test.json",
       "count": 779,
-      "size": 2741730,
-      "sha256": "343577f9dbc795e560a9c800a93c0bd0efe91034b04bc3ea2b311d2068e610c8"
+      "sha256": "be290d36a27c0a66954e0d9269d3171d4063d9eae427e1ec0934d032a246d6a9",
+      "updatedAt": "2026-09-08T03:15:08.803Z"
     }
-  }
+  },
+  "lastAutoDeployedAt": "2026-09-08T03:15:08.803Z"
 }
