@@ -3314,63 +3314,116 @@ button{touch-action:manipulation}
       return {
         code:'none',
         label:'정보 ○',
-        complete:false
+        complete:false,
+        status:'notIssued'
       };
     }
 
     var status =
       clean(
         record.status ||
+        record.statusCode ||
         record.deliveryStatus ||
         ''
       );
 
-    if(
+    /*
+     * 수급인 서명까지 완료된 경우에만
+     * 안전정보 단계를 완료로 판정합니다.
+     *
+     * 단순 열람 상태인 "수급인확인"은
+     * 완료로 처리하지 않습니다.
+     */
+    var contractorConfirmed =
+      status === 'contractorConfirmed' ||
       status === '서명완료' ||
-      status === '수급인확인' ||
       status === '확인완료' ||
-      status === 'completed' ||
+      status === 'signed' ||
+      record.contractorConfirmed === true ||
       record.signed === true ||
-      record.confirmed === true
-    ){
+      Boolean(
+        record.signature &&
+        (
+          record.signedAt ||
+          record.confirmedAt
+        )
+      );
+
+    if(contractorConfirmed){
       return {
         code:'done',
         label:'정보 ✓',
-        complete:true
+        complete:true,
+        status:'contractorConfirmed'
       };
     }
 
-    if(
-      status === '발행완료' ||
-      status === '전달완료' ||
-      status === 'sent' ||
-      status === 'delivered'
-    ){
+    /*
+     * 수급인이 문서를 열람하고 있지만
+     * 아직 서명하지 않은 상태입니다.
+     */
+    var contractorViewing =
+      status === 'contractorViewing' ||
+      status === '수급인확인' ||
+      status === '수급인확인중' ||
+      Boolean(record.viewedAt);
+
+    if(contractorViewing){
       return {
         code:'progress',
         label:'정보 ●',
-        complete:false
+        complete:false,
+        status:'contractorViewing'
+      };
+    }
+
+    /*
+     * 도급인이 발행했거나 수급인에게
+     * 전달했지만 아직 확인되지 않은 상태입니다.
+     */
+    var delivered =
+      status === 'issued' ||
+      status === 'delivered' ||
+      status === '발행완료' ||
+      status === '전달완료' ||
+      status === 'sent' ||
+      Boolean(record.deliveredAt);
+
+    if(delivered){
+      return {
+        code:'progress',
+        label:'정보 ●',
+        complete:false,
+        status:
+          status === 'delivered' ||
+          status === '전달완료' ||
+          status === 'sent'
+            ? 'delivered'
+            : 'issued'
       };
     }
 
     return {
       code:'progress',
       label:'정보 ●',
-      complete:false
+      complete:false,
+      status:'issued'
     };
   }
 
-    function quizState(
+  function quizState(
     record,
     safetyState
   ){
     /*
-     * 안전정보 확인 또는 서명이 완료되기 전에는
+     * 수급인 확인 및 서명이 완료되기 전에는
      * 교육·퀴즈 단계를 잠급니다.
      */
     if(
       !safetyState ||
-      safetyState.complete !== true
+      safetyState.complete !== true ||
+      safetyState.status !==
+        'contractorConfirmed'
     ){
       return {
         code:'locked',
@@ -3387,17 +3440,33 @@ button{touch-action:manipulation}
       };
     }
 
+    var status =
+      clean(
+        record.status ||
+        record.statusCode ||
+        ''
+      );
+
+    var signatureProvided =
+      Boolean(
+        record.signature ||
+        record.signatureProvided ||
+        record.signed === true ||
+        record.signedAt
+      );
+
     var completed =
       record.completed === true ||
+      status === 'signed' ||
+      status === 'completed' ||
+      status === '합격·서명완료' ||
       (
         record.passed === true &&
-        Boolean(
-          record.signature ||
-          record.signatureProvided
-        ) &&
+        signatureProvided &&
         Boolean(
           record.completedAt ||
-          record.submittedAt
+          record.submittedAt ||
+          record.signedAt
         )
       );
 
@@ -3411,7 +3480,8 @@ button{touch-action:manipulation}
 
     if(
       record.passed === false ||
-      record.status === '불합격'
+      status === 'failed' ||
+      status === '불합격'
     ){
       return {
         code:'warn',
