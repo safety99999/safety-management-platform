@@ -1940,6 +1940,40 @@ console.log(
   window.firebaseApp.PERMIT_COLLECTION
 );
 </script>
+<!-- 🧪 테스터 자동입력 (테스터 로그인 시에만 동작) -->
+<script>
+window.TESTER_AUTOFILL_CONFIG = {
+  // 작업허가서 기본정보
+  'workName': 'TEST 설비 점검 및 안전조치',
+  'detailLocation': '1층 A구역',
+  'workerCount': '3',
+  'companyName': 'TEST 협력사',
+  'supervisor': 'TEST 작업책임자',
+  'workDescription': 'TEST 작업입니다. 안전조치 완료 후 진행.',
+  
+  // 당사 작업담당자
+  'companyManagerName': 'TEST 당사담당자',
+  'companyManagerDepartment': 'TEST 설비기술섹션',
+  'companyManagerPhone': '010-0000-0000',
+  
+  // 당사 작업책임자
+  'companySupervisorName': 'TEST 당사책임자',
+  'companySupervisorDepartment': 'TEST 설비기술섹션',
+  'companySupervisorPhone': '010-0000-0001',
+  'companySupervisorEmail': 'test@posco-future.com',
+  
+  // 수급인 작업책임자
+  'contractorSupervisorName': 'TEST 수급인책임자',
+  'contractorSupervisorPhone': '010-0000-0002',
+  'contractorSupervisorEmail': 'contractor@test.co.kr',
+  
+  // 수동 W/O
+  'manualWoInput': 'WO-TEST-001'
+};
+window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
+</script>
+<script src="./assets/js/tester-autofill.js?v=1.0"></script>
+  
 </head>
 
 <body>
