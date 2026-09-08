@@ -1011,7 +1011,7 @@ function goBack(){
 }
 
 function goHome(){
-  window.location.href = 'dashboard.html';
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
 
 // ═══════════════════════════════════════════════════
@@ -1803,41 +1803,111 @@ function doSubmit(){
   saveToFirebase(savedData).then(function(){
     showFinalScreen(savedData);
     
-    // 중대 위반 시 작업중지권 연동
+        // ═══ 🚨 중대 위반 시 작업중지권 자동 발동 (옵션 A - 선택권 없음) ═══
     if(inspectionData.hasCritical){
+      // 위반 항목 상세 정보 추출
+      var criticalItems = savedData.items.filter(function(x){
+        return x.required && x.judge === 'ng';
+      });
+      
+      // 위반 사유 텍스트 생성 (작업중지권 사유란 자동 채움용)
+      var violationLines = ['[안전점검에서 중대 위반 감지됨]', ''];
+      criticalItems.forEach(function(item, idx){
+        violationLines.push((idx+1) + '. ' + item.text);
+        if(item.memo){
+          violationLines.push('   → 사유: ' + item.memo);
+        }
+      });
+      var violationDescription = violationLines.join('\n');
+      
+      // ═══ 콘솔 강조 로그 (문제 있을 때만) ═══
+      console.error(
+        '%c🚨 [중대 위반 - 작업중지 자동 발동]',
+        'color:#EF4444;font-weight:bold;font-size:16px;background:#FEF2F2;padding:4px 8px;',
+        {
+          시각: new Date().toLocaleString('ko-KR'),
+          점검번호: savedData.inspectionNo,
+          허가서: savedData.permitNo,
+          작업명: savedData.workName,
+          점검자: savedData.inspectorName + ' (' + savedData.inspectorDept + ')',
+          위반항목: criticalItems.map(function(i){
+            return { 내용: i.text, 사유: i.memo || '(사유 미기재)' };
+          }),
+          알림대상: ['작업담당자', '작업책임자', '허가자'],
+          후속조치: '작업중지권 페이지 자동 이동'
+        }
+      );
+      
+      // ═══ 작업중지권에 전달할 데이터 저장 ═══
+      try {
+        localStorage.setItem('pendingStopWorkOrder', JSON.stringify({
+          trigger: 'inspection_critical',
+          from: 'inspection',
+          inspectionNo: savedData.inspectionNo,
+          permitNo: savedData.permitNo,
+          workId: savedData.workId,
+          workName: savedData.workName,
+          location: savedData.location,
+          company: savedData.company,
+          riskLevel: savedData.riskLevel,
+          
+          // 사유 자동 설정
+          stopReasons: ['기타 위험'],
+          stopDescription: violationDescription,
+          
+          // 요청자 = 점검자
+          requesterName: savedData.inspectorName,
+          requesterDept: savedData.inspectorDept,
+          requesterPosition: '',
+          
+          // 위반 상세
+          violations: criticalItems.map(function(x){
+            return {
+              category: x.category || '안전점검',
+              text: x.text,
+              memo: x.memo || '(사유 미기재)',
+              required: true
+            };
+          }),
+          
+          timestamp: new Date().toISOString()
+        }));
+      } catch(e){
+        console.error('[안전점검] localStorage 저장 실패:', e);
+      }
+      
+      // ═══ 안내 모달 후 자동 이동 (선택권 없음) ═══
       setTimeout(function(){
-        showCustomConfirm({
-          icon: '🚨', title: '중대 안전 위반 확인',
-          message: '필수 항목 미준수가 발견되었습니다.\n\n작업중지권 발동 화면으로 이동하시겠습니까?',
-          okText: '작업중지권 발동', okType: 'danger'
-        }, function(ok){
-          if(ok){
-            // 작업중지권으로 연동 데이터 전달
-            try {
-              localStorage.setItem('pendingStopWorkOrder', JSON.stringify({
-                from: 'inspection',
-                inspectionNo: savedData.inspectionNo,
-                permitNo: savedData.permitNo,
-                workId: savedData.workId,
-                workName: savedData.workName,
-                location: savedData.location,
-                company: savedData.company,
-                riskLevel: savedData.riskLevel,
-                violations: savedData.items.filter(function(x){
-                  return x.required && x.judge === 'ng';
-                }).map(function(x){ return x.text; }),
-                inspectorName: savedData.inspectorName,
-                inspectorDept: savedData.inspectorDept,
-                timestamp: new Date().toISOString()
-              }));
-            } catch(e){}
-            
-            window.location.href = 'stop_work_order.html?from=inspection&permitNo=' + 
-              encodeURIComponent(savedData.permitNo);
-          }
+        showCustomAlert({
+          icon: '🚨',
+          title: '중대 위반 감지',
+          message: '필수 안전 항목 ' + criticalItems.length + '건이 미준수 상태입니다.\n\n' +
+                   '작업중지권 페이지로 자동 이동합니다.\n' +
+                   '내용 확인 후 발동해 주세요.',
+          okText: '이동',
+          okType: 'danger'
+        }, function(){
+          // 확정 파일명으로 이동
+          window.location.href = '작업중지권_v2.html?from=inspection';
         });
       }, 800);
+    } else if(inspectionData.items.some(function(x){ return x.judge === 'ng'; })){
+      // 개선 필요 사항 - 콘솔 로그만
+      console.log(
+        '%c⚠ [안전점검 - 개선 필요]',
+        'color:#F59E0B;font-weight:bold;font-size:14px;',
+        {
+          시각: new Date().toLocaleString('ko-KR'),
+          점검번호: savedData.inspectionNo,
+          허가서: savedData.permitNo,
+          점검자: savedData.inspectorName,
+          미준수: savedData.items.filter(function(x){ return x.judge === 'ng'; })
+                                  .map(function(x){ return x.text; }),
+          알림대상: ['작업담당자', '작업책임자', '허가자']
+        }
+      );
     }
+
   }).catch(function(err){
     console.error('Firebase 저장 실패:', err);
     // Firebase 실패해도 localStorage에는 저장됐으므로 진행
