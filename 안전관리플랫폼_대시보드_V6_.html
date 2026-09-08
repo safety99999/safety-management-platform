@@ -920,7 +920,51 @@ button{touch-action:manipulation}
           id="staticExportResultText"
         ></div>
       </div>
+      </div>
+
+    <!-- ⬇️ 여기부터 추가 (자동 배포 섹션) ⬇️ -->
+    <div class="db-area" style="margin-top:12px">
+      <div class="db-area-title">
+        🚀 GitHub 자동 배포 (원클릭)
+      </div>
+
+      <div class="db-info" style="margin-bottom:10px">
+        <div class="db-info-txt">
+          <strong>🔑 Token을 한 번만 등록</strong>하면 이후 원클릭 배포가 가능합니다.<br>
+          Token은 이 브라우저에만 저장되며 외부로 전송되지 않습니다.<br>
+          <a href="https://github.com/settings/tokens" target="_blank" 
+             style="color:var(--posco);text-decoration:underline">
+            → GitHub Token 발급 페이지 열기
+          </a>
+        </div>
+      </div>
+
+      <input 
+        type="password" 
+        id="githubTokenInput"
+        class="db-ta"
+        style="min-height:auto;font-size:12px;font-family:ui-monospace,monospace"
+        placeholder="GitHub Token 입력 (ghp_... 또는 github_pat_...)"
+        autocomplete="off"
+      >
+      
+      <button type="button" class="db-btn" id="saveGithubTokenButton"
+        style="background:var(--sub);margin-top:6px">
+        🔑 Token 저장
+      </button>
+
+      <button type="button" class="db-btn" id="autoDeployButton"
+        style="background:var(--done);margin-top:6px;font-size:15px;font-weight:900">
+        🚀 GitHub 자동 배포
+      </button>
+
+      <div id="autoDeployStatus" class="db-info" 
+        style="display:none;margin-top:10px;white-space:pre-wrap">
+        <div class="db-info-txt" id="autoDeployStatusText"></div>
+      </div>
     </div>
+    <!-- ⬆️ 여기까지 추가 ⬆️ -->
+
 
     <div class="sec-lbl">관리자 도구</div>
     <div class="sets-grp">
@@ -12189,6 +12233,306 @@ console.log(
   }
 })();
 </script>
+<!-- ⬇️ </body> 태그 바로 위에 이 전체 블록 추가 ⬇️ -->
+<script>
+(function() {
+  'use strict';
+
+  // ═══════════════════════════════════════════════
+  // GitHub 자동 배포 모듈 v1.0
+  // 저장소: safety99999/safety-management-platform
+  // ═══════════════════════════════════════════════
+
+  const GITHUB_OWNER = 'safety99999';
+  const GITHUB_REPO = 'safety-management-platform';
+  const GITHUB_BRANCH = 'main';
+  
+  const WORK_DB_PATH = 'assets/data/work-database.test.json';
+  const MANIFEST_PATH = 'assets/data/db-manifest.json';
+
+  // ─── DOM 로드 대기 ─────────────────────────────
+  function initAutoDeploy() {
+    var tokenInput = document.getElementById('githubTokenInput');
+    var saveBtn = document.getElementById('saveGithubTokenButton');
+    var deployBtn = document.getElementById('autoDeployButton');
+
+    if (!tokenInput || !saveBtn || !deployBtn) {
+      console.warn('[Auto Deploy] UI 요소를 찾을 수 없음. 500ms 후 재시도.');
+      setTimeout(initAutoDeploy, 500);
+      return;
+    }
+
+    // ─── Token 저장 상태 표시 ────────────────────
+    var savedToken = localStorage.getItem('githubDeployToken');
+    if (savedToken) {
+      tokenInput.placeholder = '✅ Token 저장됨 · 재입력 시 변경됩니다';
+    }
+
+    // ─── Token 저장 버튼 ────────────────────────
+    saveBtn.addEventListener('click', function() {
+      var token = tokenInput.value.trim();
+      
+      if (!token) {
+        alert('Token을 입력하세요.');
+        return;
+      }
+
+      if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+        alert('올바른 GitHub Token 형식이 아닙니다.\nghp_ 또는 github_pat_ 로 시작해야 합니다.');
+        return;
+      }
+
+      localStorage.setItem('githubDeployToken', token);
+      tokenInput.value = '';
+      tokenInput.placeholder = '✅ Token 저장됨 · 재입력 시 변경됩니다';
+      alert('✅ Token 저장 완료!\n이제 [🚀 GitHub 자동 배포] 버튼으로 배포 가능합니다.');
+    });
+
+    // ─── 자동 배포 버튼 ─────────────────────────
+    deployBtn.addEventListener('click', runAutoDeploy);
+
+    console.log('[Auto Deploy] 초기화 완료:', GITHUB_OWNER + '/' + GITHUB_REPO);
+  }
+
+  // ─── 상태 표시 ─────────────────────────────
+  function showStatus(message, type) {
+    var box = document.getElementById('autoDeployStatus');
+    var text = document.getElementById('autoDeployStatusText');
+    if (!box || !text) return;
+    
+    box.style.display = 'block';
+    box.style.borderLeftColor = 
+      type === 'error' ? 'var(--stop)' :
+      type === 'success' ? 'var(--done)' : 
+      type === 'warn' ? 'var(--warn)' : 'var(--posco)';
+    text.textContent = message;
+  }
+
+  // ─── SHA-256 계산 ───────────────────────────
+  async function calculateSha256(text) {
+    var encoder = new TextEncoder();
+    var data = encoder.encode(text);
+    var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    var hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(function(b) {
+      return b.toString(16).padStart(2, '0');
+    }).join('');
+  }
+
+  // ─── UTF-8 안전 Base64 인코딩 ────────────────
+  function utf8ToBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  // ─── GitHub API로 파일 업로드 ────────────────
+  async function uploadFileToGitHub(token, path, content, commitMessage) {
+    var apiUrl = 'https://api.github.com/repos/' + 
+      GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + path;
+
+    // 기존 파일 SHA 조회
+    var existingSha = null;
+    try {
+      var getRes = await fetch(apiUrl + '?ref=' + GITHUB_BRANCH, {
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/vnd.github+json'
+        }
+      });
+      if (getRes.ok) {
+        var existing = await getRes.json();
+        existingSha = existing.sha;
+      }
+    } catch (e) {
+      console.log('[Auto Deploy] 신규 파일:', path);
+    }
+
+    // 파일 업로드 (PUT)
+    var body = {
+      message: commitMessage,
+      content: utf8ToBase64(content),
+      branch: GITHUB_BRANCH
+    };
+    if (existingSha) body.sha = existingSha;
+
+    var putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!putRes.ok) {
+      var errorData = await putRes.json();
+      throw new Error(path + ' 업로드 실패: ' + 
+        (errorData.message || putRes.status));
+    }
+
+    return await putRes.json();
+  }
+
+  // ─── 자동 배포 실행 ─────────────────────────
+  async function runAutoDeploy() {
+    var deployBtn = document.getElementById('autoDeployButton');
+    var token = localStorage.getItem('githubDeployToken');
+
+    if (!token) {
+      alert('먼저 GitHub Token을 저장하세요.');
+      return;
+    }
+
+    var confirmed = confirm(
+      '🚀 GitHub 자동 배포를 시작합니다.\n\n' +
+      '다음 2개 파일이 자동으로 커밋됩니다:\n' +
+      '  1. work-database.test.json (작업DB)\n' +
+      '  2. db-manifest.json (매니페스트)\n\n' +
+      '⚠️ 위험성평가 정보(519건)는 자동 유지됩니다.\n\n' +
+      '진행하시겠습니까?'
+    );
+    if (!confirmed) return;
+
+    deployBtn.disabled = true;
+    deployBtn.textContent = '🚀 배포 중... 잠시만 기다려주세요';
+
+    try {
+      // ─── 1. 로컬 데이터 준비 ─────────────
+      showStatus('📦 로컬 데이터 준비 중...', 'info');
+      
+      var cacheRaw = localStorage.getItem('safetyDatabase');
+      if (!cacheRaw) {
+        throw new Error('로컬 작업DB 캐시가 없습니다.\n먼저 엑셀 데이터를 저장하세요.');
+      }
+      
+      var dbCache = JSON.parse(cacheRaw);
+      var workHistory = Array.isArray(dbCache.workHistory) ? 
+        dbCache.workHistory : [];
+      
+      if (!workHistory.length) {
+        throw new Error('작업DB가 비어있습니다.');
+      }
+
+      // ─── 2. work-database.test.json 생성 ──
+      var workDbContent = {
+        version: '1.0',
+        generatedAt: new Date().toISOString(),
+        environment: 'test',
+        count: workHistory.length,
+        workHistory: workHistory
+      };
+      var workDbJson = JSON.stringify(workDbContent, null, 2);
+      var workDbSha256 = await calculateSha256(workDbJson);
+
+      // ─── 3. 기존 manifest 조회 (위험성평가 정보 유지) ──
+      showStatus('📋 기존 manifest 조회 중 (위험성평가 정보 유지)...', 'info');
+      
+      var existingManifest;
+      try {
+        var manifestRes = await fetch(
+          './assets/data/db-manifest.json?ts=' + Date.now(),
+          { cache: 'no-store' }
+        );
+        existingManifest = await manifestRes.json();
+      } catch (e) {
+        throw new Error('기존 manifest 조회 실패: ' + e.message);
+      }
+
+      // ─── 4. 새 manifest 생성 ──────────────
+      var newManifest = Object.assign({}, existingManifest, {
+        files: Object.assign({}, existingManifest.files, {
+          workDatabase: {
+            path: WORK_DB_PATH,
+            count: workHistory.length,
+            sha256: workDbSha256,
+            updatedAt: new Date().toISOString()
+          }
+        }),
+        lastAutoDeployedAt: new Date().toISOString()
+      });
+      var manifestJson = JSON.stringify(newManifest, null, 2);
+
+      // ─── 5. work-database 업로드 ─────────
+      var timestamp = new Date().toLocaleString('ko-KR');
+      showStatus('📤 [1/2] work-database.test.json 업로드 중...', 'info');
+      
+      await uploadFileToGitHub(
+        token,
+        WORK_DB_PATH,
+        workDbJson,
+        'chore: 작업DB 자동 배포 (' + workHistory.length + '건, ' + timestamp + ')'
+      );
+
+      // ─── 6. manifest 업로드 ──────────────
+      showStatus('📤 [2/2] db-manifest.json 업로드 중...', 'info');
+      
+      await uploadFileToGitHub(
+        token,
+        MANIFEST_PATH,
+        manifestJson,
+        'chore: manifest 자동 갱신 (' + timestamp + ')'
+      );
+
+      // ─── 7. pendingStaticDeploy 플래그 해제 ──
+      try {
+        var updated = JSON.parse(localStorage.getItem('safetyDatabase'));
+        if (updated && updated.metadata) {
+          updated.metadata.pendingStaticDeploy = false;
+          localStorage.setItem('safetyDatabase', JSON.stringify(updated));
+        }
+      } catch (e) {}
+
+      // ─── 8. 완료 ────────────────────────
+      var riskCount = (existingManifest.files.riskAssessmentDB && 
+        existingManifest.files.riskAssessmentDB.count) || '?';
+      
+      showStatus(
+        '✅ 배포 완료!\n\n' +
+        '📊 작업DB: ' + workHistory.length + '건\n' +
+        '📊 위험성평가: ' + riskCount + '건 (유지)\n' +
+        '🔐 SHA-256: ' + workDbSha256.substring(0, 16) + '...\n\n' +
+        '⏱️ GitHub Pages에 1분 이내 반영됩니다.\n' +
+        '👉 Ctrl+F5로 화면을 새로고침하세요.\n\n' +
+        '🔗 커밋 확인:\n' +
+        'https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/commits/main',
+        'success'
+      );
+
+      console.log('[Auto Deploy] ✅ 배포 완료:', {
+        workDB건수: workHistory.length,
+        위험성평가건수: riskCount,
+        SHA256: workDbSha256,
+        timestamp: timestamp
+      });
+
+    } catch (error) {
+      console.error('[Auto Deploy] ❌ 배포 실패:', error);
+      showStatus(
+        '❌ 배포 실패\n\n' +
+        error.message + '\n\n' +
+        '📝 확인 사항:\n' +
+        '  - Token이 올바른지\n' +
+        '  - Token에 repo 권한이 있는지\n' +
+        '  - 네트워크 연결 상태\n' +
+        '  - 브라우저 콘솔의 상세 로그',
+        'error'
+      );
+    } finally {
+      deployBtn.disabled = false;
+      deployBtn.textContent = '🚀 GitHub 자동 배포';
+    }
+  }
+
+  // ─── 초기화 ────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAutoDeploy);
+  } else {
+    initAutoDeploy();
+  }
+
+})();
+</script>
+<!-- ⬆️ 여기까지 추가 (</body> 앞에) ⬆️ -->
 
 </body>
 </html>
