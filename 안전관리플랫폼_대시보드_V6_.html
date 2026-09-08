@@ -2608,6 +2608,7 @@ button{touch-action:manipulation}
       'TBM 완료':
         'tbmCompleted',
       '작업중':'inProgress',
+      '작업중지':'stopped',
       '작업완료':'completed',
       '완료':'completed'
     };
@@ -5476,16 +5477,32 @@ function standardWorkCard(
       };
     }
 
-    var permitCode =
-      normalizePermitCode(
-        permit
-      );
+   var permitCode =
+  normalizePermitCode(
+    permit
+  );
 
-    var tbm =
-      latestTbmByPermitNo(
-        permit.permitNo,
-        indexes
-      );
+var tbm =
+  latestTbmByPermitNo(
+    permit.permitNo,
+    indexes
+  );
+
+/*
+ * 작업중지권에서 허가서 statusCode를
+ * stopped로 변경한 경우 최우선 반영합니다.
+ */
+if(
+  permitCode === 'stopped'
+){
+  return {
+    code:'stopped',
+    label:'작업중지',
+    permit:permit,
+    tbm:tbm
+  };
+}
+
 
     if(
       permitCode === 'cancelled'
