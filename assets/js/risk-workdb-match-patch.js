@@ -3165,12 +3165,12 @@
     if(!riskData || !riskData.workName){
       return riskData;
     }
-        // 🆕 중복 판정 방지 캐시
-    var __cacheKey = (riskData.workId||'') + '|' + (riskData.workName||'') + '|' + (riskData.finalRiskLevel||'');
-    if(riskData.__policyLastKey === __cacheKey){
+    // 🆕 판정 중복 실행 방지 (2초 이내 재호출 스킵)
+    var __now = Date.now();
+    if(riskData.__policyLastRun && (__now - riskData.__policyLastRun) < 2000){
       return riskData;
     }
-    riskData.__policyLastKey = __cacheKey;
+    riskData.__policyLastRun = __now;
 
     var originalLevel =
       rememberAutomaticRisk(riskData);
