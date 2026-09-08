@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
+>
+<meta name="theme-color" content="#003C7E">
+
+<title>작업 안전관리 리포트</title>
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+>
+
+<style>
+:root{
+  --deep:#003C7E;
+  --posco:#0067B1;
+  --bg:#EEF2F7;
+  --card:#FFFFFF;
+  --sunk:#F3F6FA;
+  --ink:#0F1D2B;
+  --body:#22374A;
+  --sub:#5E7183;
+  --line:#DFE7EF;
+  --done:#0E8A6B;
+  --done-bg:#EDFAF6;
+  --warn:#B45309;
+  --warn-bg:#FEF6E7;
+  --stop:#D6273D;
+  --stop-bg:#FFF3F5;
+  --r:16px;
+  --sh:0 3px 14px rgba(15,29,43,.08);
+}
+
+[data-theme="dark"]{
+  --deep:#0A1B2E;
+  --posco:#3FA9F5;
+  --bg:#080F17;
+  --card:#111E2C;
+  --sunk:#0C1825;
+  --ink:#F7FAFC;
+  --body:#E2E8F0;
+  --sub:#A0AEC0;
+  --line:#1E3145;
+  --done:#3DD9AE;
+  --done-bg:#0D2620;
+  --warn:#FBBF24;
+  --warn-bg:#2A2010;
+  --stop:#FF5F70;
+  --stop-bg:#2B1116;
+  --sh:0 3px 14px rgba(0,0,0,.4);
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+html{
+  -webkit-text-size-adjust:100%;
+}
+
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size:14px;
+  line-height:1.55;
+}
+
+button{
+  font-family:inherit;
+}
+
+.app{
+  width:100%;
+  max-width:820px;
+  min-height:100vh;
+  margin:0 auto;
+  background:var(--bg);
+}
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:20;
+  min-height:60px;
+  padding:9px 14px;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) 42px;
+  align-items:center;
+  gap:8px;
+  background:linear-gradient(135deg,var(--deep),var(--posco));
+  color:#fff;
+  box-shadow:0 3px 14px rgba(0,60,126,.25);
+}
+
+.icon-button{
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.16);
+  color:#fff;
+  font-size:19px;
+  cursor:pointer;
+}
+
+.topbar-title{
+  min-width:0;
+  text-align:center;
+}
+
+.topbar-title strong{
+  display:block;
+  overflow:hidden;
+  font-size:17px;
+  font-weight:900;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.topbar-title span{
+  display:block;
+  margin-top:1px;
+  font-size:10.5px;
+  font-weight:700;
+  opacity:.85;
+}
+
+.report-wrap{
+  padding:16px;
+}
+
+.report-paper{
+  padding:22px;
+  border-radius:20px;
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+
+.report-head{
+  padding-bottom:15px;
+  border-bottom:3px solid var(--deep);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.report-company{
+  color:var(--posco);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+
+.report-title{
+  margin-top:3px;
+  color:var(--ink);
+  font-size:25px;
+  font-weight:900;
+  letter-spacing:-.04em;
+}
+
+.report-no{
+  color:var(--sub);
+  font-size:11px;
+  font-weight:750;
+  text-align:right;
+  line-height:1.7;
+}
+
+.result-banner{
+  margin:14px 0;
+  padding:13px 15px;
+  border-left:5px solid var(--done);
+  border-radius:11px;
+  background:var(--done-bg);
+}
+
+.result-banner.warning{
+  border-left-color:var(--warn);
+  background:var(--warn-bg);
+}
+
+.result-banner.danger{
+  border-left-color:var(--stop);
+  background:var(--stop-bg);
+}
+
+.result-title{
+  color:var(--ink);
+  font-size:16px;
+  font-weight:900;
+}
+
+.result-description{
+  margin-top:3px;
+  color:var(--body);
+  font-size:12px;
+  font-weight:700;
+}
+
+.section{
+  margin-top:14px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--card);
+}
+
+.section-title{
+  margin-bottom:9px;
+  padding-bottom:7px;
+  border-bottom:1px solid var(--line);
+  color:var(--deep);
+  font-size:14px;
+  font-weight:900;
+}
+
+[data-theme="dark"] .section-title{
+  color:var(--posco);
+}
+
+.info-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--line);
+}
+
+.info-row{
+  min-width:0;
+  padding:9px 10px;
+  background:var(--sunk);
+}
+
+.info-key{
+  margin-bottom:2px;
+  color:var(--sub);
+  font-size:10.5px;
+  font-weight:800;
+}
+
+.info-value{
+  overflow-wrap:anywhere;
+  color:var(--ink);
+  font-size:12.5px;
+  font-weight:800;
+}
+
+.summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+}
+
+.summary-card{
+  padding:11px 5px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--sunk);
+  text-align:center;
+}
+
+.summary-value{
+  color:var(--deep);
+  font-size:22px;
+  font-weight:900;
+}
+
+.summary-card.done .summary-value{
+  color:var(--done);
+}
+
+.summary-card.warning .summary-value{
+  color:var(--warn);
+}
+
+.summary-card.danger .summary-value{
+  color:var(--stop);
+}
+
+.summary-label{
+  margin-top:3px;
+  color:var(--sub);
+  font-size:10.5px;
+  font-weight:800;
+}
+
+.check-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.check-item{
+  padding:8px 10px;
+  border-left:4px solid var(--done);
+  border-radius:8px;
+  background:var(--done-bg);
+  color:var(--body);
+  font-size:12px;
+  font-weight:750;
+}
+
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:10px;
+}
+
+.report-table{
+  width:100%;
+  min-width:700px;
+  border-collapse:collapse;
+}
+
+.report-table th{
+  padding:9px 7px;
+  border-bottom:1px solid var(--line);
+  background:var(--deep);
+  color:#fff;
+  font-size:10.5px;
+  font-weight:900;
+  text-align:center;
+  white-space:nowrap;
+}
+
+.report-table td{
+  padding:8px 7px;
+  border-bottom:1px solid var(--line);
+  color:var(--body);
+  font-size:11px;
+  font-weight:700;
+  vertical-align:middle;
+}
+
+.report-table tr:last-child td{
+  border-bottom:0;
+}
+
+.report-table td.center{
+  text-align:center;
+}
+
+.status-pill{
+  display:inline-block;
+  padding:3px 7px;
+  border-radius:999px;
+  background:var(--sunk);
+  color:var(--sub);
+  font-size:10px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.status-pill.done{
+  background:var(--done-bg);
+  color:var(--done);
+}
+
+.status-pill.warning{
+  background:var(--warn-bg);
+  color:var(--warn);
+}
+
+.status-pill.danger{
+  background:var(--stop-bg);
+  color:var(--stop);
+}
+
+.empty{
+  padding:30px 15px;
+  color:var(--sub);
+  font-size:13px;
+  font-weight:750;
+  text-align:center;
+}
+
+.report-footer{
+  margin-top:16px;
+  padding-top:11px;
+  border-top:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--sub);
+  font-size:10px;
+  font-weight:700;
+}
+
+.actions{
+  padding:0 16px 20px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.action-button{
+  min-height:48px;
+  padding:11px;
+  border:0;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.action-button.secondary{
+  border:1px solid var(--line);
+  background:var(--card);
+  color:var(--sub);
+}
+
+.action-button.primary{
+  background:var(--deep);
+  color:#fff;
+}
+
+@media(max-width:520px){
+  .report-wrap{
+    padding:10px;
+  }
+
+  .report-paper{
+    padding:15px;
+    border-radius:16px;
+  }
+
+  .report-head{
+    display:block;
+  }
+
+  .report-no{
+    margin-top:8px;
+    text-align:left;
+  }
+
+  .report-title{
+    font-size:21px;
+  }
+
+  .summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media print{
+  @page{
+    size:A4;
+    margin:10mm;
+  }
+
+  body,
+  .app{
+    background:#fff!important;
+  }
+
+  .app{
+    max-width:none;
+  }
+
+  .topbar,
+  .actions{
+    display:none!important;
+  }
+
+  .report-wrap{
+    padding:0;
+  }
+
+  .report-paper{
+    padding:0;
+    border-radius:0;
+    box-shadow:none;
+  }
+
+  .section{
+    break-inside:avoid;
+  }
+
+  .report-table{
+    min-width:0;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <button
+      type="button"
+      class="icon-button"
+      id="backButton"
+      aria-label="뒤로가기"
+    >
+      ←
+    </button>
+
+    <div class="topbar-title">
+      <strong id="pageTitle">
+        작업 안전관리 리포트
+      </strong>
+
+      <span id="pageSubTitle">
+        POSCO FUTURE M
+      </span>
+    </div>
+
+    <button
+      type="button"
+      class="icon-button"
+      id="homeButton"
+      aria-label="대시보드"
+    >
+      🏠
+    </button>
+  </header>
+
+  <main class="report-wrap">
+    <article
+      class="report-paper"
+      id="reportContent"
+    >
+      <div class="empty">
+        리포트 데이터를 불러오는 중입니다.
+      </div>
+    </article>
+  </main>
+
+  <div class="actions">
+    <button
+      type="button"
+      class="action-button secondary"
+      id="backActionButton"
+    >
+      ← 돌아가기
+    </button>
+
+    <button
+      type="button"
+      class="action-button primary"
+      id="printButton"
+    >
+      🖨️ 인쇄·PDF
+    </button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var DASHBOARD_URL =
+    '안전관리플랫폼_대시보드_V6_.html';
+
+  function clean(value){
+    return String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    ).trim();
+  }
+
+  function escapeHtml(value){
+    return clean(value)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function readArray(key){
+    try{
+      var parsed =
+        JSON.parse(
+          localStorage.getItem(key) ||
+          '[]'
+        );
+
+      if(Array.isArray(parsed)){
+        return parsed;
+      }
+
+      if(
+        parsed &&
+        typeof parsed === 'object'
+      ){
+        return Object.values(parsed);
+      }
+
+      return [];
+
+    }catch(error){
+      console.warn(
+        '[리포트] 저장자료 파싱 실패:',
+        key,
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function readSession(){
+    try{
+      return JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || 'null'
+      );
+    }catch(error){
+      return null;
+    }
+  }
+
+  function permitStorageKey(){
+    var session =
+      readSession();
+
+    return (
+      session &&
+      session.role === 'tester'
+    )
+      ? 'testerSafetyPermits'
+      : 'safetyPermits';
+  }
+
+  function tbmRecords(){
+    return readArray(
+      'safetyTBM'
+    ).concat(
+      readArray(
+        'testerSafetyTBM'
+      )
+    );
+  }
+
+  function riskRecords(){
+    return readArray(
+      'riskAssessments'
+    ).concat(
+      readArray(
+        'riskAssessmentResults'
+      )
+    );
+  }
+
+  function workRecords(){
+    try{
+      var database =
+        JSON.parse(
+          localStorage.getItem(
+            'safetyDatabase'
+          ) || '{}'
+        );
+
+      return Array.isArray(
+        database.workHistory
+      )
+        ? database.workHistory
+        : [];
+
+    }catch(error){
+      return [];
+    }
+  }
+
+  function makeWorkId(work){
+    work =
+      work || {};
+
+    return clean(
+      work.workId ||
+      work.id ||
+      (
+        work.date &&
+        work.originalNo
+          ? work.date +
+            '_' +
+            work.originalNo
+          : ''
+      )
+    ).replace(/\s+/g,'');
+  }
+
+  function linkedWorkId(record){
+    return clean(
+      record &&
+      (
+        record.workId ||
+        record.sourceWorkId ||
+        (
+          record.workflowLink &&
+          record.workflowLink.workId
+        )
+      )
+    );
+  }
+
+  function normalizeStatus(record){
+    var code =
+      clean(
+        record &&
+        record.statusCode
+      );
+
+    if(code){
+      return code;
+    }
+
+    var status =
+      clean(
+        record &&
+        (
+          record.permitStatus ||
+          record.status
+        )
+      );
+
+    var map = {
+      '작성 중':'draft',
+      '승인대기':'pendingApproval',
+      '재제출':'resubmitted',
+      '보완요청':'revisionRequested',
+      '허가완료':'approved',
+      '승인완료':'approved',
+      'TBM 완료':'tbmCompleted',
+      '작업중':'inProgress',
+      '작업중지':'stopped',
+      '작업완료':'completed',
+      '완료':'completed',
+      '취소':'cancelled',
+      '반려':'rejected'
+    };
+
+    return map[status] || status;
+  }
+
+  function statusLabel(code){
+    var labels = {
+      draft:'작성 중',
+      pendingApproval:'승인대기',
+      resubmitted:'재제출',
+      revisionRequested:'보완요청',
+      approved:'허가완료',
+      tbmCompleted:'TBM 완료',
+      inProgress:'작업중',
+      stopped:'작업중지',
+      completed:'작업완료',
+      cancelled:'취소',
+      rejected:'반려'
+    };
+
+    return labels[code] ||
+      code ||
+      '미확인';
+  }
+
+  function formatDateTime(value){
+    if(!value){
+      return '-';
+    }
+
+    var date =
+      new Date(value);
+
+    if(
+      !Number.isFinite(
+        date.getTime()
+      )
+    ){
+      return clean(value) || '-';
+    }
+
+    return date.toLocaleString(
+      'ko-KR'
+    );
+  }
+
+  function row(key,value){
+    return (
+      '<div class="info-row">' +
+        '<div class="info-key">' +
+          escapeHtml(key) +
+        '</div>' +
+        '<div class="info-value">' +
+          escapeHtml(
+            value || '-'
+          ) +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function summaryCard(
+    value,
+    label,
+    className
+  ){
+    return (
+      '<div class="summary-card ' +
+        escapeHtml(
+          className || ''
+        ) +
+      '">' +
+        '<div class="summary-value">' +
+          escapeHtml(value) +
+        '</div>' +
+        '<div class="summary-label">' +
+          escapeHtml(label) +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function pageHeader(
+    title,
+    reportNo,
+    date
+  ){
+    return (
+      '<header class="report-head">' +
+        '<div>' +
+          '<div class="report-company">' +
+            'POSCO FUTURE M · SAFETY MANAGEMENT' +
+          '</div>' +
+          '<div class="report-title">' +
+            escapeHtml(title) +
+          '</div>' +
+        '</div>' +
+
+        '<div class="report-no">' +
+          '문서번호: ' +
+          escapeHtml(reportNo || '-') +
+          '<br>' +
+          '기준일: ' +
+          escapeHtml(date || '-') +
+        '</div>' +
+      '</header>'
+    );
+  }
+
+  function footer(){
+    return (
+      '<footer class="report-footer">' +
+        '<span>POSCO FUTURE M 포항양극재공장</span>' +
+        '<span>출력일시: ' +
+          escapeHtml(
+            formatDateTime(
+              new Date().toISOString()
+            )
+          ) +
+        '</span>' +
+      '</footer>'
+    );
+  }
+
+  function findLatest(
+    records,
+    predicate
+  ){
+    return records
+      .filter(predicate)
+      .sort(function(first,second){
+        return (
+          new Date(
+            second.updatedAt ||
+            second.createdAt ||
+            0
+          ).getTime() -
+          new Date(
+            first.updatedAt ||
+            first.createdAt ||
+            0
+          ).getTime()
+        );
+      })[0] ||
+      null;
+  }
+
+  function renderWorkReport(
+    parameters
+  ){
+    var reports =
+      readArray(
+        'workCompletionReports'
+      );
+
+    var completionNo =
+      clean(
+        parameters.get(
+          'completionNo'
+        )
+      );
+
+    var permitNo =
+      clean(
+        parameters.get(
+          'permitNo'
+        )
+      );
+
+    var workId =
+      clean(
+        parameters.get(
+          'workId'
+        )
+      );
+
+    var completion =
+      findLatest(
+        reports,
+        function(record){
+          return (
+            (
+              completionNo &&
+              record.completionNo ===
+                completionNo
+            ) ||
+            (
+              !completionNo &&
+              permitNo &&
+              record.permitNo ===
+                permitNo
+            ) ||
+            (
+              !completionNo &&
+              !permitNo &&
+              workId &&
+              record.workId ===
+                workId
+            )
+          );
+        }
+      );
+
+    if(!completion){
+      renderError(
+        '작업완료 리포트를 찾을 수 없습니다.'
+      );
+
+      return;
+    }
+
+    permitNo =
+      completion.permitNo ||
+      permitNo;
+
+    workId =
+      completion.workId ||
+      workId;
+
+    var permit =
+      findLatest(
+        readArray(
+          permitStorageKey()
+        ),
+        function(record){
+          return (
+            clean(record.permitNo) ===
+            clean(permitNo)
+          );
+        }
+      ) || {};
+
+    var work =
+      workRecords()
+        .find(function(record){
+          return (
+            makeWorkId(record) ===
+            clean(workId)
+          );
+        }) ||
+      {};
+
+    var risk =
+      findLatest(
+        riskRecords(),
+        function(record){
+          return (
+            clean(record.riskId) ===
+              clean(
+                completion.riskId ||
+                permit.riskId
+              ) ||
+            linkedWorkId(record) ===
+              clean(workId)
+          );
+        }
+      ) || {};
+
+    var tbm =
+      findLatest(
+        tbmRecords(),
+        function(record){
+          return (
+            clean(record.permitNo) ===
+              clean(permitNo) ||
+            linkedWorkId(record) ===
+              clean(workId)
+          );
+        }
+      ) || {};
+
+    var inspections =
+      readArray(
+        'safetyInspections'
+      ).filter(function(record){
+        return (
+          clean(record.permitNo) ===
+            clean(permitNo) ||
+          clean(record.workId) ===
+            clean(workId)
+        );
+      });
+
+    var emergencies =
+      readArray(
+        'emergencies'
+      ).filter(function(record){
+        return (
+          clean(record.permitNo) ===
+            clean(permitNo) ||
+          clean(record.workId) ===
+            clean(workId)
+        );
+      });
+
+    var violationCount =
+      inspections.reduce(
+        function(total,record){
+          return (
+            total +
+            Number(
+              record.violationCount ||
+              0
+            )
+          );
+        },
+        0
+      );
+
+    var criticalCount =
+      inspections.reduce(
+        function(total,record){
+          return (
+            total +
+            Number(
+              record.requiredViolationCount ||
+              0
+            )
+          );
+        },
+        0
+      );
+
+    var participantCount =
+      Number(
+        tbm.participantCount ||
+        tbm.attendeeCount ||
+        (
+          Array.isArray(
+            tbm.participants
+          )
+            ? tbm.participants.length
+            : 0
+        )
+      );
+
+    var finalResult =
+      emergencies.length
+        ? '작업중지 이력 후 완료'
+        : criticalCount
+          ? '중대 미준수 이력 포함'
+          : violationCount
+            ? '개선사항 포함 완료'
+            : '정상 완료';
+
+    var resultClass =
+      emergencies.length ||
+      criticalCount
+        ? 'warning'
+        : '';
+
+    var location =
+      completion.location ||
+      work.locationDisplay ||
+      work.locationRaw ||
+      [
+        permit.location || '',
+        permit.detailLocation || ''
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+    var workName =
+      completion.workName ||
+      work.workName ||
+      permit.workName ||
+      '작업명 없음';
+
+    var company =
+      completion.companyName ||
+      work.executingCompany ||
+      work.company ||
+      permit.companyName ||
+      '-';
+
+    var ilsLabel =
+      completion.ilsStatus ===
+        'released'
+        ? '해체 완료'
+        : completion.ilsStatus ===
+            'notApplicable'
+          ? '해당 없음'
+          : '미확인';
+
+    var checklistHtml =
+      [
+        '작업자 전원 철수 확인',
+        '공구·장비·자재 및 폐기물 회수',
+        '작업장 정리정돈 및 청소 완료',
+        '안전시설·방호시설 원상복구',
+        '잔류 위험 없음 확인',
+        'ILS 상태: ' + ilsLabel
+      ]
+        .map(function(text){
+          return (
+            '<div class="check-item">' +
+              '✓ ' +
+              escapeHtml(text) +
+            '</div>'
+          );
+        })
+        .join('');
+
+    var html =
+      pageHeader(
+        '작업완료 리포트',
+        completion.completionNo,
+        work.date ||
+        permit.startDate ||
+        ''
+      ) +
+
+      '<div class="result-banner ' +
+        resultClass +
+      '">' +
+        '<div class="result-title">' +
+          escapeHtml(
+            finalResult
+          ) +
+        '</div>' +
+        '<div class="result-description">' +
+          '작업담당자의 종료 전 확인사항을 기준으로 작성된 리포트입니다.' +
+        '</div>' +
+      '</div>' +
+
+      '<section class="section">' +
+        '<div class="section-title">' +
+          '1. 작업 기본정보' +
+        '</div>' +
+        '<div class="info-grid">' +
+          row(
+            '작업명',
+            workName
+          ) +
+          row(
+            '허가번호',
+            permitNo
+          ) +
+          row(
+            '작업장소',
+            location
+          ) +
+          row(
+            '수행업체·조직',
+            company
+          ) +
+          row(
+            '작업인원',
+            permit.workerCount
+              ? permit.workerCount +
+                '명'
+              : '-'
+          ) +
+          row(
+            '작업시간',
+            (
+              permit.startDate || ''
+            ) +
+            ' ' +
+            (
+              permit.startTime || ''
+            ) +
+            ' ~ ' +
+            (
+              permit.endDate || ''
+            ) +
+            ' ' +
+            (
+              permit.endTime || ''
+            )
+          ) +
+        '</div>' +
+      '</section>' +
+
+      '<section class="section">' +
+        '<div class="section-title">' +
+          '2. 안전관리 이력' +
+        '</div>' +
+        '<div class="summary-grid">' +
+          summaryCard(
+            risk.riskId
+              ? '완료'
+              : '-',
+            '위험성평가',
+            risk.riskId
+              ? 'done'
+              : ''
+          ) +
+          summaryCard(
+            tbm.tbmNo ||
+            tbm.id
+              ? '완료'
+              : '없음',
+            'TBM',
+            tbm.tbmNo ||
+            tbm.id
+              ? 'done'
+              : 'warning'
+          ) +
+          summaryCard(
+            inspections.length,
+            '안전점검',
+            inspections.length
+              ? 'done'
+              : ''
+          ) +
+          summaryCard(
+            emergencies.length,
+            '작업중지',
+            emergencies.length
+              ? 'danger'
+              : 'done'
+          ) +
+        '</div>' +
+
+        '<div class="info-grid" style="margin-top:9px">' +
+          row(
+            '위험성평가 번호',
+            risk.riskId || '-'
+          ) +
+          row(
+            '최종 위험도',
+            risk.finalRiskLevel ||
+            risk.riskLevel ||
+            '-'
+          ) +
+          row(
+            'TBM 번호',
+            tbm.tbmNo ||
+            tbm.id ||
+            '-'
+          ) +
+          row(
+            'TBM 참석인원',
+            participantCount
+              ? participantCount +
+                '명'
+              : '-'
+          ) +
+          row(
+            '미준수 건수',
+            String(
+              violationCount
+            )
+          ) +
+          row(
+            '필수 미준수',
+            String(
+              criticalCount
+            )
+          ) +
+        '</div>' +
+      '</section>' +
+
+      '<section class="section">' +
+        '<div class="section-title">' +
+          '3. 종료 확인사항' +
+        '</div>' +
+        '<div class="check-list">' +
+          checklistHtml +
+        '</div>' +
+      '</section>' +
+
+      '<section class="section">' +
+        '<div class="section-title">' +
+          '4. 종료 확인' +
+        '</div>' +
+        '<div class="info-grid">' +
+          row(
+            '종료 확인자',
+            completion.completedBy ||
+            '-'
+          ) +
+          row(
+            '종료 일시',
+            formatDateTime(
+              completion.completedAt
+            )
+          ) +
+          row(
+            '최종 상태',
+            finalResult
+          ) +
+          row(
+            '종료 의견',
+            completion.opinion ||
+            '특이사항 없음'
+          ) +
+        '</div>' +
+      '</section>' +
+
+      footer();
+
+    document.getElementById(
+      'reportContent'
+    ).innerHTML =
+      html;
+
+    document.title =
+      workName +
+      ' · 작업완료 리포트';
+
+    document.getElementById(
+      'pageTitle'
+    ).textContent =
+      '작업완료 리포트';
+
+    document.getElementById(
+      'pageSubTitle'
+    ).textContent =
+      completion.completionNo;
+  }
+
+  function renderDailyReport(
+    parameters
+  ){
+    var reportDate =
+      clean(
+        parameters.get('date')
+      );
+
+    if(!reportDate){
+      var now =
+        new Date();
+
+      reportDate =
+        now.getFullYear() +
+        '-' +
+        String(
+          now.getMonth() + 1
+        ).padStart(2,'0') +
+        '-' +
+        String(
+          now.getDate()
+        ).padStart(2,'0');
+    }
+
+    var works =
+      workRecords()
+        .filter(function(work){
+          return (
+            clean(work.date) ===
+            reportDate
+          );
+        });
+
+    var permits =
+      readArray(
+        permitStorageKey()
+      );
+
+    var inspections =
+      readArray(
+        'safetyInspections'
+      );
+
+    var emergencies =
+      readArray(
+        'emergencies'
+      );
+
+    var tbms =
+      tbmRecords();
+
+    var rows = [];
+
+    works.forEach(function(work){
+      var workId =
+        makeWorkId(work);
+
+      var permit =
+        findLatest(
+          permits,
+          function(record){
+            return (
+              linkedWorkId(record) ===
+              workId
+            );
+          }
+        );
+
+      var permitNo =
+        permit
+          ? permit.permitNo
+          : '';
+
+      var code =
+        permit
+          ? normalizeStatus(
+              permit
+            )
+          : 'waiting';
+
+      var linkedTbm =
+        tbms.filter(
+          function(record){
+            return (
+              clean(record.permitNo) ===
+                clean(permitNo) ||
+              linkedWorkId(record) ===
+                workId
+            );
+          }
+        );
+
+      var linkedInspections =
+        inspections.filter(
+          function(record){
+            return (
+              clean(record.permitNo) ===
+                clean(permitNo) ||
+              clean(record.workId) ===
+                workId
+            );
+          }
+        );
+
+      var linkedStops =
+        emergencies.filter(
+          function(record){
+            return (
+              clean(record.permitNo) ===
+                clean(permitNo) ||
+              clean(record.workId) ===
+                workId
+            );
+          }
+        );
+
+      var violationCount =
+        linkedInspections.reduce(
+          function(total,record){
+            return (
+              total +
+              Number(
+                record.violationCount ||
+                0
+              )
+            );
+          },
+          0
+        );
+
+      rows.push({
+        workId:workId,
+        workName:
+          work.workName ||
+          work.workNameFull ||
+          '작업명 없음',
+        location:
+          work.locationDisplay ||
+          work.locationRaw ||
+          '-',
+        company:
+          work.executingCompany ||
+          work.company ||
+          '-',
+        statusCode:code,
+        statusLabel:
+          code === 'waiting'
+            ? '허가전'
+            : statusLabel(code),
+        permitNo:permitNo,
+        tbmCompleted:
+          linkedTbm.length > 0,
+        inspectionCount:
+          linkedInspections.length,
+        violationCount:
+          violationCount,
+        stopCount:
+          linkedStops.length
+      });
+    });
+
+    var completedCount =
+      rows.filter(
+        function(item){
+          return (
+            item.statusCode ===
+            'completed'
+          );
+        }
+      ).length;
+
+    var stoppedCount =
+      rows.filter(
+        function(item){
+          return (
+            item.statusCode ===
+            'stopped'
+          );
+        }
+      ).length;
+
+    var runningCount =
+      rows.filter(
+        function(item){
+          return (
+            item.statusCode ===
+              'approved' ||
+            item.statusCode ===
+              'tbmCompleted' ||
+            item.statusCode ===
+              'inProgress'
+          );
+        }
+      ).length;
+
+    var pendingCount =
+      rows.length -
+      completedCount -
+      stoppedCount -
+      runningCount;
+
+    var totalInspectionCount =
+      rows.reduce(
+        function(total,item){
+          return (
+            total +
+            item.inspectionCount
+          );
+        },
+        0
+      );
+
+    var totalViolationCount =
+      rows.reduce(
+        function(total,item){
+          return (
+            total +
+            item.violationCount
+          );
+        },
+        0
+      );
+
+    var dailyResult =
+      runningCount === 0 &&
+      pendingCount === 0 &&
+      stoppedCount === 0
+        ? '정상 마감 가능'
+        : stoppedCount > 0
+          ? '작업중지 포함 · 확인 필요'
+          : '미완료 작업 존재';
+
+    var dailyClass =
+      stoppedCount > 0
+        ? 'danger'
+        : runningCount > 0 ||
+          pendingCount > 0
+          ? 'warning'
+          : '';
+
+    var tableRows =
+      rows.length
+        ? rows.map(
+            function(item){
+              var pillClass =
+                item.statusCode ===
+                  'completed'
+                  ? 'done'
+                  : item.statusCode ===
+                      'stopped'
+                    ? 'danger'
+                    : 'warning';
+
+              return (
+                '<tr>' +
+                  '<td>' +
+                    escapeHtml(
+                      item.workName
+                    ) +
+                  '</td>' +
+                  '<td>' +
+                    escapeHtml(
+                      item.location
+                    ) +
+                  '</td>' +
+                  '<td>' +
+                    escapeHtml(
+                      item.company
+                    ) +
+                  '</td>' +
+                  '<td class="center">' +
+                    '<span class="status-pill ' +
+                      pillClass +
+                    '">' +
+                      escapeHtml(
+                        item.statusLabel
+                      ) +
+                    '</span>' +
+                  '</td>' +
+                  '<td class="center">' +
+                    (
+                      item.tbmCompleted
+                        ? '완료'
+                        : '-'
+                    ) +
+                  '</td>' +
+                  '<td class="center">' +
+                    item.inspectionCount +
+                    (
+                      item.violationCount
+                        ? ' / 미준수 ' +
+                          item.violationCount
+                        : ''
+                    ) +
+                  '</td>' +
+                  '<td class="center">' +
+                    item.stopCount +
+                  '</td>' +
+                '</tr>'
+              );
+            }
+          ).join('')
+        : (
+            '<tr>' +
+              '<td colspan="7" class="center">' +
+                '해당 일자의 작업이 없습니다.' +
+              '</td>' +
+            '</tr>'
+          );
+
+    var html =
+      pageHeader(
+        '일일 작업 리포트',
+        'DR-' +
+        reportDate.replace(/-/g,''),
+        reportDate
+      ) +
+
+      '<div class="result-banner ' +
+        dailyClass +
+      '">' +
+        '<div class="result-title">' +
+          escapeHtml(
+            dailyResult
+          ) +
+        '</div>' +
+        '<div class="result-description">' +
+          '금일 등록된 작업과 안전관리 이력을 자동 집계한 리포트입니다.' +
+        '</div>' +
+      '</div>' +
+
+      '<section class="section">' +
+        '<div class="section-title">' +
+          '1. 일일 작업 요약' +
+        '</div>' +
+        '<div class="summary-grid">' +
+          summaryCard(
+            rows.length,
+            '전체 작업',
+            ''
+          ) +
+          summaryCard(
+            completedCount,
+            '작업완료',
+            'done'
+          ) +
+          summaryCard(
+            runningCount,
+            '작업중',
+            'warning'
+          ) +
+          summaryCard(
+            stoppedCount,
+            '작업중지',
+            'danger'
+          ) +
+          summaryCard(
+            pendingCount,
+            '허가전·미완료',
+            'warning'
+          ) +
+          summaryCard(
+            totalInspectionCount,
+            '안전점검',
+            'done'
+          ) +
+          summaryCard(
+            totalViolationCount,
+            '미준수',
+            totalViolationCount
+              ? 'danger'
+              : 'done'
+          ) +
+          summaryCard(
+            emergencies.filter(
+              function(record){
+                return (
+                  clean(record.date) ===
+                    reportDate ||
+                  clean(
+                    record.createdAt
+                  ).indexOf(
+                    reportDate
+                  ) === 0
+                );
+              }
+            ).length,
+            '작업중지권',
+            'danger'
+          ) +
+        '</div>' +
+      '</section>' +
+
+      '<section class="section">' +
+        '<div class="section-title">' +
+          '2. 작업별 현황' +
+        '</div>' +
+        '<div class="table-wrap">' +
+          '<table class="report-table">' +
+            '<thead>' +
+              '<tr>' +
+                '<th>작업명</th>' +
+                '<th>장소</th>' +
+                '<th>업체</th>' +
+                '<th>상태</th>' +
+                '<th>TBM</th>' +
+                '<th>안전점검</th>' +
+                '<th>중지</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' +
+              tableRows +
+            '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</section>' +
+
+      footer();
+
+    document.getElementById(
+      'reportContent'
+    ).innerHTML =
+      html;
+
+    document.title =
+      reportDate +
+      ' · 일일 작업 리포트';
+
+    document.getElementById(
+      'pageTitle'
+    ).textContent =
+      '일일 작업 리포트';
+
+    document.getElementById(
+      'pageSubTitle'
+    ).textContent =
+      reportDate;
+  }
+
+  function renderError(message){
+    document.getElementById(
+      'reportContent'
+    ).innerHTML =
+      '<div class="empty">' +
+        '⚠️ ' +
+        escapeHtml(message) +
+      '</div>';
+  }
+
+  function initialize(){
+    var theme =
+      localStorage.getItem(
+        'theme'
+      ) ||
+      'light';
+
+    document.documentElement
+      .setAttribute(
+        'data-theme',
+        theme
+      );
+
+    var parameters =
+      new URLSearchParams(
+        location.search
+      );
+
+    var type =
+      clean(
+        parameters.get(
+          'type'
+        )
+      ) ||
+      'daily';
+
+    if(type === 'work'){
+      renderWorkReport(
+        parameters
+      );
+    }else{
+      renderDailyReport(
+        parameters
+      );
+    }
+
+    document.getElementById(
+      'backButton'
+    ).addEventListener(
+      'click',
+      function(){
+        if(history.length > 1){
+          history.back();
+        }else{
+          location.href =
+            DASHBOARD_URL;
+        }
+      }
+    );
+
+    document.getElementById(
+      'backActionButton'
+    ).addEventListener(
+      'click',
+      function(){
+        if(history.length > 1){
+          history.back();
+        }else{
+          location.href =
+            DASHBOARD_URL;
+        }
+      }
+    );
+
+    document.getElementById(
+      'homeButton'
+    ).addEventListener(
+      'click',
+      function(){
+        location.href =
+          DASHBOARD_URL;
+      }
+    );
+
+    document.getElementById(
+      'printButton'
+    ).addEventListener(
+      'click',
+      function(){
+        window.print();
+      }
+    );
+  }
+
+  if(
+    document.readyState ===
+      'loading'
+  ){
+    document.addEventListener(
+      'DOMContentLoaded',
+      initialize
+    );
+  }else{
+    initialize();
+  }
+})();
+</script>
+</body>
+</html>
