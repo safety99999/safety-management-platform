@@ -12509,12 +12509,14 @@ console.log(
       // ─── 4. 새 manifest 생성 ──────────────
       var newManifest = Object.assign({}, existingManifest, {
         files: Object.assign({}, existingManifest.files, {
-          workDatabase: {
-            path: WORK_DB_PATH,
-            count: workHistory.length,
-            sha256: workDbSha256,
-            updatedAt: new Date().toISOString()
-          }
+workDatabase: {
+  filename: 'work-database.test.json',
+  schemaVersion: 1,
+  count: workHistory.length,
+  sha256: workDbSha256,
+  updatedAt: new Date().toISOString()
+}
+
         }),
         lastAutoDeployedAt: new Date().toISOString()
       });
