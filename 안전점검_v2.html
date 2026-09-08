@@ -7,75 +7,16 @@
   try{
     var saved = localStorage.getItem('theme');
     var theme = saved || (window.matchMedia && 
-      window.matchMedia('(prefers-color-scheme: dark)').matches 
-      ? 'dark' : 'light');
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
   }catch(e){}
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0067B1">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>안전점검 · Safety Inspection</title>
+<title>안전점검 · 컴팩트 체크리스트</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="styles/device-frame.css?v=3">
-
-<!-- APP MODE + Firebase 초기화 -->
-<script>
-(function(){
-  var urlMode = new URLSearchParams(location.search).get('appmode');
-  if(urlMode === 'test' || urlMode === 'prod'){
-    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
-  }
-  window.APP_MODE = localStorage.getItem('appMode') || 'test';
-  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
-  window.getCollectionName = function(baseName){
-    return window.COLLECTION_PREFIX + baseName;
-  };
-  console.log(
-    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
-    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
-    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
-  );
-})();
-</script>
-
-<script type="module">
-  import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getFirestore, initializeFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
-    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
-    projectId: "safety-management-platfo-5f413",
-    storageBucket: "safety-management-platfo-5f413.appspot.com",
-    messagingSenderId: "96226952530",
-    appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
-  };
-
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const needsLongPolling = isIOS || isSafari;
-
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  let db;
-  try {
-    if (needsLongPolling) {
-      db = initializeFirestore(app, { experimentalForceLongPolling: true, useFetchStreams: false });
-    } else {
-      db = getFirestore(app);
-    }
-  } catch (e) {
-    db = getFirestore(app);
-  }
-
-  window.firebaseApp = { 
-    db: db, doc: doc, setDoc: setDoc, getDoc: getDoc, serverTimestamp: serverTimestamp
-  };
-  window.firebaseApp.INSPECTION_COLLECTION = window.getCollectionName("safetyInspections");
-  window.firebaseApp.PERMIT_COLLECTION = window.getCollectionName("safetyPermits");
-  console.log("[안전점검 Firebase] 초기화 완료:", window.firebaseApp.INSPECTION_COLLECTION);
-</script>
 
 <style>
 :root{
@@ -83,10 +24,10 @@
   --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
   --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
   --line:#DFE7EF;
-  --run:#E8590C; --run-bg:#FFF4EC;
-  --stop:#D6273D; --stop-bg:#FFF3F5;
-  --done:#0E8A6B; --done-bg:#EDFAF6;
-  --warn:#B45309; --warn-bg:#FEF6E7;
+  --ok:#0E8A6B; --ok-bg:#EDFAF6;
+  --ng:#D6273D; --ng-bg:#FFF3F5;
+  --part:#B45309; --part-bg:#FEF6E7;
+  --na:#5E7183; --na-bg:#F3F6FA;
   --r:18px; --r-s:14px; --r-xs:10px;
   --sh:0 2px 10px rgba(15,29,43,.06);
   --sh-m:0 4px 16px rgba(15,29,43,.09);
@@ -96,712 +37,297 @@
   --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
   --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
   --faint:#5A7288; --line:#1E3145;
-  --run:#FF8A3D; --run-bg:#2A1A0E;
-  --stop:#FF5F70; --stop-bg:#2B1116;
-  --done:#3DD9AE; --done-bg:#0D2620;
-  --warn:#FBBF24; --warn-bg:#2A2010;
+  --ok:#3DD9AE; --ok-bg:#0D2620;
+  --ng:#FF5F70; --ng-bg:#2B1116;
+  --part:#FBBF24; --part-bg:#2A2010;
+  --na:#A0AEC0; --na-bg:#0C1825;
   --sh:0 2px 10px rgba(0,0,0,.35);
-  --sh-m:0 4px 16px rgba(0,0,0,.45);
 }
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;overflow-x:hidden;
-  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
-
+  font-family:'Pretendard',-apple-system,sans-serif;}
 body{
-  color:var(--ink);line-height:1.5;font-size:16px;
+  color:var(--ink);line-height:1.5;font-size:15px;
   padding-bottom:max(20px,env(safe-area-inset-bottom));
   min-height:100vh;
-  background:linear-gradient(135deg,#003C7E 0%,#0067B1 45%,var(--bg) 45%,var(--bg) 100%);
+  background:linear-gradient(135deg,var(--deep) 0%,var(--posco) 45%,var(--bg) 45%,var(--bg) 100%);
   background-attachment:fixed;
-  transition:background .25s,color .25s;
 }
 [data-theme="dark"] body{
   background:linear-gradient(135deg,#0A1B2E 0%,#12283F 45%,var(--bg) 45%,var(--bg) 100%);
-  background-attachment:fixed;
 }
-
-.app{
-  max-width:480px;margin:0 auto;min-height:100vh;
-  background:var(--bg);position:relative;
-}
-
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;}
 @media(min-width:768px){
   body{padding:24px 0 max(20px,env(safe-area-inset-bottom));}
-  .app{
-    min-height:calc(100vh - 48px);
-    border-radius:24px; overflow:hidden;
-    box-shadow:0 0 40px rgba(0,103,177,.3), 0 20px 60px rgba(0,0,0,.15);
-  }
+  .app{min-height:calc(100vh - 48px);border-radius:24px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.15);}
 }
 
-/* TOP NAV */
+/* ═══ TOP NAV ═══ */
 .topnav{
   position:sticky;top:0;z-index:200;
-  background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
+  background:linear-gradient(158deg,var(--deep),var(--posco));
   height:56px;padding:0 16px;
   display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 2px 16px rgba(0,103,177,.4);
-  overflow:hidden;
+  box-shadow:0 2px 12px rgba(0,60,126,.3);
 }
-.topnav::after{
-  content:'';position:absolute;right:-40px;top:-46px;width:150px;height:150px;
-  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 9px,transparent 9px 18px);
-  border-radius:50%;pointer-events:none;
-}
-.topnav-l{display:flex;align-items:center;gap:10px;position:relative;z-index:1;min-width:0;}
-.topnav-title{
-  color:#fff;font-size:16px;font-weight:800;
-  letter-spacing:-.03em;white-space:nowrap;
-  display:flex;align-items:center;gap:6px;
-}
-.topnav-r{display:flex;align-items:center;gap:8px;position:relative;z-index:1;flex-shrink:0;}
-
+.topnav-l{display:flex;align-items:center;gap:10px;min-width:0;}
+.topnav-title{color:#fff;font-size:16px;font-weight:800;
+  letter-spacing:-.03em;display:flex;align-items:center;gap:6px;}
+.topnav-r{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .back-btn,.theme-btn,.home-btn{
   background:rgba(255,255,255,.16);border:none;color:#fff;
-  border-radius:12px;font-size:20px;cursor:pointer;font-family:inherit;
-  display:flex;align-items:center;justify-content:center;
-  transition:.15s;flex-shrink:0;
+  border-radius:12px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;transition:.15s;
 }
 .back-btn{width:40px;height:40px;font-size:22px;}
 .theme-btn{width:34px;height:34px;font-size:16px;}
 .home-btn{width:40px;height:40px;font-size:20px;}
-.back-btn:active,.theme-btn:active,.home-btn:active{
-  transform:scale(.9);background:rgba(255,255,255,.3);
-}
-
-.permit-badge{background:rgba(255,255,255,.18);color:#fff;
+.back-btn:active,.theme-btn:active,.home-btn:active{transform:scale(.9);}
+.permit-badge{background:rgba(255,255,255,.2);color:#fff;
   font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
-  font-family:ui-monospace,monospace;letter-spacing:.02em;display:none;}
-.permit-badge.show{display:inline-block;}
+  font-variant-numeric:tabular-nums;}
 
-/* SCREEN */
-.screen{display:none;padding:16px 14px;}
-.screen.active{display:block;animation:fadeIn .25s ease;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.screen{padding:14px 12px;}
 
-/* HERO */
-.hero-inspection{
-  background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
-  color:#fff;
-  border-radius:22px;padding:24px 22px;text-align:center;margin-bottom:14px;
-  position:relative;overflow:hidden;
-  box-shadow:0 8px 24px rgba(0,103,177,.35);
-}
-.hero-inspection::after{
-  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
-  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
-  border-radius:50%;pointer-events:none;
-}
-.hero-ico{
-  font-size:48px;margin-bottom:8px;position:relative;z-index:1;line-height:1;
-}
-.hero-title{
-  font-size:22px;font-weight:900;letter-spacing:-.035em;
-  position:relative;z-index:1;line-height:1.3;
-}
-.hero-sub{
-  font-size:13px;opacity:.95;margin-top:8px;
-  line-height:1.55;font-weight:600;position:relative;z-index:1;
-}
-
-/* 오늘 작업 섹션 */
-.today-works-section{
-  background:var(--card); border-radius:var(--r); padding:16px;
-  margin-bottom:12px; box-shadow:var(--sh); border:2px solid var(--tint);
-}
-.today-works-title{
-  font-size:14px;font-weight:800;color:var(--ink);
-  margin-bottom:8px;letter-spacing:-.02em;
-  display:flex;align-items:center;gap:6px;
-  padding-bottom:10px;border-bottom:1.5px solid var(--line);
-}
-.today-works-count{
-  margin-left:auto;background:var(--posco);color:#fff;
-  font-size:11px;font-weight:800;padding:3px 10px;
-  border-radius:12px;letter-spacing:.3px;
-}
-.today-works-hint{
-  font-size:12px;color:var(--sub);font-weight:600;
-  line-height:1.6;margin-bottom:12px;
-  padding:10px 12px;background:var(--sunk);
-  border-radius:10px;border-left:3px solid var(--posco);
-}
-.today-works-list{
-  display:flex;flex-direction:column;gap:8px;
-}
-.today-work-item{
-  background:var(--sunk);border:2px solid var(--line);
-  border-radius:12px;padding:12px 14px;
-  cursor:pointer;transition:.15s;
+/* ═══ 헤더 정보 ═══ */
+.inspector-card{
+  background:var(--card);border-radius:var(--r-s);padding:12px 14px;
+  margin-bottom:10px;box-shadow:var(--sh);
   display:flex;align-items:center;gap:10px;
 }
-.today-work-item:active{transform:scale(.98);}
-.today-work-item:hover{
-  border-color:var(--posco);background:var(--tint);
+.inspector-ico{
+  width:38px;height:38px;background:var(--tint);border-radius:10px;
+  display:grid;place-items:center;font-size:20px;flex-shrink:0;
 }
-.today-work-item.selected{
-  border-color:var(--done);background:var(--done-bg);
-  box-shadow:0 0 0 3px rgba(14,138,107,.1);
-}
-.today-work-radio{
-  width:22px;height:22px;border-radius:50%;
-  border:2.5px solid var(--faint);flex-shrink:0;
-  display:grid;place-items:center;transition:.15s;
-}
-.today-work-item.selected .today-work-radio{
-  border-color:var(--done);
-}
-.today-work-item.selected .today-work-radio::after{
-  content:'';width:11px;height:11px;border-radius:50%;background:var(--done);
-}
-.today-work-body{flex:1;min-width:0;}
-.today-work-name{
-  font-size:13.5px;font-weight:800;color:var(--ink);
-  letter-spacing:-.02em;line-height:1.4;margin-bottom:4px;
-}
-.today-work-meta{
-  font-size:11.5px;color:var(--sub);font-weight:600;
-  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
-}
-.today-work-badge{
-  font-size:10px;font-weight:800;padding:2px 7px;
-  border-radius:6px;letter-spacing:.3px;flex-shrink:0;
-}
-.today-work-badge.high{background:var(--stop-bg);color:var(--stop);}
-.today-work-badge.normal{background:var(--tint);color:var(--posco);}
-.today-work-permit{
-  font-size:10px;font-weight:700;color:var(--sub);
-  font-family:ui-monospace,monospace;margin-top:3px;
+.inspector-body{flex:1;min-width:0;}
+.inspector-name{font-size:14px;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;}
+.inspector-meta{font-size:11.5px;color:var(--sub);font-weight:600;
+  margin-top:2px;}
+.inspector-edit{
+  background:var(--sunk);border:1.5px solid var(--line);color:var(--sub);
+  border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit;
 }
 
-.today-works-empty{
-  padding:24px 16px;text-align:center;
-  font-size:12.5px;color:var(--sub);font-weight:600;
-  background:var(--sunk);border-radius:10px;line-height:1.6;
-}
-.today-works-empty-ico{
-  font-size:32px;display:block;margin-bottom:8px;opacity:.5;
-}
-
-/* 선택된 허가서 배너 */
-.permit-info-banner{
-  background:var(--tint);border-left:5px solid var(--posco);
-  border-radius:0 var(--r-s) var(--r-s) 0;padding:14px 16px;margin-bottom:14px;
-}
-.pib-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.pib-badge{background:var(--posco);color:#fff;
-  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
-  letter-spacing:.5px;}
-.pib-no{font-size:12px;font-weight:800;color:var(--posco);
-  font-family:ui-monospace,monospace;}
-[data-theme="dark"] .pib-no{color:var(--bright);}
-.pib-name{font-size:15px;font-weight:800;color:var(--ink);
-  line-height:1.4;margin-bottom:4px;}
-.pib-meta{font-size:12px;color:var(--sub);font-weight:600;
-  display:flex;gap:12px;flex-wrap:wrap;}
-.pib-tags{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
-.pib-tag{
-  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
-}
-.pib-tag.risk-high{background:var(--stop);color:#fff;}
-.pib-tag.risk-normal{background:var(--posco);color:#fff;}
-.pib-tag.worktype{background:var(--warn);color:#fff;}
-
-/* 진행률 */
+/* ═══ 진행률 바 ═══ */
 .progress-card{
-  background:var(--card);border-radius:var(--r);padding:14px 16px;
-  margin-bottom:12px;box-shadow:var(--sh);
+  background:var(--card);border-radius:var(--r-s);padding:12px 14px;
+  margin-bottom:10px;box-shadow:var(--sh);
 }
 .progress-top{
-  display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:8px;font-size:12px;font-weight:700;
 }
-.progress-label{font-size:13px;font-weight:800;color:var(--ink);}
-.progress-count{font-size:13px;font-weight:800;color:var(--posco);}
-[data-theme="dark"] .progress-count{color:var(--bright);}
-.progress-bar-wrap{
-  height:10px;background:var(--sunk);border-radius:6px;overflow:hidden;
-}
+.progress-label{color:var(--sub);}
+.progress-value{color:var(--ink);font-size:14px;font-weight:800;
+  font-variant-numeric:tabular-nums;}
+.progress-value .ng-count{color:var(--ng);margin-left:8px;}
 .progress-bar{
+  height:8px;background:var(--sunk);border-radius:4px;overflow:hidden;
+}
+.progress-fill{
   height:100%;background:linear-gradient(90deg,var(--posco),var(--bright));
-  border-radius:6px;transition:width .3s ease;
+  border-radius:4px;transition:width .3s;width:0%;
 }
 
-/* ═══════════════════════════════════════════
-   카테고리 섹션 (컴팩트)
-   ═══════════════════════════════════════════ */
-.check-category{
-  background:var(--card);border-radius:var(--r);
-  margin-bottom:10px;box-shadow:var(--sh);overflow:hidden;
-}
-.check-category-header{
-  padding:11px 14px; background:var(--sunk);
-  border-bottom:1px solid var(--line);
-  display:flex;align-items:center;gap:8px;
-}
-.check-category-ico{font-size:16px;}
-.check-category-title{
-  font-size:13px;font-weight:800;color:var(--ink);flex:1;
-  letter-spacing:-.02em;
-}
-.check-category-count{
-  font-size:11px;font-weight:800;padding:2px 8px;
-  border-radius:6px;background:var(--sub);color:#fff;
-}
-
-/* ═══ 체크 항목 (한 줄 컴팩트) ═══ */
+/* ═══ 체크리스트 항목 ═══ */
+.checklist{background:var(--card);border-radius:var(--r);
+  overflow:hidden;box-shadow:var(--sh);margin-bottom:10px;}
 .check-item{
-  padding:10px 14px;border-bottom:1px solid var(--line);
+  padding:12px 14px;border-bottom:1px solid var(--line);
+  display:flex;flex-direction:column;gap:8px;transition:background .15s;
 }
 .check-item:last-child{border-bottom:none;}
-.check-item.violation{background:#FFF8F8;}
+.check-item.done-ok{background:var(--ok-bg);}
+.check-item.done-ng{background:var(--ng-bg);}
+.check-item.done-part{background:var(--part-bg);}
+.check-item.done-na{background:var(--na-bg);}
 
-.check-item-header{
-  display:flex;align-items:center;gap:8px;margin-bottom:6px;
-}
-.check-item-num{
+.ci-top{display:flex;align-items:flex-start;gap:8px;}
+.ci-num{
   flex-shrink:0;width:22px;height:22px;
-  background:var(--sub);color:#fff;
-  border-radius:6px;display:grid;place-items:center;
-  font-size:11px;font-weight:800;
-}
-.check-item-num.checked{background:var(--done);}
-.check-item-num.violation-num{background:var(--stop);}
-.check-item-text{
-  flex:1;font-size:13px;font-weight:600;color:var(--ink);
-  line-height:1.4;
-}
-.check-item-required-mark{
-  color:var(--sub);font-size:10px;font-weight:700;
-  margin-left:4px;
-}
-.check-memo-toggle{
-  flex-shrink:0;width:28px;height:28px;
-  border:1px solid var(--line);border-radius:6px;
-  background:var(--card);cursor:pointer;
+  background:var(--sunk);color:var(--sub);
+  border-radius:6px;
   display:grid;place-items:center;
-  font-size:13px;color:var(--sub);transition:.15s;
+  font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
 }
-.check-memo-toggle:hover,.check-memo-toggle.active{
-  border-color:var(--posco);color:var(--posco);background:var(--tint);
-}
+.check-item.done-ok .ci-num{background:var(--ok);color:#fff;}
+.check-item.done-ng .ci-num{background:var(--ng);color:#fff;}
+.check-item.done-part .ci-num{background:var(--part);color:#fff;}
+.check-item.done-na .ci-num{background:var(--na);color:#fff;}
 
-/* 판정 버튼 (심플, 톤다운) */
-.judge-buttons{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
-  margin-left:30px;
+.ci-text{flex:1;font-size:13.5px;font-weight:700;color:var(--ink);
+  line-height:1.4;letter-spacing:-.02em;}
+.ci-req{display:inline-block;font-size:10px;color:var(--sub);
+  font-weight:800;background:var(--sunk);padding:1px 6px;border-radius:4px;
+  margin-left:6px;vertical-align:1px;}
+.check-item.done-ok .ci-req,
+.check-item.done-ng .ci-req,
+.check-item.done-part .ci-req,
+.check-item.done-na .ci-req{background:rgba(255,255,255,.6);}
+
+.ci-memo-btn{
+  flex-shrink:0;width:26px;height:26px;background:transparent;
+  border:1.5px solid var(--line);border-radius:8px;
+  cursor:pointer;font-size:12px;color:var(--sub);
+  display:grid;place-items:center;font-family:inherit;
 }
-.judge-btn{
-  padding:7px 4px;border:1.5px solid var(--line);
-  border-radius:8px;background:var(--card);
-  font-family:inherit;cursor:pointer;transition:.15s;
-  font-size:11px;font-weight:700;color:var(--sub);
+.ci-memo-btn.has-memo{background:var(--tint);border-color:var(--posco);color:var(--posco);}
+
+.ci-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.ci-btn{
+  padding:8px 4px;border:1.5px solid var(--line);
+  background:var(--card);border-radius:9px;
+  font-family:inherit;font-size:12px;font-weight:800;color:var(--sub);
+  cursor:pointer;transition:.12s;
   display:flex;align-items:center;justify-content:center;gap:3px;
 }
-.judge-btn:active{transform:scale(.96);}
-.judge-btn-ico{font-size:13px;}
-.judge-btn.selected-ok{
-  border-color:var(--done);background:var(--done-bg);
-  color:var(--done);font-weight:900;
-}
-.judge-btn.selected-ng{
-  border-color:var(--stop);background:#FFF3F5;
-  color:var(--stop);font-weight:900;
-}
-.judge-btn.selected-partial{
-  border-color:var(--warn);background:var(--warn-bg);
-  color:var(--warn);font-weight:900;
-}
-.judge-btn.selected-na{
-  border-color:var(--sub);background:var(--sunk);
-  color:var(--sub);font-weight:900;
-}
+.ci-btn:active{transform:scale(.94);}
+.ci-btn.active-ok{background:var(--ok);color:#fff;border-color:var(--ok);}
+.ci-btn.active-ng{background:var(--ng);color:#fff;border-color:var(--ng);}
+.ci-btn.active-part{background:var(--part);color:#fff;border-color:var(--part);}
+.ci-btn.active-na{background:var(--na);color:#fff;border-color:var(--na);}
 
-/* 메모 (접기/펼치기) */
-.check-memo-wrap{
-  margin-top:8px;margin-left:30px;
-  max-height:0;overflow:hidden;transition:max-height .3s ease;
+.ci-memo-input{
+  display:none;width:100%;padding:8px 10px;
+  background:var(--card);border:1.5px solid var(--line);
+  border-radius:8px;font-family:inherit;font-size:12.5px;
+  color:var(--ink);resize:vertical;min-height:52px;
 }
-.check-memo-wrap.expanded{max-height:120px;}
-.check-memo{
-  width:100%;padding:8px 10px;border:1px solid var(--line);
-  border-radius:8px;font-size:12px;background:var(--sunk);
-  color:var(--ink);font-family:inherit;font-weight:500;
-  min-height:60px;resize:vertical;
-}
-.check-memo:focus{
-  outline:none;border-color:var(--posco);background:var(--card);
-}
+.ci-memo-input.show{display:block;}
+.ci-memo-input:focus{outline:none;border-color:var(--posco);}
 
-/* ═══════════════════════════════════════════
-   툴바 (전체 준수 일괄 적용)
-   ═══════════════════════════════════════════ */
-.action-toolbar{
-  background:var(--card);border-radius:var(--r);
-  padding:12px 14px;margin-bottom:10px;
-  box-shadow:var(--sh);
-  display:flex;gap:8px;align-items:center;
-}
-.toolbar-btn{
-  flex:1;padding:11px 12px;border:1.5px solid var(--posco);
-  border-radius:10px;background:var(--tint);
-  color:var(--posco);font-family:inherit;
-  font-size:13px;font-weight:800;cursor:pointer;
-  transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.toolbar-btn:hover{background:var(--posco);color:#fff;}
-.toolbar-btn:active{transform:scale(.97);}
-.toolbar-btn.reset{
-  border-color:var(--line);background:var(--card);
-  color:var(--sub);flex:0 0 auto;padding:11px 14px;
-}
-.toolbar-btn.reset:hover{
-  background:var(--sunk);color:var(--ink);border-color:var(--sub);
-}
-
-.toolbar-hint{
-  font-size:11px;color:var(--sub);font-weight:600;
-  padding:8px 12px;background:var(--tint);
-  border-radius:8px;margin-bottom:10px;
-  line-height:1.5;text-align:center;
-}
-
-/* ═══════════════════════════════════════════
-   점검자 정보 (자동 기입)
-   ═══════════════════════════════════════════ */
-.inspector-card{
-  background:var(--tint);border-radius:var(--r);
-  padding:12px 14px;margin-bottom:10px;
-  border-left:3px solid var(--posco);
-}
-.inspector-title{
-  font-size:11px;font-weight:800;color:var(--sub);
-  margin-bottom:4px;letter-spacing:.3px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.inspector-title-edit{
-  font-size:10px;color:var(--posco);cursor:pointer;
-  padding:2px 8px;background:var(--card);border-radius:6px;
-  font-weight:800;
-}
-.inspector-name{
-  font-size:14px;font-weight:800;color:var(--ink);
-  letter-spacing:-.02em;line-height:1.4;
-}
-.inspector-time{
-  font-size:11px;color:var(--sub);font-weight:600;
-  margin-top:3px;
-}
-
-/* ═══════════════════════════════════════════
-   하단 사진 첨부 (통합, 최대 2장)
-   ═══════════════════════════════════════════ */
-.photo-section{
-  background:var(--card);border-radius:var(--r);
-  padding:16px;margin-bottom:12px;box-shadow:var(--sh);
-}
-.photo-section-title{
-  font-size:13px;font-weight:800;color:var(--ink);
-  margin-bottom:10px;letter-spacing:-.02em;
-  display:flex;align-items:center;gap:6px;
-}
-.photo-section-hint{
-  font-size:11px;color:var(--faint);font-weight:600;
-  margin-left:auto;
-}
-.photo-slots{
-  display:grid;grid-template-columns:1fr 1fr;gap:10px;
-}
-.photo-slot{
-  aspect-ratio:1;border:2px dashed var(--line);
-  border-radius:12px;background:var(--sunk);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:4px;cursor:pointer;transition:.15s;
-  color:var(--sub);font-size:12px;font-weight:700;
-  position:relative;overflow:hidden;
-}
-.photo-slot:hover{
-  border-color:var(--posco);color:var(--posco);
-}
-.photo-slot-ico{font-size:24px;}
-.photo-slot.filled{
-  border-style:solid;border-color:var(--done);padding:0;
-}
-.photo-slot.filled img{
-  width:100%;height:100%;object-fit:cover;
-}
-.photo-slot-remove{
-  position:absolute;top:6px;right:6px;
-  width:24px;height:24px;border-radius:50%;
-  background:rgba(0,0,0,.7);color:#fff;border:none;
-  font-size:14px;cursor:pointer;font-family:inherit;
-  display:flex;align-items:center;justify-content:center;
-  z-index:1;
-}
-
-/* ═══════════════════════════════════════════
-   추가 조치사항
-   ═══════════════════════════════════════════ */
-.actions-list{
-  display:flex;flex-direction:column;gap:6px;
-  margin-bottom:10px;
-}
-.action-item{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 10px;background:var(--sunk);
-  border-radius:8px;font-size:12px;
-}
-.action-item-num{
-  flex-shrink:0;width:20px;height:20px;
-  border-radius:50%;background:var(--posco);color:#fff;
-  font-size:10px;font-weight:800;
-  display:grid;place-items:center;
-}
-.action-item-text{flex:1;color:var(--body);font-weight:600;}
-.action-item-remove{
-  flex-shrink:0;width:22px;height:22px;
-  border:none;background:transparent;
-  color:var(--faint);cursor:pointer;
-  font-size:16px;
-}
-.action-item-remove:hover{color:var(--stop);}
-
-.action-add-row{
-  display:flex;gap:8px;
-}
-.action-add-input{
-  flex:1;padding:9px 11px;border:1.5px solid var(--line);
-  border-radius:8px;font-size:12px;background:var(--sunk);
-  color:var(--ink);font-family:inherit;font-weight:500;
-}
-.action-add-input:focus{
-  outline:none;border-color:var(--posco);background:var(--card);
-}
-.action-add-btn{
-  padding:9px 14px;border:1.5px solid var(--posco);
-  border-radius:8px;background:var(--tint);
-  color:var(--posco);font-family:inherit;
-  font-size:12px;font-weight:800;cursor:pointer;
-  transition:.15s;
-}
-.action-add-btn:hover{background:var(--posco);color:#fff;}
-
-
-/* 종합 의견 */
-.section-title{
-  font-size:15px;font-weight:800;color:var(--ink);
-  margin-bottom:14px;letter-spacing:-.02em;
-  display:flex;align-items:center;gap:6px;
-  padding-bottom:10px;border-bottom:1.5px solid var(--line);
-}
-.form-section{
-  background:var(--card);border-radius:var(--r);padding:18px;
-  margin-bottom:12px;box-shadow:var(--sh);
-}
-.form-group{margin-bottom:12px;}
-.form-group:last-child{margin-bottom:0;}
-.f-label{
-  font-size:13px;font-weight:800;color:var(--body);
-  margin-bottom:6px;display:block;letter-spacing:-.02em;
-}
-.f-input,.f-textarea{
-  width:100%;padding:12px 14px;border:2px solid var(--line);
-  border-radius:11px;font-size:14px;background:var(--sunk);color:var(--ink);
-  font-family:inherit;font-weight:600;
-  transition:.15s;
-}
-.f-textarea{min-height:80px;resize:vertical;line-height:1.55;}
-.f-input:focus,.f-textarea:focus{
-  outline:none;border-color:var(--posco);background:var(--card);
-  box-shadow:0 0 0 3px rgba(0,103,177,.1);
-}
-.f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-/* 요약 카드 */
-.summary-card{
-  background:var(--card);border-radius:var(--r);padding:16px;
-  margin-bottom:12px;box-shadow:var(--sh);
-  border-left:4px solid var(--posco);
-}
-.summary-card.warning{border-left-color:var(--warn);background:var(--warn-bg);}
-.summary-card.danger{border-left-color:var(--stop);background:var(--stop-bg);}
-.summary-card.success{border-left-color:var(--done);background:var(--done-bg);}
-.summary-title{
-  font-size:13px;font-weight:800;margin-bottom:6px;letter-spacing:-.02em;
-}
-.summary-title.danger{color:var(--stop);}
-.summary-title.warning{color:var(--warn);}
-.summary-title.success{color:var(--done);}
-.summary-body{
-  font-size:13px;color:var(--body);line-height:1.6;font-weight:600;
-}
-.summary-stat{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;
-}
-.stat-item{
-  text-align:center;padding:8px 4px;
-  background:var(--card);border-radius:8px;
-}
-.stat-num{font-size:20px;font-weight:900;line-height:1;}
-.stat-num.done-c{color:var(--done);}
-.stat-num.stop-c{color:var(--stop);}
-.stat-num.warn-c{color:var(--warn);}
-.stat-num.sub-c{color:var(--sub);}
-.stat-label{font-size:10px;color:var(--sub);font-weight:700;margin-top:4px;}
-
-/* 버튼 */
-.btn-row{display:flex;gap:10px;margin-top:14px;margin-bottom:20px;}
-.btn-primary,.btn-secondary,.btn-danger,.btn-success{
-  flex:1;padding:16px;border:none;border-radius:13px;
+/* ═══ 일괄준수 버튼 ═══ */
+.bulk-apply-btn{
+  width:100%;padding:14px;margin:12px 0;
+  background:linear-gradient(135deg,var(--ok),#0E9E7A);
+  color:#fff;border:none;border-radius:14px;
   font-family:inherit;font-size:15px;font-weight:800;
-  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+  cursor:pointer;letter-spacing:-.02em;
+  box-shadow:0 4px 14px rgba(14,138,107,.28);
+  display:flex;align-items:center;justify-content:center;gap:8px;
 }
-.btn-primary:active,.btn-secondary:active,.btn-danger:active,.btn-success:active{
-  transform:scale(.98);
+.bulk-apply-btn:active{transform:scale(.98);}
+
+/* ═══ 추가 입력란 ═══ */
+.extra-section{
+  background:var(--card);border-radius:var(--r-s);padding:14px;
+  margin-bottom:10px;box-shadow:var(--sh);
 }
-.btn-primary{
-  background:linear-gradient(135deg,var(--deep),var(--bright));
-  color:#fff;box-shadow:0 4px 14px rgba(0,60,126,.28);
+.extra-title{
+  font-size:13px;font-weight:800;color:var(--body);
+  margin-bottom:8px;letter-spacing:-.02em;display:flex;align-items:center;gap:6px;
 }
-.btn-primary:disabled{
-  background:var(--line);color:var(--faint);
-  box-shadow:none;cursor:not-allowed;transform:none;
+.extra-textarea{
+  width:100%;padding:10px 12px;background:var(--sunk);
+  border:1.5px solid var(--line);border-radius:10px;
+  font-family:inherit;font-size:13px;color:var(--ink);
+  resize:vertical;min-height:70px;line-height:1.5;
 }
-.btn-secondary{
-  background:var(--card);color:var(--sub);
-  border:2px solid var(--line);
+.extra-textarea:focus{outline:none;border-color:var(--posco);background:var(--card);}
+.extra-textarea::placeholder{color:var(--faint);}
+
+/* ═══ 사진 첨부 (하단 통합) ═══ */
+.photo-section{
+  background:var(--card);border-radius:var(--r-s);padding:14px;
+  margin-bottom:10px;box-shadow:var(--sh);
 }
-.btn-danger{
-  background:linear-gradient(135deg,#8B1728,var(--stop));
-  color:#fff;box-shadow:0 4px 14px rgba(214,39,61,.28);
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.photo-slot{
+  aspect-ratio:1;background:var(--sunk);border:2px dashed var(--line);
+  border-radius:12px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  cursor:pointer;transition:.15s;position:relative;overflow:hidden;
 }
-.btn-success{
-  background:linear-gradient(135deg,#0B7A5F,var(--done));
-  color:#fff;box-shadow:0 4px 14px rgba(14,138,107,.28);
+.photo-slot:hover{border-color:var(--posco);background:var(--tint);}
+.photo-slot-ico{font-size:26px;color:var(--faint);}
+.photo-slot-txt{font-size:11px;color:var(--sub);font-weight:700;}
+.photo-slot img{width:100%;height:100%;object-fit:cover;
+  position:absolute;inset:0;}
+.photo-del{
+  position:absolute;top:6px;right:6px;
+  width:26px;height:26px;background:rgba(0,0,0,.7);
+  color:#fff;border:none;border-radius:50%;font-size:14px;
+  cursor:pointer;display:grid;place-items:center;
 }
 
-/* 완료 화면 */
-.complete-hero{
-  background:linear-gradient(158deg,#0B7A5F 0%,var(--done) 100%);
-  color:#fff;
-  border-radius:22px;padding:32px 22px 24px;text-align:center;margin-bottom:14px;
-  position:relative;overflow:hidden;
-  box-shadow:0 8px 24px rgba(14,138,107,.35);
+/* ═══ 긴급 작업중지 버튼 ═══ */
+.stop-work-cta{
+  background:var(--ng-bg);border:1.5px dashed var(--ng);
+  border-radius:var(--r-s);padding:12px;margin-bottom:12px;
+  text-align:center;
 }
-.complete-hero.warning{
-  background:linear-gradient(158deg,#8B5A00 0%,var(--warn) 100%);
-  box-shadow:0 8px 24px rgba(180,83,9,.35);
+.stop-work-hint{
+  font-size:12px;color:var(--ng);font-weight:700;margin-bottom:8px;
 }
-.complete-hero::after{
-  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
-  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
-  border-radius:50%;pointer-events:none;
+.stop-work-btn{
+  width:100%;padding:12px;background:linear-gradient(135deg,#8B1728,var(--ng));
+  color:#fff;border:none;border-radius:12px;
+  font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;
+  box-shadow:0 4px 12px rgba(214,39,61,.3);
+  display:flex;align-items:center;justify-content:center;gap:6px;
 }
-.complete-ico{
-  font-size:64px;margin-bottom:12px;line-height:1;position:relative;z-index:1;
-}
-.complete-title{
-  font-size:24px;font-weight:900;letter-spacing:-.035em;
-  position:relative;z-index:1;
-}
-.complete-sub{
-  font-size:14px;opacity:.9;margin-top:10px;
-  line-height:1.65;font-weight:600;position:relative;z-index:1;
-  white-space:pre-line;
-}
-.complete-no-box{
-  background:var(--card);border:2px solid var(--posco);
-  border-radius:var(--r);padding:18px;
-  text-align:center;margin-bottom:14px;box-shadow:var(--sh);
-}
-.complete-no-label{
-  font-size:11px;font-weight:800;color:var(--posco);
-  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
-}
-.complete-no-value{
-  font-size:22px;font-weight:900;color:var(--posco);
-  font-family:ui-monospace,monospace;letter-spacing:1px;
-}
+.stop-work-btn:active{transform:scale(.98);}
 
-.info-row{
-  display:flex;justify-content:space-between;align-items:baseline;
-  padding:9px 0;border-bottom:1px solid var(--line);
-  font-size:13.5px;gap:12px;
+/* ═══ 하단 버튼 ═══ */
+.bottom-btns{display:flex;gap:8px;padding:6px 0 4px;}
+.btn-cancel,.btn-save{
+  flex:1;padding:14px;border:none;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+  letter-spacing:-.02em;transition:.15s;
 }
-.info-row:last-child{border-bottom:none;}
-.info-key{color:var(--sub);font-weight:700;flex-shrink:0;}
-.info-val{color:var(--ink);font-weight:800;text-align:right;
-  max-width:60%;word-break:break-word;}
+.btn-cancel:active,.btn-save:active{transform:scale(.98);}
+.btn-cancel{background:var(--card);color:var(--sub);border:1.5px solid var(--line);}
+.btn-save{flex:2;background:linear-gradient(135deg,var(--deep),var(--posco));
+  color:#fff;box-shadow:0 4px 14px rgba(0,60,126,.28);}
+.btn-save:disabled{background:var(--line);color:var(--faint);
+  box-shadow:none;cursor:not-allowed;transform:none;}
 
-/* TOAST */
-.toast-wrap{
-  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+/* ═══ TOAST & 다이얼로그 ═══ */
+.toast-wrap{position:fixed;top:64px;left:50%;transform:translateX(-50%);
   z-index:9999;display:flex;flex-direction:column;gap:7px;
-  pointer-events:none;width:90%;max-width:390px;
-}
-.toast{
-  padding:13px 17px;border-radius:12px;
-  font-size:14px;font-weight:800;color:#fff;
-  box-shadow:0 4px 20px rgba(0,0,0,.22);
-  animation:tslide .3s ease;pointer-events:all;
-}
-.toast.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
-.toast.danger{background:linear-gradient(135deg,#8B1728,var(--stop));}
-.toast.info{background:linear-gradient(135deg,var(--deep),var(--bright));}
-.toast.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
-@keyframes tslide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+  pointer-events:none;width:90%;max-width:390px;}
+.toast{padding:13px 17px;border-radius:12px;font-size:14px;font-weight:800;
+  color:#fff;box-shadow:0 4px 20px rgba(0,0,0,.22);animation:tslide .3s ease;
+  pointer-events:all;letter-spacing:-.02em;}
+.toast.success{background:linear-gradient(135deg,#0B7A5F,var(--ok));}
+.toast.danger{background:linear-gradient(135deg,#8B1728,var(--ng));}
+.toast.warn{background:linear-gradient(135deg,#B45309,var(--part));}
+.toast.info{background:linear-gradient(135deg,var(--deep),var(--posco));}
+@keyframes tslide{from{opacity:0;transform:translateY(-12px);}
+  to{opacity:1;transform:translateY(0);}}
 
-/* 다이얼로그 */
-.custom-confirm-overlay{
-  position:fixed;inset:0;
-  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+.confirm-overlay{
+  position:fixed;inset:0;background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
   z-index:99999;opacity:0;pointer-events:none;transition:.25s;
   display:flex;align-items:center;justify-content:center;padding:20px;
 }
-.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
-.custom-confirm-modal{
-  width:100%;max-width:360px;background:var(--card);
-  border-radius:22px;padding:26px 22px 20px;
-  box-shadow:0 25px 70px rgba(0,0,0,.3);
-  transform:translateY(20px) scale(.95);
-  transition:transform .28s cubic-bezier(.32,.72,0,1);
-  max-height:85vh;overflow-y:auto;
+.confirm-overlay.active{opacity:1;pointer-events:auto;}
+.confirm-modal{
+  width:100%;max-width:340px;background:var(--card);border-radius:22px;
+  padding:26px 22px 20px;box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);transition:transform .28s;
 }
-.custom-confirm-overlay.active .custom-confirm-modal{
-  transform:translateY(0) scale(1);
-}
-.custom-confirm-icon{
-  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
-}
-.custom-confirm-title{
-  font-size:18px;font-weight:800;letter-spacing:-.035em;
-  color:var(--ink);text-align:center;margin-bottom:8px;line-height:1.35;
-}
-.custom-confirm-message{
-  font-size:14px;color:var(--sub);font-weight:600;
-  text-align:center;margin-bottom:20px;line-height:1.6;white-space:pre-wrap;
-}
-.custom-confirm-buttons{display:flex;gap:10px;}
-.custom-confirm-btn{
-  flex:1;padding:14px;border:0;border-radius:13px;
-  font-family:inherit;font-size:15px;font-weight:800;
-  cursor:pointer;letter-spacing:-.02em;transition:.15s;
-}
-.custom-confirm-btn:active{transform:scale(.97);}
-.custom-confirm-btn-cancel{background:var(--sunk);color:var(--sub);border:2px solid var(--line);}
-.custom-confirm-btn-confirm{background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;}
-.custom-confirm-btn-confirm.danger{background:linear-gradient(135deg,#8B1728,var(--stop));}
-.custom-confirm-btn-confirm.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
-.custom-confirm-btn-confirm.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
-
-@media(max-width:360px){
-  .judge-buttons{grid-template-columns:repeat(2,1fr);}
-  .judge-btn{padding:12px 4px;}
-  .summary-stat{grid-template-columns:repeat(2,1fr);}
-}
-@media(prefers-reduced-motion:reduce){
-  *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
-}
+.confirm-overlay.active .confirm-modal{transform:translateY(0) scale(1);}
+.confirm-icon{font-size:44px;text-align:center;margin-bottom:12px;}
+.confirm-title{font-size:18px;font-weight:800;color:var(--ink);
+  text-align:center;margin-bottom:8px;letter-spacing:-.035em;}
+.confirm-message{font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;white-space:pre-wrap;}
+.confirm-buttons{display:flex;gap:10px;}
+.confirm-btn{flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:.15s;}
+.confirm-btn:active{transform:scale(.97);}
+.confirm-btn-cancel{background:var(--sunk);color:var(--sub);
+  border:2px solid var(--line);}
+.confirm-btn-ok{background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;}
+.confirm-btn-ok.danger{background:linear-gradient(135deg,#8B1728,var(--ng));}
+.confirm-btn-ok.warn{background:linear-gradient(135deg,#B45309,var(--part));}
+.confirm-btn-ok.success{background:linear-gradient(135deg,#0B7A5F,var(--ok));}
 </style>
 </head>
 <body>
@@ -809,17 +335,16 @@ body{
 <div class="phone-screen">
 <div class="app">
 
-<!-- TOP NAV -->
+<!-- ═══ TOP NAV ═══ -->
 <nav class="topnav">
   <div class="topnav-l">
     <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
     <div class="topnav-title">
-      <span>📋</span>
-      <span>안전점검</span>
+      <span>🛡️</span><span>안전점검</span>
     </div>
   </div>
   <div class="topnav-r">
-    <div class="permit-badge" id="permitBadge"></div>
+    <div class="permit-badge" id="permitBadge">PTW-000</div>
     <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
     <button class="home-btn" onclick="goHome()">🏠</button>
   </div>
@@ -827,1377 +352,621 @@ body{
 
 <div class="toast-wrap" id="toastWrap"></div>
 
-<!-- ═══════════════════════════════════════
-     SCREEN 1: 작업 선택
-     ═══════════════════════════════════════ -->
-<div class="screen active" id="screen-select">
-  <div class="hero-inspection">
-    <div class="hero-ico">📋</div>
-    <div class="hero-title">안전점검</div>
-    <div class="hero-sub">
-      작업 현장의 안전상태를 점검합니다<br>
-      허가서의 통합 안전 체크리스트를 기준으로 확인하세요
+<div class="screen">
+
+  <!-- 점검자 정보 -->
+  <div class="inspector-card">
+    <div class="inspector-ico">👤</div>
+    <div class="inspector-body">
+      <div class="inspector-name" id="inspectorName">홍길동</div>
+      <div class="inspector-meta" id="inspectorMeta">안전관리팀 · 대리 · 시작 09:14</div>
     </div>
+    <button class="inspector-edit" onclick="editInspector()">✏️ 수정</button>
   </div>
 
-  <div class="today-works-section">
-    <div class="today-works-title">
-      <span>🎯</span>
-      <span>점검 대상 작업 선택</span>
-      <span class="today-works-count" id="todayWorksCount">0건</span>
-    </div>
-    <div class="today-works-hint">
-      💡 <strong>오늘 진행 중인 작업</strong>(허가완료·작업중)만 표시됩니다.<br>
-      점검할 작업을 선택하세요.
-    </div>
-    <div class="today-works-list" id="todayWorksList"></div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════
-     SCREEN 2: 점검 실시
-     ═══════════════════════════════════════ -->
-<div class="screen" id="screen-inspect">
-  <div id="permitInfoBanner"></div>
-
+  <!-- 진행률 -->
   <div class="progress-card">
     <div class="progress-top">
       <span class="progress-label">📊 점검 진행률</span>
-      <span class="progress-count"><span id="progressDone">0</span> / <span id="progressTotal">0</span></span>
+      <span class="progress-value">
+        <span id="progressCount">0</span>/23
+        <span class="ng-count" id="ngCount" style="display:none;">🚨 미준수 <span id="ngNum">0</span></span>
+      </span>
     </div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <!-- 체크리스트 -->
+  <div class="checklist" id="checklist"></div>
+
+  <!-- 일괄준수 -->
+  <button class="bulk-apply-btn" onclick="bulkApplyOk()">
+    <span>✅</span><span>미판정 항목 일괄 준수 처리</span>
+  </button>
+
+  <!-- 추가 입력란 -->
+  <div class="extra-section">
+    <div class="extra-title">📝 추가 확인사항 (선택)</div>
+    <textarea class="extra-textarea" id="extraNotes" 
+      placeholder="현장에서 추가로 확인한 사항이나 개선 필요 사항을 기재하세요"></textarea>
+  </div>
+
+  <!-- 사진 -->
+  <div class="photo-section">
+    <div class="extra-title">📷 현장 사진 (최대 2장)</div>
+    <div class="photo-grid">
+      <label class="photo-slot" id="photoSlot1" for="photoInput1">
+        <div class="photo-slot-ico">📷</div>
+        <div class="photo-slot-txt">사진 1</div>
+      </label>
+      <input type="file" id="photoInput1" accept="image/*" capture="environment" 
+             style="display:none" onchange="onPhotoSelect(event,1)">
+      <label class="photo-slot" id="photoSlot2" for="photoInput2">
+        <div class="photo-slot-ico">📷</div>
+        <div class="photo-slot-txt">사진 2</div>
+      </label>
+      <input type="file" id="photoInput2" accept="image/*" capture="environment" 
+             style="display:none" onchange="onPhotoSelect(event,2)">
     </div>
   </div>
 
-  <div id="checklistContainer"></div>
-
-  <div class="form-section">
-    <div class="section-title">
-      <span>📝</span>
-      <span>종합 의견 및 조치사항</span>
-    </div>
-    <div class="form-group">
-      <label class="f-label">종합 의견</label>
-      <textarea class="f-textarea" id="opinionInput" 
-                placeholder="점검 결과에 대한 종합 의견을 입력하세요"></textarea>
-    </div>
-    <div class="f-row">
-      <div class="form-group">
-        <label class="f-label">점검자 이름</label>
-        <input class="f-input" id="inspectorName" placeholder="홍길동">
-      </div>
-      <div class="form-group">
-        <label class="f-label">점검자 소속</label>
-        <input class="f-input" id="inspectorDept" placeholder="안전팀">
-      </div>
-    </div>
-  </div>
-
-  <div id="evaluationSummary"></div>
-
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="cancelInspection()">취소</button>
-    <button class="btn-primary" style="flex:2" onclick="submitInspection()">
-      ✅ 점검 완료 저장
+  <!-- 긴급 작업중지 CTA -->
+  <div class="stop-work-cta">
+    <div class="stop-work-hint">🛑 즉시 작업중지가 필요한 위험 상황인가요?</div>
+    <button class="stop-work-btn" onclick="triggerStopWork(false)">
+      <span>🚨</span><span>작업중지권 즉시 발동</span>
     </button>
   </div>
+
+  <!-- 저장 버튼 -->
+  <div class="bottom-btns">
+    <button class="btn-cancel" onclick="cancelCheck()">취소</button>
+    <button class="btn-save" onclick="saveCheck()">💾 저장하기</button>
+  </div>
+
 </div>
 
-<!-- ═══════════════════════════════════════
-     SCREEN 3: 완료
-     ═══════════════════════════════════════ -->
-<div class="screen" id="screen-complete">
-  <div class="complete-hero" id="completeHero">
-    <div class="complete-ico" id="completeIco">✅</div>
-    <div class="complete-title" id="completeTitle">점검 완료</div>
-    <div class="complete-sub" id="completeSub">안전점검이 정상적으로 저장되었습니다.</div>
-  </div>
-
-  <div class="complete-no-box">
-    <div class="complete-no-label">📋 점검 번호</div>
-    <div class="complete-no-value" id="finalInspectionNo">-</div>
-  </div>
-
-  <div class="form-section">
-    <div class="section-title">
-      <span>📊</span>
-      <span>점검 결과 요약</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">작업명</span>
-      <span class="info-val" id="finalWorkName">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">허가서 번호</span>
-      <span class="info-val" id="finalPermitNo">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">점검 항목</span>
-      <span class="info-val" id="finalTotalItems">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">준수 항목</span>
-      <span class="info-val" id="finalOkCount" style="color:var(--done);">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">미준수 항목</span>
-      <span class="info-val" id="finalNgCount" style="color:var(--stop);">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">부분 준수</span>
-      <span class="info-val" id="finalPartialCount" style="color:var(--warn);">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">점검자</span>
-      <span class="info-val" id="finalInspector">-</span>
-    </div>
-    <div class="info-row">
-      <span class="info-key">점검 시각</span>
-      <span class="info-val" id="finalDatetime">-</span>
-    </div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="startNewInspection()">추가 점검</button>
-    <button class="btn-primary" style="flex:2" onclick="goHome()">🏠 대시보드</button>
-  </div>
-</div>
-
-</div><!-- /.app -->
+</div></div></div>
 
 <!-- 커스텀 다이얼로그 -->
-<div class="custom-confirm-overlay" id="customConfirmOverlay">
-  <div class="custom-confirm-modal">
-    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
-    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
-    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
-    <div class="custom-confirm-buttons" id="customConfirmButtons">
-      <button class="custom-confirm-btn custom-confirm-btn-cancel" onclick="customConfirmClose(false)">취소</button>
-      <button class="custom-confirm-btn custom-confirm-btn-confirm" id="customConfirmOk" onclick="customConfirmClose(true)">확인</button>
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <div class="confirm-icon" id="confirmIcon">⚠️</div>
+    <div class="confirm-title" id="confirmTitle">확인</div>
+    <div class="confirm-message" id="confirmMessage">진행하시겠습니까?</div>
+    <div class="confirm-buttons">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeConfirm(false)">취소</button>
+      <button class="confirm-btn confirm-btn-ok" id="confirmOk" onclick="closeConfirm(true)">확인</button>
     </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════
-// 안전점검 v2.0 - JavaScript
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// 안전점검 v3.0 - 컴팩트 체크리스트
+// ═══════════════════════════════════════
+var CHECKLIST_ITEMS = [
+  {no:1,  text:'작업허가서 발급 및 게시 확인',      required:true},
+  {no:2,  text:'작업 전 TBM(위험성평가) 실시',       required:true},
+  {no:3,  text:'개인보호구(PPE) 착용 상태',          required:true},
+  {no:4,  text:'전원 차단 및 LOTO 실시',             required:true},
+  {no:5,  text:'잔류에너지 및 잔류물 제거',          required:true},
+  {no:6,  text:'회전체 정지 및 무동력 확인',         required:true},
+  {no:7,  text:'밀폐공간 산소·유해가스 측정',        required:true},
+  {no:8,  text:'화기작업 시 소화기 비치',            required:false},
+  {no:9,  text:'고소작업 안전대·안전난간 확인',      required:true},
+  {no:10, text:'중량물 취급 크레인·슬링 점검',       required:false},
+  {no:11, text:'감시자 배치 및 통신수단 확보',       required:false},
+  {no:12, text:'비상연락망 및 대피경로 확인',        required:false},
+  {no:13, text:'작업구역 출입통제 및 표지판',        required:false},
+  {no:14, text:'조명 및 시야 확보 상태',             required:false},
+  {no:15, text:'절연공구 및 접지 상태',              required:false},
+  {no:16, text:'인화성 물질 격리 조치',              required:false},
+  {no:17, text:'환기설비 가동 상태',                 required:false},
+  {no:18, text:'작업발판·계단 안전 상태',            required:false},
+  {no:19, text:'정리정돈 및 통로 확보',              required:false},
+  {no:20, text:'유해화학물질 MSDS 비치',             required:false},
+  {no:21, text:'작업자 건강상태 및 피로도',          required:false},
+  {no:22, text:'기상 조건(강풍·강우) 확인',          required:false},
+  {no:23, text:'주변 동시작업 간섭 여부',            required:false}
+];
 
-var inspectionData = {
-  inspectionNo: '',
-  workId: '',
-  permitNo: '',
-  riskId: '',
-  workName: '',
-  location: '',
-  company: '',
-  workTypes: [],
-  riskLevel: '',
-  items: [],
-  opinion: '',
-  inspectorName: '',
-  inspectorDept: '',
-  hasCritical: false,
-  status: '완료',
-  createdAt: '',
-  createdBy: ''
-};
+var checkState = {};
+var startTime = new Date();
+var inspector = { name:'홍길동', dept:'안전관리팀', position:'대리' };
+var photos = { p1:null, p2:null };
+var permitNo = '';
+var workId = '';
+var workName = '';
+var location = '';
 
-var selectedPermit = null;
-
-// ═══════════════════════════════════════════════════
-// 커스텀 다이얼로그
-// ═══════════════════════════════════════════════════
-var customConfirmCallback = null;
-
-function showCustomConfirm(options, callback){
-  var opts = typeof options === 'string' ? { message: options } : (options || {});
-  var iconEl = document.getElementById('customConfirmIcon');
-  var titleEl = document.getElementById('customConfirmTitle');
-  var messageEl = document.getElementById('customConfirmMessage');
-  var okBtn = document.getElementById('customConfirmOk');
-  var overlay = document.getElementById('customConfirmOverlay');
-  var buttonsEl = document.getElementById('customConfirmButtons');
-  
-  if(!overlay){
-    var r = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
-    if(callback) callback(r);
-    return;
-  }
-  
-  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
-  if(titleEl) titleEl.textContent = opts.title || '확인';
-  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
-  
-  if(okBtn){
-    okBtn.textContent = opts.okText || '확인';
-    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
-    if(opts.okType === 'danger') okBtn.classList.add('danger');
-    else if(opts.okType === 'warn') okBtn.classList.add('warn');
-    else if(opts.okType === 'success') okBtn.classList.add('success');
-  }
-  
-  if(buttonsEl){
-    if(opts.alertOnly) buttonsEl.querySelector('.custom-confirm-btn-cancel').style.display = 'none';
-    else buttonsEl.querySelector('.custom-confirm-btn-cancel').style.display = '';
-  }
-  
-  customConfirmCallback = callback || function(){};
-  overlay.classList.add('active');
-}
-
-function customConfirmClose(result){
-  var overlay = document.getElementById('customConfirmOverlay');
-  if(overlay) overlay.classList.remove('active');
-  var cb = customConfirmCallback;
-  customConfirmCallback = null;
-  if(typeof cb === 'function') setTimeout(function(){ cb(result); }, 150);
-}
-
-function showCustomAlert(options, callback){
-  var opts = typeof options === 'string' ? { message: options } : (options || {});
-  opts.alertOnly = true;
-  showCustomConfirm(opts, callback);
-}
-
-// ═══════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════
+// ═══ INIT ═══
 window.addEventListener('DOMContentLoaded', function(){
   initTheme();
-  loadTodayWorks();
+  loadInspectorFromSession();
+  loadPermitFromUrl();
+  renderChecklist();
+  updateProgress();
+  updateInspectorDisplay();
   
-  // URL 파라미터로 permitNo 직접 지정된 경우 자동 선택
-  var params = new URLSearchParams(window.location.search);
-  var permitNo = params.get('permitNo');
-  if(permitNo){
-    setTimeout(function(){
-      var item = document.querySelector('[data-permitno="' + permitNo + '"]');
-      if(item) selectTodayWork(item);
-    }, 500);
-  }
-  
+  // ESC
   document.addEventListener('keydown', function(e){
     if(e.key === 'Escape'){
-      var overlay = document.getElementById('customConfirmOverlay');
-      if(overlay && overlay.classList.contains('active')){
-          customConfirmClose(false);
-      }
+      var ov = document.getElementById('confirmOverlay');
+      if(ov && ov.classList.contains('active')) closeConfirm(false);
     }
+  });
+  document.getElementById('confirmOverlay').addEventListener('click', function(e){
+    if(e.target === this) closeConfirm(false);
   });
 });
 
-// ═══════════════════════════════════════════════════
-// THEME
-// ═══════════════════════════════════════════════════
-function initTheme(){
-  var saved = localStorage.getItem('theme') || 'light';
-  document.documentElement.setAttribute('data-theme', saved);
-  updateThemeBtn(saved);
-}
-function toggleTheme(){
-  var cur = document.documentElement.getAttribute('data-theme');
-  var next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  updateThemeBtn(next);
-}
-function updateThemeBtn(t){
-  var btn = document.getElementById('themeBtn');
-  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+// ═══ 세션에서 점검자 정보 로드 ═══
+function loadInspectorFromSession(){
+  try{
+    var raw = localStorage.getItem('appSession');
+    if(!raw) return;
+    var s = JSON.parse(raw);
+    if(s.name) inspector.name = s.name;
+    if(s.dept || s.department) inspector.dept = s.dept || s.department;
+    if(s.position) inspector.position = s.position;
+  }catch(e){}
 }
 
-// ═══════════════════════════════════════════════════
-// TOAST
-// ═══════════════════════════════════════════════════
-function showToast(msg, type){
-  type = type || 'info';
-  var wrap = document.getElementById('toastWrap');
-  if(!wrap) return;
-  var el = document.createElement('div');
-  el.className = 'toast ' + type;
-  el.textContent = msg;
-  wrap.appendChild(el);
-  setTimeout(function(){
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-10px)';
-    el.style.transition = '.3s';
-    setTimeout(function(){ el.remove(); }, 300);
-  }, 2500);
+function updateInspectorDisplay(){
+  var timeStr = pad(startTime.getHours()) + ':' + pad(startTime.getMinutes());
+  document.getElementById('inspectorName').textContent = inspector.name;
+  document.getElementById('inspectorMeta').textContent = 
+    inspector.dept + ' · ' + inspector.position + ' · 시작 ' + timeStr;
 }
 
-// ═══════════════════════════════════════════════════
-// 화면 전환
-// ═══════════════════════════════════════════════════
-function showScreen(id){
-  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-  var target = document.getElementById(id);
-  if(target){ 
-    target.classList.add('active'); 
-    window.scrollTo(0, 0);
-  }
+function editInspector(){
+  var name = prompt('이름', inspector.name);
+  if(name === null) return;
+  var dept = prompt('부서', inspector.dept);
+  if(dept === null) return;
+  var pos = prompt('직위', inspector.position);
+  if(pos === null) return;
+  inspector.name = name || inspector.name;
+  inspector.dept = dept || inspector.dept;
+  inspector.position = pos || inspector.position;
+  updateInspectorDisplay();
+  showToast('점검자 정보 수정됨', 'success');
 }
 
-function goBack(){
-  var currentActive = document.querySelector('.screen.active');
-  if(!currentActive){ goHome(); return; }
-  
-  if(currentActive.id === 'screen-inspect'){
-    showCustomConfirm({
-      icon: '⚠️', title: '점검을 취소하시겠습니까?',
-      message: '작성 중인 내용은 저장되지 않습니다.',
-      okText: '취소하기', okType: 'danger'
-    }, function(ok){
-      if(ok){
-        selectedPermit = null;
-        resetInspectionData();
-        document.getElementById('permitBadge').classList.remove('show');
-        showScreen('screen-select');
-        loadTodayWorks();
+// ═══ URL에서 허가서 정보 로드 ═══
+function loadPermitFromUrl(){
+  try{
+    var params = new URLSearchParams(window.location.search);
+    permitNo = params.get('permitNo') || 'PTW-' + fmtDate(new Date()).replace(/-/g,'') + '-001';
+    workId = params.get('workId') || '';
+    document.getElementById('permitBadge').textContent = permitNo;
+    
+    if(workId){
+      var raw = localStorage.getItem('safetyDatabase');
+      if(raw){
+        var db = JSON.parse(raw);
+        var work = (db.workHistory || []).find(function(w){
+          var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
+          return wid === workId;
+        });
+        if(work){
+          workName = work.workName || work.workNameFull || '';
+          location = work.locationRaw || (work.location && work.location.raw) || '';
+        }
       }
-    });
-  } else if(currentActive.id === 'screen-complete'){
-    goHome();
-  } else {
-    goHome();
+    }
+  }catch(e){}
+}
+
+// ═══ 체크리스트 렌더링 ═══
+function renderChecklist(){
+  var html = '';
+  CHECKLIST_ITEMS.forEach(function(item){
+    html += renderCheckItem(item);
+  });
+  document.getElementById('checklist').innerHTML = html;
+}
+
+function renderCheckItem(item){
+  return '' +
+    '<div class="check-item" id="item-' + item.no + '">' +
+      '<div class="ci-top">' +
+        '<div class="ci-num">' + item.no + '</div>' +
+        '<div class="ci-text">' +
+          escHtml(item.text) +
+          (item.required ? '<span class="ci-req">필수</span>' : '') +
+        '</div>' +
+        '<button class="ci-memo-btn" id="memo-btn-' + item.no + '" onclick="toggleMemo(' + item.no + ')">💬</button>' +
+      '</div>' +
+      '<div class="ci-buttons">' +
+        '<button class="ci-btn" onclick="setJudgment(' + item.no + ',\'ok\')" data-j="ok">⭕ 준수</button>' +
+        '<button class="ci-btn" onclick="setJudgment(' + item.no + ',\'ng\')" data-j="ng">❌ 미준수</button>' +
+        '<button class="ci-btn" onclick="setJudgment(' + item.no + ',\'part\')" data-j="part">△ 부분</button>' +
+        '<button class="ci-btn" onclick="setJudgment(' + item.no + ',\'na\')" data-j="na">− NA</button>' +
+      '</div>' +
+      '<textarea class="ci-memo-input" id="memo-' + item.no + '" placeholder="사유·비고 (선택)" onchange="saveMemo(' + item.no + ')"></textarea>' +
+    '</div>';
+}
+
+// ═══ 판정 처리 ═══
+function setJudgment(no, judgment){
+  checkState[no] = checkState[no] || {};
+  checkState[no].judgment = judgment;
+  
+  var item = document.getElementById('item-' + no);
+  item.classList.remove('done-ok','done-ng','done-part','done-na');
+  item.classList.add('done-' + judgment);
+  
+  var btns = item.querySelectorAll('.ci-btn');
+  btns.forEach(function(b){
+    b.classList.remove('active-ok','active-ng','active-part','active-na');
+    if(b.getAttribute('data-j') === judgment){
+      b.classList.add('active-' + judgment);
+    }
+  });
+  
+  // 미준수/부분 선택 시 메모창 자동 오픈
+  if(judgment === 'ng' || judgment === 'part'){
+    var memoBtn = document.getElementById('memo-btn-' + no);
+    var memoInput = document.getElementById('memo-' + no);
+    if(!memoInput.classList.contains('show')){
+      memoInput.classList.add('show');
+      memoBtn.classList.add('has-memo');
+    }
+  }
+  
+  updateProgress();
+}
+
+function toggleMemo(no){
+  var input = document.getElementById('memo-' + no);
+  var btn = document.getElementById('memo-btn-' + no);
+  input.classList.toggle('show');
+  if(input.classList.contains('show')){
+    btn.classList.add('has-memo');
+    input.focus();
+  } else if(!input.value.trim()){
+    btn.classList.remove('has-memo');
   }
 }
 
+function saveMemo(no){
+  var input = document.getElementById('memo-' + no);
+  var btn = document.getElementById('memo-btn-' + no);
+  checkState[no] = checkState[no] || {};
+  checkState[no].memo = input.value.trim();
+  if(checkState[no].memo){
+    btn.classList.add('has-memo');
+  } else {
+    btn.classList.remove('has-memo');
+  }
+}
+
+// ═══ 진행률 업데이트 ═══
+function updateProgress(){
+  var done = 0, ng = 0;
+  CHECKLIST_ITEMS.forEach(function(item){
+    var s = checkState[item.no];
+    if(s && s.judgment) done++;
+    if(s && s.judgment === 'ng') ng++;
+  });
+  
+  document.getElementById('progressCount').textContent = done;
+  document.getElementById('progressFill').style.width = (done/23*100) + '%';
+  
+  var ngWrap = document.getElementById('ngCount');
+  if(ng > 0){
+    ngWrap.style.display = 'inline';
+    document.getElementById('ngNum').textContent = ng;
+  } else {
+    ngWrap.style.display = 'none';
+  }
+}
+
+// ═══ 일괄준수 ═══
+function bulkApplyOk(){
+  var unchecked = CHECKLIST_ITEMS.filter(function(item){
+    return !checkState[item.no] || !checkState[item.no].judgment;
+  });
+  
+  if(unchecked.length === 0){
+    showToast('이미 모든 항목이 판정되었습니다', 'info');
+    return;
+  }
+  
+  showConfirm({
+    icon:'✅',
+    title:'일괄 준수 처리',
+    message:'미판정 ' + unchecked.length + '개 항목을\n모두 "준수"로 처리하시겠습니까?\n\n이력에 [일괄처리]로 기록됩니다.',
+    okText:'일괄 처리',
+    okType:'success'
+  }, function(ok){
+    if(!ok) return;
+    unchecked.forEach(function(item){
+      checkState[item.no] = { judgment:'ok', memo:'', appliedByAll:true };
+      var el = document.getElementById('item-' + item.no);
+      el.classList.add('done-ok');
+      var btns = el.querySelectorAll('.ci-btn');
+      btns.forEach(function(b){
+        if(b.getAttribute('data-j') === 'ok') b.classList.add('active-ok');
+      });
+    });
+    updateProgress();
+    showToast('✅ ' + unchecked.length + '개 항목 일괄 준수 처리됨', 'success');
+  });
+}
+
+// ═══ 사진 첨부 ═══
+function onPhotoSelect(event, slot){
+  var file = event.target.files[0];
+  if(!file) return;
+  if(file.size > 5*1024*1024){
+    showToast('사진 크기가 5MB를 초과합니다', 'warn');
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    photos['p'+slot] = e.target.result;
+    var slotEl = document.getElementById('photoSlot'+slot);
+    slotEl.innerHTML = '<img src="' + e.target.result + '"><button class="photo-del" onclick="removePhoto(event,' + slot + ')">×</button>';
+    showToast('사진 ' + slot + ' 첨부됨', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(event, slot){
+  event.preventDefault();
+  event.stopPropagation();
+  photos['p'+slot] = null;
+  var slotEl = document.getElementById('photoSlot'+slot);
+  slotEl.innerHTML = '<div class="photo-slot-ico">📷</div><div class="photo-slot-txt">사진 ' + slot + '</div>';
+  document.getElementById('photoInput'+slot).value = '';
+}
+
+// ═══ 저장 ═══
+function saveCheck(){
+  var done = 0, ng = 0, ngRequired = [];
+  CHECKLIST_ITEMS.forEach(function(item){
+    var s = checkState[item.no];
+    if(s && s.judgment){
+      done++;
+      if(s.judgment === 'ng'){
+        ng++;
+        if(item.required) ngRequired.push(item);
+      }
+    }
+  });
+  
+  if(done < 23){
+    showConfirm({
+      icon:'⚠️',
+      title:'미판정 항목 있음',
+      message:(23-done) + '개 항목이 미판정 상태입니다.\n그래도 저장하시겠습니까?',
+      okText:'저장',
+      okType:'warn'
+    }, function(ok){
+      if(ok) executeSave(ngRequired);
+    });
+    return;
+  }
+  
+  executeSave(ngRequired);
+}
+
+function executeSave(ngRequired){
+  var record = {
+    inspectionNo: 'INS-' + fmtDate(new Date()).replace(/-/g,'') + '-' + Date.now().toString().slice(-4),
+    permitNo: permitNo,
+    workId: workId,
+    workName: workName,
+    location: location,
+    inspector: inspector,
+    startTime: startTime.toISOString(),
+    endTime: new Date().toISOString(),
+    items: CHECKLIST_ITEMS.map(function(item){
+      var s = checkState[item.no] || {};
+      return {
+        no: item.no,
+        text: item.text,
+        required: item.required,
+        judgment: s.judgment || null,
+        memo: s.memo || '',
+        appliedByAll: s.appliedByAll || false
+      };
+    }),
+    extraNotes: document.getElementById('extraNotes').value.trim(),
+    photos: [photos.p1, photos.p2].filter(function(p){return p;}),
+    createdAt: new Date().toISOString()
+  };
+  
+  try{
+    var list = JSON.parse(localStorage.getItem('safetyInspections') || '[]');
+    list.push(record);
+    localStorage.setItem('safetyInspections', JSON.stringify(list));
+    
+    // 필수 항목 미준수 → 작업중지권 자동 발동
+    if(ngRequired.length > 0){
+      showConfirm({
+        icon:'🚨',
+        title:'중대 위반 감지',
+        message:'필수 항목 ' + ngRequired.length + '건이 미준수입니다.\n\n작업중지권 화면으로 이동합니다.\n(안전점검은 저장되었습니다)',
+        okText:'이동',
+        okType:'danger'
+      }, function(){
+        triggerStopWork(true, ngRequired, record);
+      });
+      return;
+    }
+    
+    showToast('✅ 안전점검이 저장되었습니다', 'success');
+    setTimeout(function(){ goHome(); }, 1200);
+    
+  }catch(e){
+    showToast('저장 실패: ' + e.message, 'danger');
+  }
+}
+
+// ═══ 작업중지권 발동 ═══
+function triggerStopWork(auto, violations, savedRecord){
+  var stopData = {
+    workId: workId,
+    permitNo: permitNo,
+    workName: workName,
+    location: location,
+    stopDescription: auto 
+      ? '안전점검 중 필수 항목 ' + (violations||[]).length + '건 미준수로 자동 발동'
+      : '안전점검 진행 중 위험 감지로 즉시 발동',
+    stopReasons: ['기타 위험'],
+    requesterName: inspector.name,
+    requesterDept: inspector.dept,
+    requesterPosition: inspector.position,
+    violations: (violations || []).map(function(v){
+      var s = checkState[v.no] || {};
+      return {
+        no: v.no,
+        text: v.text,
+        memo: s.memo || '(사유 미기재)'
+      };
+    }),
+    fromInspection: true,
+    inspectionNo: savedRecord ? savedRecord.inspectionNo : null,
+    triggerAt: new Date().toISOString()
+  };
+  
+  if(!auto){
+    // 수동 발동 시 확인
+    showConfirm({
+      icon:'🚨',
+      title:'작업중지권 발동',
+      message:'즉시 작업중지권 화면으로 이동합니다.\n\n현재까지의 판정은 임시저장됩니다.',
+      okText:'이동',
+      okType:'danger'
+    }, function(ok){
+      if(!ok) return;
+      // 판정 임시저장
+      localStorage.setItem('inspectionDraft', JSON.stringify({
+        checkState: checkState,
+        photos: photos,
+        extraNotes: document.getElementById('extraNotes').value.trim(),
+        savedAt: new Date().toISOString()
+      }));
+      localStorage.setItem('pendingStopWorkOrder', JSON.stringify(stopData));
+      window.location.href = '작업중지권_v2.html?from=inspection';
+    });
+    return;
+  }
+  
+  // 자동 발동
+  localStorage.setItem('pendingStopWorkOrder', JSON.stringify(stopData));
+  window.location.href = '작업중지권_v2.html?from=inspection';
+}
+
+// ═══ 취소 (이어서) ═══
+function cancelCheck(){
+  var hasData = Object.keys(checkState).length > 0;
+  if(!hasData){ goHome(); return; }
+  showConfirm({
+    icon:'⚠️',
+    title:'작성 취소',
+    message:'작성 중인 내용이 삭제됩니다.\n계속하시겠습니까?',
+    okText:'취소하고 나가기',
+    okType:'warn'
+  }, function(ok){
+    if(ok) goHome();
+  });
+}
+
+// ═══ 홈 / 뒤로가기 ═══
 function goHome(){
   window.location.href = '안전관리플랫폼_대시보드_V6_.html';
 }
 
-// ═══════════════════════════════════════════════════
-// 오늘 작업 목록 (허가완료·작업중 허가서)
-// ═══════════════════════════════════════════════════
-function loadTodayWorks(){
-  var listEl = document.getElementById('todayWorksList');
-  var countEl = document.getElementById('todayWorksCount');
-  if(!listEl) return;
-  
-  // ═══ 세션 확인 (테스터 여부) ═══
-  var isTester = false;
-  try {
-    var session = JSON.parse(sessionStorage.getItem('appSession') || 'null');
-    isTester = session && session.accessMode === 'tester' && session.role === 'tester';
-  } catch(e){}
-  
-  console.log('[안전점검] 세션 모드:', isTester ? '테스터' : '일반');
-  
-  // ═══ 허가서 로드 (테스터/일반 모두 확인) ═══
-  var permits = [];
-  var storageKey = '';
-  
-  // 1순위: 세션에 맞는 키
-  var primaryKey = isTester ? 'testerSafetyPermits' : 'safetyPermits';
-  try {
-    var raw = localStorage.getItem(primaryKey);
-    if(raw){
-      var parsed = JSON.parse(raw);
-      if(Array.isArray(parsed) && parsed.length > 0){
-        permits = parsed;
-        storageKey = primaryKey;
-      }
-    }
-  } catch(e){}
-  
-  // 2순위: 그래도 없으면 반대편도 확인
-  if(permits.length === 0){
-    var altKey = isTester ? 'safetyPermits' : 'testerSafetyPermits';
-    try {
-      var raw2 = localStorage.getItem(altKey);
-      if(raw2){
-        var parsed2 = JSON.parse(raw2);
-        if(Array.isArray(parsed2) && parsed2.length > 0){
-          permits = parsed2;
-          storageKey = altKey;
-        }
-      }
-    } catch(e){}
-  }
-  
-  console.log('[안전점검] 허가서 로드:', storageKey, permits.length + '건');
-  
-  // ═══ 오늘 날짜 ═══
-  var today = new Date();
-  var todayStr = today.getFullYear() + '-' + 
-    String(today.getMonth()+1).padStart(2,'0') + '-' + 
-    String(today.getDate()).padStart(2,'0');
-  
-  // ═══ 필터링: 허가완료/작업중 & 오늘 작업 ═══
-  var todayPermits = permits.filter(function(p){
-    if(!p || typeof p !== 'object') return false;
-    
-    // ─── 상태 확인 ───
-    var statusCode = (p.statusCode || '').toString();
-    var status = (p.status || p.permitStatus || '').toString();
-    
-    // approved, inProgress, tbmCompleted (승인 후 상태만)
-    var isActive = 
-      statusCode === 'approved' || 
-      statusCode === 'inProgress' || 
-      statusCode === 'tbmCompleted' ||
-      status === '허가완료' || 
-      status === '작업중' ||
-      status === 'TBM 완료';
-    
-    if(!isActive) return false;
-    
-    // ─── 날짜 확인 (startDate ~ endDate 사이에 오늘 포함) ───
-    var startDate = (p.startDate || '').substring(0, 10);
-    var endDate = (p.endDate || startDate).substring(0, 10);
-    
-    // 날짜 필드가 없으면 통과 (개발 편의)
-    if(!startDate) return true;
-    
-    return startDate <= todayStr && todayStr <= endDate;
-  });
-  
-  console.log('[안전점검] 오늘 진행 중 작업:', todayPermits.length + '건');
-  countEl.textContent = todayPermits.length + '건';
-  
-  // ═══ 빈 상태 처리 (디버그 정보 포함) ═══
-  if(todayPermits.length === 0){
-    var debugInfo = '';
-    if(permits.length > 0){
-      var samplePermit = permits[0];
-      debugInfo = 
-        '<div style="margin-top:12px;padding:10px;background:#FFF3CD;border-radius:8px;font-size:11px;color:#856404;text-align:left;line-height:1.6;">' +
-          '<strong>🔍 디버그 정보</strong><br>' +
-          '━━━━━━━━━━━━━━━━━━━━━<br>' +
-          '<strong>저장 키:</strong> ' + storageKey + '<br>' +
-          '<strong>전체 허가서:</strong> ' + permits.length + '건<br>' +
-          '<strong>오늘 날짜:</strong> ' + todayStr + '<br><br>' +
-          '<strong>첫 번째 허가서 샘플:</strong><br>' +
-          '• 허가번호: ' + (samplePermit.permitNo || '(없음)') + '<br>' +
-          '• 상태코드: ' + (samplePermit.statusCode || '(없음)') + '<br>' +
-          '• 상태명: ' + (samplePermit.status || samplePermit.permitStatus || '(없음)') + '<br>' +
-          '• 시작일: ' + (samplePermit.startDate || '(없음)') + '<br>' +
-          '• 종료일: ' + (samplePermit.endDate || '(없음)') + '<br>' +
-          '• 작업명: ' + (samplePermit.workName || '(없음)') + '<br><br>' +
-          '<em>💡 상태가 <strong>허가완료(approved)</strong> 또는 <strong>작업중(inProgress)</strong>이고,<br>' +
-          '오늘 날짜(' + todayStr + ')가 시작일~종료일 사이여야 표시됩니다.</em>' +
-        '</div>';
-    } else {
-      debugInfo = 
-        '<div style="margin-top:12px;padding:10px;background:#FEE;border-radius:8px;font-size:11px;color:#721C24;text-align:left;">' +
-          '<strong>⚠️ localStorage에서 허가서를 찾지 못함</strong><br><br>' +
-          '<strong>확인 사항:</strong><br>' +
-          '1. 허가서를 저장했는지 확인<br>' +
-          '2. 같은 브라우저에서 실행하는지 확인<br>' +
-          '3. 시크릿 모드가 아닌지 확인' +
-        '</div>';
-    }
-    
-    listEl.innerHTML = 
-      '<div class="today-works-empty">' +
-        '<span class="today-works-empty-ico">📭</span>' +
-        '오늘 진행 중인 작업이 없습니다.<br>' +
-        '허가서가 <strong>허가완료</strong> 또는 <strong>작업중</strong> 상태여야 합니다.' +
-        debugInfo +
-      '</div>';
-    return;
-  }
-  
-  // ═══ 리스트 렌더링 ═══
-  var html = '';
-  todayPermits.forEach(function(p, idx){
-    var permitNo = p.permitNo || ('PTW-' + (idx+1));
-    var workName = p.workName || '작업명 미상';
-    
-    // 장소 조합
-    var location = '';
-    if(p.location) location = p.location;
-    if(p.detailLocation) location += (location ? ' ' : '') + p.detailLocation;
-    if(!location) location = '-';
-    
-    var company = p.companyName || p.company || '-';
-    
-    // 위험도
-    var riskLevel = (p.riskSnapshot && p.riskSnapshot.finalRiskLevel) || 
-                    p.riskLevel || p.overallRisk || '';
-    var isHigh = riskLevel === '고위험' || riskLevel === '매우고위험';
-    
-    // 작업유형
-    var workTypes = p.workTypes || [];
-    if(!Array.isArray(workTypes)) workTypes = [];
-    
-    var WORK_TYPE_LABELS = {
-      general:'일반', fire:'화기', electric:'전기', height:'고소',
-      'electric-live':'충전', heavy:'중량물', confined:'밀폐공간'
-    };
-    var typesText = workTypes.length 
-      ? workTypes.slice(0,2).map(function(t){ return WORK_TYPE_LABELS[t] || t; }).join('·')
-      : '일반';
-    
-    // 상태 표시
-    var statusText = '';
-    var statusCode = p.statusCode || '';
-    if(statusCode === 'approved') statusText = '허가완료';
-    else if(statusCode === 'inProgress') statusText = '작업중';
-    else if(statusCode === 'tbmCompleted') statusText = 'TBM완료';
-    else statusText = p.status || '진행중';
-    
-    html += 
-      '<div class="today-work-item" data-idx="' + idx + '" onclick="selectTodayWork(this)">' +
-        '<div class="today-work-radio"></div>' +
-        '<div class="today-work-body">' +
-          '<div class="today-work-name">' + escapeHtml(workName) + '</div>' +
-          '<div class="today-work-meta">' +
-            '<span>📍 ' + escapeHtml(location) + '</span>' +
-            '<span>🏢 ' + escapeHtml(company) + '</span>' +
-          '</div>' +
-          '<div class="today-work-permit">📋 ' + escapeHtml(permitNo) + ' · ' + 
-            escapeHtml(typesText) + ' · <strong>' + escapeHtml(statusText) + '</strong>' +
-          '</div>' +
-        '</div>' +
-        '<span class="today-work-badge ' + (isHigh ? 'high' : 'normal') + '">' +
-          (isHigh ? '고위험' : '일반') +
-        '</span>' +
-      '</div>';
-    
-    // 데이터 임시 저장
-    window['_permit_' + idx] = p;
-  });
-  
-  listEl.innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════════
-// 작업 선택 → 체크리스트 로드
-// ═══════════════════════════════════════════════════
-function selectTodayWork(el){
-  document.querySelectorAll('.today-work-item').forEach(function(i){
-    i.classList.remove('selected');
-  });
-  el.classList.add('selected');
-  
-  var idx = el.getAttribute('data-idx');
-  var permit = window['_permit_' + idx];
-  if(!permit){
-    showToast('허가서 데이터를 불러올 수 없습니다', 'danger');
-    return;
-  }
-  
-  selectedPermit = permit;
-  console.log('[안전점검] 선택된 허가서:', permit.permitNo, permit);
-  
-  setTimeout(function(){
-    startInspection();
-  }, 200);
-}
-
-function startInspection(){
-  if(!selectedPermit){
-    showToast('작업을 선택하세요', 'warn');
-    return;
-  }
-  
-  var p = selectedPermit;
-  
-  // 점검 데이터 초기화
-  resetInspectionData();
-  inspectionData.inspectionNo = generateInspectionNo();
-  inspectionData.workId = p.workId || p.sourceWorkId || '';
-  inspectionData.permitNo = p.permitNo || '';
-  inspectionData.riskId = p.riskId || '';
-  inspectionData.workName = p.workName || '';
-  
-  // 장소 조합
-  var location = '';
-  if(p.location) location = p.location;
-  if(p.detailLocation) location += (location ? ' ' : '') + p.detailLocation;
-  inspectionData.location = location;
-  
-  inspectionData.company = p.companyName || p.company || '';
-  inspectionData.workTypes = p.workTypes || [];
-  inspectionData.riskLevel = (p.riskSnapshot && p.riskSnapshot.finalRiskLevel) || 
-                              p.riskLevel || 'normal';
-  
-  // 배너 표시
-  renderPermitBanner();
-  
-  // 체크리스트 렌더
-  renderChecklist();
-  
-  // 상단 뱃지
-  var badge = document.getElementById('permitBadge');
-  if(badge && inspectionData.permitNo){
-    badge.textContent = inspectionData.permitNo;
-    badge.classList.add('show');
-  }
-  
-  showScreen('screen-inspect');
-}
-// ═══════════════════════════════════════════════════
-// 허가서 배너 렌더
-// ═══════════════════════════════════════════════════
-function renderPermitBanner(){
-  var banner = document.getElementById('permitInfoBanner');
-  if(!banner) return;
-  
-  var p = selectedPermit;
-  if(!p){ banner.innerHTML = ''; return; }
-  
-  var permitNo = p.permitNo || '-';
-  var workName = p.workName || '-';
-  
-  var location = '';
-  if(p.location) location = p.location;
-  if(p.detailLocation) location += (location ? ' ' : '') + p.detailLocation;
-  if(!location) location = '-';
-  
-  var company = p.companyName || p.company || '-';
-  
-  // 위험도
-  var riskLevel = (p.riskSnapshot && p.riskSnapshot.finalRiskLevel) || 
-                  p.riskLevel || p.overallRisk || '';
-  var isHigh = riskLevel === '고위험' || riskLevel === '매우고위험';
-  
-  // 작업유형
-  var workTypes = p.workTypes || [];
-  if(!Array.isArray(workTypes)) workTypes = [];
-  
-  var WORK_TYPE_LABELS = {
-    general:'일반', fire:'화기', electric:'전기', height:'고소',
-    'electric-live':'충전', heavy:'중량물', confined:'밀폐공간'
-  };
-  
-  var tagsHtml = '';
-  tagsHtml += '<span class="pib-tag ' + (isHigh ? 'risk-high' : 'risk-normal') + '">' + 
-              escapeHtml(riskLevel || '일반') + '</span>';
-  
-  workTypes.forEach(function(t){
-    if(t === 'general') return;
-    var label = WORK_TYPE_LABELS[t] || t;
-    tagsHtml += '<span class="pib-tag worktype">' + escapeHtml(label) + '</span>';
-  });
-  
-  banner.innerHTML = 
-    '<div class="permit-info-banner">' +
-      '<div class="pib-top">' +
-        '<span class="pib-badge">허가서</span>' +
-        '<span class="pib-no">' + escapeHtml(permitNo) + '</span>' +
-      '</div>' +
-      '<div class="pib-name">' + escapeHtml(workName) + '</div>' +
-      '<div class="pib-meta">' +
-        '<span>📍 ' + escapeHtml(location) + '</span>' +
-        '<span>🏢 ' + escapeHtml(company) + '</span>' +
-      '</div>' +
-      '<div class="pib-tags">' + tagsHtml + '</div>' +
-    '</div>';
-}
-
-// ═══════════════════════════════════════════════════
-// 체크리스트 렌더 (카테고리별 그룹핑)
-// ═══════════════════════════════════════════════════
-function renderChecklist(){
-  var container = document.getElementById('checklistContainer');
-  if(!container) return;
-  
-  // 허가서에서 체크리스트 항목 추출
-  var items = extractChecklistItems(selectedPermit);
-  
-  // 폴백: 빈 경우 기본 체크리스트 사용
-  if(items.length === 0){
-    console.warn('[안전점검] 허가서에 체크리스트 없음 - 기본 체크리스트 사용');
-    var defaults = getDefaultChecklist();
-    items = defaults.map(function(x, i){
-      return {
-        id: 'default-' + i,
-        text: x.text,
-        category: x.category,
-        required: x.required || false,
-        originalResult: ''
-      };
-    });
-  }
-  
-  // inspectionData.items에 저장 (판정 결과 담을 배열)
-  inspectionData.items = items.map(function(x){
-    return {
-      id: x.id,
-      text: x.text,
-      category: x.category,
-      required: x.required,
-      originalResult: x.originalResult || '',
-      judge: '',      // 사용자 판정: ok, ng, partial, na
-      memo: '',
-      photo: null
-    };
-  });
-  
-  // 카테고리별로 그룹핑
-  var grouped = {};
-  var categoryOrder = [];
-  
-  inspectionData.items.forEach(function(item, idx){
-    var cat = item.category || '기타';
-    if(!grouped[cat]){
-      grouped[cat] = [];
-      categoryOrder.push(cat);
-    }
-    grouped[cat].push({ item: item, idx: idx });
-  });
-  
-  // HTML 생성
-  var html = '';
-  categoryOrder.forEach(function(cat){
-    var arr = grouped[cat];
-    var reqCount = arr.filter(function(x){ return x.item.required; }).length;
-    var ico = getCategoryIcon(cat);
-    
-    html += '<div class="check-category">';
-    html +=   '<div class="check-category-header">';
-    html +=     '<span class="check-category-ico">' + ico + '</span>';
-    html +=     '<span class="check-category-title">' + escapeHtml(cat) + '</span>';
-    html +=     '<span class="check-category-count' + (reqCount > 0 ? ' required' : '') + '">';
-    html +=       arr.length + '항목';
-    html +=     '</span>';
-    html +=   '</div>';
-    
-    arr.forEach(function(entry){
-      var item = entry.item;
-      var i = entry.idx;
-      
-      html += '<div class="check-item" id="checkItem' + i + '">';
-      html +=   '<div class="check-item-top">';
-      html +=     '<div class="check-item-num' + (item.required ? ' required' : '') + '" id="checkNum' + i + '">';
-      html +=       (i+1);
-      html +=     '</div>';
-      html +=     '<div class="check-item-body">';
-      html +=       '<div class="check-item-text">';
-      html +=         escapeHtml(item.text);
-      if(item.required){
-        html +=       '<span class="check-item-required">필수</span>';
-      }
-      html +=       '</div>';
-      html +=     '</div>';
-      html +=   '</div>';
-      
-      // 판정 버튼 4단계
-      html +=   '<div class="judge-buttons">';
-      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'ok\', this)">';
-      html +=       '<span class="judge-btn-ico">⭕</span><span>준수</span>';
-      html +=     '</button>';
-      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'ng\', this)">';
-      html +=       '<span class="judge-btn-ico">❌</span><span>미준수</span>';
-      html +=     '</button>';
-      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'partial\', this)">';
-      html +=       '<span class="judge-btn-ico">⚠️</span><span>부분</span>';
-      html +=     '</button>';
-      html +=     '<button type="button" class="judge-btn" onclick="setJudge(' + i + ', \'na\', this)">';
-      html +=       '<span class="judge-btn-ico">➖</span><span>해당없음</span>';
-      html +=     '</button>';
-      html +=   '</div>';
-      
-      // 메모
-      html +=   '<textarea class="check-memo" placeholder="특이사항이 있으면 메모하세요 (선택)" ' +
-                 'onchange="updateMemo(' + i + ', this.value)"></textarea>';
-      
-      // 사진 첨부 (자리만)
-      html +=   '<div class="check-photo">';
-      html +=     '<button type="button" class="check-photo-btn" onclick="attachPhoto(' + i + ')">';
-      html +=       '📷 사진 첨부';
-      html +=     '</button>';
-      html +=   '</div>';
-      
-      html += '</div>';
-    });
-    
-    html += '</div>';
-  });
-  
-  container.innerHTML = html;
-  
-  // 진행률 초기화
-  updateProgress();
-}
-
-function extractChecklistItems(permit){
-  if(!permit) return [];
-  var items = [];
-  
-  // ═══ 1. 통합 안전 체크리스트 (허가서의 핵심 필드) ═══
-  var unified = permit.unifiedSafetyChecklist;
-  if(unified && Array.isArray(unified.items) && unified.items.length > 0){
-    console.log('[안전점검] 통합 안전 체크리스트 로드:', unified.items.length + '건');
-    unified.items.forEach(function(x){
-      // 카테고리 자동 분류 (sources 기반)
-      var category = '통합 안전 체크리스트';
-      if(x.sources && x.sources.length > 0){
-        var srcType = x.sources[0].type;
-        if(srcType === 'risk-assessment') category = '위험성평가 대책';
-        else if(srcType === 'permit-common') category = '허가 공통 항목';
-        else if(srcType === 'permit-additional') category = '현장 추가 항목';
-      }
-      
-      items.push({
-        id: x.checklistItemId || x.meaningKey,
-        text: x.text || '',
-        category: category,
-        required: true,  // 통합 체크리스트는 모두 필수로 처리
-        originalResult: x.result || '',  // 허가서 작성 시 판정
-        sources: x.sources || []
-      });
-    });
-  }
-  
-  // ═══ 2. 특수 작업 체크리스트 (checklist 객체) ═══
-  var specialChecklist = permit.checklist || {};
-  var CHECKLIST_DEF = {
-    general: ['포항양극재 11대 안전철칙 준수', '작업에 적합한 개인보호구 준비 및 착용',
-              '작업구역 설정 및 관계자 외 출입통제', '작업 도구·장비 사전점검',
-              '비상연락체계와 작업중지 방법 확인', 'TBM 전달자료와 참석 대상자 확인',
-              '주변 작업환경과 동시작업 간섭 확인'],
-    fire: ['용접방화포 및 소화기 배치', '가연성·인화성 물질 제거',
-           '화재감시자 배치', '화기작업 전 주변 위험요소 제거'],
-    electric: ['전원 차단 및 잠금 상태 확인', '누전차단기와 접지 상태 확인',
-               '절연 보호구와 감전 예방장비 준비'],
-    height: ['추락방지 안전난간 또는 추락방지망 설치', '안전대 부착설비 및 작업발판 확인',
-             '비계·사다리·고소작업대 상태 확인'],
-    'electric-live': ['활선작업용 절연 기구 사용', '충전부 이격거리 확보',
-                       '감시인 배치 및 인접 충전부 방호'],
-    heavy: ['중량물 인양 계획서 확인', '신호수 배치 및 작업반경 출입통제',
-            '인양장비·와이어·후크 상태 확인'],
-    confined: ['출입인원 및 감시자 배치', '산소 및 유해가스 측정',
-                '환기와 비상연락 수단 확보', '호흡용 보호구와 구조장비 준비']
-  };
-  var CATEGORY_LABELS = {
-    fire:'🔥 화기작업', electric:'⚡ 전기작업', height:'⬆️ 고소작업',
-    'electric-live':'⚡ 전기(충전)작업', heavy:'🏗️ 중량물·유해가스',
-    confined:'🚪 밀폐공간·굴착'
-  };
-  
-  // 선택된 작업유형별 특수 체크리스트 추가
-  var workTypes = permit.workTypes || [];
-  workTypes.forEach(function(type){
-    if(type === 'general') return;
-    var typeItems = CHECKLIST_DEF[type] || [];
-    var categoryLabel = CATEGORY_LABELS[type] || type;
-    
-    typeItems.forEach(function(text, i){
-      var key = type + '-' + (i+1);
-      var originalResult = specialChecklist[key] || '';
-      
-      items.push({
-        id: key,
-        text: text,
-        category: categoryLabel,
-        required: true,  // 특수 작업 체크리스트도 필수
-        originalResult: originalResult
-      });
-    });
-  });
-  
-  // ═══ 3. ILS 체크리스트 (전기/밀폐공간 시) ═══
-  var ilsChecklist = permit.ILSChecklist || {};
-  var ILS_ITEMS = [
-    'ILS Order 확인',
-    '에너지원 차단',
-    '잠금 확인 및 표찰 게시',
-    '작업자 Red Lock 체결 상태',
-    'GIB 운영 및 열쇠 보관'
-  ];
-  var hasIls = workTypes.some(function(t){
-    return ['electric','electric-live','confined'].indexOf(t) >= 0;
-  });
-  
-  if(hasIls){
-    ILS_ITEMS.forEach(function(text, i){
-      var num = String(i+1);
-      var originalResult = ilsChecklist[num] || '';
-      
-      // 'na' 항목은 제외
-      if(originalResult === 'na') return;
-      
-      items.push({
-        id: 'ils-' + num,
-        text: text,
-        category: '🔒 ILS 확인사항',
-        required: true,
-        originalResult: originalResult
-      });
-    });
-  }
-  
-  console.log('[안전점검] 추출된 체크리스트 총:', items.length + '건');
-  return items;
-}
-
-
-// 기본 체크리스트 (폴백)
-function getDefaultChecklist(){
-  return [
-    { text: '작업자 안전보호구(안전모·안전대·안전화) 착용 상태', category: '개인보호구', required: true },
-    { text: '작업 구역 출입통제 및 안전표지 설치 상태', category: '작업환경', required: true },
-    { text: '작업 도구 및 장비 점검 상태', category: '장비/도구', required: false },
-    { text: '비상연락망 및 대피경로 숙지 여부', category: '비상대응', required: true },
-    { text: '작업 전 TBM 실시 여부', category: '작업준비', required: true },
-    { text: '주변 정리정돈 및 미끄러짐 방지 조치', category: '작업환경', required: false }
-  ];
-}
-
-function getCategoryIcon(cat){
-  var icons = {
-    '개인보호구': '🦺', '보호구': '🦺',
-    '작업환경': '🏗️', '환경': '🏗️',
-    '장비/도구': '🔧', '장비': '🔧', '도구': '🔧',
-    '비상대응': '🚨', '비상': '🚨',
-    '작업준비': '📋', 'TBM': '📋',
-    '고소작업': '🪜', '화기작업': '🔥', '밀폐공간': '🚪',
-    '중장비': '🏗️', '전기작업': '⚡', '굴착작업': '⛏️',
-    '통합 안전 체크리스트': '📋',
-    '안전 유의사항': '⚠️',
-    '일반 안전사항': '📌'
-  };
-  return icons[cat] || '📌';
-}
-
-// ═══════════════════════════════════════════════════
-// 판정 처리
-// ═══════════════════════════════════════════════════
-function setJudge(idx, judge, btnEl){
-  if(!inspectionData.items[idx]) return;
-  inspectionData.items[idx].judge = judge;
-  
-  // 버튼 상태 리셋
-  var container = btnEl.parentElement;
-  container.querySelectorAll('.judge-btn').forEach(function(b){
-    b.classList.remove('selected-ok', 'selected-ng', 'selected-partial', 'selected-na');
-  });
-  
-  // 선택 표시
-  var cls = 'selected-' + (judge === 'ok' ? 'ok' : judge === 'ng' ? 'ng' : judge === 'partial' ? 'partial' : 'na');
-  btnEl.classList.add(cls);
-  
-  // 번호 색상 업데이트
-  var numEl = document.getElementById('checkNum' + idx);
-  var itemEl = document.getElementById('checkItem' + idx);
-  if(numEl){
-    numEl.classList.remove('checked', 'violation-num');
-    if(inspectionData.items[idx].required){
-      numEl.classList.remove('required');
-    }
-    
-    if(judge === 'ng' && inspectionData.items[idx].required){
-      numEl.classList.add('violation-num');
-      if(itemEl) itemEl.classList.add('violation');
-    } else {
-      if(itemEl) itemEl.classList.remove('violation');
-      if(inspectionData.items[idx].required){
-        numEl.classList.add('required');
-      }
-      if(judge){
-        numEl.classList.add('checked');
-      }
-    }
-  }
-  
-  updateProgress();
-  updateEvaluationSummary();
-}
-
-function updateMemo(idx, value){
-  if(inspectionData.items[idx]) inspectionData.items[idx].memo = value;
-}
-
-function attachPhoto(idx){
-  showCustomAlert({
-    icon: '📷', title: '사진 첨부 기능',
-    message: '사진 첨부 기능은 추후 구현 예정입니다.\n\n현재는 UI만 배치되어 있습니다.',
-    okText: '확인'
-  });
-}
-
-// ═══════════════════════════════════════════════════
-// 진행률 & 요약
-// ═══════════════════════════════════════════════════
-function updateProgress(){
-  var total = inspectionData.items.length;
-  var done = inspectionData.items.filter(function(x){ return !!x.judge; }).length;
-  var pct = total > 0 ? Math.round((done/total)*100) : 0;
-  
-  document.getElementById('progressDone').textContent = done;
-  document.getElementById('progressTotal').textContent = total;
-  document.getElementById('progressBar').style.width = pct + '%';
-}
-
-function updateEvaluationSummary(){
-  var el = document.getElementById('evaluationSummary');
-  if(!el) return;
-  
-  var stats = calcStats();
-  
-  // 중대 위반 판단: 필수 항목 중 미준수(ng)가 하나라도 있으면
-  var criticalViolations = inspectionData.items.filter(function(x){
-    return x.required && x.judge === 'ng';
-  });
-  var hasCritical = criticalViolations.length > 0;
-  inspectionData.hasCritical = hasCritical;
-  
-  var cardClass = 'success';
-  var title = '✅ 안전 상태 양호';
-  var titleClass = 'success';
-  var body = '점검 결과 특이사항이 없습니다.';
-  
-  if(hasCritical){
-    cardClass = 'danger';
-    title = '🚨 중대한 안전 위반 발견';
-    titleClass = 'danger';
-    body = '<strong style="color:var(--stop);">필수 항목 ' + criticalViolations.length + '개가 미준수</strong> 상태입니다.<br>' +
-           '점검 완료 시 <strong>작업중지권</strong> 발동 화면으로 이동합니다.';
-  } else if(stats.ng > 0 || stats.partial > 0){
-    cardClass = 'warning';
-    title = '⚠️ 개선 필요 사항 발견';
-    titleClass = 'warning';
-    body = '미준수 ' + stats.ng + '건, 부분 준수 ' + stats.partial + '건이 확인되었습니다.<br>개선 조치가 필요합니다.';
-  }
-  
-  if(stats.done === 0){
-    el.innerHTML = '';
-    return;
-  }
-  
-  el.innerHTML = 
-    '<div class="summary-card ' + cardClass + '">' +
-      '<div class="summary-title ' + titleClass + '">' + title + '</div>' +
-      '<div class="summary-body">' + body + '</div>' +
-      '<div class="summary-stat">' +
-        '<div class="stat-item"><div class="stat-num done-c">' + stats.ok + '</div><div class="stat-label">준수</div></div>' +
-        '<div class="stat-item"><div class="stat-num stop-c">' + stats.ng + '</div><div class="stat-label">미준수</div></div>' +
-        '<div class="stat-item"><div class="stat-num warn-c">' + stats.partial + '</div><div class="stat-label">부분</div></div>' +
-        '<div class="stat-item"><div class="stat-num sub-c">' + stats.na + '</div><div class="stat-label">해당없음</div></div>' +
-      '</div>' +
-    '</div>';
-}
-
-function calcStats(){
-  var s = { total: inspectionData.items.length, done:0, ok:0, ng:0, partial:0, na:0 };
-  inspectionData.items.forEach(function(x){
-    if(x.judge){ s.done++; }
-    if(x.judge === 'ok') s.ok++;
-    else if(x.judge === 'ng') s.ng++;
-    else if(x.judge === 'partial') s.partial++;
-    else if(x.judge === 'na') s.na++;
-  });
-  return s;
-}
-
-// ═══════════════════════════════════════════════════
-// 저장
-// ═══════════════════════════════════════════════════
-function submitInspection(){
-  var stats = calcStats();
-  
-  if(stats.done < stats.total){
-    showCustomConfirm({
-      icon: '⚠️', title: '미완료 항목이 있습니다',
-      message: '전체 ' + stats.total + '개 중 ' + (stats.total - stats.done) + '개 항목이 미판정 상태입니다.\n\n이대로 저장하시겠습니까?',
-      okText: '계속 저장', okType: 'warn'
-    }, function(ok){
-      if(ok) doSubmit();
-    });
-    return;
-  }
-  
-  doSubmit();
-}
-
-function doSubmit(){
-  // 종합의견
-  inspectionData.opinion = (document.getElementById('opinionInput').value || '').trim();
-  inspectionData.inspectorName = (document.getElementById('inspectorName').value || '').trim();
-  inspectionData.inspectorDept = (document.getElementById('inspectorDept').value || '').trim();
-  
-  if(!inspectionData.inspectorName){
-    showToast('점검자 이름을 입력하세요', 'warn');
-    document.getElementById('inspectorName').focus();
-    return;
-  }
-  
-  var stats = calcStats();
-  inspectionData.createdAt = new Date().toISOString();
-  inspectionData.createdBy = inspectionData.inspectorName;
-  
-  var savedData = {
-    inspectionNo: inspectionData.inspectionNo,
-    workId: inspectionData.workId,
-    permitNo: inspectionData.permitNo,
-    riskId: inspectionData.riskId,
-    workName: inspectionData.workName,
-    location: inspectionData.location,
-    company: inspectionData.company,
-    workTypes: inspectionData.workTypes,
-    riskLevel: inspectionData.riskLevel,
-    items: inspectionData.items,
-    opinion: inspectionData.opinion,
-    inspectorName: inspectionData.inspectorName,
-    inspectorDept: inspectionData.inspectorDept,
-    hasCritical: inspectionData.hasCritical,
-    stats: stats,
-    status: inspectionData.hasCritical ? '중대위반' : (stats.ng > 0 ? '개선필요' : '양호'),
-    createdAt: inspectionData.createdAt,
-    createdBy: inspectionData.createdBy
-  };
-  
-  // ═══ 저장 (localStorage) ═══
-  try {
-    var raw = localStorage.getItem('safetyInspections') || '[]';
-    var list = JSON.parse(raw);
-    if(!Array.isArray(list)) list = [];
-    list.unshift(savedData);
-    localStorage.setItem('safetyInspections', JSON.stringify(list));
-  } catch(e){
-    console.error('localStorage 저장 실패:', e);
-  }
-  
-  // ═══ 저장 (Firebase) ═══
-  saveToFirebase(savedData).then(function(){
-    showFinalScreen(savedData);
-    
-        // ═══ 🚨 중대 위반 시 작업중지권 자동 발동 (옵션 A - 선택권 없음) ═══
-    if(inspectionData.hasCritical){
-      // 위반 항목 상세 정보 추출
-      var criticalItems = savedData.items.filter(function(x){
-        return x.required && x.judge === 'ng';
-      });
-      
-      // 위반 사유 텍스트 생성 (작업중지권 사유란 자동 채움용)
-      var violationLines = ['[안전점검에서 중대 위반 감지됨]', ''];
-      criticalItems.forEach(function(item, idx){
-        violationLines.push((idx+1) + '. ' + item.text);
-        if(item.memo){
-          violationLines.push('   → 사유: ' + item.memo);
-        }
-      });
-      var violationDescription = violationLines.join('\n');
-      
-      // ═══ 콘솔 강조 로그 (문제 있을 때만) ═══
-      console.error(
-        '%c🚨 [중대 위반 - 작업중지 자동 발동]',
-        'color:#EF4444;font-weight:bold;font-size:16px;background:#FEF2F2;padding:4px 8px;',
-        {
-          시각: new Date().toLocaleString('ko-KR'),
-          점검번호: savedData.inspectionNo,
-          허가서: savedData.permitNo,
-          작업명: savedData.workName,
-          점검자: savedData.inspectorName + ' (' + savedData.inspectorDept + ')',
-          위반항목: criticalItems.map(function(i){
-            return { 내용: i.text, 사유: i.memo || '(사유 미기재)' };
-          }),
-          알림대상: ['작업담당자', '작업책임자', '허가자'],
-          후속조치: '작업중지권 페이지 자동 이동'
-        }
-      );
-      
-      // ═══ 작업중지권에 전달할 데이터 저장 ═══
-      try {
-        localStorage.setItem('pendingStopWorkOrder', JSON.stringify({
-          trigger: 'inspection_critical',
-          from: 'inspection',
-          inspectionNo: savedData.inspectionNo,
-          permitNo: savedData.permitNo,
-          workId: savedData.workId,
-          workName: savedData.workName,
-          location: savedData.location,
-          company: savedData.company,
-          riskLevel: savedData.riskLevel,
-          
-          // 사유 자동 설정
-          stopReasons: ['기타 위험'],
-          stopDescription: violationDescription,
-          
-          // 요청자 = 점검자
-          requesterName: savedData.inspectorName,
-          requesterDept: savedData.inspectorDept,
-          requesterPosition: '',
-          
-          // 위반 상세
-          violations: criticalItems.map(function(x){
-            return {
-              category: x.category || '안전점검',
-              text: x.text,
-              memo: x.memo || '(사유 미기재)',
-              required: true
-            };
-          }),
-          
-          timestamp: new Date().toISOString()
-        }));
-      } catch(e){
-        console.error('[안전점검] localStorage 저장 실패:', e);
-      }
-      
-      // ═══ 안내 모달 후 자동 이동 (선택권 없음) ═══
-      setTimeout(function(){
-        showCustomAlert({
-          icon: '🚨',
-          title: '중대 위반 감지',
-          message: '필수 안전 항목 ' + criticalItems.length + '건이 미준수 상태입니다.\n\n' +
-                   '작업중지권 페이지로 자동 이동합니다.\n' +
-                   '내용 확인 후 발동해 주세요.',
-          okText: '이동',
-          okType: 'danger'
-        }, function(){
-          // 확정 파일명으로 이동
-          window.location.href = '작업중지권_v2.html?from=inspection';
-        });
-      }, 800);
-    } else if(inspectionData.items.some(function(x){ return x.judge === 'ng'; })){
-      // 개선 필요 사항 - 콘솔 로그만
-      console.log(
-        '%c⚠ [안전점검 - 개선 필요]',
-        'color:#F59E0B;font-weight:bold;font-size:14px;',
-        {
-          시각: new Date().toLocaleString('ko-KR'),
-          점검번호: savedData.inspectionNo,
-          허가서: savedData.permitNo,
-          점검자: savedData.inspectorName,
-          미준수: savedData.items.filter(function(x){ return x.judge === 'ng'; })
-                                  .map(function(x){ return x.text; }),
-          알림대상: ['작업담당자', '작업책임자', '허가자']
-        }
-      );
-    }
-
-  }).catch(function(err){
-    console.error('Firebase 저장 실패:', err);
-    // Firebase 실패해도 localStorage에는 저장됐으므로 진행
-    showFinalScreen(savedData);
-  });
-}
-
-function saveToFirebase(data){
-  if(!window.firebaseApp || !window.firebaseApp.db){
-    console.warn('Firebase 미초기화, 로컬만 저장');
-    return Promise.resolve();
-  }
-  
-  var fb = window.firebaseApp;
-  try {
-    var docRef = fb.doc(fb.db, fb.INSPECTION_COLLECTION, data.inspectionNo);
-    var payload = Object.assign({}, data, { serverTimestamp: fb.serverTimestamp() });
-    return fb.setDoc(docRef, payload);
-  } catch(e){
-    console.error(e);
-    return Promise.resolve();
-  }
-}
-
-// ═══════════════════════════════════════════════════
-// 완료 화면
-// ═══════════════════════════════════════════════════
-function showFinalScreen(data){
-  var hero = document.getElementById('completeHero');
-  var ico = document.getElementById('completeIco');
-  var title = document.getElementById('completeTitle');
-  var sub = document.getElementById('completeSub');
-  
-  if(data.hasCritical){
-    hero.className = 'complete-hero';
-    hero.style.background = 'linear-gradient(158deg,#8B1728 0%,#D6273D 100%)';
-    hero.style.boxShadow = '0 8px 24px rgba(214,39,61,.35)';
-    ico.textContent = '🚨';
-    title.textContent = '중대 위반 감지';
-    sub.textContent = '필수 항목 미준수 발견\n작업중지권 발동을 검토해주세요';
-  } else if(data.stats.ng > 0 || data.stats.partial > 0){
-    hero.className = 'complete-hero warning';
-    ico.textContent = '⚠️';
-    title.textContent = '점검 완료 (개선 필요)';
-    sub.textContent = '개선 조치가 필요한 항목이 있습니다\n조치 후 재점검을 권장합니다';
-  } else {
-    hero.className = 'complete-hero';
-    ico.textContent = '✅';
-    title.textContent = '점검 완료';
-    sub.textContent = '안전점검이 정상적으로 저장되었습니다\n안전 상태 양호';
-  }
-  
-  document.getElementById('finalInspectionNo').textContent = data.inspectionNo || '-';
-  document.getElementById('finalWorkName').textContent = data.workName || '-';
-  document.getElementById('finalPermitNo').textContent = data.permitNo || '-';
-  document.getElementById('finalTotalItems').textContent = data.stats.total + '개';
-  document.getElementById('finalOkCount').textContent = data.stats.ok + '개';
-  document.getElementById('finalNgCount').textContent = data.stats.ng + '개';
-  document.getElementById('finalPartialCount').textContent = data.stats.partial + '개';
-  document.getElementById('finalInspector').textContent = 
-    (data.inspectorName || '-') + (data.inspectorDept ? ' (' + data.inspectorDept + ')' : '');
-  document.getElementById('finalDatetime').textContent = formatDateTime(data.createdAt);
-  
-  showScreen('screen-complete');
-  showToast('점검이 저장되었습니다', 'success');
-}
-
-// ═══════════════════════════════════════════════════
-// 유틸
-// ═══════════════════════════════════════════════════
-function cancelInspection(){
-  showCustomConfirm({
-    icon: '⚠️', title: '점검을 취소하시겠습니까?',
-    message: '작성 중인 내용은 저장되지 않습니다.',
-    okText: '취소하기', okType: 'danger'
+function goBack(){
+  var hasData = Object.keys(checkState).length > 0;
+  if(!hasData){ history.back(); return; }
+  showConfirm({
+    icon:'⚠️',
+    title:'뒤로 가기',
+    message:'작성 중인 내용이 삭제됩니다.\n계속하시겠습니까?',
+    okText:'나가기',
+    okType:'warn'
   }, function(ok){
-    if(ok){
-      selectedPermit = null;
-      resetInspectionData();
-      document.getElementById('permitBadge').classList.remove('show');
-      showScreen('screen-select');
-      loadTodayWorks();
-    }
+    if(ok) history.back();
   });
 }
 
-function startNewInspection(){
-  selectedPermit = null;
-  resetInspectionData();
-  document.getElementById('permitBadge').classList.remove('show');
-  showScreen('screen-select');
-  loadTodayWorks();
+// ═══ 테마 ═══
+function initTheme(){
+  var saved = localStorage.getItem('theme');
+  applyTheme(saved || 'light');
 }
 
-function resetInspectionData(){
-  inspectionData = {
-    inspectionNo: '', workId: '', permitNo: '', riskId: '',
-    workName: '', location: '', company: '',
-    workTypes: [], riskLevel: '',
-    items: [], opinion: '',
-    inspectorName: '', inspectorDept: '',
-    hasCritical: false, status: '완료',
-    createdAt: '', createdBy: ''
-  };
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', t);
 }
 
-function generateInspectionNo(){
-  var d = new Date();
-  var y = d.getFullYear();
-  var m = String(d.getMonth()+1).padStart(2,'0');
-  var day = String(d.getDate()).padStart(2,'0');
-  var rnd = String(Math.floor(Math.random()*9999)).padStart(4,'0');
-  return 'INS-' + y + m + day + '-' + rnd;
+function toggleTheme(){
+  var c = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(c === 'dark' ? 'light' : 'dark');
 }
 
-function formatDateTime(iso){
-  if(!iso) return '-';
-  try {
-    var d = new Date(iso);
-    return d.getFullYear() + '-' + 
-      String(d.getMonth()+1).padStart(2,'0') + '-' + 
-      String(d.getDate()).padStart(2,'0') + ' ' +
-      String(d.getHours()).padStart(2,'0') + ':' + 
-      String(d.getMinutes()).padStart(2,'0');
-  } catch(e){ return iso; }
+// ═══ 커스텀 다이얼로그 ═══
+var confirmCallback = null;
+
+function showConfirm(options, callback){
+  var opts = options || {};
+  document.getElementById('confirmIcon').textContent = opts.icon || '⚠️';
+  document.getElementById('confirmTitle').textContent = opts.title || '확인';
+  document.getElementById('confirmMessage').textContent = opts.message || '';
+  
+  var okBtn = document.getElementById('confirmOk');
+  okBtn.textContent = opts.okText || '확인';
+  okBtn.className = 'confirm-btn confirm-btn-ok';
+  if(opts.okType === 'danger') okBtn.classList.add('danger');
+  else if(opts.okType === 'warn') okBtn.classList.add('warn');
+  else if(opts.okType === 'success') okBtn.classList.add('success');
+  
+  confirmCallback = callback || function(){};
+  document.getElementById('confirmOverlay').classList.add('active');
 }
 
-function escapeHtml(s){
-  if(s === null || s === undefined) return '';
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function closeConfirm(result){
+  document.getElementById('confirmOverlay').classList.remove('active');
+  var cb = confirmCallback;
+  confirmCallback = null;
+  if(typeof cb === 'function') setTimeout(function(){ cb(result); }, 150);
+}
+
+// ═══ TOAST ═══
+function showToast(msg, type){
+  var wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){
+    if(t.parentNode) t.parentNode.removeChild(t);
+  }, 3000);
+}
+
+// ═══ 유틸 ═══
+function pad(n){ return ('0' + n).slice(-2); }
+function fmtDate(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function escHtml(s){
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
 </script>
 
-</div><!-- /.phone-screen -->
-</div><!-- /.phone-frame -->
 </body>
 </html>
+
