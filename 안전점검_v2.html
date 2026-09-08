@@ -603,359 +603,179 @@ function loadSession(){
 
 // ═══ URL 파라미터 처리 ═══
 function loadFromUrl(){
-  var params = new URLSearchParams(location.search);
-  var permitNo = params.get('permitNo');
-  var workId = params.get('workId');
-  
+  var params =
+    new URLSearchParams(
+      location.search
+    );
+
+  var permitNo =
+    cleanValue(
+      params.get(
+        'permitNo'
+      )
+    );
+
+  var workId =
+    cleanValue(
+      params.get(
+        'workId'
+      )
+    );
+
+  console.log(
+    '[안전점검] URL 연동정보:',
+    {
+      permitNo:permitNo,
+      workId:workId,
+      mode:
+        params.get('mode') || ''
+    }
+  );
+
+  /*
+   * 1순위:
+   * 허가번호가 전달된 경우 해당 허가서를 직접 조회합니다.
+   */
   if(permitNo){
-    inspectionData.permitNo = permitNo;
-    loadPermitInfo(permitNo);
-    
-    // 상단 배지
-    var badge = document.getElementById('permitBadge');
-    if(badge) badge.textContent = permitNo;
-  } else if(workId){
-    inspectionData.workId = workId;
-    loadWorkInfo(workId);
-  }
-}
+    inspectionData.permitNo =
+      permitNo;
 
-/* ═══════════════════════════════════════
- * 허가서 저장자료 통합 조회
- * - 일반 사용자: safetyPermits
- * - 테스터: testerSafetyPermits
- * ═══════════════════════════════════════ */
+    inspectionData.workId =
+      workId;
 
-function cleanValue(value){
-  return String(
-    value === undefined ||
-    value === null
-      ? ''
-      : value
-  ).trim();
-}
-
-function readPermitArray(key){
-  try{
-    var parsed =
-      JSON.parse(
-        localStorage.getItem(key) ||
-        '[]'
+    var loaded =
+      loadPermitInfo(
+        permitNo
       );
 
-    if(Array.isArray(parsed)){
-      return parsed;
+    if(!loaded && workId){
+      loadWorkInfo(
+        workId
+      );
     }
 
-    if(
-      parsed &&
-      typeof parsed === 'object'
-    ){
-      return Object.values(parsed);
-    }
-
-    return [];
-
-  }catch(error){
-    console.warn(
-      '[안전점검] 허가서 저장자료 파싱 실패:',
-      key,
-      error
-    );
-
-    return [];
+    return;
   }
-}
-
-function readInspectionSession(){
-  try{
-    return JSON.parse(
-      sessionStorage.getItem(
-        'appSession'
-      ) ||
-      localStorage.getItem(
-        'appSession'
-      ) ||
-      'null'
-    );
-  }catch(error){
-    return null;
-  }
-}
-
-function readAllPermits(){
-  var session =
-    readInspectionSession();
 
   /*
-   * 테스터는 testerSafetyPermits를 먼저 읽고,
-   * 일반 사용자와 관리자는 safetyPermits를 먼저 읽습니다.
+   * 2순위:
+   * workId만 전달된 경우 연결된 허가서를 검색합니다.
    */
-  var keys =
-    session &&
-    session.role === 'tester'
-      ? [
-          'testerSafetyPermits',
-          'safetyPermits'
-        ]
-      : [
-          'safetyPermits',
-          'testerSafetyPermits'
-        ];
+  if(workId){
+    inspectionData.workId =
+      workId;
 
-  var map =
-    new Map();
+    var linkedPermits =
+      readAllPermits()
+        .filter(function(permit){
+          var linkedWorkId =
+            cleanValue(
+              permit.workId ||
+              permit.sourceWorkId ||
+              (
+                permit.workflowLink &&
+                permit.workflowLink.workId
+              )
+            );
 
-  keys.forEach(function(key){
-    readPermitArray(key)
-      .forEach(function(permit){
-        var permitNo =
-          cleanValue(
-            permit &&
-            permit.permitNo
+          return (
+            linkedWorkId ===
+            workId
           );
+        })
+        .sort(function(first,second){
+          function getTime(record){
+            var value =
+              record.updatedAt ||
+              record.createdAt ||
+              '';
 
-        if(!permitNo){
-          return;
-        }
+            var time =
+              new Date(
+                value
+              ).getTime();
 
-        /*
-         * 앞에서 읽은 저장 키를 우선합니다.
-         */
-        if(!map.has(permitNo)){
-          map.set(
-            permitNo,
-            permit
+            return Number.isFinite(time)
+              ? time
+              : 0;
+          }
+
+          return (
+            getTime(second) -
+            getTime(first)
           );
+        });
+
+    var linkedPermit =
+      linkedPermits[0] ||
+      null;
+
+    if(linkedPermit){
+      inspectionData.permitNo =
+        cleanValue(
+          linkedPermit.permitNo
+        );
+
+      loadPermitInfo(
+        inspectionData.permitNo
+      );
+
+      console.log(
+        '[안전점검] workId로 허가서 자동 연결:',
+        {
+          workId:
+            workId,
+
+          permitNo:
+            inspectionData.permitNo
         }
+      );
+
+      return;
+    }
+
+    /*
+     * 연결된 허가서가 없으면 작업관리대장 정보만 표시합니다.
+     */
+    loadWorkInfo(
+      workId
+    );
+
+    showToast(
+      '연결된 허가서가 없어 작업정보만 불러왔습니다.',
+      'warn'
+    );
+
+    return;
+  }
+
+  /*
+   * 허가번호와 작업번호가 모두 없는 경우
+   * 기본 체크리스트를 표시합니다.
+   */
+  inspectionData.checklist =
+    DEFAULT_CHECKLIST
+      .map(function(item){
+        return Object.assign(
+          {},
+          item,
+          {
+            judgment:'',
+            memo:''
+          }
+        );
       });
-  });
 
-  return Array.from(
-    map.values()
+  showToast(
+    '연결된 안전작업허가서가 없습니다.',
+    'warn'
+  );
+
+  console.warn(
+    '[안전점검] permitNo와 workId가 전달되지 않았습니다.'
   );
 }
 
-/* ═══════════════════════════════════════
- * 허가서 체크리스트 → 안전점검 항목 변환
- * ═══════════════════════════════════════ */
-
-function inferChecklistCategory(text){
-  var value =
-    cleanValue(text);
-
-  if(
-    /화기|용접|용단|불티|소화기|가연|인화|화재|폭발/.test(
-      value
-    )
-  ){
-    return '화재·폭발';
-  }
-
-  if(
-    /전기|전원|감전|충전부|활선|절연|접지|잠금|LOTO|ILS/i.test(
-      value
-    )
-  ){
-    return '전기·감전';
-  }
-
-  if(
-    /고소|추락|비계|사다리|안전대|난간|작업발판|낙하/.test(
-      value
-    )
-  ){
-    return '추락·낙하';
-  }
-
-  if(
-    /밀폐|맨홀|탱크|산소|환기|질식/.test(
-      value
-    )
-  ){
-    return '밀폐공간';
-  }
-
-  if(
-    /중량물|인양|크레인|지게차|와이어|후크|신호수/.test(
-      value
-    )
-  ){
-    return '중량물';
-  }
-
-  if(
-    /유해가스|황화수소|일산화탄소|LEL|H2S|CO2/i.test(
-      value
-    )
-  ){
-    return '유해가스';
-  }
-
-  if(
-    /보호구|작업구역|출입통제|비상연락|TBM|안전철칙|도구|장비|동시작업/i.test(
-      value
-    )
-  ){
-    return '공통';
-  }
-
-  return '기타';
-}
-
-/*
- * 현재 허가서에는 required 값이 없는 항목이 있으므로
- * 중대위험 가능성이 높은 문구를 임시 필수항목으로 판정합니다.
- */
-function inferRequiredItem(item){
-  item =
-    item || {};
-
-  if(
-    item.required === true ||
-    item.stopWorkCritical === true
-  ){
-    return true;
-  }
-
-  var text =
-    cleanValue(
-      item.text ||
-      item.item ||
-      item.label ||
-      item.checklistText
-    );
-
-  return (
-    /전원 차단|잠금|LOTO|ILS|활선|충전부|추락방지|안전대|안전난간|산소 및 유해가스|가스 측정|화재감시자|가연성|인화성|인양 계획|신호수|출입통제/i
-      .test(text)
-  );
-}
-
-function normalizeInspectionChecklistItem(item){
-  item =
-    item || {};
-
-  var text =
-    cleanValue(
-      item.text ||
-      item.item ||
-      item.label ||
-      item.checklistText
-    );
-
-  return {
-    category:
-      cleanValue(
-        item.category
-      ) ||
-      inferChecklistCategory(
-        text
-      ),
-
-    text:text,
-
-    required:
-      inferRequiredItem(
-        item
-      ),
-
-    judgment:'',
-
-    memo:'',
-
-    sourceItemId:
-      cleanValue(
-        item.checklistItemId ||
-        item.sourceItemId ||
-        ''
-      ),
-
-    sourceResult:
-      cleanValue(
-        item.result ||
-        item.judgment ||
-        item.permitResult ||
-        ''
-      )
-  };
-}
-
-function extractPermitChecklist(permit){
-  permit =
-    permit || {};
-
-  /*
-   * 1순위: 향후 작업허가서에서 저장할 점검 전용 목록
-   */
-  if(
-    Array.isArray(
-      permit.inspectionChecklist
-    ) &&
-    permit.inspectionChecklist.length
-  ){
-    return permit
-      .inspectionChecklist
-      .map(
-        normalizeInspectionChecklistItem
-      )
-      .filter(function(item){
-        return Boolean(
-          item.text
-        );
-      });
-  }
-
-  /*
-   * 2순위: 현재 작업허가서 v2.2 실제 저장 구조
-   */
-  if(
-    permit.unifiedSafetyChecklist &&
-    Array.isArray(
-      permit
-        .unifiedSafetyChecklist
-        .items
-    ) &&
-    permit
-      .unifiedSafetyChecklist
-      .items.length
-  ){
-    return permit
-      .unifiedSafetyChecklist
-      .items
-      .map(
-        normalizeInspectionChecklistItem
-      )
-      .filter(function(item){
-        return Boolean(
-          item.text
-        );
-      });
-  }
-
-  /*
-   * 3순위: 구버전 호환
-   */
-  if(
-    Array.isArray(
-      permit.safetyChecklist
-    ) &&
-    permit.safetyChecklist.length
-  ){
-    return permit
-      .safetyChecklist
-      .map(
-        normalizeInspectionChecklistItem
-      )
-      .filter(function(item){
-        return Boolean(
-          item.text
-        );
-      });
-  }
-
-  return [];
-}
 
 /* ═══════════════════════════════════════
  * 허가번호를 이용한 허가서 연동
