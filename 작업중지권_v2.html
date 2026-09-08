@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <script>
 /* 다크모드 사전 적용 (렌더링 전 실행 → 흰 화면 깜빡임 방지) */
-(function(){handleInspectionAutoTrigger()
+(function(){
   try{
     var saved = localStorage.getItem('theme');
     var theme = saved || (window.matchMedia && 
