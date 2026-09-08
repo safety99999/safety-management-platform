@@ -123,8 +123,63 @@
     );
   }
 })();
-</script>
+/* ═══════════════════════════════════════
+ * 일일 작업 리포트 배너
+ * ═══════════════════════════════════════ */
 
+.daily-report-banner{
+  margin:10px 16px 0;
+  padding:11px 12px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--posco);
+  border-radius:12px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  background:var(--card);
+  box-shadow:var(--sh);
+}
+
+.daily-report-info{
+  min-width:0;
+}
+
+.daily-report-title{
+  color:var(--ink);
+  font-size:13px;
+  font-weight:900;
+}
+
+.daily-report-summary{
+  margin-top:2px;
+  overflow:hidden;
+  color:var(--sub);
+  font-size:10.5px;
+  font-weight:700;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.daily-report-button{
+  min-height:34px;
+  padding:7px 10px;
+  border:0;
+  border-radius:9px;
+  background:var(--deep);
+  color:#fff;
+  font-size:10.5px;
+  font-weight:900;
+  white-space:nowrap;
+  cursor:pointer;
+}
+
+.daily-report-button:active{
+  transform:scale(.97);
+}
+
+  
+</script>
 <style>
 /* ═══════════════════════════════════════
  * 작업종료 버튼
@@ -1052,12 +1107,37 @@ button{touch-action:manipulation}
           <div class="status-dt-value" id="cntDone">0</div>
           <div class="status-dt-label">작업종료</div>
         </div>
-      </div>
+           </div>
     </section>
+
+    <!-- 일일 작업 리포트 -->
+    <div class="daily-report-banner">
+      <div class="daily-report-info">
+        <div class="daily-report-title">
+          📊 일일 작업 리포트
+        </div>
+
+        <div
+          class="daily-report-summary"
+          id="dailyReportSummary"
+        >
+          작업현황 집계 중
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="daily-report-button"
+        id="dailyReportButton"
+      >
+        리포트 보기
+      </button>
+    </div>
 
     <section class="sec">
       <div class="sec-hdr"><div class="sec-title">⚡ 빠른 실행</div></div>
     </section>
+
 
     <div class="quick-grid">
       <button type="button" class="qbtn" data-quick-app="safety-info">
@@ -4296,7 +4376,9 @@ button{touch-action:manipulation}
 
     updateWorkTitle();
     updateStatusCounts();
+    updateDailyReportSummary();
   }
+
 
   function updateStatusCounts(){
     var indexes =
@@ -5772,116 +5854,59 @@ if(
 
     updateWorkTitle();
     updateStatusCounts();
+    updateDailyReportSummary();
   }
 
-  function updateStatusCounts(){
-    var indexes =
-      buildProcessIndexes();
-
-    var counts = {
-      total:
-        state.displayedWorks
-          .length,
-      danger:0,
-      wait:0,
-      run:0,
-      stop:0,
-      done:0
-    };
-
-    state.displayedWorks
-      .forEach(function(work){
-        if(
-          work.riskLevel ===
-            '고위험'
-        ){
-          counts.danger++;
-        }
-
-        var status =
-          displayStatus(
-            work,
-            indexes
-          );
-
-        if(
-          status.code ===
-            'scheduled'
-        ){
-          counts.done++;
-
-        }else if(
-          status.code ===
-            'inProgress' ||
-          status.code ===
-            'approved'
-        ){
-          counts.run++;
-
-        }else if(
-          status.code ===
-            'stopped'
-        ){
-          counts.stop++;
-
-        }else if(
-          status.code ===
-            'completed'
-        ){
-          counts.done++;
-
-        }else{
-          counts.wait++;
-        }
-      });
-
-    setText(
-      'cntTotal',
-      counts.total
+ function updateDailyReportSummary(){
+  var total =
+    Number(
+      byId('cntTotal')
+        ?.textContent ||
+      0
     );
 
-    setText(
-      'cntDanger',
-      counts.danger
+  var waiting =
+    Number(
+      byId('cntWait')
+        ?.textContent ||
+      0
     );
 
-    setText(
-      'cntWait',
-      counts.wait
+  var running =
+    Number(
+      byId('cntRun')
+        ?.textContent ||
+      0
     );
 
-    setText(
-      'cntRun',
-      counts.run
+  var stopped =
+    Number(
+      byId('cntStop')
+        ?.textContent ||
+      0
     );
 
-    setText(
-      'cntStop',
-      counts.stop
+  var completed =
+    Number(
+      byId('cntDone')
+        ?.textContent ||
+      0
     );
 
-    setText(
-      'cntDone',
-      counts.done
-    );
-
-    [
-      'cntWait',
-      'cntRun',
-      'cntStop',
-      'cntDone'
-    ].forEach(function(id){
-      var element =
-        byId(id);
-
-      element.classList.toggle(
-        'zero',
-        Number(
-          element.textContent
-        ) === 0
-      );
-    });
-  }
+  setText(
+    'dailyReportSummary',
+    '전체 ' +
+    total +
+    ' · 완료 ' +
+    completed +
+    ' · 작업중 ' +
+    running +
+    ' · 중지 ' +
+    stopped +
+    ' · 허가전 ' +
+    waiting
+  );
+}
 
   function statusClass(code){
     if(
@@ -6166,77 +6191,115 @@ function standardWorkCard(
           );
 
    
-actionHtml =
-  '<div class="work-mini-actions">' +
+    /*
+     * 작업완료 상태에서는 작업종료 버튼 대신
+     * 작업별 완료리포트 버튼을 표시합니다.
+     */
+    if(
+      permitCode === 'completed'
+    ){
+      var workReportUrl =
+        '작업리포트_v1.html' +
+        '?type=work' +
+        '&permitNo=' +
+        encodeURIComponent(
+          permitNo
+        ) +
+        (
+          permit.completionNo
+            ? '&completionNo=' +
+              encodeURIComponent(
+                permit.completionNo
+              )
+            : ''
+        ) +
+        (
+          workId
+            ? '&workId=' +
+              encodeURIComponent(
+                workId
+              )
+            : ''
+        );
 
-    '<a class="work-mini-action permit" href="' +
-      escapeHtml(
-        permitUrl
-      ) +
-    '">' +
-      '📄 허가서' +
-    '</a>' +
+      actionHtml =
+        '<div class="work-mini-actions">' +
 
-    tbmButton +
-
-    inspectionButton +
-
-    (
-      [
-        'approved',
-        'tbmCompleted',
-        'inProgress'
-      ].indexOf(
-        permitCode
-      ) >= 0
-        ? '<button type="button" ' +
-            'class="work-mini-action completion" ' +
-            'data-complete-work="' +
+          '<a class="work-mini-action permit" href="' +
             escapeHtml(
-              workId
-            ) +
-            '" ' +
-            'data-complete-permit="' +
-            escapeHtml(
-              permitNo
+              permitUrl
             ) +
           '">' +
-            '🏁 작업종료' +
-          '</button>'
-        : '<span class="work-mini-action disabled">' +
-            '🔒 작업종료' +
-          '</span>'
-    ) +
+            '📄 허가서' +
+          '</a>' +
 
-  '</div>';
+          tbmButton +
 
+          '<span class="work-mini-action inspection">' +
+            (
+              inspections.length
+                ? '🛡️ 점검 ' +
+                  inspections.length
+                : '🛡️ 점검 없음'
+            ) +
+          '</span>' +
 
-  /*
-   * 예정 작업
-   */
-  }else if(
-    status.code ===
-      'scheduled'
-  ){
-    actionHtml =
-      '<button type="button" ' +
-        'class="wi-btn secondary" ' +
-        'data-open-prework="' +
-        escapeHtml(
-          work.workId
-        ) +
-      '">' +
-        '📋 사전 준비 확인 →' +
-      '</button>';
+          '<a class="work-mini-action completion" href="' +
+            escapeHtml(
+              workReportUrl
+            ) +
+          '">' +
+            '📑 완료리포트' +
+          '</a>' +
 
-  }else{
-    actionHtml =
-      '<div class="wi-btn secondary">' +
-        escapeHtml(
-          status.label
-        ) +
-      '</div>';
-  }
+        '</div>';
+
+    }else{
+      actionHtml =
+        '<div class="work-mini-actions">' +
+
+          '<a class="work-mini-action permit" href="' +
+            escapeHtml(
+              permitUrl
+            ) +
+          '">' +
+            '📄 허가서' +
+          '</a>' +
+
+          tbmButton +
+
+          inspectionButton +
+
+          (
+            [
+              'approved',
+              'tbmCompleted',
+              'inProgress'
+            ].indexOf(
+              permitCode
+            ) >= 0
+              ? '<button type="button" ' +
+                  'class="work-mini-action completion" ' +
+                  'data-complete-work="' +
+                  escapeHtml(
+                    workId
+                  ) +
+                  '" ' +
+                  'data-complete-permit="' +
+                  escapeHtml(
+                    permitNo
+                  ) +
+                '">' +
+                  '🏁 작업종료' +
+                '</button>'
+              : '<span class="work-mini-action disabled">' +
+                  '🔒 작업종료' +
+                '</span>'
+          ) +
+
+        '</div>';
+    }
+
 
   return (
     '<article class="work-item compact ' +
@@ -10778,6 +10841,31 @@ async function completeCurrentWork(){
         element.hidden =
           !global.isAdminUser();
       });
+    var dailyReportButton =
+      byId(
+        'dailyReportButton'
+      );
+
+    if(dailyReportButton){
+      dailyReportButton
+        .addEventListener(
+          'click',
+          function(){
+            var reportDate =
+              selectedWorkDate() ||
+              today();
+
+            navigate(
+              '작업리포트_v1.html' +
+              '?type=daily' +
+              '&date=' +
+              encodeURIComponent(
+                reportDate
+              )
+            );
+          }
+        );
+    }
 
     var userMenuButton =
       byId(
