@@ -4146,14 +4146,26 @@ button{touch-action:manipulation}
       );
 
     var tbm =
-      latestTbmByPermitNo(
-        permit.permitNo,
-        indexes
-      );
+  latestTbmByPermitNo(
+    permit.permitNo,
+    indexes
+  );
 
-    if(
-      permitCode === 'cancelled'
-    ){
+if(
+  permitCode === 'stopped'
+){
+  return {
+    code:'stopped',
+    label:'작업중지',
+    permit:permit,
+    tbm:tbm
+  };
+}
+
+if(
+  permitCode === 'cancelled'
+){
+
       return {
         code:'cancelled',
         label:'취소',
@@ -6096,7 +6108,14 @@ function standardWorkCard(
           clean(
             record &&
             record.permitNo
-          ) === permitNo
+          ) === permitNo ||
+          (
+            workId &&
+            clean(
+              record &&
+              record.workId
+            ) === workId
+          )
         );
       });
 
@@ -6190,10 +6209,9 @@ function standardWorkCard(
             '</span>'
           );
 
-   
     /*
      * 작업완료 상태에서는 작업종료 버튼 대신
-     * 작업별 완료리포트 버튼을 표시합니다.
+     * 작업별 완료리포트를 표시합니다.
      */
     if(
       permitCode === 'completed'
@@ -6278,28 +6296,58 @@ function standardWorkCard(
             ].indexOf(
               permitCode
             ) >= 0
-              ? '<button type="button" ' +
-                  'class="work-mini-action completion" ' +
-                  'data-complete-work="' +
-                  escapeHtml(
-                    workId
-                  ) +
-                  '" ' +
-                  'data-complete-permit="' +
-                  escapeHtml(
-                    permitNo
-                  ) +
-                '">' +
-                  '🏁 작업종료' +
-                '</button>'
-              : '<span class="work-mini-action disabled">' +
-                  '🔒 작업종료' +
-                '</span>'
+              ? (
+                  '<button type="button" ' +
+                    'class="work-mini-action completion" ' +
+                    'data-complete-work="' +
+                    escapeHtml(
+                      workId
+                    ) +
+                    '" ' +
+                    'data-complete-permit="' +
+                    escapeHtml(
+                      permitNo
+                    ) +
+                  '">' +
+                    '🏁 작업종료' +
+                  '</button>'
+                )
+              : (
+                  '<span class="work-mini-action disabled">' +
+                    '🔒 작업종료' +
+                  '</span>'
+                )
           ) +
 
         '</div>';
     }
 
+  /*
+   * 예정 작업
+   */
+  }else if(
+    status.code ===
+      'scheduled'
+  ){
+    actionHtml =
+      '<button type="button" ' +
+        'class="wi-btn secondary" ' +
+        'data-open-prework="' +
+        escapeHtml(
+          work.workId
+        ) +
+      '">' +
+        '📋 사전 준비 확인 →' +
+      '</button>';
+
+  }else{
+    actionHtml =
+      '<div class="wi-btn secondary">' +
+        escapeHtml(
+          status.label
+        ) +
+      '</div>';
+  }
 
   return (
     '<article class="work-item compact ' +
@@ -6368,6 +6416,7 @@ function standardWorkCard(
     '</article>'
   );
 }
+
 
 
 
