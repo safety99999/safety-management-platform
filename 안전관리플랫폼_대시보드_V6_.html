@@ -12482,13 +12482,14 @@ console.log(
       }
 
       // ─── 2. work-database.test.json 생성 ──
-      var workDbContent = {
-        version: '1.0',
-        generatedAt: new Date().toISOString(),
-        environment: 'test',
-        count: workHistory.length,
-        workHistory: workHistory
-      };
+     var workDbContent = {
+  version: '1.0',
+  generatedAt: new Date().toISOString(),
+  environment: 'test',
+  count: workHistory.length,
+  data: workHistory
+};
+
       var workDbJson = JSON.stringify(workDbContent, null, 2);
       var workDbSha256 = await calculateSha256(workDbJson);
 
