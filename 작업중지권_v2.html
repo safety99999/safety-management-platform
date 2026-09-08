@@ -492,135 +492,6 @@ body{
 }
 
 /* ═══ 원터치 긴급 신고 버튼 ═══ */
-// ═══════════════════════════════════════════════════
-// ⭐ 오늘의 진행 작업 로드 및 렌더링 (2026-09-01 신규)
-// ═══════════════════════════════════════════════════
-function loadTodayWorks(){
-  try {
-    var today = fmtDate(new Date());
-    var dbRaw = localStorage.getItem('safetyDatabase');
-    if(!dbRaw){
-      console.log('[작업중지권] safetyDatabase 없음');
-      return;
-    }
-    
-    var db = JSON.parse(dbRaw);
-    var works = db.workHistory || [];
-    
-    // 오늘 작업 중 "허가완료" 또는 "작업중" 상태만
-    var todayWorks = works.filter(function(w){
-      if(w.date !== today) return false;
-      var status = w.status || w.workStatus || '';
-      return status === '허가완료' || status === '작업중';
-    });
-    
-    console.log('[작업중지권] 오늘 진행 중 작업:', todayWorks.length + '건');
-    
-    if(todayWorks.length === 0){
-      renderTodayWorksEmpty();
-    } else {
-      renderTodayWorks(todayWorks);
-    }
-    
-    var section = document.getElementById('todayWorksSection');
-    if(section) section.style.display = 'block';
-    
-  } catch(e) {
-    console.error('[loadTodayWorks] 오류:', e);
-  }
-}
-
-function renderTodayWorks(works){
-  var list = document.getElementById('todayWorksList');
-  var count = document.getElementById('todayWorksCount');
-  if(!list) return;
-  
-  if(count) count.textContent = works.length + '건';
-  
-  var permits = [];
-  try {
-    permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-  } catch(e) {}
-  
-  var html = '';
-  works.forEach(function(w){
-    var workId = w.workId || (w.date + '_' + (w.originalNo || ''));
-    var linkedPermit = permits.find(function(p){
-      return p.workId === workId || p.sourceWorkId === workId;
-    });
-    var permitNo = linkedPermit ? linkedPermit.permitNo : '';
-    var isHighRisk = w.risk === '고위험' || w.riskLevel === '고위험' || w.isHighRiskFromSource;
-    var riskBadge = isHighRisk
-      ? '<span class="today-work-badge high">고위험</span>'
-      : '<span class="today-work-badge normal">일반</span>';
-    
-    var workName = w.workName || w.workNameFull || '(작업명 미상)';
-    var location = w.locationRaw || (w.location && w.location.raw) || '위치 미상';
-    var company = w.company || w.executingCompany || '';
-    
-    html += 
-      '<div class="today-work-item" ' +
-        'data-workid="' + escHtml(workId) + '" ' +
-        'data-permitno="' + escHtml(permitNo) + '" ' +
-        'data-workname="' + escHtml(workName) + '" ' +
-        'data-location="' + escHtml(location) + '" ' +
-        'onclick="selectTodayWork(this)">' +
-        '<div class="today-work-radio"></div>' +
-        '<div class="today-work-body">' +
-          '<div class="today-work-name">' + escHtml(workName) + '</div>' +
-          '<div class="today-work-meta">' +
-            riskBadge +
-            '<span>📍 ' + escHtml(location) + '</span>' +
-            (company ? '<span>🏢 ' + escHtml(company) + '</span>' : '') +
-          '</div>' +
-        '</div>' +
-      '</div>';
-  });
-  
-  list.innerHTML = html;
-}
-
-function renderTodayWorksEmpty(){
-  var list = document.getElementById('todayWorksList');
-  var count = document.getElementById('todayWorksCount');
-  if(!list) return;
-  
-  if(count) count.textContent = '0건';
-  list.innerHTML = 
-    '<div class="today-works-empty">' +
-      '<span class="today-works-empty-ico">📭</span>' +
-      '오늘 진행 중인 작업이 없습니다.<br>' +
-      '일반 신고로 접수됩니다.' +
-    '</div>';
-}
-
-function selectTodayWork(el){
-  var items = document.querySelectorAll('.today-work-item');
-  items.forEach(function(item){ item.classList.remove('selected'); });
-  el.classList.add('selected');
-  
-  var workId = el.getAttribute('data-workid') || '';
-  var permitNo = el.getAttribute('data-permitno') || '';
-  var workName = el.getAttribute('data-workname') || '';
-  var location = el.getAttribute('data-location') || '';
-  
-  stopData.workId = workId;
-  stopData.permitNo = permitNo;
-  stopData.workName = workName;
-  stopData.location = location;
-  
-  console.log('[작업중지권] 작업 선택:', workName, '(permitNo:', permitNo, ')');
-  
-  if(permitNo){
-    var badge = document.getElementById('permitBadge');
-    if(badge){
-      badge.textContent = permitNo;
-      badge.classList.add('show');
-    }
-  }
-  
-  showToast('✅ 작업 선택됨: ' + workName.substring(0, 20), 'success');
-}
 
 
 /* ═══ 원터치 긴급 신고 버튼 ═══ */
@@ -779,36 +650,109 @@ function selectTodayWork(el){
 }
 
 /* ═══ 사진 첨부 ═══ */
+#photoUploadArea{
+  display:block;
+  width:100%;
+  min-width:0;
+}
+
+#photoInput{
+  display:none!important;
+}
+
 .photo-upload{
-  background:var(--card);border:2px dashed var(--line);
-  border-radius:12px;padding:24px 16px;text-align:center;
-  cursor:pointer;transition:.15s;
+  width:100%;
+  min-height:210px;
+  padding:24px 16px;
+  border:2px dashed var(--line);
+  border-radius:12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  overflow:hidden;
+  background:var(--sunk);
+  color:var(--sub);
+  text-align:center;
+  cursor:pointer;
+  transition:.15s;
 }
-.photo-upload:active{transform:scale(.98);}
-.photo-upload:hover{border-color:var(--stop);background:var(--stop-bg);}
+
+.photo-upload:active{
+  transform:scale(.98);
+}
+
+.photo-upload:hover{
+  border-color:var(--stop);
+  background:var(--stop-bg);
+}
+
 .photo-upload-ico{
-  font-size:36px;margin-bottom:8px;line-height:1;color:var(--sub);
+  display:block;
+  margin:0 0 8px;
+  color:var(--sub);
+  font-size:36px;
+  line-height:1;
 }
+
 .photo-upload-txt{
-  font-size:13px;font-weight:700;color:var(--sub);
+  display:block;
+  color:var(--sub);
+  font-size:13px;
+  font-weight:700;
   line-height:1.5;
 }
+
 .photo-upload-sub{
-  font-size:11px;color:var(--faint);margin-top:4px;font-weight:600;
+  display:block;
+  margin-top:4px;
+  color:var(--faint);
+  font-size:11px;
+  font-weight:600;
 }
+
 .photo-preview{
-  position:relative;border-radius:12px;overflow:hidden;
+  position:relative;
+  width:100%;
+  min-height:180px;
+  overflow:hidden;
+  border:2px solid var(--line);
+  border-radius:12px;
   background:var(--sunk);
 }
-.photo-preview img{width:100%;display:block;}
-.photo-preview-del{
-  position:absolute;top:8px;right:8px;
-  width:32px;height:32px;border-radius:50%;
-  background:rgba(0,0,0,.7);color:#fff;border:none;
-  font-size:18px;cursor:pointer;font-family:inherit;
-  display:flex;align-items:center;justify-content:center;
+
+.photo-preview img{
+  display:block;
+  width:100%;
+  max-height:320px;
+  object-fit:contain;
 }
-.photo-preview-del:active{transform:scale(.9);}
+
+.photo-preview-del{
+  position:absolute;
+  top:8px;
+  right:8px;
+  z-index:2;
+  width:32px;
+  height:32px;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.72);
+  color:#fff;
+  font-family:inherit;
+  font-size:18px;
+  cursor:pointer;
+}
+
+.photo-preview-del:active{
+  transform:scale(.9);
+}
+
 
 /* ═══ 서명 ═══ */
 .sig-wrap{
@@ -2363,54 +2307,276 @@ async function updatePermitInFirestore(permitNo, updates){
 }
 
   
-function updatePermitStatus(permitNo, status, emergencyNo){
+function updatePermitStatus(
+  permitNo,
+  status,
+  emergencyNo
+){
   try{
-    var permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    var srcWorkId = null;
+    var session = null;
+
+    try{
+      session =
+        JSON.parse(
+          sessionStorage.getItem(
+            'appSession'
+          ) || 'null'
+        );
+    }catch(sessionError){
+      session = null;
+    }
+
+    /*
+     * 테스터 허가서는 testerSafetyPermits,
+     * 일반 사용자·관리자 허가서는 safetyPermits를 사용합니다.
+     */
+    var permitStorageKey =
+      session &&
+      session.role === 'tester'
+        ? 'testerSafetyPermits'
+        : 'safetyPermits';
+
+    var permits =
+      JSON.parse(
+        localStorage.getItem(
+          permitStorageKey
+        ) || '[]'
+      );
+
+    if(!Array.isArray(permits)){
+      permits = [];
+    }
+
+    var sourceWorkId = '';
     var updated = false;
-    
-    permits.forEach(function(p){
-      if(p.permitNo === permitNo){
-        p.status = status;
-        p.permitStatus = status;
-        p.emergencyNo = emergencyNo;
-        p.stopReason = stopData.reasons.join(', ');
-        p.stopAt = new Date().toISOString();
-        p.updatedAt = new Date().toISOString();
-        srcWorkId = p.workId || p.sourceWorkId;
+    var updatedPermit = null;
+    var updatedAt =
+      new Date().toISOString();
+
+    permits.forEach(function(permit){
+      if(
+        permit &&
+        permit.permitNo ===
+          permitNo
+      ){
+        permit.status =
+          status;
+
+        permit.permitStatus =
+          status;
+
+        /*
+         * 대시보드가 작업중지 상태를
+         * 바로 판별할 수 있도록 코드도 저장합니다.
+         */
+        permit.statusCode =
+          status === '작업중지'
+            ? 'stopped'
+            : permit.statusCode;
+
+        permit.emergencyNo =
+          emergencyNo;
+
+        permit.stopReason =
+          stopData.reasons.join(', ');
+
+        permit.stopAt =
+          updatedAt;
+
+        permit.updatedAt =
+          updatedAt;
+
+        permit.approvalWorkflow =
+          Object.assign(
+            {},
+            permit.approvalWorkflow ||
+              {},
+            {
+              currentStep:
+                'WORK_STOPPED',
+
+              currentStatusCode:
+                'stopped',
+
+              lastAction:
+                'workStopped',
+
+              lastComment:
+                stopData.reasons
+                  .join(', '),
+
+              lastProcessedAt:
+                updatedAt
+            }
+          );
+
+        sourceWorkId =
+          permit.workId ||
+          permit.sourceWorkId ||
+          (
+            permit.workflowLink &&
+            permit.workflowLink.workId
+          ) ||
+          '';
+
+        updatedPermit =
+          permit;
+
         updated = true;
       }
     });
-    
-    if(updated){
-      localStorage.setItem('safetyPermits', JSON.stringify(permits));
-      
-      // 작업DB도 갱신
-      if(srcWorkId){
-        var dbRaw = localStorage.getItem('safetyDatabase');
-        if(dbRaw){
-          var db = JSON.parse(dbRaw);
-          (db.workHistory || []).forEach(function(w){
-            var wid = w.workId || (w.date + '_' + (w.originalNo || ''));
-            if(wid === srcWorkId){
-              w.status = status;
-            }
-          });
-          localStorage.setItem('safetyDatabase', JSON.stringify(db));
+
+    if(!updated){
+      console.warn(
+        '[작업중지권] 연결 허가서를 찾지 못함:',
+        {
+          permitNo:
+            permitNo,
+
+          storageKey:
+            permitStorageKey,
+
+          permitCount:
+            permits.length
         }
-      }
-      
-      // 이벤트 발행
-      try{
-        window.dispatchEvent(new CustomEvent('app-data-changed', {
-          detail: { key: 'safetyPermits', timestamp: Date.now() }
-        }));
-      }catch(e){}
-      
-      console.log('✅ 허가서 상태 업데이트:', permitNo, '→', status);
+      );
+
+      return;
     }
-  }catch(e){
-    console.warn('허가서 상태 업데이트 실패:', e);
+
+    localStorage.setItem(
+      permitStorageKey,
+      JSON.stringify(
+        permits
+      )
+    );
+
+    /*
+     * 작업관리대장 캐시에도 작업중지 상태를 반영합니다.
+     */
+    if(sourceWorkId){
+      var databaseRaw =
+        localStorage.getItem(
+          'safetyDatabase'
+        );
+
+      if(databaseRaw){
+        var database =
+          JSON.parse(
+            databaseRaw
+          );
+
+        (
+          database.workHistory ||
+          []
+        ).forEach(function(work){
+          var currentWorkId =
+            work.workId ||
+            (
+              work.date +
+              '_' +
+              (
+                work.originalNo ||
+                ''
+              )
+            );
+
+          if(
+            currentWorkId ===
+              sourceWorkId
+          ){
+            work.status =
+              '작업중지';
+
+            work.workStatus =
+              '작업중지';
+
+            work.statusCode =
+              'stopped';
+
+            work.emergencyNo =
+              emergencyNo;
+
+            work.stopAt =
+              updatedAt;
+          }
+        });
+
+        localStorage.setItem(
+          'safetyDatabase',
+          JSON.stringify(
+            database
+          )
+        );
+      }
+    }
+
+    /*
+     * 일반 사용자·관리자만 Firestore 허가서를 갱신합니다.
+     * 테스터는 로컬 저장만 사용합니다.
+     */
+    if(
+      permitStorageKey ===
+        'safetyPermits' &&
+      updatedPermit
+    ){
+      updatePermitInFirestore(
+        permitNo,
+        updatedPermit
+      );
+    }
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:
+                permitStorageKey,
+
+              workId:
+                sourceWorkId,
+
+              permitNo:
+                permitNo,
+
+              emergencyNo:
+                emergencyNo,
+
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    }catch(eventError){}
+
+    console.log(
+      '[작업중지권] 허가서 작업중지 반영 완료:',
+      {
+        permitNo:
+          permitNo,
+
+        workId:
+          sourceWorkId,
+
+        storageKey:
+          permitStorageKey,
+
+        statusCode:
+          'stopped',
+
+        emergencyNo:
+          emergencyNo
+      }
+    );
+
+  }catch(error){
+    console.warn(
+      '[작업중지권] 허가서 상태 업데이트 실패:',
+      error
+    );
   }
 }
 
