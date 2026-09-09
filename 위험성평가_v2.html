@@ -1690,79 +1690,7 @@ button{cursor:pointer;}
   
 </head>
 <body>
-<!-- 🆕 판정 처리 중 로딩 오버레이 -->
-<div id="riskLoadingOverlay" style="
-  display:none;
-  position:fixed;
-  top:0; left:0;
-  width:100%; height:100%;
-  background:rgba(0,0,0,0.5);
-  z-index:99999;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  gap:15px;
-">
-  <div style="
-    width:60px; height:60px;
-    border:6px solid #fff;
-    border-top:6px solid #003C7E;
-    border-radius:50%;
-    animation:spinRisk 0.8s linear infinite;
-  "></div>
-  <div id="riskLoadingText" style="
-    color:#fff;
-    font-size:16px;
-    font-weight:800;
-    text-shadow:0 2px 4px rgba(0,0,0,0.5);
-  ">위험도 분석 중...</div>
-</div>
 
-<style>
-@keyframes spinRisk {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-#riskLoadingOverlay.active {
-  display: flex !important;
-}
-</style>
-
-<script>
-// 로딩 표시 헬퍼
-window.showRiskLoading = function(text){
-  var overlay = document.getElementById('riskLoadingOverlay');
-  var textEl = document.getElementById('riskLoadingText');
-  if(overlay){
-    if(text && textEl) textEl.textContent = text;
-    overlay.classList.add('active');
-  }
-};
-
-window.hideRiskLoading = function(){
-  var overlay = document.getElementById('riskLoadingOverlay');
-  if(overlay) overlay.classList.remove('active');
-};
-
-// "진행" 버튼 클릭 시 자동 표시
-document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('button').forEach(function(btn){
-    var text = btn.textContent.trim();
-    if(/위험성평가 진행|다음/.test(text)){
-      btn.addEventListener('click', function(){
-        window.showRiskLoading('위험도 분석 중...');
-        setTimeout(window.hideRiskLoading, 3000); // 3초 후 자동 해제
-      });
-    }
-    if(/평가 제출|제출/.test(text)){
-      btn.addEventListener('click', function(){
-        window.showRiskLoading('평가 저장 중...');
-        setTimeout(window.hideRiskLoading, 3000);
-      });
-    }
-  });
-});
-</script>
   
 <div class="app">
 
@@ -5993,15 +5921,131 @@ function startAssessmentFromWork(workId, reassessment){
       [riskData.workName, riskData.workDescription].join(' ')
     );
 
-    if(work.location){
-      if(typeof work.location === 'string'){
-        riskData.location = work.location;
-      } else {
-        riskData.location = work.location.factory || '';
-        riskData.detailLocation = work.location.line
-          ? (work.location.line + '라인') : '';
-      }
+    /*
+     * 작업장소가 비어 있어도 작업명·원본 위치·표시 위치에서
+     * 공장과 라인을 판정합니다.
+     *
+     * 1~5라인 → 포항양극재 1공장
+     * 6~9라인 → 포항양극재 2공장
+     */
+    var locationObject =
+      work.location &&
+      typeof work.location ===
+        'object'
+        ? work.location
+        : {};
+
+    var originalLocation =
+      String(
+        work.locationDisplay ||
+        work.locationRaw ||
+        work.workPlaceRaw ||
+        (
+          typeof work.location ===
+            'string'
+            ? work.location
+            : locationObject.raw ||
+              locationObject.display ||
+              ''
+        ) ||
+        ''
+      ).trim();
+
+    var factorySourceText =
+      [
+        locationObject.factory || '',
+        originalLocation,
+        work.workName || '',
+        work.workNameFull || ''
+      ]
+        .join(' ')
+        .replace(/\s+/g,' ');
+
+    var compactFactoryText =
+      factorySourceText
+        .replace(/\s+/g,'');
+
+    var detectedFactory = '';
+
+    /*
+     * 명시된 공장·단계 정보를 먼저 판정합니다.
+     */
+    if(
+      compactFactoryText.indexOf(
+        '2공장'
+      ) >= 0 ||
+      compactFactoryText.indexOf(
+        '2-2단계'
+      ) >= 0
+    ){
+      detectedFactory =
+        '포항양극재 2공장';
+
+    }else if(
+      compactFactoryText.indexOf(
+        '1공장'
+      ) >= 0 ||
+      compactFactoryText.indexOf(
+        '2-1단계'
+      ) >= 0 ||
+      (
+        compactFactoryText.indexOf(
+          '1단계'
+        ) >= 0 &&
+        compactFactoryText.indexOf(
+          '2-1단계'
+        ) < 0
+      )
+    ){
+      detectedFactory =
+        '포항양극재 1공장';
     }
+
+    /*
+     * 공장 정보가 없으면 라인 번호로 판정합니다.
+     * 9A·9B·9C라인도 9라인으로 판정합니다.
+     */
+    var lineMatch =
+      factorySourceText.match(
+        /(?:^|[^0-9])([1-9])\s*[A-C]?\s*라인/i
+      );
+
+    var lineNumber =
+      lineMatch
+        ? Number(lineMatch[1])
+        : 0;
+
+    if(
+      !detectedFactory &&
+      lineNumber >= 1 &&
+      lineNumber <= 5
+    ){
+      detectedFactory =
+        '포항양극재 1공장';
+    }
+
+    if(
+      !detectedFactory &&
+      lineNumber >= 6 &&
+      lineNumber <= 9
+    ){
+      detectedFactory =
+        '포항양극재 2공장';
+    }
+
+    riskData.location =
+      detectedFactory ||
+      '기타';
+
+    riskData.detailLocation =
+      originalLocation ||
+      (
+        lineNumber
+          ? lineNumber +
+            '라인'
+          : ''
+      );
+
 
     var permits = [];
     try {
