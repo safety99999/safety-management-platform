@@ -622,7 +622,7 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
       <div class="danger-box-t">⚠️ 최종 확인</div>
       <div class="danger-box-b">
         서명 제출 후에는 수정이 불가합니다<br>
-        서명 완료 시 도급인에게 자동으로 알림이 발송됩니다
+        서명 완료 시 정보는 안전관리 시스템에 저장됩니다.
       </div>
     </div>
 
@@ -640,8 +640,9 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
     <div class="complete-hero">
       <div class="complete-ico">✅</div>
       <div class="complete-title">서명 완료!</div>
-      <div class="complete-sub">안전정보제공서 확인 및 서명이 완료되었습니다.
-도급인에게 자동으로 완료 알림이 발송됩니다.</div>
+   <div class="complete-sub">안전정보제공서 확인 및 서명이 완료되었습니다.
+서명정보가 안전관리 시스템에 저장되었습니다.</div>
+
     </div>
    
     <div class="info-card">
@@ -1987,103 +1988,448 @@ function submitSign(){
   });
 }
 
-function executeSubmit(name, dt, ph){
-  try{
-    var now = new Date();
-    var signatureDataUrl = document.getElementById('sub-sig').toDataURL();
-   
-    var signInfo = {
-      workId: docData.workId || workIdFromUrl || '',
-      signerName: name,
-      signerPhone: ph,
-      confirmDate: dt,
-      signature: signatureDataUrl,
-      checklist: {
-        completed: clChecked + '/' + clTotal,
-        items: clItems,
-        all: clChecked === clTotal
-      },
-      signedAt: now.toISOString(),
-      signedBy: sessionStorage.getItem('userName') || name,
-      status: '서명완료',
-      updatedAt: now.toISOString(),
-      updatedBy: sessionStorage.getItem('userName') || name
-    };
-   
-    // localStorage 저장
-    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
-    var idx = docs.findIndex(function(d){
-      return d.safeinfoNo === safeinfoNo || d.docId === safeinfoNo;
-    });
-   
-    if(idx >= 0){
-      Object.assign(docs[idx], signInfo);
-      localStorage.setItem('safetyProvisions', JSON.stringify(docs));
-      console.log('✅ 서명 저장 완료 (기존 문서 갱신):', safeinfoNo);
-    } else {
-      docs.push(Object.assign({
-        safeinfoNo: safeinfoNo,
-        createdAt: now.toISOString(),
-        createdBy: name,
-        schemaVersion: 1
-      }, signInfo));
-      localStorage.setItem('safetyProvisions', JSON.stringify(docs));
-      console.warn('⚠️ 기존 문서 없음, 새 문서로 추가:', safeinfoNo);
-    }
-   
-    // ⭐ Firestore 업데이트
-    if(window.updateFirestoreStatus){
-      window.updateFirestoreStatus(safeinfoNo, signInfo)
-        .then(function(){
-          console.log('☁️ Firestore 서명 업데이트 완료');
-        })
-        .catch(function(err){
-          console.warn('Firestore 업데이트 실패 (localStorage는 저장됨):', err.message);
-        });
-    }
-   
-    // 이벤트 발행
-    try{
-      window.dispatchEvent(new CustomEvent('app-data-changed', {
-        detail: {
-          key: 'safetyProvisions',
-          action: 'signed',
-          safeinfoNo: safeinfoNo,
-          workId: docData.workId || workIdFromUrl || '',
-          timestamp: Date.now()
-        }
-      }));
-    }catch(e){
-      console.warn('이벤트 발생 실패:', e);
-    }
-   
-    if(docData && docData.contractorEmail){
-      notifyContractor(docData.contractorEmail, name);
-    }
-   
-    // 완료 화면
-    setTxt('fin-doc-id', safeinfoNo);
-    setTxt('fin-work-name', docData ? (docData.workName || '-') : '-');
-    setTxt('fin-signer', name + ' (' + ph + ')');
-    setTxt('fin-dt', now.toLocaleString('ko-KR'));
-   
-    hide('view-main');
-    hide('view-signature-section');
-    show('view-complete');
-   
-    showToast('✅ 서명 완료! 도급인에게 알림이 발송되었습니다', 'success');
-    window.scrollTo(0, 0);
-   
-  }catch(error){
-    console.error('❌ 서명 저장 실패:', error);
+async function executeSubmit(
+  name,
+  dt,
+  ph
+){
+  var submitButton =
+    document.getElementById(
+      'submitBtn'
+    );
+
+  if(
+    !docData ||
+    !safeinfoNo
+  ){
     showCustomAlert({
-      icon: '❌',
-      title: '저장 실패',
-      message: '저장 중 오류가 발생했습니다.\n\n' + error.message,
-      okType: 'danger'
+      icon:'❌',
+      title:'문서정보 없음',
+      message:
+        '서명할 안전정보제공서 정보를 찾을 수 없습니다.',
+      okType:'danger'
     });
+
+    return;
+  }
+
+  if(!shareTokenFromUrl){
+    showCustomAlert({
+      icon:'⚠️',
+      title:'공유 링크 확인 필요',
+      message:
+        '이 문서는 기존 문서번호 방식으로 열렸습니다.\n\n' +
+        '원격 서명을 저장하려면 도급인에게 새로운 공유 링크를 요청해 주세요.',
+      okType:'warn'
+    });
+
+    return;
+  }
+
+  if(
+    typeof window
+      .savePublicSafetyProvisionResponse !==
+      'function'
+  ){
+    showCustomAlert({
+      icon:'⚠️',
+      title:'저장 모듈 준비 중',
+      message:
+        '서명 저장 모듈을 불러오지 못했습니다.\n' +
+        '잠시 후 다시 시도해 주세요.',
+      okType:'warn'
+    });
+
+    return;
+  }
+
+  if(submitButton){
+    submitButton.disabled =
+      true;
+
+    submitButton.textContent =
+      '서명 저장 중...';
+  }
+
+  try{
+    var now =
+      new Date();
+
+    var signatureDataUrl =
+      document
+        .getElementById(
+          'sub-sig'
+        )
+        .toDataURL(
+          'image/png'
+        );
+
+    var responseData = {
+      shareToken:
+        shareTokenFromUrl,
+
+      safeinfoNo:
+        safeinfoNo,
+
+      signerName:
+        name,
+
+      signerPhone:
+        ph,
+
+      confirmDate:
+        dt,
+
+      signature:
+        signatureDataUrl,
+
+      checklist:{
+        completed:
+          clChecked +
+          '/' +
+          clTotal,
+
+        items:
+          Object.assign(
+            {},
+            clItems
+          ),
+
+        all:
+          clChecked ===
+          clTotal
+      }
+    };
+
+    /*
+     * Firestore 원격 저장이 성공해야
+     * 완료 화면으로 이동합니다.
+     */
+    var remoteResult =
+      await window
+        .savePublicSafetyProvisionResponse(
+          responseData
+        );
+
+    if(
+      !remoteResult ||
+      remoteResult.success !==
+        true
+    ){
+      throw new Error(
+        '서명 저장 결과를 확인할 수 없습니다.'
+      );
+    }
+
+    var signInfo = {
+      workId:
+        remoteResult.workId ||
+        docData.workId ||
+        workIdFromUrl ||
+        '',
+
+      workIds:
+        Array.isArray(
+          remoteResult.linkedWorkIds
+        )
+          ? remoteResult
+              .linkedWorkIds
+          : [],
+
+      linkedWorkIds:
+        Array.isArray(
+          remoteResult.linkedWorkIds
+        )
+          ? remoteResult
+              .linkedWorkIds
+          : [],
+
+      shareToken:
+        shareTokenFromUrl,
+
+      signerName:
+        name,
+
+      signerPhone:
+        ph,
+
+      confirmDate:
+        dt,
+
+      signature:
+        signatureDataUrl,
+
+      checklist:{
+        completed:
+          clChecked +
+          '/' +
+          clTotal,
+
+        items:
+          Object.assign(
+            {},
+            clItems
+          ),
+
+        all:
+          clChecked ===
+          clTotal
+      },
+
+      signedAt:
+        remoteResult.signedAt ||
+        now.toISOString(),
+
+      status:
+        '서명완료',
+
+      statusCode:
+        'contractorConfirmed',
+
+      contractorConfirmed:
+        true,
+
+      signed:
+        true,
+
+      firestoreSaved:
+        true,
+
+      syncStatus:
+        'synced',
+
+      remoteCollection:
+        remoteResult.collection ||
+        '',
+
+      updatedAt:
+        remoteResult.signedAt ||
+        now.toISOString(),
+
+      updatedBy:
+        name
+    };
+
+    /*
+     * 같은 브라우저에 원본 로컬 문서가 있는 경우에만
+     * 화면 연동을 위해 로컬 상태도 갱신합니다.
+     *
+     * 원본이 없는 외부 모바일에서는
+     * 가짜 안전정보 문서를 새로 생성하지 않습니다.
+     */
+    try{
+      var documents =
+        JSON.parse(
+          localStorage.getItem(
+            'safetyProvisions'
+          ) || '[]'
+        );
+
+      if(Array.isArray(documents)){
+        var documentIndex =
+          documents.findIndex(
+            function(record){
+              return (
+                record &&
+                (
+                  record.safeinfoNo ===
+                    safeinfoNo ||
+                  record.shareToken ===
+                    shareTokenFromUrl
+                )
+              );
+            }
+          );
+
+        if(documentIndex >= 0){
+          documents[
+            documentIndex
+          ] =
+            Object.assign(
+              {},
+              documents[
+                documentIndex
+              ],
+              signInfo
+            );
+
+          localStorage.setItem(
+            'safetyProvisions',
+            JSON.stringify(
+              documents
+            )
+          );
+        }
+      }
+    }catch(localError){
+      console.warn(
+        '[수급인 확인] 로컬 상태 반영 실패:',
+        localError
+      );
+    }
+
+    docData =
+      Object.assign(
+        {},
+        docData,
+        signInfo
+      );
+
+    isAlreadySigned =
+      true;
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:
+                'safetyProvisionResponses',
+
+              action:
+                'signed',
+
+              safeinfoNo:
+                safeinfoNo,
+
+              shareToken:
+                shareTokenFromUrl,
+
+              workId:
+                signInfo.workId,
+
+              workIds:
+                signInfo.linkedWorkIds,
+
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    }catch(eventError){}
+
+    setTxt(
+      'fin-doc-id',
+      safeinfoNo
+    );
+
+    setTxt(
+      'fin-work-name',
+      docData.workName ||
+      '-'
+    );
+
+    setTxt(
+      'fin-signer',
+      name +
+      ' (' +
+      ph +
+      ')'
+    );
+
+    setTxt(
+      'fin-dt',
+      new Date(
+        signInfo.signedAt
+      ).toLocaleString(
+        'ko-KR'
+      )
+    );
+
+    hide(
+      'view-main'
+    );
+
+    hide(
+      'view-signature-section'
+    );
+
+    show(
+      'view-complete'
+    );
+
+    showToast(
+      '서명이 서버에 안전하게 저장되었습니다.',
+      'success'
+    );
+
+    window.scrollTo(
+      0,
+      0
+    );
+
+    console.log(
+      '[수급인 확인] 서명 제출 완료:',
+      {
+        safeinfoNo:
+          safeinfoNo,
+
+        shareToken:
+          shareTokenFromUrl,
+
+        workId:
+          signInfo.workId,
+
+        linkedWorkIds:
+          signInfo.linkedWorkIds,
+
+        firestoreSaved:
+          true
+      }
+    );
+
+  }catch(error){
+    console.error(
+      '[수급인 확인] 서명 저장 실패:',
+      error
+    );
+
+    var message =
+      error &&
+      error.message
+        ? error.message
+        : '알 수 없는 오류';
+
+    if(
+      String(message)
+        .toLowerCase()
+        .indexOf(
+          'permission'
+        ) >= 0
+    ){
+      message =
+        '서명 저장 권한을 확인할 수 없습니다. ' +
+        '이미 제출된 문서이거나 공유 링크가 만료되었을 수 있습니다.';
+    }
+
+    showCustomAlert({
+      icon:'❌',
+      title:'서명 저장 실패',
+      message:
+        '서명이 저장되지 않았습니다.\n\n' +
+        message +
+        '\n\n인터넷 연결을 확인한 후 다시 시도해 주세요.',
+      okType:'danger'
+    });
+
+  }finally{
+    if(
+      submitButton &&
+      !isAlreadySigned
+    ){
+      submitButton.disabled =
+        false;
+
+      submitButton.textContent =
+        '✅ 확인 완료 및 서명 제출';
+
+      updateSubmitButtonState();
+    }
   }
 }
+
 
 // ═══════════════════════════════════════════════════
 // 도급인 알림
@@ -2268,87 +2614,168 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 
 import {
+  getAuth,
+  signInAnonymously
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+import {
   getFirestore,
   initializeFirestore,
   doc,
-  setDoc,
-  getDoc
+  getDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const PROVISION_COLLECTION =
-  window.getCollectionName(
-    "safetyProvisions"
+const firebaseConfig = {
+  apiKey:
+    "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+
+  authDomain:
+    "safety-management-platfo-5f413.firebaseapp.com",
+
+  projectId:
+    "safety-management-platfo-5f413",
+
+  storageBucket:
+    "safety-management-platfo-5f413.appspot.com",
+
+  messagingSenderId:
+    "96226952530",
+
+  appId:
+    "1:96226952530:web:07e7cb286dc4e120cea68b"
+};
+
+const firebaseApp =
+  getApps().length
+    ? getApp()
+    : initializeApp(
+        firebaseConfig
+      );
+
+const auth =
+  getAuth(
+    firebaseApp
   );
+
+let db;
+
+try{
+  db =
+    initializeFirestore(
+      firebaseApp,
+      {
+        experimentalForceLongPolling:
+          true,
+
+        useFetchStreams:
+          false
+      }
+    );
+
+  console.log(
+    '[수급인 확인] Firestore Long Polling 적용'
+  );
+
+}catch(error){
+  db =
+    getFirestore(
+      firebaseApp
+    );
+
+  console.warn(
+    '[수급인 확인] 기존 Firestore 인스턴스 사용:',
+    error.message
+  );
+}
 
 const PUBLIC_PROVISION_COLLECTION =
   window.getCollectionName(
-    "publicSafetyProvisions"
+    'publicSafetyProvisions'
   );
 
-const isIOS =
-  /iPad|iPhone|iPod/.test(
-    navigator.userAgent
+const RESPONSE_COLLECTION =
+  window.getCollectionName(
+    'publicSafetyProvisionResponses'
   );
 
-const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-const needsLongPolling = isIOS || isSafari;
-
-const firebaseConfig = {
-  apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
-  authDomain: "safety-management-platfo-5f413.firebaseapp.com",
-  projectId: "safety-management-platfo-5f413",
-  storageBucket: "safety-management-platfo-5f413.appspot.com",
-  messagingSenderId: "96226952530",
-  appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
-};
-
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-let db;
-try{
-  if(needsLongPolling){
-    db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      useFetchStreams: false
-    });
-    console.log("[Firestore] iOS/Safari 모드 (long polling)");
-  } else {
-    db = getFirestore(app);
-    console.log("[Firestore] 표준 모드");
+/*
+ * 현재 로그인 사용자가 있으면 그대로 사용하고,
+ * 외부 수급인처럼 로그인 정보가 없으면
+ * Firebase 익명 인증을 수행합니다.
+ */
+async function ensureProvisionUser(){
+  if(auth.currentUser){
+    return auth.currentUser;
   }
-} catch(e){
-  db = getFirestore(app);
+
+  try{
+    const credential =
+      await signInAnonymously(
+        auth
+      );
+
+    console.log(
+      '[수급인 확인] 익명 인증 완료:',
+      credential.user.uid
+    );
+
+    return credential.user;
+
+  }catch(error){
+    console.error(
+      '[수급인 확인] 익명 인증 실패:',
+      error
+    );
+
+    throw new Error(
+      '서명 저장을 위한 익명 인증에 실패했습니다. ' +
+      error.message
+    );
+  }
 }
 
-/**
- * Firestore의 안전정보제공서 문서 상태 업데이트
- * merge:true 옵션으로 기존 문서와 병합 (덮어쓰기 방지)
+/*
+ * 공유 토큰의 기본 형식을 검증합니다.
  */
-/**
+function validateShareToken(
+  shareToken
+){
+  const token =
+    String(
+      shareToken || ''
+    ).trim();
+
+  if(!token){
+    throw new Error(
+      '공유 토큰이 없습니다.'
+    );
+  }
+
+  if(
+    token.length < 24 ||
+    token.indexOf('/') >= 0
+  ){
+    throw new Error(
+      '공유 토큰 형식이 올바르지 않습니다.'
+    );
+  }
+
+  return token;
+}
+
+/*
  * shareToken을 문서 ID로 사용하여
- * 수급인 공개본 한 건만 조회합니다.
+ * 공개 안전정보제공서 한 건만 조회합니다.
  */
 window.loadPublicSafetyProvision =
-  async function(shareToken){
+  async function(
+    shareToken
+  ){
     const token =
-      String(
-        shareToken || ''
-      ).trim();
-
-    if(!token){
-      throw new Error(
-        '공유 토큰이 없습니다.'
+      validateShareToken(
+        shareToken
       );
-    }
-
-    if(
-      token.length < 24 ||
-      token.indexOf('/') >= 0
-    ){
-      throw new Error(
-        '공유 토큰 형식이 올바르지 않습니다.'
-      );
-    }
 
     const reference =
       doc(
@@ -2358,7 +2785,9 @@ window.loadPublicSafetyProvision =
       );
 
     const snapshot =
-      await getDoc(reference);
+      await getDoc(
+        reference
+      );
 
     if(!snapshot.exists()){
       throw new Error(
@@ -2379,7 +2808,6 @@ window.loadPublicSafetyProvision =
     }
 
     if(
-      record.shareStatus &&
       record.shareStatus !==
         'active'
     ){
@@ -2404,51 +2832,307 @@ window.loadPublicSafetyProvision =
     );
   };
 
+/*
+ * 수급인 확인·서명을 응답 전용 컬렉션에 저장합니다.
+ *
+ * 공개 안전정보제공서와 내부 원본에는
+ * 외부 사용자가 직접 쓰지 않습니다.
+ */
+window.savePublicSafetyProvisionResponse =
+  async function(
+    responseData
+  ){
+    if(
+      !responseData ||
+      typeof responseData !==
+        'object'
+    ){
+      throw new Error(
+        '저장할 서명정보가 없습니다.'
+      );
+    }
+
+    const token =
+      validateShareToken(
+        responseData.shareToken
+      );
+
+    if(!navigator.onLine){
+      throw new Error(
+        '인터넷 연결을 확인해 주세요.'
+      );
+    }
+
+    /*
+     * 먼저 공개 문서의 존재와 활성 상태를 확인합니다.
+     */
+    const publicReference =
+      doc(
+        db,
+        PUBLIC_PROVISION_COLLECTION,
+        token
+      );
+
+    const publicSnapshot =
+      await getDoc(
+        publicReference
+      );
+
+    if(!publicSnapshot.exists()){
+      throw new Error(
+        '원본 공유 문서를 찾을 수 없습니다.'
+      );
+    }
+
+    const publicRecord =
+      publicSnapshot.data() || {};
+
+    if(
+      publicRecord.shareStatus !==
+        'active'
+    ){
+      throw new Error(
+        '사용이 종료된 공유 링크입니다.'
+      );
+    }
+
+    if(
+      String(
+        publicRecord.safeinfoNo || ''
+      ) !==
+      String(
+        responseData.safeinfoNo || ''
+      )
+    ){
+      throw new Error(
+        '문서번호 검증에 실패했습니다.'
+      );
+    }
+
+    const user =
+      await ensureProvisionUser();
+
+    const responseReference =
+      doc(
+        db,
+        RESPONSE_COLLECTION,
+        token
+      );
+
+    /*
+     * 같은 브라우저의 동일 익명 사용자가
+     * 이미 제출한 응답인지 확인합니다.
+     */
+    try{
+      const existingSnapshot =
+        await getDoc(
+          responseReference
+        );
+
+      if(existingSnapshot.exists()){
+        throw new Error(
+          '이미 서명이 제출된 문서입니다.'
+        );
+      }
+    }catch(error){
+      /*
+       * 다른 사용자가 먼저 제출한 문서는 Rules에 의해
+       * 조회가 거부될 수 있습니다.
+       * 최종 중복 여부는 Firestore Rules가 다시 확인합니다.
+       */
+      if(
+        error &&
+        error.message ===
+          '이미 서명이 제출된 문서입니다.'
+      ){
+        throw error;
+      }
+    }
+
+    const linkedWorkIds =
+      Array.isArray(
+        publicRecord.workIds
+      )
+        ? publicRecord.workIds
+            .map(function(workId){
+              return String(
+                workId || ''
+              ).trim();
+            })
+            .filter(Boolean)
+        : [];
+
+    const now =
+      new Date()
+        .toISOString();
+
+    const saveRecord = {
+      shareToken:
+        token,
+
+      safeinfoNo:
+        String(
+          publicRecord.safeinfoNo ||
+          ''
+        ),
+
+      workId:
+        String(
+          publicRecord.workId ||
+          publicRecord.primaryWorkId ||
+          ''
+        ),
+
+      linkedWorkIds:
+        linkedWorkIds,
+
+      signerName:
+        String(
+          responseData.signerName ||
+          ''
+        ).trim(),
+
+      signerPhone:
+        String(
+          responseData.signerPhone ||
+          ''
+        ).trim(),
+
+      confirmDate:
+        String(
+          responseData.confirmDate ||
+          ''
+        ).trim(),
+
+      checklist:
+        responseData.checklist ||
+        {
+          completed:'8/8',
+          all:true,
+          items:{}
+        },
+
+      signature:
+        String(
+          responseData.signature ||
+          ''
+        ),
+
+      signedAt:
+        now,
+
+      submittedByUid:
+        user.uid,
+
+      status:
+        '서명완료',
+
+      statusCode:
+        'contractorConfirmed',
+
+      environment:
+        'test',
+
+      schemaVersion:
+        1,
+
+      createdAt:
+        now
+    };
+
+    /*
+     * merge 옵션을 사용하지 않습니다.
+     * 기존 응답이 있으면 Rules가 update를 거부합니다.
+     */
+    await setDoc(
+      responseReference,
+      saveRecord
+    );
+
+    console.log(
+      '[수급인 확인] 원격 서명 저장 완료:',
+      {
+        safeinfoNo:
+          saveRecord.safeinfoNo,
+
+        shareToken:
+          token,
+
+        responseCollection:
+          RESPONSE_COLLECTION,
+
+        linkedWorkIds:
+          linkedWorkIds,
+
+        submittedByUid:
+          user.uid
+      }
+    );
+
+    return {
+      success:true,
+
+      collection:
+        RESPONSE_COLLECTION,
+
+      shareToken:
+        token,
+
+      safeinfoNo:
+        saveRecord.safeinfoNo,
+
+      workId:
+        saveRecord.workId,
+
+      linkedWorkIds:
+        linkedWorkIds,
+
+      submittedByUid:
+        user.uid,
+
+      signedAt:
+        now
+    };
+  };
+
+window.SafetyProvisionPublicFirebase = {
+  app:
+    firebaseApp,
+
+  auth:
+    auth,
+
+  db:
+    db,
+
+  publicCollection:
+    PUBLIC_PROVISION_COLLECTION,
+
+  responseCollection:
+    RESPONSE_COLLECTION,
+
+  ensureUser:
+    ensureProvisionUser
+};
+
 window.dispatchEvent(
   new CustomEvent(
     'safety-provision-firebase-ready'
   )
 );
-     
-window.updateFirestoreStatus = async function(safeinfoNo, updateData){
-  if(!safeinfoNo){
-    throw new Error("safeinfoNo가 필요합니다");
-  }
-  
-  if(!navigator.onLine){
-    console.warn("[Firestore] 오프라인 - 업데이트 건너뜀");
-    return;
-  }
-  
-  try{
-    const docRef = doc(db, PROVISION_COLLECTION, safeinfoNo);
-    
-    // 기존 문서 확인
-    const snapshot = await getDoc(docRef);
-    if(!snapshot.exists()){
-      console.warn("[Firestore] 문서 없음:", safeinfoNo, "- 서명 정보만 저장");
-      // 문서가 없어도 서명 정보는 저장 (관리자가 나중에 확인 가능)
-      await setDoc(docRef, Object.assign({
-        safeinfoNo: safeinfoNo,
-        createdAt: new Date().toISOString(),
-        createdBy: 'subcontractor'
-      }, updateData));
-    } else {
-      // merge:true로 기존 필드 보존하며 업데이트
-      await setDoc(docRef, updateData, { merge: true });
-    }
-    
-    console.log("✅ [Firestore] 문서 업데이트 완료:", safeinfoNo);
-    return true;
-    
-  } catch(error){
-    console.error("[Firestore] 업데이트 실패:", error.message);
-    throw error;
-  }
-};
 
-console.log("[안전정보제공서 수급인용] Firestore 연동 준비 완료");
+console.log(
+  '[수급인 확인] Firebase 공개 조회·서명 모듈 준비 완료:',
+  {
+    publicCollection:
+      PUBLIC_PROVISION_COLLECTION,
+
+    responseCollection:
+      RESPONSE_COLLECTION
+  }
+);
 </script>
+
 
 </body>
 </html>
