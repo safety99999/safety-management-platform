@@ -5106,10 +5106,527 @@ if(
     },150);
   }
 
+  /*
+   * 업체명 비교용 문자열을 반환합니다.
+   */
+  function normalizedPickerCompany(
+    work
+  ){
+    return clean(
+      work &&
+      (
+        work.companyDisplay ||
+        work.executingCompany ||
+        work.subcontractCompany ||
+        work.contractCompany ||
+        work.company
+      )
+    )
+      .replace(/\s+/g,'')
+      .toLowerCase();
+  }
+
+  /*
+   * 작업의 공장 구분을 반환합니다.
+   */
+  function pickerFactoryCode(
+    work
+  ){
+    var text =
+      [
+        work &&
+        work.locationDisplay ||
+        '',
+
+        work &&
+        work.locationRaw ||
+        '',
+
+        work &&
+        work.workNameFull ||
+        '',
+
+        work &&
+        work.workName ||
+        ''
+      ]
+        .join(' ')
+        .replace(/\s+/g,'');
+
+    if(
+      text.indexOf('2공장') >= 0 ||
+      text.indexOf('2-2단계') >= 0
+    ){
+      return 'factory2';
+    }
+
+    if(
+      text.indexOf('1공장') >= 0 ||
+      text.indexOf('2-1단계') >= 0 ||
+      (
+        text.indexOf('1단계') >= 0 &&
+        text.indexOf('2-1단계') < 0
+      )
+    ){
+      return 'factory1';
+    }
+
+    return 'other';
+  }
+
+  /*
+   * 안전정보제공서 복수 작업 선택 상태를 갱신합니다.
+   *
+   * 첫 번째로 선택한 작업의 업체와 공장을 기준으로
+   * 함께 묶기 어려운 작업은 선택할 수 없게 합니다.
+   */
+  function updateSafetyInfoMultiPicker(){
+    var sheetBody =
+      byId('sheetBody');
+
+    if(!sheetBody){
+      return;
+    }
+
+    var checkboxes =
+      Array.from(
+        sheetBody.querySelectorAll(
+          '[data-safety-work-select]'
+        )
+      );
+
+    if(!checkboxes.length){
+      return;
+    }
+
+    var selected =
+      checkboxes.filter(
+        function(input){
+          return input.checked;
+        }
+      );
+
+    var firstSelected =
+      selected[0] ||
+      null;
+
+    var selectedCompany =
+      firstSelected
+        ? firstSelected.dataset
+            .companyKey
+        : '';
+
+    var selectedFactory =
+      firstSelected
+        ? firstSelected.dataset
+            .factoryKey
+        : '';
+
+    checkboxes.forEach(
+      function(input){
+        if(input.checked){
+          input.disabled = false;
+          return;
+        }
+
+        /*
+         * 아직 아무 작업도 선택하지 않은 경우에는
+         * 모든 작업을 선택할 수 있습니다.
+         */
+        if(!firstSelected){
+          input.disabled = false;
+          return;
+        }
+
+        /*
+         * 동일 업체와 동일 공장의 작업만
+         * 한 안전정보제공서로 묶습니다.
+         */
+        var sameCompany =
+          input.dataset.companyKey ===
+            selectedCompany;
+
+        var sameFactory =
+          input.dataset.factoryKey ===
+            selectedFactory;
+
+        input.disabled =
+          !sameCompany ||
+          !sameFactory;
+      }
+    );
+
+    var countElement =
+      byId(
+        'selectedSafetyWorkCount'
+      );
+
+    if(countElement){
+      countElement.textContent =
+        '선택 ' +
+        selected.length +
+        '건';
+    }
+
+    var guide =
+      byId(
+        'selectedSafetyWorkGuide'
+      );
+
+    if(guide){
+      if(!selected.length){
+        guide.textContent =
+          '첫 작업을 선택하면 동일 업체·동일 공장 작업만 함께 선택할 수 있습니다.';
+
+      }else{
+        var firstLabel =
+          firstSelected.dataset
+            .companyLabel ||
+          '업체 미지정';
+
+        var factoryLabel =
+          firstSelected.dataset
+            .factoryLabel ||
+          '공장 미지정';
+
+        guide.textContent =
+          firstLabel +
+          ' · ' +
+          factoryLabel +
+          ' 기준으로 묶음 작업을 선택합니다.';
+      }
+    }
+
+    var startButton =
+      byId(
+        'startSelectedSafetyInfoButton'
+      );
+
+    if(startButton){
+      startButton.disabled =
+        selected.length === 0;
+
+      startButton.textContent =
+        selected.length
+          ? (
+              '📋 선택한 작업 ' +
+              selected.length +
+              '건으로 작성'
+            )
+          : '작업을 선택하세요';
+    }
+  }
+
+  /*
+   * 선택한 복수 작업을 안전정보제공서로 전달합니다.
+   */
+  function startSelectedSafetyInfo(){
+    var sheetBody =
+      byId('sheetBody');
+
+    if(!sheetBody){
+      return;
+    }
+
+    var selected =
+      Array.from(
+        sheetBody.querySelectorAll(
+          '[data-safety-work-select]:checked'
+        )
+      );
+
+    if(!selected.length){
+      showToast(
+        '안전정보제공서를 작성할 작업을 선택하세요.',
+        'warning'
+      );
+
+      return;
+    }
+
+    var workIds =
+      selected
+        .map(function(input){
+          return clean(
+            input.value
+          );
+        })
+        .filter(Boolean);
+
+    if(!workIds.length){
+      showToast(
+        '선택한 작업번호를 확인할 수 없습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var params =
+      new URLSearchParams();
+
+    /*
+     * 기존 단일 작업 연계와의 호환성을 위해
+     * 첫 작업을 대표 workId로 전달합니다.
+     */
+    params.set(
+      'workId',
+      workIds[0]
+    );
+
+    /*
+     * 복수 작업은 동일한 workIds 이름으로
+     * 반복 전달합니다.
+     */
+    workIds.forEach(
+      function(workId){
+        params.append(
+          'workIds',
+          workId
+        );
+      }
+    );
+
+    params.set(
+      'mode',
+      'test'
+    );
+
+    navigate(
+      '안전정보제공서_도급인용.html?' +
+      params.toString()
+    );
+  }
+
+  /*
+   * 안전정보제공서의 복수 작업 선택 화면을 표시합니다.
+   */
+  function openSafetyInfoMultiPicker(
+    works
+  ){
+    var html =
+      '<div class="prework-summary">' +
+        '<strong>여러 작업을 하나의 안전정보제공서로 묶을 수 있습니다.</strong>' +
+        '<br>' +
+        '<span id="selectedSafetyWorkGuide">' +
+          '첫 작업을 선택하면 동일 업체·동일 공장 작업만 함께 선택할 수 있습니다.' +
+        '</span>' +
+      '</div>' +
+
+      '<div style="' +
+        'display:flex;' +
+        'align-items:center;' +
+        'justify-content:space-between;' +
+        'gap:8px;' +
+        'margin-bottom:9px;' +
+        'padding:9px 11px;' +
+        'border-radius:9px;' +
+        'background:var(--tint);' +
+        'color:var(--body);' +
+        'font-size:12px;' +
+        'font-weight:800">' +
+
+        '<span>선택 현황</span>' +
+
+        '<span id="selectedSafetyWorkCount">' +
+          '선택 0건' +
+        '</span>' +
+
+      '</div>';
+
+    html +=
+      works.map(
+        function(work){
+          var companyKey =
+            normalizedPickerCompany(
+              work
+            );
+
+          var companyLabel =
+            clean(
+              work.companyDisplay ||
+              work.company ||
+              '업체 미지정'
+            );
+
+          var factoryKey =
+            pickerFactoryCode(
+              work
+            );
+
+          var factoryLabels = {
+            factory1:'1공장',
+            factory2:'2공장',
+            other:'기타'
+          };
+
+          var factoryLabel =
+            factoryLabels[
+              factoryKey
+            ] || '기타';
+
+          return (
+            '<label class="work-item compact" ' +
+              'style="display:block;cursor:pointer">' +
+
+              '<div style="' +
+                'display:grid;' +
+                'grid-template-columns:25px minmax(0,1fr);' +
+                'gap:9px;' +
+                'align-items:start">' +
+
+                '<input type="checkbox" ' +
+                  'data-safety-work-select ' +
+                  'value="' +
+                  escapeHtml(
+                    work.workId
+                  ) +
+                  '" ' +
+                  'data-company-key="' +
+                  escapeHtml(
+                    companyKey
+                  ) +
+                  '" ' +
+                  'data-company-label="' +
+                  escapeHtml(
+                    companyLabel
+                  ) +
+                  '" ' +
+                  'data-factory-key="' +
+                  escapeHtml(
+                    factoryKey
+                  ) +
+                  '" ' +
+                  'data-factory-label="' +
+                  escapeHtml(
+                    factoryLabel
+                  ) +
+                  '" ' +
+                  'style="' +
+                    'width:21px;' +
+                    'height:21px;' +
+                    'margin-top:3px;' +
+                    'accent-color:var(--posco)">' +
+
+                '<span style="min-width:0">' +
+
+                  '<span class="wi-name" ' +
+                    'style="display:block">' +
+                    escapeHtml(
+                      work.workName
+                    ) +
+                  '</span>' +
+
+                  '<span class="wi-meta" ' +
+                    'style="display:flex;margin-bottom:0">' +
+
+                    '<span>📍 ' +
+                      escapeHtml(
+                        work.locationDisplay
+                      ) +
+                    '</span>' +
+
+                    '<span>🏢 ' +
+                      escapeHtml(
+                        companyLabel
+                      ) +
+                    '</span>' +
+
+                  '</span>' +
+
+                  '<span style="' +
+                    'display:block;' +
+                    'margin-top:4px;' +
+                    'color:var(--faint);' +
+                    'font-size:10px;' +
+                    'font-weight:700">' +
+                    escapeHtml(
+                      work.workId
+                    ) +
+                  '</span>' +
+
+                '</span>' +
+
+              '</div>' +
+
+            '</label>'
+          );
+        }
+      ).join('');
+
+    html +=
+      '<div style="' +
+        'position:sticky;' +
+        'bottom:0;' +
+        'padding:10px 0 2px;' +
+        'background:var(--bg)">' +
+
+        '<button type="button" ' +
+          'class="wi-btn" ' +
+          'id="startSelectedSafetyInfoButton" ' +
+          'disabled>' +
+          '작업을 선택하세요' +
+        '</button>' +
+
+      '</div>';
+
+    openSheet(
+      '안전정보제공서 작업 선택',
+      html
+    );
+
+    /*
+     * openSheet()가 목록 HTML을 넣은 다음
+     * 복수 선택 이벤트를 직접 연결합니다.
+     */
+    var sheetBody =
+      byId('sheetBody');
+
+    sheetBody
+      .querySelectorAll(
+        '[data-safety-work-select]'
+      )
+      .forEach(function(input){
+        input.addEventListener(
+          'change',
+          updateSafetyInfoMultiPicker
+        );
+      });
+
+    var startButton =
+      byId(
+        'startSelectedSafetyInfoButton'
+      );
+
+    if(startButton){
+      startButton.addEventListener(
+        'click',
+        startSelectedSafetyInfo
+      );
+    }
+
+    updateSafetyInfoMultiPicker();
+  }
+
   function openQuickWorkPicker(
     appType,
     works
   ){
+    /*
+     * 안전정보제공서는 단건 버튼 대신
+     * 복수 작업 체크박스 선택 화면을 사용합니다.
+     */
+    if(
+      appType ===
+        'safety-info'
+    ){
+      openSafetyInfoMultiPicker(
+        works
+      );
+
+      return;
+    }
+
     var targetUrl =
       QUICK_URLS[appType];
 
@@ -5131,18 +5648,21 @@ if(
                 work.workName
               ) +
             '</div>' +
+
             '<div class="wi-meta">' +
               '<span>📍 ' +
                 escapeHtml(
                   work.locationDisplay
                 ) +
               '</span>' +
+
               '<span>🏢 ' +
                 escapeHtml(
                   work.companyDisplay
                 ) +
               '</span>' +
             '</div>' +
+
             '<button type="button" ' +
               'class="wi-btn" ' +
               'data-quick-work-url="' +
@@ -5157,6 +5677,7 @@ if(
               escapeHtml(title) +
               ' 시작 →' +
             '</button>' +
+
           '</article>'
         );
       }).join('');
