@@ -6163,29 +6163,107 @@ function validateBasicInformation(){
 }
 
 async function initializeStepTwo(){
-  var container = getElement('measureCategoryContainer');
+  var container =
+    getElement(
+      'measureCategoryContainer'
+    );
+
   if(container){
     container.innerHTML =
       '<div class="loading-card">' +
         '<div class="loading-icon">🔍</div>' +
-        '<div class="loading-text">위험요인과 안전대책을 분석하고 있습니다.' +
-          '<small>위험성평가 DB와 안전기준을 기반으로 평가 초안을 작성합니다.</small>' +
+        '<div class="loading-text">' +
+          '위험요인과 안전대책을 분석하고 있습니다.' +
+          '<small>' +
+            '위험성평가 DB와 안전기준을 기반으로 평가 초안을 작성합니다.' +
+          '</small>' +
         '</div>' +
       '</div>';
   }
 
-  var judgmentCard = getElement('judgmentCard');
-  var measureProgress = getElement('measureProgress');
-  var userMeasureSection = getElement('userMeasureSection');
+  var judgmentCard =
+    getElement(
+      'judgmentCard'
+    );
 
-  if(judgmentCard){ judgmentCard.style.display = 'none'; }
-  if(measureProgress){ measureProgress.style.display = 'none'; }
-  if(userMeasureSection){ userMeasureSection.style.display = 'none'; }
+  var measureProgress =
+    getElement(
+      'measureProgress'
+    );
 
-  await runAssessmentAnalysis();
+  var userMeasureSection =
+    getElement(
+      'userMeasureSection'
+    );
 
-  if(userMeasureSection){ userMeasureSection.style.display = 'block'; }
-  expandAllMeasureCategories();
+  if(judgmentCard){
+    judgmentCard.style.display =
+      'none';
+  }
+
+  if(measureProgress){
+    measureProgress.style.display =
+      'none';
+  }
+
+  if(userMeasureSection){
+    userMeasureSection.style.display =
+      'none';
+  }
+
+  /*
+   * 2단계 화면과 로딩 카드를 먼저 렌더링한 후
+   * 분석을 시작합니다.
+   */
+  await new Promise(
+    function(resolve){
+      requestAnimationFrame(
+        function(){
+          setTimeout(
+            resolve,
+            30
+          );
+        }
+      );
+    }
+  );
+
+  try{
+    await runAssessmentAnalysis();
+
+    if(userMeasureSection){
+      userMeasureSection.style.display =
+        'block';
+    }
+
+    expandAllMeasureCategories();
+
+  }catch(error){
+    console.error(
+      '[위험성평가] 분석 실패:',
+      error
+    );
+
+    if(container){
+      container.innerHTML =
+        '<div class="danger-box">' +
+          '<div class="danger-title">' +
+            '❌ 위험도 분석 실패' +
+          '</div>' +
+          '<div class="danger-text">' +
+            escapeHtml(
+              error.message ||
+              String(error)
+            ) +
+          '</div>' +
+        '</div>';
+    }
+
+    showToast(
+      '위험도 분석 중 오류가 발생했습니다.',
+      'danger'
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -9033,22 +9111,98 @@ function closeCommonDialog(action){
 // 51. 토스트 및 이벤트
 // ═══════════════════════════════════════════════════════
 
-function showToast(message, type){
-  var container = getElement('toastWrap');
-  if(!container){ return; }
+function showToast(
+  message,
+  type
+){
+  var toastType =
+    type || 'info';
 
-  var toast = document.createElement('div');
-  toast.className = 'toast ' + (type || 'info');
-  toast.textContent = message || '';
-  container.appendChild(toast);
+  /*
+   * 자동입력·분석·저장 성공처럼
+   * 화면 자체에서 결과를 확인할 수 있는 알림은 숨깁니다.
+   */
+  if(
+    toastType === 'info' ||
+    toastType === 'success'
+  ){
+    return;
+  }
 
-  setTimeout(function(){
-    toast.style.opacity = '0';
-    setTimeout(function(){
-      if(toast.parentNode){ toast.remove(); }
-    }, 220);
-  }, 3000);
+  var container =
+    getElement(
+      'toastWrap'
+    );
+
+  if(!container){
+    return;
+  }
+
+  /*
+   * 기존 알림을 모두 제거하여
+   * 경고·오류 한 개만 표시합니다.
+   */
+  container.innerHTML = '';
+
+  var toast =
+    document.createElement(
+      'div'
+    );
+
+  toast.className =
+    'toast ' +
+    (
+      toastType === 'warn'
+        ? 'warning'
+        : toastType
+    );
+
+  toast.textContent =
+    message || '';
+
+  toast.setAttribute(
+    'role',
+    'alert'
+  );
+
+  toast.title =
+    '눌러서 닫기';
+
+  toast.addEventListener(
+    'click',
+    function(){
+      if(toast.parentNode){
+        toast.remove();
+      }
+    }
+  );
+
+  container.appendChild(
+    toast
+  );
+
+  setTimeout(
+    function(){
+      if(!toast.parentNode){
+        return;
+      }
+
+      toast.style.opacity =
+        '0';
+
+      setTimeout(
+        function(){
+          if(toast.parentNode){
+            toast.remove();
+          }
+        },
+        220
+      );
+    },
+    5000
+  );
 }
+
 
 function dispatchDataChange(key){
   try {
