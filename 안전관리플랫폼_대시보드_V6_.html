@@ -7507,6 +7507,24 @@ function standardWorkCard(
     appType,
     works
   ){
+    /*
+     * 안전정보제공서는 복수 작업 선택 화면을 사용합니다.
+     */
+    if(
+      appType ===
+        'safety-info'
+    ){
+      openSafetyInfoMultiPicker(
+        works
+      );
+
+      return;
+    }
+
+    /*
+     * 위험성평가·안전퀴즈 등 나머지 기능은
+     * 기존 단건 선택 방식을 유지합니다.
+     */
     var targetUrl =
       QUICK_URLS[appType];
 
@@ -7523,23 +7541,29 @@ function standardWorkCard(
       works.map(function(work){
         return (
           '<article class="work-item">' +
+
             '<div class="wi-name">' +
               escapeHtml(
                 work.workName
               ) +
             '</div>' +
+
             '<div class="wi-meta">' +
+
               '<span>📍 ' +
                 escapeHtml(
                   work.locationDisplay
                 ) +
               '</span>' +
+
               '<span>🏢 ' +
                 escapeHtml(
                   work.companyDisplay
                 ) +
               '</span>' +
+
             '</div>' +
+
             '<button type="button" ' +
               'class="wi-btn" ' +
               'data-quick-work-url="' +
@@ -7548,18 +7572,21 @@ function standardWorkCard(
                 '?workId=' +
                 encodeURIComponent(
                   work.workId
-                )
+                ) +
+                '&mode=test'
               ) +
             '">' +
               escapeHtml(title) +
               ' 시작 →' +
             '</button>' +
+
           '</article>'
         );
       }).join('');
 
     openSheet(
-      title + ' 작업 선택',
+      title +
+      ' 작업 선택',
       html
     );
   }
