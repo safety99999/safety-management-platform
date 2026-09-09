@@ -91,12 +91,11 @@
 
     try{
       /*
-       * 모바일 브라우저와 GitHub Pages CDN이
-       * 이전 manifest 또는 JSON을 반환하지 않도록
-       * HTTP 캐시를 사용하지 않습니다.
+       * 커스텀 Cache-Control 헤더는 GitHub Pages에서
+       * CORS preflight 오류를 발생시키므로 사용하지 않습니다.
        *
-       * 실제 데이터 재사용 여부는 아래 IndexedDB의
-       * SHA-256 비교로 결정합니다.
+       * cache:no-store와 URL의 ts·sha 쿼리값으로
+       * 브라우저 및 CDN 캐시를 우회합니다.
        */
       const response =
         await fetch(
@@ -106,15 +105,7 @@
               controller.signal,
 
             cache:
-              'no-store',
-
-            headers:{
-              'Cache-Control':
-                'no-cache, no-store, must-revalidate',
-
-              'Pragma':
-                'no-cache'
-            }
+              'no-store'
           }
         );
 
@@ -124,6 +115,7 @@
       clearTimeout(timer);
     }
   }
+
 
 
   // ─────────────────────────────────────────────────────────
