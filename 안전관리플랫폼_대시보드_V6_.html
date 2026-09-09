@@ -9347,7 +9347,12 @@ function standardWorkCard(
               : ''
           );
 
-        var workNameFull =
+            /*
+         * G열 작업명 원본을 정리합니다.
+         * Excel에서 작업명이 세로 병합된 행은
+         * 아래쪽 행의 G열이 빈 값으로 복사될 수 있습니다.
+         */
+        var rawWorkNameCell =
           clean(
             columns[6]
           )
@@ -9360,6 +9365,34 @@ function standardWorkCard(
               ''
             )
             .trim();
+
+        var workNameInherited =
+          false;
+
+        var workNameFull =
+          rawWorkNameCell;
+
+        /*
+         * NO가 있는 정상 데이터 행인데 G열만 비어 있고,
+         * 직전 작업과 날짜가 같으면 세로 병합된 작업명으로
+         * 판단하여 직전 작업명을 승계합니다.
+         */
+        if(
+          !workNameFull &&
+          originalNo &&
+          previousRecord &&
+          date === previousRecord.date
+        ){
+          workNameFull =
+            clean(
+              previousRecord.workNameFull ||
+              previousRecord.workNameRaw ||
+              previousRecord.workName
+            );
+
+          workNameInherited =
+            Boolean(workNameFull);
+        }
 
         if(
           !date ||
@@ -9377,6 +9410,7 @@ function standardWorkCard(
         if(!normalizedWorkName){
           return;
         }
+
 
         var locationRaw =
           normalizeImportedValue(
