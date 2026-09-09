@@ -8855,24 +8855,153 @@ function standardWorkCard(
       : '';
   }
 
+  /*
+   * Excel에서 복사한 TSV 데이터를 파싱합니다.
+   *
+   * 지원 항목:
+   * - 탭으로 구분된 열
+   * - 일반 행 줄바꿈
+   * - 큰따옴표로 감싼 셀 내부 줄바꿈
+   * - 셀 안의 이중 큰따옴표("")
+   * - UTF-8 BOM
+   */
   function parseTsv(text){
-    return String(text || '')
-      .replace(/\r\n/g,'\n')
-      .replace(/\r/g,'\n')
-      .split('\n')
-      .map(function(row){
-        return row.split('\t');
-      })
-      .filter(function(row){
-        return row.some(
-          function(cell){
-            return Boolean(
-              clean(cell)
-            );
-          }
-        );
-      });
+    var source =
+      String(text || '')
+        .replace(/^\uFEFF/,'')
+        .replace(/\r\n/g,'\n')
+        .replace(/\r/g,'\n');
+
+    var rows = [];
+    var row = [];
+    var cell = '';
+    var inQuotes = false;
+
+    function pushCell(){
+      row.push(
+        cell
+          .replace(/\u0000/g,'')
+          .trim()
+      );
+
+      cell = '';
+    }
+
+    function pushRow(){
+      pushCell();
+
+      var hasValue =
+        row.some(function(value){
+          return Boolean(
+            clean(value)
+          );
+        });
+
+      if(hasValue){
+        rows.push(row);
+      }
+
+      row = [];
+    }
+
+    for(
+      var index = 0;
+      index < source.length;
+      index++
+    ){
+      var character =
+        source.charAt(index);
+
+      var nextCharacter =
+        source.charAt(index + 1);
+
+      /*
+       * Excel은 줄바꿈이나 탭이 포함된 셀을
+       * 큰따옴표로 감싸서 클립보드에 복사합니다.
+       */
+      if(character === '"'){
+        /*
+         * 따옴표 안의 ""는 실제 큰따옴표 한 글자입니다.
+         */
+        if(
+          inQuotes &&
+          nextCharacter === '"'
+        ){
+          cell += '"';
+          index++;
+          continue;
+        }
+
+        /*
+         * 셀 시작 위치의 큰따옴표는
+         * 여러 줄 셀의 시작입니다.
+         */
+        if(
+          !inQuotes &&
+          cell.length === 0
+        ){
+          inQuotes = true;
+          continue;
+        }
+
+        /*
+         * 여러 줄 셀을 닫는 큰따옴표입니다.
+         */
+        if(inQuotes){
+          inQuotes = false;
+          continue;
+        }
+
+        /*
+         * 일반 문장 안의 큰따옴표는 보존합니다.
+         */
+        cell += character;
+        continue;
+      }
+
+      /*
+       * 따옴표 밖의 탭만 열 구분자로 처리합니다.
+       */
+      if(
+        character === '\t' &&
+        !inQuotes
+      ){
+        pushCell();
+        continue;
+      }
+
+      /*
+       * 따옴표 밖의 줄바꿈만 행 구분자로 처리합니다.
+       * 따옴표 안의 줄바꿈은 같은 셀에 보존합니다.
+       */
+      if(
+        character === '\n' &&
+        !inQuotes
+      ){
+        pushRow();
+        continue;
+      }
+
+      cell += character;
+    }
+
+    /*
+     * 마지막 셀과 마지막 행을 반영합니다.
+     */
+    if(
+      cell.length ||
+      row.length
+    ){
+      pushRow();
+    }
+
+    /*
+     * Excel의 병합 제목행과 완전한 빈 행은
+     * parseWorkDatabase()의 날짜 검증에서 제외됩니다.
+     */
+    return rows;
   }
+
 
   function parseWorkerCount(
     value
