@@ -779,7 +779,9 @@ function showCustomAlert(options, callback){
 // ═══════════════════════════════════════════════════
 var docData = null;
 var safeinfoNo = '';
+var shareTokenFromUrl = '';
 var workIdFromUrl = '';
+var documentLoadSource = '';
 var clChecked = 0;
 var clTotal = 8;
 var clItems = {};
@@ -796,17 +798,76 @@ window.addEventListener('DOMContentLoaded', function(){
   migrateLegacyKeys();
 
   var params = new URLSearchParams(window.location.search);
-  var id = params.get('safeinfoNo') || params.get('doc');
-  workIdFromUrl = params.get('workId') || '';
- 
+  var id =
+    params.get(
+      'safeinfoNo'
+    ) ||
+    params.get(
+      'doc'
+    ) ||
+    '';
+
+  shareTokenFromUrl =
+    String(
+      params.get(
+        'shareToken'
+      ) || ''
+    ).trim();
+
+  workIdFromUrl =
+    params.get(
+      'workId'
+    ) || '';
+
   if(workIdFromUrl){
-    console.log('[v2.1] URL에서 workId 감지:', workIdFromUrl);
-    var badge = document.getElementById('workidBadge');
+    console.log(
+      '[수급인 확인] URL에서 workId 감지:',
+      workIdFromUrl
+    );
+
+    var badge =
+      document.getElementById(
+        'workidBadge'
+      );
+
     if(badge){
-      badge.textContent = workIdFromUrl;
-      badge.classList.add('show');
+      badge.textContent =
+        workIdFromUrl;
+
+      badge.classList.add(
+        'show'
+      );
     }
   }
+
+  /*
+   * 신규 공유 링크는 shareToken을 우선 사용합니다.
+   * 기존 safeinfoNo 링크는 로컬 호환용으로 유지합니다.
+   */
+  if(shareTokenFromUrl){
+    loadDoc(
+      id,
+      shareTokenFromUrl
+    );
+
+  }else if(id){
+    safeinfoNo = id;
+
+    loadDoc(
+      id,
+      ''
+    );
+
+  }else{
+    show(
+      'view-manual'
+    );
+
+    hide(
+      'view-loading'
+    );
+  }
+
  
   if(id){
     safeinfoNo = id;
@@ -929,27 +990,299 @@ function migrateLegacyKeys(){
 // ═══════════════════════════════════════════════════
 // 문서 조회
 // ═══════════════════════════════════════════════════
-function loadDoc(id){
-  show('view-loading');
-  hide('view-main');
-  hide('view-manual');
-  hide('view-signature-section');
-  hide('view-complete');
- 
-  setTimeout(function(){
-    var found = findDocLocal(id);
-    if(found){
-      renderDoc(found);
-    } else {
-      hide('view-loading');
-      show('view-manual');
-      setVal('manual-doc-id', id);
-      showToast('문서를 찾을 수 없습니다. 문서번호를 확인해주세요', 'danger');
+async function waitForPublicProvisionLoader(){
+  if(
+    typeof window
+      .loadPublicSafetyProvision ===
+      'function'
+  ){
+    return window
+      .loadPublicSafetyProvision;
+  }
+
+  return new Promise(
+    function(resolve){
+      var completed = false;
+
+      function finish(loader){
+        if(completed){
+          return;
+        }
+
+        completed = true;
+
+        window.removeEventListener(
+          'safety-provision-firebase-ready',
+          handleReady
+        );
+
+        resolve(
+          loader || null
+        );
+      }
+
+      function handleReady(){
+        finish(
+          typeof window
+            .loadPublicSafetyProvision ===
+            'function'
+            ? window
+                .loadPublicSafetyProvision
+            : null
+        );
+      }
+
+      window.addEventListener(
+        'safety-provision-firebase-ready',
+        handleReady
+      );
+
+      setTimeout(
+        function(){
+          finish(
+            typeof window
+              .loadPublicSafetyProvision ===
+              'function'
+              ? window
+                  .loadPublicSafetyProvision
+              : null
+          );
+        },
+        6000
+      );
     }
-  }, 300);
+  );
+}
+
+async function loadDoc(
+  id,
+  shareToken
+){
+  show(
+    'view-loading'
+  );
+
+  hide(
+    'view-main'
+  );
+
+  hide(
+    'view-manual'
+  );
+
+  hide(
+    'view-signature-section'
+  );
+
+  hide(
+    'view-complete'
+  );
+
+  var token =
+    String(
+      shareToken || ''
+    ).trim();
+
+  /*
+   * 공유 토큰이 있으면 Firestore 공개본을 우선 조회합니다.
+   */
+  if(token){
+    try{
+      var loader =
+        await waitForPublicProvisionLoader();
+
+      if(
+        typeof loader !==
+          'function'
+      ){
+        throw new Error(
+          'Firestore 공개 조회 모듈을 불러오지 못했습니다.'
+        );
+      }
+
+      var remoteDocument =
+        await loader(token);
+
+      if(!remoteDocument){
+        throw new Error(
+          '공유 문서를 찾을 수 없습니다.'
+        );
+      }
+
+      if(
+        remoteDocument.shareStatus &&
+        remoteDocument.shareStatus !==
+          'active'
+      ){
+        throw new Error(
+          '사용이 종료된 공유 링크입니다.'
+        );
+      }
+
+      documentLoadSource =
+        'firestore-public';
+
+      safeinfoNo =
+        remoteDocument.safeinfoNo ||
+        id ||
+        '';
+
+      renderDoc(
+        remoteDocument
+      );
+
+      console.log(
+        '[수급인 확인] 공개 문서 조회 완료:',
+        {
+          safeinfoNo:
+            safeinfoNo,
+
+          shareToken:
+            token,
+
+          source:
+            documentLoadSource
+        }
+      );
+
+      return;
+
+    }catch(remoteError){
+      console.warn(
+        '[수급인 확인] 공개 문서 조회 실패:',
+        remoteError
+      );
+
+      /*
+       * 동일 브라우저에서 발행한 문서가 있으면
+       * 기존 로컬 자료를 폴백으로 사용합니다.
+       */
+      var localFallback =
+        id
+          ? findDocLocal(id)
+          : findDocByShareToken(
+              token
+            );
+
+      if(localFallback){
+        documentLoadSource =
+          'local-fallback';
+
+        safeinfoNo =
+          localFallback.safeinfoNo ||
+          id ||
+          '';
+
+        renderDoc(
+          localFallback
+        );
+
+        showToast(
+          '서버 조회 실패로 현재 브라우저의 저장 문서를 표시합니다.',
+          'info'
+        );
+
+        return;
+      }
+
+      hide(
+        'view-loading'
+      );
+
+      showCustomAlert({
+        icon:'⚠️',
+        title:'문서 조회 실패',
+        message:
+          '공유 문서를 불러오지 못했습니다.\n\n' +
+          remoteError.message +
+          '\n\n링크가 올바른지 확인하거나 도급인에게 다시 요청해 주세요.',
+        okType:'warn'
+      });
+
+      return;
+    }
+  }
+
+  /*
+   * 기존 문서번호 링크는 같은 브라우저의
+   * 로컬 저장자료에서만 조회합니다.
+   */
+  var found =
+    findDocLocal(id);
+
+  if(found){
+    documentLoadSource =
+      'local';
+
+    safeinfoNo =
+      found.safeinfoNo ||
+      id ||
+      '';
+
+    renderDoc(found);
+
+    return;
+  }
+
+  hide(
+    'view-loading'
+  );
+
+  show(
+    'view-manual'
+  );
+
+  setVal(
+    'manual-doc-id',
+    id || ''
+  );
+
+  showToast(
+    '문서를 찾을 수 없습니다. 공유 링크를 다시 확인해 주세요.',
+    'danger'
+  );
+}
+
+function findDocByShareToken(
+  shareToken
+){
+  try{
+    var documents =
+      JSON.parse(
+        localStorage.getItem(
+          'safetyProvisions'
+        ) || '[]'
+      );
+
+    if(!Array.isArray(documents)){
+      return null;
+    }
+
+    return documents.find(
+      function(record){
+        return (
+          record &&
+          String(
+            record.shareToken || ''
+          ) === String(
+            shareToken || ''
+          )
+        );
+      }
+    ) || null;
+
+  }catch(error){
+    console.warn(
+      '[수급인 확인] 공유 토큰 로컬 조회 실패:',
+      error
+    );
+
+    return null;
+  }
 }
 
 function findDocLocal(id){
+
   try{
     var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
     var found = docs.find(function(d){
@@ -1888,9 +2221,21 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const PROVISION_COLLECTION = window.getCollectionName("safetyProvisions");
+const PROVISION_COLLECTION =
+  window.getCollectionName(
+    "safetyProvisions"
+  );
 
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const PUBLIC_PROVISION_COLLECTION =
+  window.getCollectionName(
+    "publicSafetyProvisions"
+  );
+
+const isIOS =
+  /iPad|iPhone|iPod/.test(
+    navigator.userAgent
+  );
+
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 const needsLongPolling = isIOS || isSafari;
 
@@ -1925,6 +2270,92 @@ try{
  * Firestore의 안전정보제공서 문서 상태 업데이트
  * merge:true 옵션으로 기존 문서와 병합 (덮어쓰기 방지)
  */
+/**
+ * shareToken을 문서 ID로 사용하여
+ * 수급인 공개본 한 건만 조회합니다.
+ */
+window.loadPublicSafetyProvision =
+  async function(shareToken){
+    const token =
+      String(
+        shareToken || ''
+      ).trim();
+
+    if(!token){
+      throw new Error(
+        '공유 토큰이 없습니다.'
+      );
+    }
+
+    if(
+      token.length < 24 ||
+      token.indexOf('/') >= 0
+    ){
+      throw new Error(
+        '공유 토큰 형식이 올바르지 않습니다.'
+      );
+    }
+
+    const reference =
+      doc(
+        db,
+        PUBLIC_PROVISION_COLLECTION,
+        token
+      );
+
+    const snapshot =
+      await getDoc(reference);
+
+    if(!snapshot.exists()){
+      throw new Error(
+        '공유 문서를 찾을 수 없습니다.'
+      );
+    }
+
+    const record =
+      snapshot.data() || {};
+
+    if(
+      record.shareToken &&
+      record.shareToken !== token
+    ){
+      throw new Error(
+        '공유 토큰 검증에 실패했습니다.'
+      );
+    }
+
+    if(
+      record.shareStatus &&
+      record.shareStatus !==
+        'active'
+    ){
+      throw new Error(
+        '사용이 종료된 공유 링크입니다.'
+      );
+    }
+
+    return Object.assign(
+      {},
+      record,
+      {
+        shareToken:
+          token,
+
+        remoteDocumentId:
+          snapshot.id,
+
+        firestoreSource:
+          PUBLIC_PROVISION_COLLECTION
+      }
+    );
+  };
+
+window.dispatchEvent(
+  new CustomEvent(
+    'safety-provision-firebase-ready'
+  )
+);
+     
 window.updateFirestoreStatus = async function(safeinfoNo, updateData){
   if(!safeinfoNo){
     throw new Error("safeinfoNo가 필요합니다");
