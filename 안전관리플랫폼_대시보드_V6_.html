@@ -3260,6 +3260,217 @@ button{touch-action:manipulation}
   }
 
   function buildProcessIndexes(){
+    /*
+     * 안전정보제공서는 기존 단일 workId 방식과
+     * 신규 복수 workIds 방식을 모두 지원합니다.
+     *
+     * 한 문서가 여러 작업에 적용되면 동일 문서를
+     * 각 workId에서 조회할 수 있도록 인덱싱합니다.
+     */
+    function safetyInfoWorkIds(
+      record
+    ){
+      record =
+        record || {};
+
+      var workIds = [];
+
+      function addWorkId(value){
+        var workId =
+          clean(value);
+
+        if(
+          workId &&
+          workIds.indexOf(
+            workId
+          ) < 0
+        ){
+          workIds.push(
+            workId
+          );
+        }
+      }
+
+      /*
+       * 기존 단일 작업 연결 필드
+       */
+      addWorkId(
+        record.workId
+      );
+
+      addWorkId(
+        record.primaryWorkId
+      );
+
+      addWorkId(
+        record.sourceWorkId
+      );
+
+      if(record.workflowLink){
+        addWorkId(
+          record.workflowLink
+            .workId
+        );
+      }
+
+      /*
+       * 신규 복수 작업 연결 필드
+       */
+      if(
+        Array.isArray(
+          record.workIds
+        )
+      ){
+        record.workIds.forEach(
+          addWorkId
+        );
+      }
+
+      if(
+        record.workflowLink &&
+        Array.isArray(
+          record.workflowLink
+            .workIds
+        )
+      ){
+        record.workflowLink
+          .workIds
+          .forEach(
+            addWorkId
+          );
+      }
+
+      return workIds;
+    }
+
+    /*
+     * 안전정보제공서 복수 작업 인덱스 생성
+     */
+    var safetyByWorkId = {};
+
+    state.safetyInfos.forEach(
+      function(record){
+        if(!record){
+          return;
+        }
+
+        safetyInfoWorkIds(
+          record
+        ).forEach(
+          function(workId){
+            var previous =
+              safetyByWorkId[
+                workId
+              ];
+
+            /*
+             * 동일 작업에 여러 안전정보제공서가 연결되면
+             * 가장 최근 문서를 사용합니다.
+             */
+            if(
+              !previous ||
+              recordTime(record) >=
+                recordTime(previous)
+            ){
+              safetyByWorkId[
+                workId
+              ] = record;
+            }
+          }
+        );
+      }
+    );
+
+    /*
+     * 안전퀴즈도 기존 linkedWorkIds 배열을
+     * 사용할 수 있도록 복수 작업 인덱스를 생성합니다.
+     */
+    var quizByWorkId = {};
+
+    state.quizzes.forEach(
+      function(record){
+        if(!record){
+          return;
+        }
+
+        var workIds = [];
+
+        function addQuizWorkId(
+          value
+        ){
+          var workId =
+            clean(value);
+
+          if(
+            workId &&
+            workIds.indexOf(
+              workId
+            ) < 0
+          ){
+            workIds.push(
+              workId
+            );
+          }
+        }
+
+        addQuizWorkId(
+          record.workId
+        );
+
+        addQuizWorkId(
+          record.sourceWorkId
+        );
+
+        if(record.workflowLink){
+          addQuizWorkId(
+            record.workflowLink
+              .workId
+          );
+        }
+
+        if(
+          Array.isArray(
+            record.linkedWorkIds
+          )
+        ){
+          record.linkedWorkIds
+            .forEach(
+              addQuizWorkId
+            );
+        }
+
+        if(
+          Array.isArray(
+            record.workIds
+          )
+        ){
+          record.workIds
+            .forEach(
+              addQuizWorkId
+            );
+        }
+
+        workIds.forEach(
+          function(workId){
+            var previous =
+              quizByWorkId[
+                workId
+              ];
+
+            if(
+              !previous ||
+              recordTime(record) >=
+                recordTime(previous)
+            ){
+              quizByWorkId[
+                workId
+              ] = record;
+            }
+          }
+        );
+      }
+    );
+
     return {
       riskByWorkId:
         buildIndex(
@@ -3268,16 +3479,10 @@ button{touch-action:manipulation}
         ),
 
       safetyByWorkId:
-        buildIndex(
-          state.safetyInfos,
-          getSafetyInfoWorkId
-        ),
+        safetyByWorkId,
 
       quizByWorkId:
-        buildIndex(
-          state.quizzes,
-          getQuizWorkId
-        ),
+        quizByWorkId,
 
       permitByWorkId:
         buildIndex(
@@ -3294,6 +3499,7 @@ button{touch-action:manipulation}
         )
     };
   }
+
 
   function completedRisk(record){
     return Boolean(
