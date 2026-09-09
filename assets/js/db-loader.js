@@ -74,19 +74,57 @@
   // ─────────────────────────────────────────────────────────
   // 유틸: fetch with timeout
   // ─────────────────────────────────────────────────────────
-  async function fetchWithTimeout(url, timeoutMs){
-    const controller = new AbortController();
-    const timer = setTimeout(()=> controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, { 
-        signal: controller.signal,
-        cache: 'no-cache'  // 항상 최신 확인 (ETag 활용)
-      });
-      return res;
-    } finally {
+  async function fetchWithTimeout(
+    url,
+    timeoutMs
+  ){
+    const controller =
+      new AbortController();
+
+    const timer =
+      setTimeout(
+        function(){
+          controller.abort();
+        },
+        timeoutMs
+      );
+
+    try{
+      /*
+       * 모바일 브라우저와 GitHub Pages CDN이
+       * 이전 manifest 또는 JSON을 반환하지 않도록
+       * HTTP 캐시를 사용하지 않습니다.
+       *
+       * 실제 데이터 재사용 여부는 아래 IndexedDB의
+       * SHA-256 비교로 결정합니다.
+       */
+      const response =
+        await fetch(
+          url,
+          {
+            signal:
+              controller.signal,
+
+            cache:
+              'no-store',
+
+            headers:{
+              'Cache-Control':
+                'no-cache, no-store, must-revalidate',
+
+              'Pragma':
+                'no-cache'
+            }
+          }
+        );
+
+      return response;
+
+    }finally{
       clearTimeout(timer);
     }
   }
+
 
   // ─────────────────────────────────────────────────────────
   // 유틸: BOM 제거 후 JSON 파싱
@@ -203,24 +241,83 @@
   // ─────────────────────────────────────────────────────────
   // manifest 로드 (5분 캐시)
   // ─────────────────────────────────────────────────────────
-  async function loadManifest(forceRefresh){
-    const now = Date.now();
-    if(!forceRefresh && manifestCache && (now - manifestCachedAt) < CONFIG.manifestTtlMs){
-      log('manifest cached (memory)');
+  async function loadManifest(
+    forceRefresh
+  ){
+    const now =
+      Date.now();
+
+    /*
+     * 같은 페이지 안에서 5분 이내 중복 호출되는 경우에만
+     * 메모리 manifest를 재사용합니다.
+     *
+     * 새 로그인이나 새 페이지에서는 메모리 캐시가 없으므로
+     * 항상 최신 manifest를 네트워크에서 확인합니다.
+     */
+    if(
+      !forceRefresh &&
+      manifestCache &&
+      (
+        now -
+        manifestCachedAt
+      ) <
+      CONFIG.manifestTtlMs
+    ){
+      log(
+        'manifest cached (memory)'
+      );
+
       return manifestCache;
     }
-    
-    const { text, source } = await fetchFromSources(CONFIG.manifestFile);
-    const parsed = parseJsonSafe(text);
-    if(!parsed || !parsed.files){
-      throw new Error('manifest 구조가 올바르지 않음');
+
+    /*
+     * URL에 현재 시각을 붙여 GitHub Pages와
+     * 모바일 브라우저의 이전 manifest 캐시를 우회합니다.
+     */
+    const manifestRequestFile =
+      CONFIG.manifestFile +
+      '?ts=' +
+      now;
+
+    const result =
+      await fetchFromSources(
+        manifestRequestFile
+      );
+
+    const parsed =
+      parseJsonSafe(
+        result.text
+      );
+
+    if(
+      !parsed ||
+      !parsed.files
+    ){
+      throw new Error(
+        'manifest 구조가 올바르지 않음'
+      );
     }
-    
-    manifestCache = parsed;
-    manifestCachedAt = now;
-    log(`manifest loaded from [${source}], version=${parsed.manifestVersion}, files=${Object.keys(parsed.files).length}`);
+
+    manifestCache =
+      parsed;
+
+    manifestCachedAt =
+      now;
+
+    log(
+      'manifest latest loaded from [' +
+      result.source +
+      '], version=' +
+      parsed.manifestVersion +
+      ', files=' +
+      Object.keys(
+        parsed.files
+      ).length
+    );
+
     return parsed;
   }
+
 
   // ─────────────────────────────────────────────────────────
   // 핵심: 데이터 로드
@@ -259,7 +356,29 @@
     }
     
     // 3) 네트워크에서 로드
-    const { text, source, url } = await fetchFromSources(filename);
+    /*
+     * manifest의 SHA-256을 URL 버전값으로 사용합니다.
+     * 파일이 바뀌면 URL도 바뀌므로 이전 JSON 캐시를
+     * 가져오는 문제를 방지합니다.
+     */
+    const datasetRequestFile =
+      filename +
+      '?sha=' +
+      encodeURIComponent(
+        expectedHash
+      ) +
+      '&ts=' +
+      Date.now();
+
+    const {
+      text,
+      source,
+      url
+    } =
+      await fetchFromSources(
+        datasetRequestFile
+      );
+
     
     // 4) SHA256 검증
     if(!skipHashCheck){
@@ -365,7 +484,7 @@
   // 공개 API 등록
   // ─────────────────────────────────────────────────────────
   global.staticDbLoader = {
-    version: '1.0.1',
+    version: '1.1.0',
     load,
     forceRefresh,
     getStatus,
@@ -374,6 +493,6 @@
     loadWorkDatabase: (opts)=> load('workDatabase', opts)
   };
 
-  log('db-loader v1.0.0 initialized');
+  log('db-loader v1.1.0 initialized · latest manifest check enabled');
   log('sources:', CONFIG.sources.map(s=>s.name).join(' → '));
 })(window);
