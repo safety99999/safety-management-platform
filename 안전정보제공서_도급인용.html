@@ -1187,13 +1187,58 @@ function checkApiStatus(){
 }
 
 // ═══════════════════════════════════════════════
-// ⭐ v2.1 신규: 작업DB에서 workId로 정보 자동 채움
+// 작업DB 단일·복수 작업 연결
 // ═══════════════════════════════════════════════
-/*
- * 배열 또는 객체 형태로 저장된 로컬 자료를
- * 안전하게 배열로 반환합니다.
- */
-function readLocalRecords(key){
+
+function sipClean(value){
+  var text =
+    String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    ).trim();
+
+  var invalidValues = [
+    '',
+    '-',
+    '미지정',
+    '부서 미지정',
+    '업체 미지정',
+    '담당자 미지정',
+    '해당 없음',
+    '해당없음',
+    'N/A',
+    'NA',
+    'null',
+    'undefined'
+  ];
+
+  return invalidValues.indexOf(text) >= 0
+    ? ''
+    : text;
+}
+
+function sipFirstValue(){
+  for(
+    var index = 0;
+    index < arguments.length;
+    index++
+  ){
+    var value =
+      sipClean(
+        arguments[index]
+      );
+
+    if(value){
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function readSafetyInfoArray(key){
   try{
     var parsed =
       JSON.parse(
@@ -1225,58 +1270,70 @@ function readLocalRecords(key){
   }
 }
 
-/*
- * 위험성평가에 연결된 작업번호를 반환합니다.
- */
-function getRiskWorkId(record){
+function safetyInfoWorkId(work){
+  work =
+    work || {};
+
   return String(
-    record &&
+    work.workId ||
+    work.id ||
     (
-      record.workId ||
-      record.sourceWorkId ||
-      (
-        record.workflowLink &&
-        record.workflowLink.workId
-      )
+      work.date &&
+      work.originalNo
+        ? work.date +
+          '_' +
+          work.originalNo
+        : ''
     ) ||
     ''
-  ).trim();
+  )
+    .replace(/\s+/g,'')
+    .trim();
 }
 
-/*
- * 위험성평가 완료 여부를 판정합니다.
- */
-function isCompletedRisk(record){
-  if(!record){
-    return false;
+function safetyInfoRequestedWorkIds(
+  primaryWorkId
+){
+  var parameters =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  var workIds = [];
+
+  function add(value){
+    String(value || '')
+      .split(',')
+      .forEach(function(item){
+        var workId =
+          String(item || '')
+            .replace(/\s+/g,'')
+            .trim();
+
+        if(
+          workId &&
+          workIds.indexOf(
+            workId
+          ) < 0
+        ){
+          workIds.push(workId);
+        }
+      });
   }
 
-  var status =
-    String(
-      record.status ||
-      ''
-    ).trim();
+  add(primaryWorkId);
+  add(parameters.get('workId'));
 
-  var statusCode =
-    String(
-      record.statusCode ||
-      ''
-    ).trim();
+  parameters
+    .getAll('workIds')
+    .forEach(add);
 
-  return Boolean(
-    record.riskId &&
-    (
-      status === '평가완료' ||
-      status === '완료' ||
-      statusCode === 'completed'
-    )
-  );
+  return workIds;
 }
 
-/*
- * 위험성평가 자료의 최신 수정시각을 반환합니다.
- */
-function riskRecordTime(record){
+function safetyInfoRecordTime(
+  record
+){
   record =
     record || {};
 
@@ -1327,341 +1384,9 @@ function riskRecordTime(record){
     : 0;
 }
 
-/*
- * 동일 workId에 연결된 완료 위험성평가 중
- * 가장 최신 자료를 반환합니다.
- */
-function findCompletedRiskByWorkId(
-  workId
+function riskLinkedWorkId(
+  record
 ){
-  var targetWorkId =
-    String(
-      workId || ''
-    ).trim();
-
-  if(!targetWorkId){
-    return null;
-  }
-
-  var records =
-    readLocalRecords(
-      'riskAssessments'
-    ).concat(
-      readLocalRecords(
-        'riskAssessmentResults'
-      )
-    );
-
-  var uniqueMap =
-    new Map();
-
-  records.forEach(
-    function(record){
-      if(
-        !record ||
-        !record.riskId
-      ){
-        return;
-      }
-
-      var previous =
-        uniqueMap.get(
-          record.riskId
-        );
-
-      if(
-        !previous ||
-        riskRecordTime(record) >=
-          riskRecordTime(previous)
-      ){
-        uniqueMap.set(
-          record.riskId,
-          record
-        );
-      }
-    }
-  );
-
-  return Array.from(
-    uniqueMap.values()
-  )
-    .filter(function(record){
-      return (
-        isCompletedRisk(record) &&
-        getRiskWorkId(record) ===
-          targetWorkId
-      );
-    })
-    .sort(function(first,second){
-      return (
-        riskRecordTime(second) -
-        riskRecordTime(first)
-      );
-    })[0] || null;
-}
-
-/*
- * 연계된 위험성평가 정보를 문서 데이터와
- * 3단계 관련 서류 화면에 반영합니다.
- */
-function applyLinkedRiskAssessment(
-  risk
-){
-  if(!risk){
-    return;
-  }
-
-  var riskId =
-    String(
-      risk.riskId ||
-      risk.id ||
-      ''
-    ).trim();
-
-  var riskLevel =
-    String(
-      risk.finalRiskLevel ||
-      risk.riskLevel ||
-      risk.overallRisk ||
-      '위험도 미확인'
-    ).trim();
-
-  data.riskAssessmentNo =
-    riskId;
-
-  data.riskId =
-    riskId;
-
-  data.riskStatus =
-    'completed';
-
-  data.riskLevel =
-    riskLevel;
-
-  data.riskLinked =
-    true;
-
-  data.riskLinkedAt =
-    new Date()
-      .toISOString();
-
-  data.riskSnapshot = {
-    riskId:riskId,
-
-    workId:
-      getRiskWorkId(risk),
-
-    status:
-      risk.status || '',
-
-    statusCode:
-      risk.statusCode || '',
-
-    riskLevel:
-      riskLevel,
-
-    riskScore:
-      Number(
-        risk.riskScore || 0
-      ),
-
-    assessor:
-      risk.assessor || '',
-
-    assessmentDate:
-      risk.date ||
-      risk.assessmentDate ||
-      '',
-
-    linkedAt:
-      data.riskLinkedAt
-  };
-
-  var input =
-    document.getElementById(
-      'risk-assess-no'
-    );
-
-  if(input){
-    input.value =
-      riskId;
-
-    input.readOnly =
-      true;
-
-    input.classList.add(
-      'auto-filled'
-    );
-
-    input.dataset
-      .riskVerified =
-      'true';
-
-    input.title =
-      '작업번호로 자동 연계된 완료 위험성평가입니다.';
-  }
-
-  var result =
-    document.getElementById(
-      'risk-assess-result'
-    );
-
-  if(result){
-    result.style.display =
-      'block';
-
-    result.style.background =
-      '#E8F5E9';
-
-    result.style.borderColor =
-      'var(--green2)';
-
-    result.style.color =
-      'var(--green2)';
-
-    result.innerHTML =
-      '✅ 위험성평가 자동 연계 완료' +
-      '<br>문서번호: ' +
-      escHtml(riskId) +
-      '<br>최종 위험도: ' +
-      escHtml(riskLevel);
-  }
-
-  console.log(
-    '[안전정보제공서] 위험성평가 자동 연계 완료:',
-    {
-      workId:data.workId,
-      riskId:riskId,
-      riskLevel:riskLevel
-    }
-  );
-}
-
-/*
- * 작업DB에서 workId로 작업정보를 불러오고,
- * 완료된 위험성평가가 있을 때만 작성을 시작합니다.
- */
-/*
- * localStorage의 배열 또는 객체 자료를
- * 항상 배열 형태로 반환합니다.
- */
-function readLocalArray(key){
-  try{
-    var parsed =
-      JSON.parse(
-        localStorage.getItem(key) ||
-        '[]'
-      );
-
-    if(Array.isArray(parsed)){
-      return parsed;
-    }
-
-    if(
-      parsed &&
-      typeof parsed === 'object'
-    ){
-      return Object.values(parsed);
-    }
-
-    return [];
-
-  }catch(error){
-    console.warn(
-      '[안전정보제공서] 로컬자료 파싱 실패:',
-      key,
-      error
-    );
-
-    return [];
-  }
-}
-
-/*
- * 작업정보의 표준 workId를 반환합니다.
- */
-function getWorkRecordId(work){
-  work =
-    work || {};
-
-  return String(
-    work.workId ||
-    work.id ||
-    (
-      work.date &&
-      work.originalNo
-        ? work.date +
-          '_' +
-          work.originalNo
-        : ''
-    ) ||
-    ''
-  )
-    .replace(/\s+/g,'')
-    .trim();
-}
-
-/*
- * URL의 workId와 workIds를 모두 읽습니다.
- *
- * 지원 형식:
- * ?workId=2026-09-09_1
- * ?workIds=2026-09-09_1,2026-09-09_2
- * ?workIds=2026-09-09_1&workIds=2026-09-09_2
- */
-function getRequestedWorkIds(
-  primaryWorkId
-){
-  var params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  var workIds = [];
-
-  function addWorkId(value){
-    String(value || '')
-      .split(',')
-      .forEach(function(item){
-        var workId =
-          decodeURIComponent(
-            item || ''
-          )
-            .replace(/\s+/g,'')
-            .trim();
-
-        if(
-          workId &&
-          workIds.indexOf(
-            workId
-          ) < 0
-        ){
-          workIds.push(
-            workId
-          );
-        }
-      });
-  }
-
-  addWorkId(
-    primaryWorkId
-  );
-
-  addWorkId(
-    params.get('workId')
-  );
-
-  params
-    .getAll('workIds')
-    .forEach(addWorkId);
-
-  return workIds;
-}
-
-/*
- * 위험성평가 자료에 연결된 workId를 반환합니다.
- */
-function linkedRiskWorkId(record){
   return String(
     record &&
     (
@@ -1678,26 +1403,21 @@ function linkedRiskWorkId(record){
     .trim();
 }
 
-/*
- * 완료된 위험성평가인지 확인합니다.
- */
-function completedRiskRecord(record){
+function isCompletedRiskForSafetyInfo(
+  record
+){
   if(
     !record ||
-    !record.riskId
+    !sipClean(record.riskId)
   ){
     return false;
   }
 
   var status =
-    String(
-      record.status || ''
-    ).trim();
+    sipClean(record.status);
 
   var statusCode =
-    String(
-      record.statusCode || ''
-    ).trim();
+    sipClean(record.statusCode);
 
   return (
     status === '평가완료' ||
@@ -1706,65 +1426,7 @@ function completedRiskRecord(record){
   );
 }
 
-/*
- * 저장자료의 최신 시각을 비교하기 위한 함수입니다.
- */
-function localRecordTime(record){
-  record =
-    record || {};
-
-  var value =
-    record.updatedAt ||
-    record.completedAt ||
-    record.createdAt ||
-    record.date ||
-    '';
-
-  if(
-    value &&
-    typeof value.toDate ===
-      'function'
-  ){
-    try{
-      return value
-        .toDate()
-        .getTime();
-    }catch(error){
-      return 0;
-    }
-  }
-
-  if(
-    value &&
-    typeof value === 'object'
-  ){
-    var seconds =
-      value.seconds !== undefined
-        ? value.seconds
-        : value._seconds;
-
-    if(
-      Number.isFinite(
-        Number(seconds)
-      )
-    ){
-      return Number(seconds) * 1000;
-    }
-  }
-
-  var timestamp =
-    new Date(value)
-      .getTime();
-
-  return Number.isFinite(timestamp)
-    ? timestamp
-    : 0;
-}
-
-/*
- * workId별 최신 완료 위험성평가를 반환합니다.
- */
-function findCompletedRiskForWork(
+function findRiskForSafetyInfo(
   workId
 ){
   var targetWorkId =
@@ -1773,92 +1435,512 @@ function findCompletedRiskForWork(
       .trim();
 
   var records =
-    readLocalArray(
+    readSafetyInfoArray(
       'riskAssessments'
     ).concat(
-      readLocalArray(
+      readSafetyInfoArray(
         'riskAssessmentResults'
       )
     );
 
-  var map =
+  var riskMap =
     new Map();
 
-  records.forEach(function(record){
-    if(
-      !record ||
-      !record.riskId
-    ){
-      return;
-    }
+  records.forEach(
+    function(record){
+      var riskId =
+        sipClean(
+          record &&
+          record.riskId
+        );
 
-    var previous =
-      map.get(
-        record.riskId
-      );
+      if(!riskId){
+        return;
+      }
 
-    if(
-      !previous ||
-      localRecordTime(record) >=
-        localRecordTime(previous)
-    ){
-      map.set(
-        record.riskId,
-        record
-      );
+      var previous =
+        riskMap.get(riskId);
+
+      if(
+        !previous ||
+        safetyInfoRecordTime(
+          record
+        ) >=
+        safetyInfoRecordTime(
+          previous
+        )
+      ){
+        riskMap.set(
+          riskId,
+          record
+        );
+      }
     }
-  });
+  );
 
   return Array.from(
-    map.values()
+    riskMap.values()
   )
     .filter(function(record){
       return (
-        completedRiskRecord(record) &&
-        linkedRiskWorkId(record) ===
-          targetWorkId
+        isCompletedRiskForSafetyInfo(
+          record
+        ) &&
+        riskLinkedWorkId(
+          record
+        ) === targetWorkId
       );
     })
     .sort(function(first,second){
       return (
-        localRecordTime(second) -
-        localRecordTime(first)
+        safetyInfoRecordTime(
+          second
+        ) -
+        safetyInfoRecordTime(
+          first
+        )
       );
     })[0] || null;
 }
 
-/*
- * 작업정보에서 업체명을 반환합니다.
- */
-function linkedWorkCompany(work){
-  if(
-    typeof usefulWorkValue ===
-      'function'
-  ){
-    return usefulWorkValue(
-      work.executingCompany,
-      work.subcontractCompany,
-      work.contractCompany,
-      work.company
-    );
-  }
+function safetyInfoCompany(work){
+  return sipFirstValue(
+    work.executingCompany,
+    work.subcontractCompany,
+    work.contractCompany,
+    work.company
+  );
+}
 
-  return String(
-    work.executingCompany ||
-    work.subcontractCompany ||
-    work.contractCompany ||
-    work.company ||
-    ''
-  ).trim();
+function safetyInfoWorkName(work){
+  return sipFirstValue(
+    work.workNameFull,
+    work.workName
+  ) || '작업명 미지정';
+}
+
+function safetyInfoLocation(work){
+  var locationObject =
+    work.location &&
+    typeof work.location ===
+      'object'
+      ? work.location
+      : {};
+
+  return sipFirstValue(
+    work.locationDisplay,
+    work.locationRaw,
+    work.workPlaceRaw,
+    locationObject.raw,
+    typeof work.location ===
+      'string'
+      ? work.location
+      : ''
+  );
+}
+
+function uniqueUsefulValues(
+  values
+){
+  var result = [];
+
+  values.forEach(function(value){
+    var text =
+      sipClean(value);
+
+    if(
+      text &&
+      result.indexOf(text) < 0
+    ){
+      result.push(text);
+    }
+  });
+
+  return result;
 }
 
 /*
- * 복수 작업을 안전정보제공서 데이터에 연결합니다.
+ * 선택한 작업들의 공통 업체·담당자·연락처를
+ * 안전정보제공서에 자동 반영합니다.
+ */
+function applyGroupedWorkFields(
+  linkedWorks
+){
+  if(!linkedWorks.length){
+    return;
+  }
+
+  var primaryWork =
+    linkedWorks[0];
+
+  var companies =
+    uniqueUsefulValues(
+      linkedWorks.map(
+        safetyInfoCompany
+      )
+    );
+
+  var workManagers =
+    uniqueUsefulValues(
+      linkedWorks.map(
+        function(work){
+          return sipFirstValue(
+            work.workManager,
+            work.manager,
+            work.companyManager,
+            work.companyManagerName
+          );
+        }
+      )
+    );
+
+  var departments =
+    uniqueUsefulValues(
+      linkedWorks.map(
+        function(work){
+          return sipFirstValue(
+            work.requestingDepartment,
+            work.instructionDept,
+            work.operatingDepartment,
+            work.operationDept
+          );
+        }
+      )
+    );
+
+  var contractorManagers =
+    uniqueUsefulValues(
+      linkedWorks.map(
+        function(work){
+          return sipFirstValue(
+            work.contractorManager,
+            work.supervisor
+          );
+        }
+      )
+    );
+
+  var contractorEmails =
+    uniqueUsefulValues(
+      linkedWorks.map(
+        function(work){
+          return sipFirstValue(
+            work.contractorManagerEmail,
+            work.supervisorEmail,
+            work.contractorEmail,
+            work.email
+          );
+        }
+      )
+    );
+
+  var contractorPhones =
+    uniqueUsefulValues(
+      linkedWorks.map(
+        function(work){
+          return sipFirstValue(
+            work.contractorManagerPhone,
+            work.supervisorPhone,
+            work.contractorPhone
+          );
+        }
+      )
+    );
+
+  /*
+   * 작업명은 대표 작업명과 묶음 건수를 표시합니다.
+   * 개별 작업명은 data.linkedWorks에 모두 보존됩니다.
+   */
+  var groupedWorkName =
+    safetyInfoWorkName(
+      primaryWork
+    );
+
+  if(linkedWorks.length > 1){
+    groupedWorkName +=
+      ' 외 ' +
+      (
+        linkedWorks.length - 1
+      ) +
+      '건';
+  }
+
+  setValAuto(
+    'work-name',
+    groupedWorkName
+  );
+
+  if(companies.length === 1){
+    setValAuto(
+      'subcontractor',
+      companies[0]
+    );
+  }else if(companies.length > 1){
+    setVal(
+      'subcontractor',
+      ''
+    );
+
+    showToast(
+      '선택 작업의 업체가 서로 다릅니다. 협력사를 확인하세요.',
+      'danger'
+    );
+  }
+
+  if(workManagers.length === 1){
+    setValAuto(
+      'contractor-manager',
+      workManagers[0]
+    );
+  }
+
+  if(departments.length === 1){
+    setValAuto(
+      'contractor-dept',
+      departments[0]
+    );
+  }
+
+  if(contractorEmails.length === 1){
+    setValAuto(
+      'sub-email',
+      contractorEmails[0]
+    );
+  }
+
+  if(contractorPhones.length === 1){
+    var phone =
+      typeof formatKoreanPhone ===
+        'function'
+        ? formatKoreanPhone(
+            contractorPhones[0]
+          )
+        : contractorPhones[0];
+
+    setValAuto(
+      'sub-phone',
+      phone
+    );
+  }
+
+  data.groupedWorkSummary = {
+    workCount:
+      linkedWorks.length,
+
+    companies:
+      companies,
+
+    workManagers:
+      workManagers,
+
+    departments:
+      departments,
+
+    contractorManagers:
+      contractorManagers,
+
+    contractorEmails:
+      contractorEmails,
+
+    contractorPhones:
+      contractorPhones,
+
+    hasCompanyConflict:
+      companies.length > 1,
+
+    hasManagerConflict:
+      contractorManagers.length > 1,
+
+    hasRecipientConflict:
+      contractorEmails.length > 1 ||
+      contractorPhones.length > 1,
+
+    createdAt:
+      new Date()
+        .toISOString()
+  };
+
+  if(
+    contractorManagers.length > 1 ||
+    contractorEmails.length > 1 ||
+    contractorPhones.length > 1
+  ){
+    showToast(
+      '수급인 작업책임자 또는 연락처가 서로 다릅니다. 발송 전 확인하세요.',
+      'info'
+    );
+  }
+}
+
+/*
+ * 대표 작업과 연결된 모든 작업을 시작 화면에 표시합니다.
+ */
+function showWorkInfoBanner(
+  primaryWork,
+  linkedWorks,
+  riskLinks
+){
+  var banner =
+    document.getElementById(
+      'workidInfoBanner'
+    );
+
+  if(!banner){
+    return;
+  }
+
+  linkedWorks =
+    Array.isArray(linkedWorks) &&
+    linkedWorks.length
+      ? linkedWorks
+      : [primaryWork];
+
+  riskLinks =
+    Array.isArray(riskLinks)
+      ? riskLinks
+      : [];
+
+  var company =
+    safetyInfoCompany(
+      primaryWork
+    ) ||
+    '업체 확인 필요';
+
+  var workItemsHtml =
+    linkedWorks.map(
+      function(work,index){
+        var workId =
+          safetyInfoWorkId(
+            work
+          );
+
+        var riskLink =
+          riskLinks.find(
+            function(link){
+              return (
+                link.workId ===
+                workId
+              );
+            }
+          );
+
+        var riskLabel =
+          riskLink &&
+          riskLink.applicability ===
+            'linked'
+            ? (
+                '위험성평가 ' +
+                riskLink.riskId
+              )
+            : '위험성평가 선택 필요';
+
+        return (
+          '<div style="' +
+            'margin-top:8px;' +
+            'padding:9px 10px;' +
+            'border:1px solid rgba(21,101,192,.18);' +
+            'border-radius:9px;' +
+            'background:#fff">' +
+
+            '<div style="' +
+              'font-size:12.5px;' +
+              'font-weight:800;' +
+              'color:var(--text);' +
+              'line-height:1.45">' +
+              (
+                index + 1
+              ) +
+              '. ' +
+              escHtml(
+                safetyInfoWorkName(
+                  work
+                )
+              ) +
+            '</div>' +
+
+            '<div style="' +
+              'margin-top:3px;' +
+              'font-size:11px;' +
+              'font-weight:600;' +
+              'color:var(--sub)">' +
+              '📍 ' +
+              escHtml(
+                safetyInfoLocation(
+                  work
+                ) || '-'
+              ) +
+              ' · ' +
+              escHtml(
+                riskLabel
+              ) +
+            '</div>' +
+
+          '</div>'
+        );
+      }
+    ).join('');
+
+  banner.innerHTML =
+    '<div class="workid-info-banner">' +
+
+      '<div class="wib-top">' +
+        '<span class="wib-badge">' +
+          (
+            linkedWorks.length > 1
+              ? '📋 묶음 작업'
+              : '📋 자동 연결'
+          ) +
+        '</span>' +
+
+        '<span class="wib-workid">' +
+          escapeHtml(
+            safetyInfoWorkId(
+              primaryWork
+            )
+          ) +
+        '</span>' +
+      '</div>' +
+
+      '<div class="wib-name">' +
+        escapeHtml(
+          linkedWorks.length > 1
+            ? (
+                company +
+                ' 작업 ' +
+                linkedWorks.length +
+                '건'
+              )
+            : safetyInfoWorkName(
+                primaryWork
+              )
+        ) +
+      '</div>' +
+
+      '<div class="wib-meta">' +
+        '<span>🏢 ' +
+          escapeHtml(company) +
+        '</span>' +
+
+        '<span>📋 적용 작업 ' +
+          linkedWorks.length +
+          '건</span>' +
+      '</div>' +
+
+      workItemsHtml +
+
+    '</div>';
+
+  banner.style.display =
+    'block';
+}
+
+/*
+ * 작업DB에서 단일 또는 복수 작업을 불러옵니다.
  */
 function loadWorkFromDb(workId){
   try{
     var requestedWorkIds =
-      getRequestedWorkIds(
+      safetyInfoRequestedWorkIds(
         workId
       );
 
@@ -1886,7 +1968,7 @@ function loadWorkFromDb(workId){
         title:'작업DB 정보 없음',
         message:
           '작업관리대장 자료를 찾을 수 없습니다.\n' +
-          '대시보드에서 작업자료를 새로고침한 후 다시 시도하세요.',
+          '대시보드에서 새로고침한 후 다시 시도하세요.',
         okType:'warn'
       });
 
@@ -1903,17 +1985,14 @@ function loadWorkFromDb(workId){
         ? database.workHistory
         : [];
 
-    /*
-     * URL에서 전달된 순서대로 작업을 찾습니다.
-     */
     var linkedWorks =
       requestedWorkIds
         .map(function(requestedId){
           return workHistory.find(
-            function(record){
+            function(work){
               return (
-                getWorkRecordId(
-                  record
+                safetyInfoWorkId(
+                  work
                 ) === requestedId
               );
             }
@@ -1926,50 +2005,18 @@ function loadWorkFromDb(workId){
         icon:'⚠️',
         title:'작업 정보 없음',
         message:
-          '선택한 작업의 정보를 찾을 수 없습니다.\n' +
-          '대시보드에서 작업자료를 새로고침한 후 다시 선택해 주세요.',
+          '선택한 작업정보를 찾을 수 없습니다.',
         okType:'warn'
       });
 
       return;
     }
 
-    /*
-     * 실제로 찾은 작업번호만 최종 연결합니다.
-     */
-    var validWorkIds =
-      linkedWorks.map(
-        getWorkRecordId
-      );
-
-    var missingWorkIds =
-      requestedWorkIds.filter(
-        function(requestedId){
-          return (
-            validWorkIds.indexOf(
-              requestedId
-            ) < 0
-          );
-        }
-      );
-
-    if(missingWorkIds.length){
-      console.warn(
-        '[안전정보제공서] 찾지 못한 작업:',
-        missingWorkIds
-      );
-
-      showToast(
-        '일부 작업을 찾지 못해 확인 가능한 작업만 연결했습니다.',
-        'info'
-      );
-    }
-
     var primaryWork =
       linkedWorks[0];
 
     var primaryWorkId =
-      getWorkRecordId(
+      safetyInfoWorkId(
         primaryWork
       );
 
@@ -1980,45 +2027,34 @@ function loadWorkFromDb(workId){
       primaryWorkId;
 
     data.workIds =
-      validWorkIds.slice();
+      linkedWorks.map(
+        safetyInfoWorkId
+      );
 
-    /*
-     * 문서에 연결된 작업의 핵심정보를 보존합니다.
-     */
     data.linkedWorks =
       linkedWorks.map(
         function(work){
           return {
             workId:
-              getWorkRecordId(
+              safetyInfoWorkId(
                 work
               ),
 
             workName:
-              String(
-                work.workNameFull ||
-                work.workName ||
-                ''
-              ).trim(),
+              safetyInfoWorkName(
+                work
+              ),
 
             date:
-              String(
-                work.date || ''
-              ).trim(),
+              sipClean(work.date),
 
             location:
-              String(
-                work.locationRaw ||
-                work.locationDisplay ||
-                (
-                  work.location &&
-                  work.location.raw
-                ) ||
-                ''
-              ).trim(),
+              safetyInfoLocation(
+                work
+              ),
 
             companyName:
-              linkedWorkCompany(
+              safetyInfoCompany(
                 work
               ),
 
@@ -2028,80 +2064,58 @@ function loadWorkFromDb(workId){
               ),
 
             workManager:
-              String(
-                work.workManager ||
-                work.manager ||
-                ''
-              ).trim(),
+              sipFirstValue(
+                work.workManager,
+                work.manager
+              ),
 
             contractorManager:
-              String(
-                work.contractorManager ||
-                ''
-              ).trim(),
+              sipClean(
+                work.contractorManager
+              ),
+
+            contractorEmail:
+              sipFirstValue(
+                work.contractorManagerEmail,
+                work.supervisorEmail,
+                work.contractorEmail,
+                work.email
+              ),
+
+            contractorPhone:
+              sipFirstValue(
+                work.contractorManagerPhone,
+                work.supervisorPhone,
+                work.contractorPhone
+              ),
 
             workOrderNo:
-              String(
-                work.workOrderNo ||
-                ''
-              ).trim(),
+              sipClean(
+                work.workOrderNo
+              ),
 
             workTimeRaw:
-              String(
-                work.workTimeRaw ||
-                ''
-              ).trim()
+              sipClean(
+                work.workTimeRaw
+              )
           };
         }
       );
 
     /*
-     * 복수 작업에 연결된 업체가 서로 다른지 확인합니다.
-     * 현재는 작성을 차단하지 않고 경고만 표시합니다.
-     */
-    var companies = [];
-
-    linkedWorks.forEach(
-      function(work){
-        var company =
-          linkedWorkCompany(
-            work
-          );
-
-        if(
-          company &&
-          companies.indexOf(
-            company
-          ) < 0
-        ){
-          companies.push(
-            company
-          );
-        }
-      }
-    );
-
-    if(companies.length > 1){
-      showToast(
-        '⚠️ 서로 다른 수행업체의 작업이 포함되어 있습니다. 적용 범위를 확인하세요.',
-        'info'
-      );
-    }
-
-    /*
-     * 각 작업의 위험성평가 연결상태를 개별 저장합니다.
-     * 평가가 없어도 작성을 차단하지 않습니다.
+     * 작업별 위험성평가를 각각 확인합니다.
+     * 평가가 없어도 작성은 차단하지 않습니다.
      */
     data.riskAssessmentLinks =
       linkedWorks.map(
         function(work){
           var linkedWorkId =
-            getWorkRecordId(
+            safetyInfoWorkId(
               work
             );
 
           var risk =
-            findCompletedRiskForWork(
+            findRiskForSafetyInfo(
               linkedWorkId
             );
 
@@ -2114,37 +2128,24 @@ function loadWorkFromDb(workId){
                 'linked',
 
               riskId:
-                String(
-                  risk.riskId || ''
-                ).trim(),
+                sipClean(
+                  risk.riskId
+                ),
 
               status:
                 'completed',
 
               riskLevel:
-                String(
-                  risk.finalRiskLevel ||
-                  risk.riskLevel ||
-                  risk.overallRisk ||
-                  ''
-                ).trim(),
+                sipFirstValue(
+                  risk.finalRiskLevel,
+                  risk.riskLevel,
+                  risk.overallRisk
+                ),
 
               riskScore:
                 Number(
                   risk.riskScore || 0
                 ),
-
-              assessor:
-                String(
-                  risk.assessor || ''
-                ).trim(),
-
-              assessmentDate:
-                String(
-                  risk.date ||
-                  risk.assessmentDate ||
-                  ''
-                ).trim(),
 
               reason:'',
 
@@ -2170,10 +2171,6 @@ function loadWorkFromDb(workId){
 
             riskScore:0,
 
-            assessor:'',
-
-            assessmentDate:'',
-
             reason:'',
 
             linkedAt:''
@@ -2181,41 +2178,57 @@ function loadWorkFromDb(workId){
         }
       );
 
-    /*
-     * 대표 작업에 완료된 위험성평가가 있으면
-     * 기존 위험성평가 번호 입력란에 자동 표시합니다.
-     */
-    var primaryRiskLink =
+    var linkedRiskRecords =
       data.riskAssessmentLinks
-        .find(function(link){
-          return (
-            link.workId ===
-              primaryWorkId &&
-            link.applicability ===
-              'linked'
-          );
-        }) ||
-      data.riskAssessmentLinks
-        .find(function(link){
+        .filter(function(link){
           return (
             link.applicability ===
               'linked'
           );
-        }) ||
-      null;
+        });
 
-    if(primaryRiskLink){
-      data.riskAssessmentNo =
-        primaryRiskLink.riskId;
+    data.riskAssessmentNo =
+      linkedRiskRecords
+        .map(function(link){
+          return link.riskId;
+        })
+        .filter(Boolean)
+        .join(', ');
+
+    showWorkInfoBanner(
+      primaryWork,
+      linkedWorks,
+      data.riskAssessmentLinks
+    );
+
+    setTimeout(function(){
+      goToStep(1);
+
+      /*
+       * 기존 단건 자동입력 로직을 대표 작업에 적용합니다.
+       */
+      autoFillFields(
+        primaryWork
+      );
+
+      /*
+       * 그 후 복수 작업 공통값과 충돌 여부를 반영합니다.
+       */
+      applyGroupedWorkFields(
+        linkedWorks
+      );
 
       var riskInput =
         document.getElementById(
           'risk-assess-no'
         );
 
-      if(riskInput){
+      if(
+        riskInput &&
+        data.riskAssessmentNo
+      ){
         riskInput.value =
-          primaryRiskLink.riskId;
+          data.riskAssessmentNo;
 
         riskInput.readOnly =
           true;
@@ -2239,72 +2252,50 @@ function loadWorkFromDb(workId){
           'block';
 
         riskResult.style.background =
-          '#E8F5E9';
+          linkedRiskRecords.length ===
+            linkedWorks.length
+            ? '#E8F5E9'
+            : '#FFF3E0';
 
         riskResult.style.borderColor =
-          'var(--green2)';
+          linkedRiskRecords.length ===
+            linkedWorks.length
+            ? 'var(--green2)'
+            : 'var(--orange2)';
 
         riskResult.style.color =
-          'var(--green2)';
+          linkedRiskRecords.length ===
+            linkedWorks.length
+            ? 'var(--green2)'
+            : 'var(--orange)';
 
         riskResult.innerHTML =
-          '✅ 완료된 위험성평가 자동 연계' +
-          '<br>문서번호: ' +
-          escHtml(
-            primaryRiskLink.riskId
-          ) +
+          '위험성평가 연계 ' +
+          linkedRiskRecords.length +
+          '건 / 전체 작업 ' +
+          linkedWorks.length +
+          '건' +
           (
-            primaryRiskLink.riskLevel
-              ? '<br>최종 위험도: ' +
-                escHtml(
-                  primaryRiskLink
-                    .riskLevel
-                )
-              : ''
+            linkedRiskRecords.length <
+              linkedWorks.length
+              ? '<br>미연계 작업은 3단계에서 간이·임시 평가 또는 해당 없음을 선택합니다.'
+              : '<br>✅ 모든 작업의 완료된 위험성평가가 연결되었습니다.'
           );
       }
 
-    }else{
-      data.riskAssessmentNo =
-        '';
-
-      var emptyRiskInput =
-        document.getElementById(
-          'risk-assess-no'
-        );
-
-      if(emptyRiskInput){
-        emptyRiskInput.value = '';
-        emptyRiskInput.readOnly =
-          false;
-
-        emptyRiskInput.dataset
-          .riskVerified =
-          'false';
+      if(
+        typeof bindPhoneFormatting ===
+          'function'
+      ){
+        bindPhoneFormatting();
       }
-    }
-
-    /*
-     * 기존 기본정보 화면은 대표 작업을 기준으로 채우고,
-     * 모든 작업정보는 data.linkedWorks에 보존합니다.
-     */
-    showWorkInfoBanner(
-      primaryWork
-    );
-
-    setTimeout(function(){
-      goToStep(1);
-
-      autoFillFields(
-        primaryWork
-      );
 
       showToast(
         linkedWorks.length > 1
           ? (
               '✅ 작업 ' +
               linkedWorks.length +
-              '건을 안전정보제공서에 연결했습니다.'
+              '건을 하나의 안전정보제공서에 연결했습니다.'
             )
           : '✅ 작업정보를 연결했습니다.',
         'success'
@@ -2312,7 +2303,7 @@ function loadWorkFromDb(workId){
     },400);
 
     console.log(
-      '[안전정보제공서] 복수 작업 연결 완료:',
+      '[안전정보제공서] 작업 연결 완료:',
       {
         primaryWorkId:
           data.primaryWorkId,
@@ -2324,7 +2315,10 @@ function loadWorkFromDb(workId){
           data.linkedWorks,
 
         riskAssessmentLinks:
-          data.riskAssessmentLinks
+          data.riskAssessmentLinks,
+
+        groupedWorkSummary:
+          data.groupedWorkSummary
       }
     );
 
@@ -2345,311 +2339,7 @@ function loadWorkFromDb(workId){
   }
 }
 
-function showWorkInfoBanner(work){
-  var banner = document.getElementById('workidInfoBanner');
-  if(!banner) return;
-  
-  var company = work.company || work.executingCompany || work.contractCompany || '미지정';
-  var workName = work.workName || work.workNameFull || '작업명 미지정';
-  var manager = work.workManager || work.manager || work.contractorManager || '';
-  var workDate = work.date || fmtDate(new Date());
-  
-  banner.innerHTML = 
-    '<div class="workid-info-banner">' +
-      '<div class="wib-top">' +
-        '<span class="wib-badge">📋 자동 채움</span>' +
-        '<span class="wib-workid">' + escHtml(data.workId) + '</span>' +
-      '</div>' +
-      '<div class="wib-name">' + escHtml(workName) + '</div>' +
-      '<div class="wib-meta">' +
-        '<span>📅 ' + escHtml(workDate) + '</span>' +
-        '<span>🏢 ' + escHtml(company) + '</span>' +
-        (manager ? '<span>👤 ' + escHtml(manager) + '</span>' : '') +
-      '</div>' +
-    '</div>';
-  banner.style.display = 'block';
-}
 
-/**
- * 폼 필드 자동 채움
- */
-/*
- * 작업관리대장에 저장된 미지정·공란 표현을
- * 실제 입력값으로 사용하지 않도록 정리합니다.
- */
-function usefulWorkValue(){
-  var invalidValues = [
-    '',
-    '-',
-    '미지정',
-    '부서 미지정',
-    '업체 미지정',
-    '담당자 미지정',
-    '해당 없음',
-    '해당없음',
-    'N/A',
-    'NA',
-    'null',
-    'undefined'
-  ];
-
-  for(
-    var index = 0;
-    index < arguments.length;
-    index++
-  ){
-    var value =
-      arguments[index];
-
-    if(
-      value === undefined ||
-      value === null
-    ){
-      continue;
-    }
-
-    var text =
-      String(value).trim();
-
-    if(
-      invalidValues.indexOf(
-        text
-      ) < 0
-    ){
-      return text;
-    }
-  }
-
-  return '';
-}
-
-/*
- * 국내 전화번호를 입력 중 자동으로 형식화합니다.
- *
- * 01012345678 → 010-1234-5678
- * 0542405191  → 054-240-5191
- * 0212345678  → 02-1234-5678
- * 15881234    → 1588-1234
- */
-function formatKoreanPhone(value){
-  var digits =
-    String(value || '')
-      .replace(/\D/g,'');
-
-  if(!digits){
-    return '';
-  }
-
-  /*
-   * 국내 전화번호 입력을 기준으로
-   * 최대 11자리까지만 사용합니다.
-   */
-  digits =
-    digits.substring(0,11);
-
-  /*
-   * 15XX·16XX·18XX 등 대표번호
-   */
-  if(
-    digits.length === 8 &&
-    /^(15|16|18)\d{6}$/
-      .test(digits)
-  ){
-    return (
-      digits.substring(0,4) +
-      '-' +
-      digits.substring(4)
-    );
-  }
-
-  /*
-   * 서울 지역번호
-   */
-  if(digits.indexOf('02') === 0){
-    if(digits.length <= 2){
-      return digits;
-    }
-
-    if(digits.length <= 5){
-      return (
-        digits.substring(0,2) +
-        '-' +
-        digits.substring(2)
-      );
-    }
-
-    if(digits.length <= 9){
-      return (
-        digits.substring(0,2) +
-        '-' +
-        digits.substring(
-          2,
-          digits.length - 4
-        ) +
-        '-' +
-        digits.substring(
-          digits.length - 4
-        )
-      );
-    }
-
-    return (
-      digits.substring(0,2) +
-      '-' +
-      digits.substring(2,6) +
-      '-' +
-      digits.substring(6,10)
-    );
-  }
-
-  /*
-   * 휴대전화 및 일반 지역번호
-   */
-  if(digits.length <= 3){
-    return digits;
-  }
-
-  if(digits.length <= 7){
-    return (
-      digits.substring(0,3) +
-      '-' +
-      digits.substring(3)
-    );
-  }
-
-  if(digits.length <= 10){
-    return (
-      digits.substring(0,3) +
-      '-' +
-      digits.substring(
-        3,
-        digits.length - 4
-      ) +
-      '-' +
-      digits.substring(
-        digits.length - 4
-      )
-    );
-  }
-
-  return (
-    digits.substring(0,3) +
-    '-' +
-    digits.substring(3,7) +
-    '-' +
-    digits.substring(7,11)
-  );
-}
-
-/*
- * 전화번호 필드에 자동 하이픈 기능을 연결합니다.
- */
-function bindPhoneFormatting(){
-  [
-    'contractor-phone',
-    'sub-phone'
-  ].forEach(function(id){
-    var input =
-      document.getElementById(id);
-
-    if(
-      !input ||
-      input.dataset.phoneFormattingBound ===
-        'true'
-    ){
-      return;
-    }
-
-    input.dataset.phoneFormattingBound =
-      'true';
-
-    input.setAttribute(
-      'inputmode',
-      'tel'
-    );
-
-    input.setAttribute(
-      'maxlength',
-      '13'
-    );
-
-    input.addEventListener(
-      'input',
-      function(){
-        var formatted =
-          formatKoreanPhone(
-            this.value
-          );
-
-        if(this.value !== formatted){
-          this.value = formatted;
-        }
-      }
-    );
-
-    input.addEventListener(
-      'blur',
-      function(){
-        this.value =
-          formatKoreanPhone(
-            this.value
-          );
-      }
-    );
-  });
-}
-
-/*
- * 현재 로그인 사용자의 부서·연락처 등
- * 자동 입력 가능한 정보를 반환합니다.
- */
-function currentSessionProfile(){
-  var session = {};
-
-  try{
-    session =
-      JSON.parse(
-        sessionStorage.getItem(
-          'appSession'
-        ) || '{}'
-      ) || {};
-  }catch(error){
-    session = {};
-  }
-
-  return {
-    name:
-      usefulWorkValue(
-        session.displayName,
-        session.userName,
-        session.name
-      ),
-
-    department:
-      usefulWorkValue(
-        session.department,
-        session.dept,
-        session.organization
-      ),
-
-    phone:
-      usefulWorkValue(
-        session.phone,
-        session.phoneNumber,
-        session.mobile
-      ),
-
-    email:
-      usefulWorkValue(
-        session.email
-      )
-  };
-}
-
-/*
- * 작업관리대장 정보를 안전정보제공서에 자동 입력합니다.
- * 자동 입력값은 현장 변경을 고려해 사용자가 수정할 수 있습니다.
- */
 function autoFillFields(work){
   work =
     work || {};
