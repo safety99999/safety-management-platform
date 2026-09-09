@@ -5985,9 +5985,6 @@ async function submitDoc(){
   );
 
   try{
-    data.safeinfoNo =
-      getNextSafeinfoNo();
-
     var now =
       new Date();
 
@@ -6019,10 +6016,36 @@ async function submitDoc(){
       Array.isArray(data.workIds) &&
       data.workIds.length
         ? data.workIds
-            .slice()
+            .map(function(workId){
+              return String(
+                workId || ''
+              ).trim();
+            })
+            .filter(Boolean)
         : data.workId
-          ? [data.workId]
+          ? [
+              String(
+                data.workId
+              ).trim()
+            ]
           : [];
+
+    /*
+     * 동일 작업 묶음으로 최근 10분 이내 발행된 문서가 있으면
+     * 신규 문서를 만들지 않고 기존 완료 화면을 표시합니다.
+     */
+    var recentDuplicate =
+      findRecentDuplicateProvision(
+        workIds
+      );
+
+    if(recentDuplicate){
+      showExistingProvision(
+        recentDuplicate
+      );
+
+      return;
+    }
 
     var linkedWorks =
       Array.isArray(
@@ -6049,6 +6072,12 @@ async function submitDoc(){
               );
             })
         : [];
+
+    data.safeinfoNo =
+      getNextSafeinfoNo();
+
+    data.shareToken =
+      generateSafetyShareToken();
 
     data.workId =
       data.primaryWorkId ||
@@ -6096,9 +6125,8 @@ async function submitDoc(){
       userName;
 
     /*
-     * 수급인에게 전달하는 URL은 짧게 유지합니다.
-     * 복수 workId는 문서 내부에서 조회하므로
-     * URL에 반복해서 넣지 않습니다.
+     * 수급인 링크에는 문서번호 대신
+     * 예측 불가능한 shareToken만 전달합니다.
      */
     var pathParts =
       window.location.pathname
@@ -6110,6 +6138,30 @@ async function submitDoc(){
       window.location.origin +
       pathParts.join('/') +
       '/';
+
+    var shareParameters =
+      new URLSearchParams();
+
+    shareParameters.set(
+      'shareToken',
+      data.shareToken
+    );
+
+    shareParameters.set(
+      'mode',
+      window.APP_MODE ===
+        'production'
+        ? 'prod'
+        : 'test'
+    );
+
+    data.signUrl =
+      baseUrl +
+      '안전정보제공서_수급인용.html?' +
+      shareParameters.toString();
+
+    var saveData = {
+
 
     var saveData = {
       /*
@@ -7060,6 +7112,16 @@ function cleanProvisionFirestoreValue(
 function buildPublicProvision(
   record
 ){
+  /*
+   * 이 데이터는 공유 토큰을 알고 있는 외부 수급인이
+   * 읽을 수 있으므로 확인에 필요한 최소 정보만 포함합니다.
+   *
+   * 제외 대상:
+   * - 도급인 서명 원본 이미지
+   * - 도급인 전화번호·이메일
+   * - 수급인 연락처
+   * - 관리자 UID 및 내부 저장정보
+   */
   return cleanProvisionFirestoreValue({
     safeinfoNo:
       record.safeinfoNo,
@@ -7080,7 +7142,9 @@ function buildPublicProvision(
       '',
 
     workIds:
-      Array.isArray(record.workIds)
+      Array.isArray(
+        record.workIds
+      )
         ? record.workIds
         : [],
 
@@ -7088,7 +7152,34 @@ function buildPublicProvision(
       Array.isArray(
         record.linkedWorks
       )
-        ? record.linkedWorks
+        ? record.linkedWorks.map(
+            function(work){
+              return {
+                workId:
+                  work.workId || '',
+
+                workName:
+                  work.workName || '',
+
+                date:
+                  work.date || '',
+
+                location:
+                  work.location || '',
+
+                companyName:
+                  work.companyName || '',
+
+                workerCount:
+                  Number(
+                    work.workerCount || 0
+                  ),
+
+                workTimeRaw:
+                  work.workTimeRaw || ''
+              };
+            }
+          )
         : [],
 
     workCount:
@@ -7114,28 +7205,30 @@ function buildPublicProvision(
     endDate:
       record.endDate || '',
 
+    /*
+     * 담당자 이름·부서만 공개하고
+     * 전화번호와 이메일은 공개본에서 제외합니다.
+     */
     contractorManager:
       record.contractorManager || '',
 
     contractorDept:
       record.contractorDept || '',
 
-    contractorPhone:
-      record.contractorPhone || '',
-
-    contractorEmail:
-      record.contractorEmail || '',
-
     noChemical:
       record.noChemical === true,
 
     msdsItems:
-      Array.isArray(record.msdsItems)
+      Array.isArray(
+        record.msdsItems
+      )
         ? record.msdsItems
         : [],
 
     msdsIds:
-      Array.isArray(record.msdsIds)
+      Array.isArray(
+        record.msdsIds
+      )
         ? record.msdsIds
         : [],
 
@@ -7153,7 +7246,9 @@ function buildPublicProvision(
         : [],
 
     selectedDocs:
-      Array.isArray(record.selectedDocs)
+      Array.isArray(
+        record.selectedDocs
+      )
         ? record.selectedDocs
         : [],
 
@@ -7166,13 +7261,6 @@ function buildPublicProvision(
 
     documentNote:
       record.documentNote || '',
-
-    factoryHazards:
-      Array.isArray(
-        record.factoryHazards
-      )
-        ? record.factoryHazards
-        : [],
 
     facilityItems:
       Array.isArray(
@@ -7204,7 +7292,9 @@ function buildPublicProvision(
       record.safetyOther || '',
 
     ppeItems:
-      Array.isArray(record.ppeItems)
+      Array.isArray(
+        record.ppeItems
+      )
         ? record.ppeItems
         : [],
 
@@ -7214,12 +7304,17 @@ function buildPublicProvision(
     safetyManagerPhone:
       record.safetyManagerPhone || '',
 
-    contractorSignature:
-      record.contractorSignature ||
-      null,
+    /*
+     * 공개본에는 도급인 서명 이미지 대신
+     * 서명 존재 여부만 표시합니다.
+     */
+    contractorSigned:
+      Boolean(
+        record.contractorSignature
+      ),
 
-    signUrl:
-      record.signUrl || '',
+    contractorSignedAt:
+      record.createdAt || '',
 
     status:
       record.status ||
@@ -7237,11 +7332,16 @@ function buildPublicProvision(
       record.createdAt ||
       new Date().toISOString(),
 
-    environment:'test',
+    environment:
+      'test',
 
-    schemaVersion:2
+    schemaVersion:
+      2
   });
 }
+
+window.saveSafetyProvisionRemote =
+
 
 window.saveSafetyProvisionRemote =
   async function(record){
