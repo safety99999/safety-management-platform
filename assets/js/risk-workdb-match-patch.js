@@ -1491,31 +1491,28 @@
    * SECTION 9. 본체 함수 래핑 (비차단 유지)
    * ======================================================== */
 
-  var originalInitializeStepTwo = global.initializeStepTwo;
+  /*
+   * 성능 안정화:
+   *
+   * 위험성평가 본체의 initializeStepTwo 실행 후
+   * 작업DB 824건을 즉시 다시 분석하던 자동 래핑을 제거합니다.
+   *
+   * 작업관리대장의 공식 위험등급은 아래 v3.1.0 및
+   * v3.2.0 정책에서 workId 정확 일치 방식으로 계속 반영됩니다.
+   *
+   * 작업DB 상세 검토가 필요한 경우에만
+   * riskWorkDbMatchPatch.review()를 수동 실행할 수 있습니다.
+   */
+  var originalInitializeStepTwo =
+    global.initializeStepTwo;
 
-  if(typeof originalInitializeStepTwo === 'function'){
-    global.initializeStepTwo = async function(){
-      /* 본체 분석 전에 가드를 재확인 (스크립트 로드 순서 무관하게 보장) */
-      try {
-        installMappingGuard();
-        installLoadGuard();
-        sweepRiskDatabase();
-      } catch(error){
-        warn('분석 전 시프트 보정 실패 — 본체 평가는 계속됩니다.', error);
-      }
-
-      var result = await originalInitializeStepTwo.apply(this, arguments);
-
-      Promise.resolve()
-        .then(function(){
-          return reviewCurrentAssessment();
-        })
-        .catch(function(error){
-          warn('작업DB 보조 검토 실패 — 본체 평가는 계속됩니다.', error);
-        });
-
-      return result;
-    };
+  if(
+    typeof originalInitializeStepTwo ===
+      'function'
+  ){
+    log(
+      '위험성평가 단계의 중복 작업DB 자동 검토를 비활성화했습니다.'
+    );
   }
 
   var originalBuildAssessmentSaveObject = global.buildAssessmentSaveObject;
@@ -1984,23 +1981,55 @@
     return unique;
   }
 
+  var cachedWorkHistory = null;
+  var cachedWorkDatabaseRaw = null;
+
   function getWorkHistory(){
-    try {
+    try{
       var raw =
-        localStorage.getItem('safetyDatabase');
+        localStorage.getItem(
+          'safetyDatabase'
+        ) || '';
 
       if(!raw){
+        cachedWorkHistory = [];
+        cachedWorkDatabaseRaw = '';
+
         return [];
+      }
+
+      /*
+       * 작업DB 문자열이 변경되지 않았다면
+       * 824건 전체를 다시 JSON.parse하지 않습니다.
+       */
+      if(
+        raw === cachedWorkDatabaseRaw &&
+        Array.isArray(
+          cachedWorkHistory
+        )
+      ){
+        return cachedWorkHistory;
       }
 
       var database =
         JSON.parse(raw);
 
-      return Array.isArray(database.workHistory)
-        ? database.workHistory
-        : [];
+      cachedWorkHistory =
+        Array.isArray(
+          database.workHistory
+        )
+          ? database.workHistory
+          : [];
 
-    } catch(error){
+      cachedWorkDatabaseRaw =
+        raw;
+
+      return cachedWorkHistory;
+
+    }catch(error){
+      cachedWorkHistory = [];
+      cachedWorkDatabaseRaw = null;
+
       console.warn(
         '[v3.1.0] 관리대장 조회 실패:',
         error
@@ -2009,6 +2038,7 @@
       return [];
     }
   }
+
 
   function buildMatchResult(
     work,
