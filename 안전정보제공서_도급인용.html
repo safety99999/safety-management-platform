@@ -6707,26 +6707,6 @@ async function submitDoc(){
       }
     }
 
-
-    if(sendEmailInput){
-      sendEmailInput.value =
-        data.subcontractorEmail;
-    }
-
-    var saveStatus =
-      document.getElementById(
-        'finSaveStatus'
-      );
-
-    if(saveStatus){
-      saveStatus.className =
-        'save-status-card local';
-
-      saveStatus.innerHTML =
-        '<span class="save-status-icon">📱</span>' +
-        '<span>TEST 로컬 저장 완료 · 현재 브라우저에 저장됨</span>';
-    }
-
     goToScreen(
       'screen-complete'
     );
