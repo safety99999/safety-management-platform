@@ -1084,41 +1084,184 @@ function renderDoc(d){
 // ═══════════════════════════════════════════════════
 function updateStatusToViewing(){
   try{
-    var docs = JSON.parse(localStorage.getItem('safetyProvisions') || '[]');
-    var idx = docs.findIndex(function(d){
-      return d.safeinfoNo === safeinfoNo || d.docId === safeinfoNo;
-    });
-    if(idx >= 0 && docs[idx].status === '발행완료'){
-      docs[idx].status = '수급인확인';
-      docs[idx].viewedAt = new Date().toISOString();
-      localStorage.setItem('safetyProvisions', JSON.stringify(docs));
-      
-      // Firestore도 업데이트 (있으면)
-      if(window.updateFirestoreStatus){
-        window.updateFirestoreStatus(safeinfoNo, {
-          status: '수급인확인',
-          viewedAt: new Date().toISOString()
-        });
-      }
-      
-      // 이벤트 발행
-      try{
-        window.dispatchEvent(new CustomEvent('app-data-changed', {
-          detail: {
-            key: 'safetyProvisions',
-            action: 'viewed',
-            safeinfoNo: safeinfoNo,
-            timestamp: Date.now()
-          }
-        }));
-      }catch(e){}
-      
-      console.log('📖 문서 상태 → 수급인확인');
+    var docs =
+      JSON.parse(
+        localStorage.getItem(
+          'safetyProvisions'
+        ) || '[]'
+      );
+
+    var idx =
+      docs.findIndex(
+        function(record){
+          return (
+            record.safeinfoNo ===
+              safeinfoNo ||
+            record.docId ===
+              safeinfoNo
+          );
+        }
+      );
+
+    /*
+     * 발행된 원본 문서가 로컬에 존재할 때만
+     * 열람 상태를 갱신합니다.
+     */
+    if(idx < 0){
+      console.warn(
+        '[안전정보제공서] 열람 상태를 변경할 원본 문서가 없습니다:',
+        safeinfoNo
+      );
+
+      return;
     }
-  }catch(e){
-    console.warn('상태 업데이트 실패:', e);
+
+    var current =
+      docs[idx];
+
+    /*
+     * 이미 최종 서명이 완료된 문서는
+     * 열람 상태로 되돌리지 않습니다.
+     */
+    if(
+      current.status ===
+        '서명완료' ||
+      current.status ===
+        'contractorConfirmed' ||
+      current.contractorConfirmed ===
+        true ||
+      current.signed === true
+    ){
+      return;
+    }
+
+    /*
+     * 단순 열람은 완료가 아닌
+     * contractorViewing 상태로 저장합니다.
+     */
+    var viewedAt =
+      new Date()
+        .toISOString();
+
+    current.status =
+      '수급인확인중';
+
+    current.statusCode =
+      'contractorViewing';
+
+    current.viewedAt =
+      current.viewedAt ||
+      viewedAt;
+
+    current.lastViewedAt =
+      viewedAt;
+
+    current.updatedAt =
+      viewedAt;
+
+    current.updatedBy =
+      'subcontractor-viewer';
+
+    docs[idx] =
+      current;
+
+    localStorage.setItem(
+      'safetyProvisions',
+      JSON.stringify(docs)
+    );
+
+    /*
+     * Firestore 원본이 존재하는 경우에만
+     * 원격 열람 상태를 병합합니다.
+     */
+    if(
+      window.updateFirestoreStatus
+    ){
+      window
+        .updateFirestoreStatus(
+          safeinfoNo,
+          {
+            status:
+              '수급인확인중',
+
+            statusCode:
+              'contractorViewing',
+
+            viewedAt:
+              current.viewedAt,
+
+            lastViewedAt:
+              viewedAt,
+
+            updatedAt:
+              viewedAt,
+
+            updatedBy:
+              'subcontractor-viewer'
+          }
+        )
+        .then(function(){
+          console.log(
+            '☁️ 안전정보제공서 열람 상태 업데이트 완료:',
+            safeinfoNo
+          );
+        })
+        .catch(function(error){
+          /*
+           * 열람 상태 원격 저장 실패는 문서 확인을
+           * 차단하지 않고 로컬 상태를 유지합니다.
+           */
+          console.warn(
+            'Firestore 열람 상태 업데이트 실패:',
+            error.message
+          );
+        });
+    }
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:
+                'safetyProvisions',
+
+              action:
+                'viewing',
+
+              statusCode:
+                'contractorViewing',
+
+              safeinfoNo:
+                safeinfoNo,
+
+              workId:
+                current.workId ||
+                workIdFromUrl ||
+                '',
+
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    }catch(eventError){}
+
+    console.log(
+      '📖 문서 상태 → 수급인확인중:',
+      safeinfoNo
+    );
+
+  }catch(error){
+    console.warn(
+      '열람 상태 업데이트 실패:',
+      error
+    );
   }
 }
+
 
 // ═══════════════════════════════════════════════════
 // MSDS 카드 렌더링
