@@ -5840,25 +5840,180 @@ function setAutoInput(id, value){
   if(value){ element.classList.add('auto'); }
 }
 
-function setLocationValue(location){
-  var select = getElement('locationSelect');
-  if(!select || !location){ return; }
+function setLocationValue(
+  location
+){
+  var select =
+    getElement(
+      'locationSelect'
+    );
 
-  for(var index = 0; index < select.options.length; index++){
-    var option = select.options[index];
-    if(option.value === location ||
-       option.value.indexOf(location) >= 0 ||
-       String(location).indexOf(option.value) >= 0){
-      select.selectedIndex = index;
-      return;
+  if(!select){
+    return;
+  }
+
+  var sourceText =
+    String(
+      location || ''
+    )
+      .replace(/\s+/g,' ')
+      .trim();
+
+  var compactTextValue =
+    sourceText.replace(
+      /\s+/g,
+      ''
+    );
+
+  var selectedFactory = '';
+
+  /*
+   * 명시된 공장 또는 단계 정보를 우선합니다.
+   */
+  if(
+    compactTextValue.indexOf(
+      '2공장'
+    ) >= 0 ||
+    compactTextValue.indexOf(
+      '2-2단계'
+    ) >= 0
+  ){
+    selectedFactory =
+      '포항양극재 2공장';
+
+  }else if(
+    compactTextValue.indexOf(
+      '1공장'
+    ) >= 0 ||
+    compactTextValue.indexOf(
+      '2-1단계'
+    ) >= 0 ||
+    (
+      compactTextValue.indexOf(
+        '1단계'
+      ) >= 0 &&
+      compactTextValue.indexOf(
+        '2-1단계'
+      ) < 0
+    )
+  ){
+    selectedFactory =
+      '포항양극재 1공장';
+  }
+
+  /*
+   * 공장 정보가 없으면 라인 번호로 판정합니다.
+   *
+   * 1~5라인 → 1공장
+   * 6~9라인 → 2공장
+   * 9A·9B·9C라인 → 9라인 → 2공장
+   */
+  if(!selectedFactory){
+    var lineMatch =
+      sourceText.match(
+        /(?:^|[^0-9])([1-9])\s*[A-C]?\s*라인/i
+      );
+
+    var lineNumber =
+      lineMatch
+        ? Number(
+            lineMatch[1]
+          )
+        : 0;
+
+    if(
+      lineNumber >= 1 &&
+      lineNumber <= 5
+    ){
+      selectedFactory =
+        '포항양극재 1공장';
+
+    }else if(
+      lineNumber >= 6 &&
+      lineNumber <= 9
+    ){
+      selectedFactory =
+        '포항양극재 2공장';
     }
   }
 
-  select.value = '기타';
-  if(!getInputValue('detailLocationInput')){
-    setAutoInput('detailLocationInput', location);
+  /*
+   * 기존 형식과의 호환 처리
+   */
+  if(!selectedFactory){
+    for(
+      var index = 0;
+      index < select.options.length;
+      index++
+    ){
+      var option =
+        select.options[index];
+
+      if(
+        option.value === sourceText ||
+        (
+          sourceText &&
+          option.value.indexOf(
+            sourceText
+          ) >= 0
+        ) ||
+        (
+          option.value &&
+          sourceText.indexOf(
+            option.value
+          ) >= 0
+        )
+      ){
+        selectedFactory =
+          option.value;
+
+        break;
+      }
+    }
+  }
+
+  if(selectedFactory){
+    select.value =
+      selectedFactory;
+
+    select.classList.add(
+      'auto'
+    );
+
+    riskData.location =
+      selectedFactory;
+
+    return;
+  }
+
+  /*
+   * 공장과 라인을 모두 판정할 수 없을 때만
+   * 기타를 선택합니다.
+   */
+  if(sourceText){
+    select.value =
+      '기타';
+
+    select.classList.add(
+      'auto'
+    );
+
+    riskData.location =
+      '기타';
+
+    if(
+      !getInputValue(
+        'detailLocationInput'
+      )
+    ){
+      setAutoInput(
+        'detailLocationInput',
+        sourceText
+      );
+    }
   }
 }
+
 
 function detectWorkTypeFromText(value){
   var text = compactText(value);
@@ -6059,7 +6214,30 @@ function startAssessmentFromWork(workId, reassessment){
     if(linkedPermit){ riskData.permitNo = linkedPermit.permitNo || ''; }
 
     setAutoInput('workNameInput', riskData.workName);
-    setLocationValue(riskData.location);
+    set    setLocationValue(
+      [
+        riskData.location || '',
+        riskData.detailLocation || '',
+        work.locationDisplay || '',
+        work.locationRaw || '',
+        work.workPlaceRaw || '',
+        typeof work.location ===
+          'string'
+          ? work.location
+          : '',
+        work.location &&
+        typeof work.location ===
+          'object'
+          ? (
+              work.location.factory ||
+              ''
+            )
+          : '',
+        riskData.workName || '',
+        work.workNameFull || ''
+      ].join(' ')
+    );
+LocationValue(riskData.location);
     setAutoInput('detailLocationInput', riskData.detailLocation);
     setInputValue('assessmentDateInput', riskData.date);
     setAutoInput('companyInput', riskData.company);
