@@ -6287,6 +6287,22 @@ async function submitDoc(){
       data.signUrl
     );
 
+    /*
+     * 완료 화면의 이메일 입력란에
+     * 수급인 이메일을 자동 표시합니다.
+     */
+    var sendEmailInput =
+      document.getElementById(
+        'send-email'
+      );
+
+    if(sendEmailInput){
+      sendEmailInput.value =
+        data.subcontractorEmail ||
+        '';
+    }
+
+
     var saveStatus =
       document.getElementById(
         'finSaveStatus'
