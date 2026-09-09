@@ -1600,53 +1600,107 @@ function updateStatusToViewing(){
 // MSDS 카드 렌더링
 // ═══════════════════════════════════════════════════
 function renderMSDSCards(d){
-  var wrap = document.getElementById('v-msds-wrap');
-  if(!wrap) return;
- 
+  var wrap =
+    document.getElementById(
+      'v-msds-wrap'
+    );
+
+  if(!wrap){
+    return;
+  }
+
   if(d.noChemical){
     wrap.innerHTML =
       '<div class="info-card">' +
-      '<div style="text-align:center;padding:12px;color:var(--green2);' +
-      'font-size:14px;font-weight:800;">✅ 화학물질 사용하지 않음</div>' +
+        '<div style="' +
+          'padding:12px;' +
+          'color:var(--green2);' +
+          'font-size:14px;' +
+          'font-weight:800;' +
+          'text-align:center">' +
+          '✅ 화학물질 사용하지 않음' +
+        '</div>' +
       '</div>';
+
     return;
   }
- 
+
   var html = '';
-  var msds = d.msdsItems || [];
+
+  var msds =
+    d.msdsItems || [];
+
   if(typeof msds === 'string'){
-    try{ msds = JSON.parse(msds); }catch(e){ msds = []; }
+    try{
+      msds =
+        JSON.parse(msds);
+    }catch(error){
+      msds = [];
+    }
   }
- 
+
   if(msds.length > 0){
-    html += msds.map(function(name){
-      return '<div class="msds-card">' +
-        '<div class="msds-card-name">🧪 ' + escHtml(name) + '</div>' +
-        '<div class="msds-card-detail">' +
-        '<strong>안내:</strong> 상세 유해성/보호구 정보는 안전보건공단 원본 MSDS를 참조하세요.<br>' +
-        '<a href="https://msds.kosha.or.kr/" target="_blank" ' +
-        'style="color:var(--orange);text-decoration:underline;">MSDS 조회하기 →</a>' +
-        '</div></div>';
-    }).join('');
+    html +=
+      msds.map(
+        function(name){
+          return (
+            '<div class="msds-card">' +
+
+              '<div class="msds-card-name">' +
+                '🧪 ' +
+                escHtml(name) +
+              '</div>' +
+
+              '<div class="msds-card-detail">' +
+                '<strong>MSDS 자료:</strong> ' +
+                '첨부자료 제공 기능을 준비 중입니다.' +
+              '</div>' +
+
+            '</div>'
+          );
+        }
+      ).join('');
   }
- 
+
   if(d.chemicalOther){
-    html += '<div class="msds-card">' +
-      '<div class="msds-card-name">🧪 기타: ' + escHtml(d.chemicalOther) + '</div>' +
-      '<div class="msds-card-detail">' +
-      '<strong>안내:</strong> 이 화학물질의 MSDS를 도급인에게 별도 요청하세요.' +
-      '</div></div>';
-  }
- 
-  if(!html){
-    html = '<div class="info-card">' +
-      '<div style="text-align:center;padding:12px;color:var(--sub);' +
-      'font-size:13px;font-weight:600;">등록된 화학물질이 없습니다</div>' +
+    html +=
+      '<div class="msds-card">' +
+
+        '<div class="msds-card-name">' +
+          '🧪 기타: ' +
+          escHtml(
+            d.chemicalOther
+          ) +
+        '</div>' +
+
+        '<div class="msds-card-detail">' +
+          '<strong>MSDS 자료:</strong> ' +
+          '첨부자료 제공 기능을 준비 중입니다.' +
+        '</div>' +
+
       '</div>';
   }
- 
-  wrap.innerHTML = html;
+
+  if(!html){
+    html =
+      '<div class="info-card">' +
+
+        '<div style="' +
+          'padding:12px;' +
+          'color:var(--sub);' +
+          'font-size:13px;' +
+          'font-weight:600;' +
+          'text-align:center">' +
+          '등록된 화학물질이 없습니다.' +
+        '</div>' +
+
+      '</div>';
+  }
+
+  wrap.innerHTML =
+    html;
 }
+
 
 // ═══════════════════════════════════════════════════
 // 설비 위험 렌더링
