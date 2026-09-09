@@ -5568,7 +5568,7 @@ function migrateLegacyKeys(){
 var safetyProvisionSubmitting =
   false;
 
-function submitDoc(){
+async function submitDoc(){
   if(safetyProvisionSubmitting){
     return;
   }
@@ -6075,6 +6075,121 @@ function submitDoc(){
         documents
       )
     );
+    /*
+     * 로그인한 관리자·일반 사용자는 Firestore에도 저장합니다.
+     * 테스터·오프라인·권한 오류는 로컬 저장을 유지합니다.
+     */
+    var remoteSaveResult = {
+      success:false,
+      localOnly:true,
+      reason:'remote-module-not-ready'
+    };
+
+    if(
+      typeof window
+        .saveSafetyProvisionRemote ===
+        'function'
+    ){
+      try{
+        remoteSaveResult =
+          await window
+            .saveSafetyProvisionRemote(
+              saveData
+            );
+
+      }catch(remoteError){
+        remoteSaveResult = {
+          success:false,
+          localOnly:true,
+          reason:
+            remoteError.message ||
+            'firestore-save-failed'
+        };
+
+        console.error(
+          '[안전정보제공서] 원격 저장 실패:',
+          remoteError
+        );
+      }
+    }
+
+    saveData.firestoreSaved =
+      remoteSaveResult.success ===
+        true;
+
+    saveData.syncPending =
+      remoteSaveResult.success !==
+        true &&
+      remoteSaveResult.reason !==
+        'tester-local-only';
+
+    saveData.syncStatus =
+      remoteSaveResult.success ===
+        true
+        ? 'synced'
+        : remoteSaveResult.reason ===
+            'tester-local-only'
+          ? 'tester-local'
+          : 'pending';
+
+    saveData.syncError =
+      remoteSaveResult.success ===
+        true
+        ? ''
+        : remoteSaveResult.reason ||
+          'remote-save-failed';
+
+    saveData.remoteCollection =
+      remoteSaveResult.collection ||
+      '';
+
+    /*
+     * 원격 저장 결과를 localStorage 문서에도 반영합니다.
+     */
+    var storedDocuments =
+      JSON.parse(
+        localStorage.getItem(
+          'safetyProvisions'
+        ) || '[]'
+      );
+
+    if(
+      Array.isArray(
+        storedDocuments
+      )
+    ){
+      var storedIndex =
+        storedDocuments.findIndex(
+          function(documentRecord){
+            return (
+              documentRecord &&
+              documentRecord.safeinfoNo ===
+                saveData.safeinfoNo
+            );
+          }
+        );
+
+      if(storedIndex >= 0){
+        storedDocuments[storedIndex] =
+          saveData;
+
+        localStorage.setItem(
+          'safetyProvisions',
+          JSON.stringify(
+            storedDocuments
+          )
+        );
+      }
+    }
+
+    data.firestoreSaved =
+      saveData.firestoreSaved;
+
+    data.syncPending =
+      saveData.syncPending;
+
+    data.syncStatus =
+      saveData.syncStatus;
 
     try{
       window.dispatchEvent(
@@ -6179,10 +6294,44 @@ function submitDoc(){
       data.signUrl
     );
 
-    var sendEmailInput =
+    var saveStatus =
       document.getElementById(
-        'send-email'
+        'finSaveStatus'
       );
+
+    if(saveStatus){
+      if(
+        remoteSaveResult.success ===
+          true
+      ){
+        saveStatus.className =
+          'save-status-card server';
+
+        saveStatus.innerHTML =
+          '<span class="save-status-icon">☁️</span>' +
+          '<span>서버 저장 완료 · 다른 기기에서 조회 가능</span>';
+
+      }else if(
+        remoteSaveResult.reason ===
+          'tester-local-only'
+      ){
+        saveStatus.className =
+          'save-status-card local';
+
+        saveStatus.innerHTML =
+          '<span class="save-status-icon">🧪</span>' +
+          '<span>TEST 로컬 저장 · 현재 브라우저에서만 조회 가능</span>';
+
+      }else{
+        saveStatus.className =
+          'save-status-card error';
+
+        saveStatus.innerHTML =
+          '<span class="save-status-icon">⚠️</span>' +
+          '<span>로컬 저장 완료 · 서버 전송 대기</span>';
+      }
+    }
+
 
     if(sendEmailInput){
       sendEmailInput.value =
@@ -6381,6 +6530,396 @@ function showMailResult(success, msg, mode){
     </div><!-- /.app -->
   </div><!-- /.phone-screen -->
 </div><!-- /.phone-frame -->
+<script type="module">
+import {
+  initializeApp,
+  getApps,
+  getApp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  initializeFirestore,
+  doc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:
+    "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+
+  authDomain:
+    "safety-management-platfo-5f413.firebaseapp.com",
+
+  projectId:
+    "safety-management-platfo-5f413",
+
+  storageBucket:
+    "safety-management-platfo-5f413.appspot.com",
+
+  messagingSenderId:
+    "96226952530",
+
+  appId:
+    "1:96226952530:web:07e7cb286dc4e120cea68b"
+};
+
+const firebaseApp =
+  getApps().length
+    ? getApp()
+    : initializeApp(
+        firebaseConfig
+      );
+
+const auth =
+  getAuth(
+    firebaseApp
+  );
+
+let db;
+
+try{
+  db =
+    initializeFirestore(
+      firebaseApp,
+      {
+        experimentalForceLongPolling:
+          true,
+
+        useFetchStreams:
+          false
+      }
+    );
+
+  console.log(
+    '[안전정보제공서] Firestore Long Polling 적용'
+  );
+
+}catch(error){
+  db =
+    getFirestore(
+      firebaseApp
+    );
+
+  console.warn(
+    '[안전정보제공서] 기존 Firestore 인스턴스 사용:',
+    error.message
+  );
+}
+
+const PROVISION_COLLECTION =
+  window.getCollectionName(
+    'safetyProvisions'
+  );
+
+function readAppSession(){
+  try{
+    return JSON.parse(
+      sessionStorage.getItem(
+        'appSession'
+      ) || 'null'
+    );
+  }catch(error){
+    return null;
+  }
+}
+
+function waitForAuthenticatedUser(){
+  if(auth.currentUser){
+    return Promise.resolve(
+      auth.currentUser
+    );
+  }
+
+  return new Promise(
+    function(resolve){
+      let completed = false;
+
+      let unsubscribe =
+        function(){};
+
+      const timer =
+        setTimeout(
+          function(){
+            if(completed){
+              return;
+            }
+
+            completed = true;
+
+            try{
+              unsubscribe();
+            }catch(error){}
+
+            resolve(null);
+          },
+          5000
+        );
+
+      unsubscribe =
+        onAuthStateChanged(
+          auth,
+
+          function(user){
+            if(completed){
+              return;
+            }
+
+            completed = true;
+
+            clearTimeout(timer);
+            unsubscribe();
+
+            resolve(
+              user || null
+            );
+          },
+
+          function(error){
+            if(completed){
+              return;
+            }
+
+            completed = true;
+
+            clearTimeout(timer);
+            unsubscribe();
+
+            console.error(
+              '[안전정보제공서] 인증 확인 실패:',
+              error
+            );
+
+            resolve(null);
+          }
+        );
+    }
+  );
+}
+
+function cleanFirestoreData(value){
+  if(value === undefined){
+    return null;
+  }
+
+  if(value === null){
+    return null;
+  }
+
+  if(Array.isArray(value)){
+    return value.map(
+      cleanFirestoreData
+    );
+  }
+
+  if(
+    typeof value === 'object' &&
+    !(value instanceof Date)
+  ){
+    const result = {};
+
+    Object.keys(value)
+      .forEach(function(key){
+        result[key] =
+          cleanFirestoreData(
+            value[key]
+          );
+      });
+
+    return result;
+  }
+
+  return value;
+}
+
+/*
+ * 안전정보제공서 원격 저장
+ *
+ * 관리자·일반 사용자:
+ * test_safetyProvisions/{safeinfoNo} 저장
+ *
+ * 공개 테스터:
+ * Firestore에 저장하지 않고 로컬 모드 반환
+ */
+window.saveSafetyProvisionRemote =
+  async function(record){
+    const session =
+      readAppSession();
+
+    if(
+      session &&
+      session.role ===
+        'tester'
+    ){
+      return {
+        success:false,
+        localOnly:true,
+        reason:
+          'tester-local-only',
+
+        collection:
+          PROVISION_COLLECTION
+      };
+    }
+
+    if(
+      !session ||
+      session.accessMode !==
+        'authenticated' ||
+      !session.uid ||
+      (
+        session.role !== 'admin' &&
+        session.role !== 'user'
+      )
+    ){
+      return {
+        success:false,
+        localOnly:true,
+        reason:
+          'invalid-session',
+
+        collection:
+          PROVISION_COLLECTION
+      };
+    }
+
+    if(
+      !record ||
+      !record.safeinfoNo
+    ){
+      throw new Error(
+        '안전정보제공서 번호가 없습니다.'
+      );
+    }
+
+    if(!navigator.onLine){
+      return {
+        success:false,
+        localOnly:true,
+        reason:'offline',
+        collection:
+          PROVISION_COLLECTION
+      };
+    }
+
+    const user =
+      await waitForAuthenticatedUser();
+
+    if(
+      !user ||
+      user.uid !== session.uid
+    ){
+      return {
+        success:false,
+        localOnly:true,
+        reason:
+          'firebase-user-mismatch',
+
+        collection:
+          PROVISION_COLLECTION
+      };
+    }
+
+    const savedAt =
+      new Date()
+        .toISOString();
+
+    const cloudRecord =
+      cleanFirestoreData(
+        Object.assign(
+          {},
+          record,
+          {
+            environment:'test',
+
+            updatedAt:
+              savedAt,
+
+            updatedByUid:
+              user.uid,
+
+            firestoreSaved:true,
+
+            syncPending:false,
+
+            syncStatus:'synced'
+          }
+        )
+      );
+
+    await setDoc(
+      doc(
+        db,
+        PROVISION_COLLECTION,
+        record.safeinfoNo
+      ),
+
+      Object.assign(
+        {},
+        cloudRecord,
+        {
+          updatedAtServer:
+            serverTimestamp()
+        }
+      ),
+
+      {
+        merge:true
+      }
+    );
+
+    console.log(
+      '[안전정보제공서] Firestore 저장 완료:',
+      {
+        collection:
+          PROVISION_COLLECTION,
+
+        safeinfoNo:
+          record.safeinfoNo,
+
+        workIds:
+          record.workIds || [],
+
+        uid:
+          user.uid
+      }
+    );
+
+    return {
+      success:true,
+      localOnly:false,
+      collection:
+        PROVISION_COLLECTION,
+      savedAt:savedAt
+    };
+  };
+
+window.SafetyProvisionFirebase = {
+  app:
+    firebaseApp,
+
+  auth:
+    auth,
+
+  db:
+    db,
+
+  collection:
+    PROVISION_COLLECTION
+};
+
+console.log(
+  '[안전정보제공서] Firestore 저장 모듈 준비 완료:',
+  PROVISION_COLLECTION
+);
+</script>
+     
 </body>
 </html>
 
