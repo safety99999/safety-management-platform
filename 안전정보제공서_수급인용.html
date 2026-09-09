@@ -626,9 +626,15 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
       </div>
     </div>
 
-    <button class="btn-primary" id="submitBtn" onclick="submitSign()" disabled>
-      ✅ 확인 완료 및 서명 제출
-    </button>
+<button
+  type="button"
+  class="btn-primary"
+  id="submitBtn"
+  onclick="submitSign()"
+>
+  ✅ 확인 완료 및 서명 제출
+</button>
+
     <button class="btn-mail" onclick="requestResend()">📧 도급인에게 메일 재발송 요청</button>
     <button class="btn-secondary" onclick="goBack()">취소</button>
   </div>
@@ -867,15 +873,6 @@ window.addEventListener('DOMContentLoaded', function(){
     hide(
       'view-loading'
     );
-  }
-
- 
-  if(id){
-    safeinfoNo = id;
-    loadDoc(id);
-  } else {
-    show('view-manual');
-    hide('view-loading');
   }
 
   // ESC로 다이얼로그 닫기
@@ -1844,17 +1841,33 @@ function updateChecklistProgress(){
 }
 
 function updateSubmitButtonState(){
-  var btn = document.getElementById('submitBtn');
-  if(!btn) return;
- 
-  var allChecked = (clChecked === clTotal);
-  var hasName = !!getVal('sub-supervisor');
-  var hasPhone = !!getVal('sub-phone');
-  var hasDate = !!getVal('sub-confirm-date');
-  var hasSig = hasSignature();
- 
-  btn.disabled = !(allChecked && hasName && hasPhone && hasDate && hasSig);
+  var button =
+    document.getElementById(
+      'submitBtn'
+    );
+
+  if(!button){
+    return;
+  }
+
+  /*
+   * 모바일 브라우저에서는 캔버스 서명 감지가
+   * 터치 종료 시점에 늦게 반영될 수 있습니다.
+   *
+   * 버튼은 항상 활성화하고, 실제 제출 시
+   * submitSign()에서 필수항목을 검증합니다.
+   */
+  if(
+    button.dataset.submitting ===
+      'true'
+  ){
+    button.disabled = true;
+    return;
+  }
+
+  button.disabled = false;
 }
+
 
 // ═══════════════════════════════════════════════════
 // UTIL
@@ -1866,14 +1879,86 @@ function setVal(id,v){var el=document.getElementById(id);if(el) el.value=v;}
 function setTxt(id,v){var el=document.getElementById(id);if(el) el.textContent=v;}
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
-function showToast(msg, type){
-  var wrap = document.getElementById('toastWrap');
-  if(!wrap) return;
-  var t = document.createElement('div');
-  t.className = 'toast ' + (type||'info');
-  t.textContent = msg;
-  wrap.appendChild(t);
-  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3500);
+function showToast(
+  message,
+  type
+){
+  var toastType =
+    type || 'info';
+
+  /*
+   * 완료 화면이나 화면 전환으로 결과를 알 수 있는
+   * 성공·일반 알림은 별도로 표시하지 않습니다.
+   */
+  if(
+    toastType === 'info' ||
+    toastType === 'success'
+  ){
+    return;
+  }
+
+  var container =
+    document.getElementById(
+      'toastWrap'
+    );
+
+  if(!container){
+    return;
+  }
+
+  /*
+   * 기존 알림을 제거하여 경고·오류가
+   * 화면에 한 개만 표시되도록 합니다.
+   */
+  container.innerHTML = '';
+
+  var toast =
+    document.createElement(
+      'div'
+    );
+
+  toast.className =
+    'toast ' +
+    (
+      toastType === 'warning'
+        ? 'danger'
+        : toastType
+    );
+
+  toast.textContent =
+    message;
+
+  toast.setAttribute(
+    'role',
+    'alert'
+  );
+
+  toast.title =
+    '눌러서 닫기';
+
+  toast.addEventListener(
+    'click',
+    function(){
+      if(toast.parentNode){
+        toast.parentNode
+          .removeChild(toast);
+      }
+    }
+  );
+
+  container.appendChild(
+    toast
+  );
+
+  setTimeout(
+    function(){
+      if(toast.parentNode){
+        toast.parentNode
+          .removeChild(toast);
+      }
+    },
+    5000
+  );
 }
 
 // ═══════════════════════════════════════════════════
@@ -2415,21 +2500,20 @@ async function executeSubmit(
     });
 
   }finally{
-    if(
-      submitButton &&
-      !isAlreadySigned
-    ){
-      submitButton.disabled =
-        false;
+    if(submitButton){
+      submitButton.dataset.submitting =
+        'false';
 
-      submitButton.textContent =
-        '✅ 확인 완료 및 서명 제출';
+      if(!isAlreadySigned){
+        submitButton.disabled =
+          false;
 
-      updateSubmitButtonState();
+        submitButton.textContent =
+          '✅ 확인 완료 및 서명 제출';
+      }
     }
   }
 }
-
 
 // ═══════════════════════════════════════════════════
 // 도급인 알림
