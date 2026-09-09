@@ -3806,22 +3806,70 @@ button{touch-action:manipulation}
           work.workId
         ];
 
-    var safetyUrl =
+    /*
+     * 안전정보제공서가 발행되기 전에는 도급인용 작성 화면,
+     * 발행된 후에는 수급인 확인·서명 화면으로 연결합니다.
+     */
+    var safetyUrl = '';
+
+    if(
       safetyRecord &&
       safetyRecord.safeinfoNo
-        ? (
-            '안전정보제공서_도급인용.html?safeinfoNo=' +
-            encodeURIComponent(
-              safetyRecord.safeinfoNo
-            ) +
-            '&mode=view'
+    ){
+      var safetyParams =
+        new URLSearchParams();
+
+      safetyParams.set(
+        'safeinfoNo',
+        clean(
+          safetyRecord.safeinfoNo
+        )
+      );
+
+      safetyParams.set(
+        'mode',
+        'test'
+      );
+
+      if(work.workId){
+        safetyParams.set(
+          'workId',
+          clean(
+            work.workId
           )
-        : (
-            '안전정보제공서_도급인용.html?workId=' +
-            encodeURIComponent(
-              work.workId
-            )
-          );
+        );
+      }
+
+      /*
+       * 발행 문서에 저장된 서명 URL이 있더라도
+       * mode=test와 workId를 확실히 전달하기 위해
+       * 수급인용 URL을 다시 생성합니다.
+       */
+      safetyUrl =
+        '안전정보제공서_수급인용.html?' +
+        safetyParams.toString();
+
+    }else{
+      var issueParams =
+        new URLSearchParams();
+
+      issueParams.set(
+        'workId',
+        clean(
+          work.workId
+        )
+      );
+
+      issueParams.set(
+        'mode',
+        'test'
+      );
+
+      safetyUrl =
+        '안전정보제공서_도급인용.html?' +
+        issueParams.toString();
+    }
+
 
     var quizUrl =
       '포항양극재공장_안전퀴즈.html?workId=' +
