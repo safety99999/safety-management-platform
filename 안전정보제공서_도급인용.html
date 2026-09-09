@@ -1541,12 +1541,339 @@ function applyLinkedRiskAssessment(
  * 작업DB에서 workId로 작업정보를 불러오고,
  * 완료된 위험성평가가 있을 때만 작성을 시작합니다.
  */
+/*
+ * localStorage의 배열 또는 객체 자료를
+ * 항상 배열 형태로 반환합니다.
+ */
+function readLocalArray(key){
+  try{
+    var parsed =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(Array.isArray(parsed)){
+      return parsed;
+    }
+
+    if(
+      parsed &&
+      typeof parsed === 'object'
+    ){
+      return Object.values(parsed);
+    }
+
+    return [];
+
+  }catch(error){
+    console.warn(
+      '[안전정보제공서] 로컬자료 파싱 실패:',
+      key,
+      error
+    );
+
+    return [];
+  }
+}
+
+/*
+ * 작업정보의 표준 workId를 반환합니다.
+ */
+function getWorkRecordId(work){
+  work =
+    work || {};
+
+  return String(
+    work.workId ||
+    work.id ||
+    (
+      work.date &&
+      work.originalNo
+        ? work.date +
+          '_' +
+          work.originalNo
+        : ''
+    ) ||
+    ''
+  )
+    .replace(/\s+/g,'')
+    .trim();
+}
+
+/*
+ * URL의 workId와 workIds를 모두 읽습니다.
+ *
+ * 지원 형식:
+ * ?workId=2026-09-09_1
+ * ?workIds=2026-09-09_1,2026-09-09_2
+ * ?workIds=2026-09-09_1&workIds=2026-09-09_2
+ */
+function getRequestedWorkIds(
+  primaryWorkId
+){
+  var params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  var workIds = [];
+
+  function addWorkId(value){
+    String(value || '')
+      .split(',')
+      .forEach(function(item){
+        var workId =
+          decodeURIComponent(
+            item || ''
+          )
+            .replace(/\s+/g,'')
+            .trim();
+
+        if(
+          workId &&
+          workIds.indexOf(
+            workId
+          ) < 0
+        ){
+          workIds.push(
+            workId
+          );
+        }
+      });
+  }
+
+  addWorkId(
+    primaryWorkId
+  );
+
+  addWorkId(
+    params.get('workId')
+  );
+
+  params
+    .getAll('workIds')
+    .forEach(addWorkId);
+
+  return workIds;
+}
+
+/*
+ * 위험성평가 자료에 연결된 workId를 반환합니다.
+ */
+function linkedRiskWorkId(record){
+  return String(
+    record &&
+    (
+      record.workId ||
+      record.sourceWorkId ||
+      (
+        record.workflowLink &&
+        record.workflowLink.workId
+      )
+    ) ||
+    ''
+  )
+    .replace(/\s+/g,'')
+    .trim();
+}
+
+/*
+ * 완료된 위험성평가인지 확인합니다.
+ */
+function completedRiskRecord(record){
+  if(
+    !record ||
+    !record.riskId
+  ){
+    return false;
+  }
+
+  var status =
+    String(
+      record.status || ''
+    ).trim();
+
+  var statusCode =
+    String(
+      record.statusCode || ''
+    ).trim();
+
+  return (
+    status === '평가완료' ||
+    status === '완료' ||
+    statusCode === 'completed'
+  );
+}
+
+/*
+ * 저장자료의 최신 시각을 비교하기 위한 함수입니다.
+ */
+function localRecordTime(record){
+  record =
+    record || {};
+
+  var value =
+    record.updatedAt ||
+    record.completedAt ||
+    record.createdAt ||
+    record.date ||
+    '';
+
+  if(
+    value &&
+    typeof value.toDate ===
+      'function'
+  ){
+    try{
+      return value
+        .toDate()
+        .getTime();
+    }catch(error){
+      return 0;
+    }
+  }
+
+  if(
+    value &&
+    typeof value === 'object'
+  ){
+    var seconds =
+      value.seconds !== undefined
+        ? value.seconds
+        : value._seconds;
+
+    if(
+      Number.isFinite(
+        Number(seconds)
+      )
+    ){
+      return Number(seconds) * 1000;
+    }
+  }
+
+  var timestamp =
+    new Date(value)
+      .getTime();
+
+  return Number.isFinite(timestamp)
+    ? timestamp
+    : 0;
+}
+
+/*
+ * workId별 최신 완료 위험성평가를 반환합니다.
+ */
+function findCompletedRiskForWork(
+  workId
+){
+  var targetWorkId =
+    String(workId || '')
+      .replace(/\s+/g,'')
+      .trim();
+
+  var records =
+    readLocalArray(
+      'riskAssessments'
+    ).concat(
+      readLocalArray(
+        'riskAssessmentResults'
+      )
+    );
+
+  var map =
+    new Map();
+
+  records.forEach(function(record){
+    if(
+      !record ||
+      !record.riskId
+    ){
+      return;
+    }
+
+    var previous =
+      map.get(
+        record.riskId
+      );
+
+    if(
+      !previous ||
+      localRecordTime(record) >=
+        localRecordTime(previous)
+    ){
+      map.set(
+        record.riskId,
+        record
+      );
+    }
+  });
+
+  return Array.from(
+    map.values()
+  )
+    .filter(function(record){
+      return (
+        completedRiskRecord(record) &&
+        linkedRiskWorkId(record) ===
+          targetWorkId
+      );
+    })
+    .sort(function(first,second){
+      return (
+        localRecordTime(second) -
+        localRecordTime(first)
+      );
+    })[0] || null;
+}
+
+/*
+ * 작업정보에서 업체명을 반환합니다.
+ */
+function linkedWorkCompany(work){
+  if(
+    typeof usefulWorkValue ===
+      'function'
+  ){
+    return usefulWorkValue(
+      work.executingCompany,
+      work.subcontractCompany,
+      work.contractCompany,
+      work.company
+    );
+  }
+
+  return String(
+    work.executingCompany ||
+    work.subcontractCompany ||
+    work.contractCompany ||
+    work.company ||
+    ''
+  ).trim();
+}
+
+/*
+ * 복수 작업을 안전정보제공서 데이터에 연결합니다.
+ */
 function loadWorkFromDb(workId){
   try{
-    var targetWorkId =
-      String(
-        workId || ''
-      ).trim();
+    var requestedWorkIds =
+      getRequestedWorkIds(
+        workId
+      );
+
+    if(!requestedWorkIds.length){
+      showCustomAlert({
+        icon:'⚠️',
+        title:'작업 선택 필요',
+        message:
+          '연결할 작업번호가 없습니다.\n' +
+          '대시보드에서 작업을 선택해 주세요.',
+        okType:'warn'
+      });
+
+      return;
+    }
 
     var raw =
       localStorage.getItem(
@@ -1554,10 +1881,6 @@ function loadWorkFromDb(workId){
       );
 
     if(!raw){
-      console.warn(
-        '[loadWorkFromDb] safetyDatabase 없음'
-      );
-
       showCustomAlert({
         icon:'⚠️',
         title:'작업DB 정보 없음',
@@ -1573,50 +1896,38 @@ function loadWorkFromDb(workId){
     var database =
       JSON.parse(raw);
 
-    var works =
+    var workHistory =
       Array.isArray(
         database.workHistory
       )
         ? database.workHistory
         : [];
 
-    var work =
-      works.find(
-        function(record){
-          var recordWorkId =
-            record.workId ||
-            record.id ||
-            (
-              record.date +
-              '_' +
-              (
-                record.originalNo ||
-                ''
-              )
-            );
+    /*
+     * URL에서 전달된 순서대로 작업을 찾습니다.
+     */
+    var linkedWorks =
+      requestedWorkIds
+        .map(function(requestedId){
+          return workHistory.find(
+            function(record){
+              return (
+                getWorkRecordId(
+                  record
+                ) === requestedId
+              );
+            }
+          ) || null;
+        })
+        .filter(Boolean);
 
-          return (
-            String(
-              recordWorkId || ''
-            ).replace(/\s+/g,'') ===
-            targetWorkId
-              .replace(/\s+/g,'')
-          );
-        }
-      );
-
-    if(!work){
-      console.warn(
-        '[loadWorkFromDb] 작업 찾을 수 없음:',
-        targetWorkId
-      );
-
+    if(!linkedWorks.length){
       showCustomAlert({
         icon:'⚠️',
         title:'작업 정보 없음',
         message:
           '선택한 작업의 정보를 찾을 수 없습니다.\n' +
-          '대시보드에서 다시 작업을 선택해 주세요.',
+          '대시보드에서 작업자료를 새로고침한 후 다시 선택해 주세요.',
         okType:'warn'
       });
 
@@ -1624,116 +1935,402 @@ function loadWorkFromDb(workId){
     }
 
     /*
-     * 안전정보제공서보다 위험성평가가
-     * 반드시 먼저 완료되어야 합니다.
+     * 실제로 찾은 작업번호만 최종 연결합니다.
      */
-    var linkedRisk =
-      findCompletedRiskByWorkId(
-        targetWorkId
+    var validWorkIds =
+      linkedWorks.map(
+        getWorkRecordId
       );
 
-    if(!linkedRisk){
-      console.warn(
-        '[안전정보제공서] 완료된 위험성평가 없음:',
-        targetWorkId
-      );
-
-      showCustomAlert(
-        {
-          icon:'🛡️',
-          title:'위험성평가가 필요합니다',
-          message:
-            '안전정보제공서를 작성하기 전에\n' +
-            '해당 작업의 위험성평가를 완료해야 합니다.\n\n' +
-            '확인을 누르면 위험성평가 화면으로 이동합니다.',
-          okText:'위험성평가 진행',
-          okType:'warn'
-        },
-
-        function(){
-          var riskUrl =
-            '위험성평가_v2.html' +
-            '?workId=' +
-            encodeURIComponent(
-              targetWorkId
-            ) +
-            '&mode=test';
-
-          if(
-            window.navigateWithFade
-          ){
-            window.navigateWithFade(
-              riskUrl
-            );
-          }else{
-            window.location.href =
-              riskUrl;
-          }
+    var missingWorkIds =
+      requestedWorkIds.filter(
+        function(requestedId){
+          return (
+            validWorkIds.indexOf(
+              requestedId
+            ) < 0
+          );
         }
       );
 
-      return;
+    if(missingWorkIds.length){
+      console.warn(
+        '[안전정보제공서] 찾지 못한 작업:',
+        missingWorkIds
+      );
+
+      showToast(
+        '일부 작업을 찾지 못해 확인 가능한 작업만 연결했습니다.',
+        'info'
+      );
+    }
+
+    var primaryWork =
+      linkedWorks[0];
+
+    var primaryWorkId =
+      getWorkRecordId(
+        primaryWork
+      );
+
+    data.workId =
+      primaryWorkId;
+
+    data.primaryWorkId =
+      primaryWorkId;
+
+    data.workIds =
+      validWorkIds.slice();
+
+    /*
+     * 문서에 연결된 작업의 핵심정보를 보존합니다.
+     */
+    data.linkedWorks =
+      linkedWorks.map(
+        function(work){
+          return {
+            workId:
+              getWorkRecordId(
+                work
+              ),
+
+            workName:
+              String(
+                work.workNameFull ||
+                work.workName ||
+                ''
+              ).trim(),
+
+            date:
+              String(
+                work.date || ''
+              ).trim(),
+
+            location:
+              String(
+                work.locationRaw ||
+                work.locationDisplay ||
+                (
+                  work.location &&
+                  work.location.raw
+                ) ||
+                ''
+              ).trim(),
+
+            companyName:
+              linkedWorkCompany(
+                work
+              ),
+
+            workerCount:
+              Number(
+                work.workerCount || 0
+              ),
+
+            workManager:
+              String(
+                work.workManager ||
+                work.manager ||
+                ''
+              ).trim(),
+
+            contractorManager:
+              String(
+                work.contractorManager ||
+                ''
+              ).trim(),
+
+            workOrderNo:
+              String(
+                work.workOrderNo ||
+                ''
+              ).trim(),
+
+            workTimeRaw:
+              String(
+                work.workTimeRaw ||
+                ''
+              ).trim()
+          };
+        }
+      );
+
+    /*
+     * 복수 작업에 연결된 업체가 서로 다른지 확인합니다.
+     * 현재는 작성을 차단하지 않고 경고만 표시합니다.
+     */
+    var companies = [];
+
+    linkedWorks.forEach(
+      function(work){
+        var company =
+          linkedWorkCompany(
+            work
+          );
+
+        if(
+          company &&
+          companies.indexOf(
+            company
+          ) < 0
+        ){
+          companies.push(
+            company
+          );
+        }
+      }
+    );
+
+    if(companies.length > 1){
+      showToast(
+        '⚠️ 서로 다른 수행업체의 작업이 포함되어 있습니다. 적용 범위를 확인하세요.',
+        'info'
+      );
     }
 
     /*
-     * 작업과 위험성평가의 workId가 같은지
-     * 다시 검증합니다.
+     * 각 작업의 위험성평가 연결상태를 개별 저장합니다.
+     * 평가가 없어도 작성을 차단하지 않습니다.
      */
-    if(
-      getRiskWorkId(
-        linkedRisk
-      ) !== targetWorkId
-    ){
-      showCustomAlert({
-        icon:'❌',
-        title:'연계정보 불일치',
-        message:
-          '작업번호와 위험성평가의 연결정보가 일치하지 않습니다.\n' +
-          '안전정보제공서를 작성할 수 없습니다.',
-        okType:'danger'
-      });
+    data.riskAssessmentLinks =
+      linkedWorks.map(
+        function(work){
+          var linkedWorkId =
+            getWorkRecordId(
+              work
+            );
 
-      return;
+          var risk =
+            findCompletedRiskForWork(
+              linkedWorkId
+            );
+
+          if(risk){
+            return {
+              workId:
+                linkedWorkId,
+
+              applicability:
+                'linked',
+
+              riskId:
+                String(
+                  risk.riskId || ''
+                ).trim(),
+
+              status:
+                'completed',
+
+              riskLevel:
+                String(
+                  risk.finalRiskLevel ||
+                  risk.riskLevel ||
+                  risk.overallRisk ||
+                  ''
+                ).trim(),
+
+              riskScore:
+                Number(
+                  risk.riskScore || 0
+                ),
+
+              assessor:
+                String(
+                  risk.assessor || ''
+                ).trim(),
+
+              assessmentDate:
+                String(
+                  risk.date ||
+                  risk.assessmentDate ||
+                  ''
+                ).trim(),
+
+              reason:'',
+
+              linkedAt:
+                new Date()
+                  .toISOString()
+            };
+          }
+
+          return {
+            workId:
+              linkedWorkId,
+
+            applicability:
+              'notSelected',
+
+            riskId:'',
+
+            status:
+              'notSelected',
+
+            riskLevel:'',
+
+            riskScore:0,
+
+            assessor:'',
+
+            assessmentDate:'',
+
+            reason:'',
+
+            linkedAt:''
+          };
+        }
+      );
+
+    /*
+     * 대표 작업에 완료된 위험성평가가 있으면
+     * 기존 위험성평가 번호 입력란에 자동 표시합니다.
+     */
+    var primaryRiskLink =
+      data.riskAssessmentLinks
+        .find(function(link){
+          return (
+            link.workId ===
+              primaryWorkId &&
+            link.applicability ===
+              'linked'
+          );
+        }) ||
+      data.riskAssessmentLinks
+        .find(function(link){
+          return (
+            link.applicability ===
+              'linked'
+          );
+        }) ||
+      null;
+
+    if(primaryRiskLink){
+      data.riskAssessmentNo =
+        primaryRiskLink.riskId;
+
+      var riskInput =
+        document.getElementById(
+          'risk-assess-no'
+        );
+
+      if(riskInput){
+        riskInput.value =
+          primaryRiskLink.riskId;
+
+        riskInput.readOnly =
+          true;
+
+        riskInput.classList.add(
+          'auto-filled'
+        );
+
+        riskInput.dataset
+          .riskVerified =
+          'true';
+      }
+
+      var riskResult =
+        document.getElementById(
+          'risk-assess-result'
+        );
+
+      if(riskResult){
+        riskResult.style.display =
+          'block';
+
+        riskResult.style.background =
+          '#E8F5E9';
+
+        riskResult.style.borderColor =
+          'var(--green2)';
+
+        riskResult.style.color =
+          'var(--green2)';
+
+        riskResult.innerHTML =
+          '✅ 완료된 위험성평가 자동 연계' +
+          '<br>문서번호: ' +
+          escHtml(
+            primaryRiskLink.riskId
+          ) +
+          (
+            primaryRiskLink.riskLevel
+              ? '<br>최종 위험도: ' +
+                escHtml(
+                  primaryRiskLink
+                    .riskLevel
+                )
+              : ''
+          );
+      }
+
+    }else{
+      data.riskAssessmentNo =
+        '';
+
+      var emptyRiskInput =
+        document.getElementById(
+          'risk-assess-no'
+        );
+
+      if(emptyRiskInput){
+        emptyRiskInput.value = '';
+        emptyRiskInput.readOnly =
+          false;
+
+        emptyRiskInput.dataset
+          .riskVerified =
+          'false';
+      }
     }
 
-    data.workId =
-      targetWorkId;
-
+    /*
+     * 기존 기본정보 화면은 대표 작업을 기준으로 채우고,
+     * 모든 작업정보는 data.linkedWorks에 보존합니다.
+     */
     showWorkInfoBanner(
-      work
+      primaryWork
     );
 
-    setTimeout(
-      function(){
-        goToStep(1);
+    setTimeout(function(){
+      goToStep(1);
 
-        autoFillFields(
-          work
-        );
+      autoFillFields(
+        primaryWork
+      );
 
-        applyLinkedRiskAssessment(
-          linkedRisk
-        );
-
-        showToast(
-          '✅ 완료된 위험성평가와 작업정보를 연계했습니다.',
-          'success'
-        );
-      },
-      400
-    );
+      showToast(
+        linkedWorks.length > 1
+          ? (
+              '✅ 작업 ' +
+              linkedWorks.length +
+              '건을 안전정보제공서에 연결했습니다.'
+            )
+          : '✅ 작업정보를 연결했습니다.',
+        'success'
+      );
+    },400);
 
     console.log(
-      '[loadWorkFromDb] 작업·위험성평가 연계 성공:',
+      '[안전정보제공서] 복수 작업 연결 완료:',
       {
-        work:work,
-        risk:linkedRisk
+        primaryWorkId:
+          data.primaryWorkId,
+
+        workIds:
+          data.workIds,
+
+        linkedWorks:
+          data.linkedWorks,
+
+        riskAssessmentLinks:
+          data.riskAssessmentLinks
       }
     );
 
   }catch(error){
     console.error(
-      '[loadWorkFromDb] 오류:',
+      '[안전정보제공서] 작업 연결 실패:',
       error
     );
 
@@ -1741,12 +2338,13 @@ function loadWorkFromDb(workId){
       icon:'❌',
       title:'작업 조회 실패',
       message:
-        '작업정보와 위험성평가를 불러오는 중 오류가 발생했습니다.\n' +
+        '작업정보를 불러오는 중 오류가 발생했습니다.\n' +
         error.message,
       okType:'danger'
     });
   }
 }
+
 function showWorkInfoBanner(work){
   var banner = document.getElementById('workidInfoBanner');
   if(!banner) return;
