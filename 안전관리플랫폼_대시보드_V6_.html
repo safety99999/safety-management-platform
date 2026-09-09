@@ -5180,6 +5180,334 @@ if(
    * 첫 번째로 선택한 작업의 업체와 공장을 기준으로
    * 함께 묶기 어려운 작업은 선택할 수 없게 합니다.
    */
+  /*
+   * 위험성평가 해당 없음 기록 저장 키
+   */
+  function safetyRiskExemptionKey(){
+    return 'riskAssessmentExemptions';
+  }
+
+  /*
+   * 작업별 위험성평가 해당 없음 기록을 조회합니다.
+   */
+  function readSafetyRiskExemptions(){
+    return readArray(
+      safetyRiskExemptionKey()
+    );
+  }
+
+  /*
+   * 작업에 연결된 완료 위험성평가를 찾습니다.
+   */
+  function safetyPickerRisk(
+    workId
+  ){
+    return state.risks
+      .filter(function(record){
+        return (
+          completedRisk(record) &&
+          clean(
+            getRiskWorkId(
+              record
+            )
+          ) === clean(workId)
+        );
+      })
+      .sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      })[0] || null;
+  }
+
+  /*
+   * 작업의 위험성평가 해당 없음 기록을 찾습니다.
+   */
+  function safetyPickerExemption(
+    workId
+  ){
+    return readSafetyRiskExemptions()
+      .filter(function(record){
+        return (
+          clean(
+            record &&
+            record.workId
+          ) === clean(workId) &&
+          record.applicability ===
+            'notApplicable'
+        );
+      })
+      .sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      })[0] || null;
+  }
+
+  /*
+   * 작업별 위험성평가 상태를 반환합니다.
+   */
+  function safetyPickerRiskState(
+    work
+  ){
+    var risk =
+      safetyPickerRisk(
+        work.workId
+      );
+
+    if(risk){
+      return {
+        ready:true,
+        code:'linked',
+        label:'위험성평가 완료',
+        riskId:
+          clean(risk.riskId),
+        record:risk
+      };
+    }
+
+    var exemption =
+      safetyPickerExemption(
+        work.workId
+      );
+
+    if(exemption){
+      return {
+        ready:true,
+        code:'notApplicable',
+        label:'위험성평가 해당 없음',
+        riskId:'',
+        record:exemption
+      };
+    }
+
+    return {
+      ready:false,
+      code:'notSelected',
+      label:'위험성평가 미연계',
+      riskId:'',
+      record:null
+    };
+  }
+
+  /*
+   * 위험성평가 이동 전 선택 작업을 임시 보관합니다.
+   */
+  function savePendingSafetySelection(
+    extraWorkId
+  ){
+    var selectedWorkIds =
+      Array.from(
+        document.querySelectorAll(
+          '[data-safety-work-select]:checked'
+        )
+      )
+        .map(function(input){
+          return clean(
+            input.value
+          );
+        })
+        .filter(Boolean);
+
+    var targetWorkId =
+      clean(extraWorkId);
+
+    if(
+      targetWorkId &&
+      selectedWorkIds.indexOf(
+        targetWorkId
+      ) < 0
+    ){
+      selectedWorkIds.push(
+        targetWorkId
+      );
+    }
+
+    var payload = {
+      workIds:
+        selectedWorkIds,
+
+      targetWorkId:
+        targetWorkId,
+
+      createdAt:
+        new Date()
+          .toISOString(),
+
+      environment:'test'
+    };
+
+    sessionStorage.setItem(
+      'pendingSafetyInfoSelection',
+      JSON.stringify(payload)
+    );
+
+    return payload;
+  }
+
+  /*
+   * 위험성평가 이동 전에 저장한 작업 선택값을 읽습니다.
+   * 2시간이 지난 임시 선택값은 폐기합니다.
+   */
+  function readPendingSafetySelection(){
+    try{
+      var pending =
+        JSON.parse(
+          sessionStorage.getItem(
+            'pendingSafetyInfoSelection'
+          ) || 'null'
+        );
+
+      if(
+        !pending ||
+        !Array.isArray(
+          pending.workIds
+        )
+      ){
+        return [];
+      }
+
+      var createdTime =
+        new Date(
+          pending.createdAt || ''
+        ).getTime();
+
+      if(
+        !Number.isFinite(
+          createdTime
+        ) ||
+        Date.now() -
+        createdTime >
+        2 * 60 * 60 * 1000
+      ){
+        sessionStorage.removeItem(
+          'pendingSafetyInfoSelection'
+        );
+
+        return [];
+      }
+
+      return pending.workIds
+        .map(clean)
+        .filter(Boolean);
+
+    }catch(error){
+      sessionStorage.removeItem(
+        'pendingSafetyInfoSelection'
+      );
+
+      return [];
+    }
+  }
+
+  /*
+   * 위험성평가 해당 없음 상태를 저장하거나 취소합니다.
+   */
+  function setSafetyRiskExemption(
+    workId,
+    enabled
+  ){
+    var targetWorkId =
+      clean(workId);
+
+    if(!targetWorkId){
+      return;
+    }
+
+    var records =
+      readSafetyRiskExemptions();
+
+    records =
+      records.filter(
+        function(record){
+          return (
+            clean(
+              record &&
+              record.workId
+            ) !== targetWorkId
+          );
+        }
+      );
+
+    if(enabled){
+      var session =
+        readSession() || {};
+
+      records.push({
+        workId:
+          targetWorkId,
+
+        applicability:
+          'notApplicable',
+
+        status:
+          'notApplicable',
+
+        reason:'',
+
+        confirmedAt:
+          new Date()
+            .toISOString(),
+
+        confirmedBy:
+          session.displayName ||
+          session.email ||
+          '사용자',
+
+        confirmedByUid:
+          session.uid || '',
+
+        environment:'test',
+
+        schemaVersion:1
+      });
+    }
+
+    localStorage.setItem(
+      safetyRiskExemptionKey(),
+      JSON.stringify(records)
+    );
+
+    try{
+      global.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:
+                safetyRiskExemptionKey(),
+
+              workId:
+                targetWorkId,
+
+              operation:
+                enabled
+                  ? 'notApplicable'
+                  : 'cancelled',
+
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    }catch(error){}
+
+    showToast(
+      enabled
+        ? '위험성평가 해당 없음으로 확인했습니다.'
+        : '위험성평가 해당 없음 선택을 취소했습니다.',
+      enabled
+        ? 'success'
+        : 'info'
+    );
+  }
+
+  /*
+   * 현재 선택 수와 업체·공장 선택 제한을 갱신합니다.
+   */
   function updateSafetyInfoMultiPicker(){
     var sheetBody =
       byId('sheetBody');
@@ -5207,8 +5535,7 @@ if(
       );
 
     var firstSelected =
-      selected[0] ||
-      null;
+      selected[0] || null;
 
     var selectedCompany =
       firstSelected
@@ -5224,24 +5551,35 @@ if(
 
     checkboxes.forEach(
       function(input){
+        var riskReady =
+          input.dataset.riskReady ===
+            'true';
+
         if(input.checked){
-          input.disabled = false;
+          /*
+           * 이미 선택된 작업도 위험성평가 상태가
+           * 취소되면 선택을 해제합니다.
+           */
+          if(!riskReady){
+            input.checked = false;
+          }
+
+          input.disabled =
+            !riskReady;
+
           return;
         }
 
-        /*
-         * 아직 아무 작업도 선택하지 않은 경우에는
-         * 모든 작업을 선택할 수 있습니다.
-         */
+        if(!riskReady){
+          input.disabled = true;
+          return;
+        }
+
         if(!firstSelected){
           input.disabled = false;
           return;
         }
 
-        /*
-         * 동일 업체와 동일 공장의 작업만
-         * 한 안전정보제공서로 묶습니다.
-         */
         var sameCompany =
           input.dataset.companyKey ===
             selectedCompany;
@@ -5255,6 +5593,21 @@ if(
           !sameFactory;
       }
     );
+
+    /*
+     * 위험성평가 상태로 인해 선택이 해제됐을 수 있으므로
+     * 선택 목록을 다시 계산합니다.
+     */
+    selected =
+      checkboxes.filter(
+        function(input){
+          return (
+            input.checked &&
+            input.dataset.riskReady ===
+              'true'
+          );
+        }
+      );
 
     var countElement =
       byId(
@@ -5276,23 +5629,21 @@ if(
     if(guide){
       if(!selected.length){
         guide.textContent =
-          '첫 작업을 선택하면 동일 업체·동일 공장 작업만 함께 선택할 수 있습니다.';
+          '위험성평가 완료 또는 해당 없음 확인 후 작업을 선택하세요.';
 
       }else{
-        var firstLabel =
-          firstSelected.dataset
-            .companyLabel ||
-          '업체 미지정';
-
-        var factoryLabel =
-          firstSelected.dataset
-            .factoryLabel ||
-          '공장 미지정';
-
         guide.textContent =
-          firstLabel +
+          (
+            firstSelected.dataset
+              .companyLabel ||
+            '업체 확인 필요'
+          ) +
           ' · ' +
-          factoryLabel +
+          (
+            firstSelected.dataset
+              .factoryLabel ||
+            '공장 확인 필요'
+          ) +
           ' 기준으로 묶음 작업을 선택합니다.';
       }
     }
@@ -5311,26 +5662,19 @@ if(
           ? (
               '📋 선택한 작업 ' +
               selected.length +
-              '건으로 작성'
+              '건으로 안전정보 작성'
             )
           : '작업을 선택하세요';
     }
   }
 
   /*
-   * 선택한 복수 작업을 안전정보제공서로 전달합니다.
+   * 선택한 작업으로 안전정보제공서를 시작합니다.
    */
   function startSelectedSafetyInfo(){
-    var sheetBody =
-      byId('sheetBody');
-
-    if(!sheetBody){
-      return;
-    }
-
     var selected =
       Array.from(
-        sheetBody.querySelectorAll(
+        document.querySelectorAll(
           '[data-safety-work-select]:checked'
         )
       );
@@ -5338,6 +5682,25 @@ if(
     if(!selected.length){
       showToast(
         '안전정보제공서를 작성할 작업을 선택하세요.',
+        'warning'
+      );
+
+      return;
+    }
+
+    var unresolved =
+      selected.find(
+        function(input){
+          return (
+            input.dataset.riskReady !==
+              'true'
+          );
+        }
+      );
+
+    if(unresolved){
+      showToast(
+        '위험성평가 상태가 확인되지 않은 작업이 있습니다.',
         'warning'
       );
 
@@ -5353,31 +5716,14 @@ if(
         })
         .filter(Boolean);
 
-    if(!workIds.length){
-      showToast(
-        '선택한 작업번호를 확인할 수 없습니다.',
-        'danger'
-      );
-
-      return;
-    }
-
     var params =
       new URLSearchParams();
 
-    /*
-     * 기존 단일 작업 연계와의 호환성을 위해
-     * 첫 작업을 대표 workId로 전달합니다.
-     */
     params.set(
       'workId',
       workIds[0]
     );
 
-    /*
-     * 복수 작업은 동일한 workIds 이름으로
-     * 반복 전달합니다.
-     */
     workIds.forEach(
       function(workId){
         params.append(
@@ -5392,6 +5738,10 @@ if(
       'test'
     );
 
+    sessionStorage.removeItem(
+      'pendingSafetyInfoSelection'
+    );
+
     navigate(
       '안전정보제공서_도급인용.html?' +
       params.toString()
@@ -5399,17 +5749,29 @@ if(
   }
 
   /*
-   * 안전정보제공서의 복수 작업 선택 화면을 표시합니다.
+   * 복수 작업 선택 화면을 표시합니다.
+   * 위험성평가 완료 여부를 선택 전에 확인합니다.
    */
   function openSafetyInfoMultiPicker(
     works
   ){
+    state.safetyInfoPickerWorks =
+      Array.isArray(works)
+        ? works.slice()
+        : [];
+
+    var pendingWorkIds =
+      readPendingSafetySelection();
+
+    var riskReadyCount = 0;
+    var unresolvedCount = 0;
+
     var html =
       '<div class="prework-summary">' +
-        '<strong>여러 작업을 하나의 안전정보제공서로 묶을 수 있습니다.</strong>' +
+        '<strong>작업별 위험성평가 상태를 먼저 확인합니다.</strong>' +
         '<br>' +
         '<span id="selectedSafetyWorkGuide">' +
-          '첫 작업을 선택하면 동일 업체·동일 공장 작업만 함께 선택할 수 있습니다.' +
+          '위험성평가 완료 또는 해당 없음 확인 후 작업을 선택하세요.' +
         '</span>' +
       '</div>' +
 
@@ -5426,7 +5788,9 @@ if(
         'font-size:12px;' +
         'font-weight:800">' +
 
-        '<span>선택 현황</span>' +
+        '<span id="safetyRiskStatusSummary">' +
+          '위험성평가 확인 중' +
+        '</span>' +
 
         '<span id="selectedSafetyWorkCount">' +
           '선택 0건' +
@@ -5435,8 +5799,8 @@ if(
       '</div>';
 
     html +=
-      works.map(
-        function(work){
+      state.safetyInfoPickerWorks
+        .map(function(work){
           var companyKey =
             normalizedPickerCompany(
               work
@@ -5465,9 +5829,63 @@ if(
               factoryKey
             ] || '기타';
 
+          var riskState =
+            safetyPickerRiskState(
+              work
+            );
+
+          if(riskState.ready){
+            riskReadyCount++;
+          }else{
+            unresolvedCount++;
+          }
+
+          var restoreChecked =
+            riskState.ready &&
+            pendingWorkIds.indexOf(
+              clean(work.workId)
+            ) >= 0;
+
+          var riskBadgeStyle =
+            riskState.code ===
+              'linked'
+              ? (
+                  'background:var(--done-bg);' +
+                  'color:var(--done);'
+                )
+              : riskState.code ===
+                  'notApplicable'
+                ? (
+                    'background:var(--sunk);' +
+                    'color:var(--sub);'
+                  )
+                : (
+                    'background:var(--warn-bg);' +
+                    'color:var(--warn);'
+                  );
+
+          var riskDetail =
+            riskState.code ===
+              'linked'
+              ? (
+                  '✅ ' +
+                  (
+                    riskState.riskId ||
+                    '위험성평가 완료'
+                  )
+                )
+              : riskState.code ===
+                  'notApplicable'
+                ? '➖ 위험성평가 해당 없음'
+                : '⚠️ 위험성평가 미연계';
+
           return (
-            '<label class="work-item compact" ' +
-              'style="display:block;cursor:pointer">' +
+            '<article class="work-item compact" ' +
+              'data-safety-picker-card="' +
+              escapeHtml(
+                work.workId
+              ) +
+            '">' +
 
               '<div style="' +
                 'display:grid;' +
@@ -5502,24 +5920,38 @@ if(
                     factoryLabel
                   ) +
                   '" ' +
+                  'data-risk-ready="' +
+                  (
+                    riskState.ready
+                      ? 'true'
+                      : 'false'
+                  ) +
+                  '" ' +
+                  (
+                    restoreChecked
+                      ? 'checked '
+                      : ''
+                  ) +
+                  (
+                    riskState.ready
+                      ? ''
+                      : 'disabled '
+                  ) +
                   'style="' +
                     'width:21px;' +
                     'height:21px;' +
                     'margin-top:3px;' +
                     'accent-color:var(--posco)">' +
 
-                '<span style="min-width:0">' +
+                '<div style="min-width:0">' +
 
-                  '<span class="wi-name" ' +
-                    'style="display:block">' +
+                  '<div class="wi-name">' +
                     escapeHtml(
                       work.workName
                     ) +
-                  '</span>' +
+                  '</div>' +
 
-                  '<span class="wi-meta" ' +
-                    'style="display:flex;margin-bottom:0">' +
-
+                  '<div class="wi-meta">' +
                     '<span>📍 ' +
                       escapeHtml(
                         work.locationDisplay
@@ -5531,28 +5963,103 @@ if(
                         companyLabel
                       ) +
                     '</span>' +
+                  '</div>' +
 
-                  '</span>' +
+                  '<div style="' +
+                    'display:flex;' +
+                    'align-items:center;' +
+                    'justify-content:space-between;' +
+                    'gap:7px;' +
+                    'margin-top:5px">' +
 
-                  '<span style="' +
-                    'display:block;' +
-                    'margin-top:4px;' +
-                    'color:var(--faint);' +
-                    'font-size:10px;' +
-                    'font-weight:700">' +
-                    escapeHtml(
-                      work.workId
-                    ) +
-                  '</span>' +
+                    '<span style="' +
+                      'padding:3px 7px;' +
+                      'border-radius:7px;' +
+                      'font-size:10.5px;' +
+                      'font-weight:850;' +
+                      riskBadgeStyle +
+                    '">' +
+                      escapeHtml(
+                        riskDetail
+                      ) +
+                    '</span>' +
 
-                '</span>' +
+                    '<span style="' +
+                      'color:var(--faint);' +
+                      'font-size:9.5px;' +
+                      'font-weight:700">' +
+                      escapeHtml(
+                        work.workId
+                      ) +
+                    '</span>' +
+
+                  '</div>' +
+
+                '</div>' +
 
               '</div>' +
 
-            '</label>'
+              (
+                riskState.code ===
+                  'notSelected'
+                  ? (
+                      '<div style="' +
+                        'display:grid;' +
+                        'grid-template-columns:1fr 1fr;' +
+                        'gap:6px;' +
+                        'margin-top:9px;' +
+                        'padding-top:9px;' +
+                        'border-top:1px solid var(--line)">' +
+
+                        '<button type="button" ' +
+                          'class="work-mini-action inspection" ' +
+                          'data-start-safety-risk="' +
+                          escapeHtml(
+                            work.workId
+                          ) +
+                        '">' +
+                          '🛡️ 위험성평가 진행' +
+                        '</button>' +
+
+                        '<button type="button" ' +
+                          'class="work-mini-action warning" ' +
+                          'data-safety-risk-exempt="' +
+                          escapeHtml(
+                            work.workId
+                          ) +
+                          '" data-exempt-action="set">' +
+                          '➖ 해당 없음' +
+                        '</button>' +
+
+                      '</div>'
+                    )
+                  : riskState.code ===
+                      'notApplicable'
+                    ? (
+                        '<div style="' +
+                          'display:flex;' +
+                          'justify-content:flex-end;' +
+                          'margin-top:7px">' +
+
+                          '<button type="button" ' +
+                            'class="prework-chip" ' +
+                            'data-safety-risk-exempt="' +
+                            escapeHtml(
+                              work.workId
+                            ) +
+                            '" data-exempt-action="cancel">' +
+                            '해당 없음 취소' +
+                          '</button>' +
+
+                        '</div>'
+                      )
+                    : ''
+              ) +
+
+            '</article>'
           );
-        }
-      ).join('');
+        })
+        .join('');
 
     html +=
       '<div style="' +
@@ -5560,6 +6067,19 @@ if(
         'bottom:0;' +
         'padding:10px 0 2px;' +
         'background:var(--bg)">' +
+
+        '<div style="' +
+          'margin-bottom:7px;' +
+          'color:var(--sub);' +
+          'font-size:10.5px;' +
+          'font-weight:700;' +
+          'text-align:center">' +
+          '판정 완료 ' +
+          riskReadyCount +
+          '건 · 확인 필요 ' +
+          unresolvedCount +
+          '건' +
+        '</div>' +
 
         '<button type="button" ' +
           'class="wi-btn" ' +
@@ -5575,10 +6095,6 @@ if(
       html
     );
 
-    /*
-     * openSheet()가 목록 HTML을 넣은 다음
-     * 복수 선택 이벤트를 직접 연결합니다.
-     */
     var sheetBody =
       byId('sheetBody');
 
@@ -5593,6 +6109,113 @@ if(
         );
       });
 
+    sheetBody
+      .querySelectorAll(
+        '[data-start-safety-risk]'
+      )
+      .forEach(function(button){
+        button.addEventListener(
+          'click',
+          function(){
+            var workId =
+              clean(
+                this.dataset
+                  .startSafetyRisk
+              );
+
+            savePendingSafetySelection(
+              workId
+            );
+
+            navigate(
+              QUICK_URLS.risk +
+              '?workId=' +
+              encodeURIComponent(
+                workId
+              ) +
+              '&entry=safety-info' +
+              '&mode=test'
+            );
+          }
+        );
+      });
+
+    sheetBody
+      .querySelectorAll(
+        '[data-safety-risk-exempt]'
+      )
+      .forEach(function(button){
+        button.addEventListener(
+          'click',
+          function(){
+            var workId =
+              clean(
+                this.dataset
+                  .safetyRiskExempt
+              );
+
+            var enabled =
+              this.dataset
+                .exemptAction ===
+                'set';
+
+            /*
+             * 현재 선택을 먼저 보관하고
+             * 목록을 다시 그립니다.
+             */
+            var selectedBefore =
+              Array.from(
+                document.querySelectorAll(
+                  '[data-safety-work-select]:checked'
+                )
+              )
+                .map(function(input){
+                  return clean(
+                    input.value
+                  );
+                })
+                .filter(Boolean);
+
+            if(
+              enabled &&
+              selectedBefore.indexOf(
+                workId
+              ) < 0
+            ){
+              selectedBefore.push(
+                workId
+              );
+            }
+
+            sessionStorage.setItem(
+              'pendingSafetyInfoSelection',
+              JSON.stringify({
+                workIds:
+                  selectedBefore,
+
+                targetWorkId:
+                  workId,
+
+                createdAt:
+                  new Date()
+                    .toISOString(),
+
+                environment:'test'
+              })
+            );
+
+            setSafetyRiskExemption(
+              workId,
+              enabled
+            );
+
+            openSafetyInfoMultiPicker(
+              state.safetyInfoPickerWorks
+            );
+          }
+        );
+      });
+
     var startButton =
       byId(
         'startSelectedSafetyInfoButton'
@@ -5604,6 +6227,16 @@ if(
         startSelectedSafetyInfo
       );
     }
+
+    setText(
+      'safetyRiskStatusSummary',
+      '평가완료·해당없음 ' +
+      riskReadyCount +
+      '건 / 전체 ' +
+      state.safetyInfoPickerWorks
+        .length +
+      '건'
+    );
 
     updateSafetyInfoMultiPicker();
   }
