@@ -581,53 +581,316 @@ body{background:var(--bg);color:var(--body);padding-bottom:40px;}
   </div>
 </div>
 
-<!-- ══ STEP 3: 관련 서류 ══ -->
+<!-- ══ STEP 3: 위험성평가 및 관련 서류 ══ -->
 <div class="screen" id="screen-step3">
   <div class="info-box">
-    <div class="info-box-t">📂 제공 서류 안내</div>
-    <div class="info-box-b">위험성평가서는 필수입니다. 문서번호를 입력하면 시스템에서 자동 연동됩니다</div>
+    <div class="info-box-t">
+      🛡️ 위험성평가 연계 안내
+    </div>
+
+    <div class="info-box-b">
+      선택한 작업별 완료된 위험성평가를 자동으로 확인합니다.<br>
+      연계된 평가가 없는 작업은
+      <strong>위험성평가 해당 없음</strong>을 선택할 수 있습니다.
+      해당 없음 사유는 선택사항입니다.
+    </div>
   </div>
-  <div class="sec-title">📄 필수 서류</div>
+
+  <div class="sec-title">
+    🛡️ 작업별 위험성평가
+  </div>
+
+  <div
+    id="riskWorkList"
+    class="check-grid"
+  >
+    <div class="form-card">
+      위험성평가 연계정보를 확인하고 있습니다.
+    </div>
+  </div>
+
+  <div class="sec-title">
+    📄 공통 연계 서류
+  </div>
+
   <div class="form-card">
     <div class="form-group">
-      <label class="f-label">위험성평가 문서번호<span class="req">*</span></label>
-      <div style="display:flex;gap:8px;">
-        <input class="f-input" id="risk-assess-no" placeholder="예: RA-20251124-001" style="flex:1;">
-        <button style="padding:13px 14px;background:var(--navy2);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;" onclick="loadRiskAssessment()">조회</button>
-      </div>
-      <div id="risk-assess-result" style="display:none;margin-top:8px;padding:10px 12px;background:#E8F5E9;border-radius:9px;border:1px solid var(--green2);font-size:13px;font-weight:700;color:var(--green2);">
-        ✅ 위험성평가 연동 완료
+      <label class="f-label">
+        연계 위험성평가 문서번호
+      </label>
+
+      <input
+        class="f-input auto-filled"
+        id="risk-assess-no"
+        placeholder="연계된 위험성평가 없음"
+        readonly
+      >
+
+      <div
+        id="risk-assess-result"
+        style="
+          display:none;
+          margin-top:8px;
+          padding:10px 12px;
+          border:1px solid var(--green2);
+          border-radius:9px;
+          background:#E8F5E9;
+          color:var(--green2);
+          font-size:13px;
+          font-weight:700;
+          line-height:1.6;
+        "
+      >
+        위험성평가 연결상태
       </div>
     </div>
+  </div>
+
+  <div class="sec-title">
+    📋 작업 관련 서류
+  </div>
+
+  <div class="info-box">
+    <div class="info-box-t">
+      📌 서류 확인 안내
+    </div>
+
+    <div class="info-box-b">
+      작업관리대장과 위험성평가 결과를 참고하여
+      해당 작업에 제공하거나 확인할 서류를 선택하세요.
+      선택한 서류는 수급인 확인 화면에 표시됩니다.
+    </div>
+  </div>
+
+  <div
+    class="check-grid"
+    id="relatedDocumentList"
+  >
+    <div
+      class="check-item"
+      onclick="togDoc(this,'workPlan')"
+      data-document-id="workPlan"
+      data-name="작업계획서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          작업계획서
+        </div>
+
+        <div class="check-desc">
+          작업순서·인원·장비·안전조치를 포함한 작업계획
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'temporaryRiskAssessment')"
+      data-document-id="temporaryRiskAssessment"
+      data-name="임시 위험성평가서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          임시 위험성평가서
+        </div>
+
+        <div class="check-desc">
+          비정형·일회성·변경 작업의 추가 위험성평가
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'temporaryWorkStandard')"
+      data-document-id="temporaryWorkStandard"
+      data-name="임시 작업표준"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          임시 작업표준
+        </div>
+
+        <div class="check-desc">
+          비정상·비정형 작업의 작업순서 및 안전기준
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'hotWorkSafetyPlan')"
+      data-document-id="hotWorkSafetyPlan"
+      data-name="화기작업 안전조치서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          화기작업 안전조치서
+        </div>
+
+        <div class="check-desc">
+          용접·용단·그라인더 등 화기작업 안전조치
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'liftingPlan')"
+      data-document-id="liftingPlan"
+      data-name="중량물 인양계획서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          중량물 인양계획서
+        </div>
+
+        <div class="check-desc">
+          크레인·호이스트 등 인양작업 계획
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'confinedSpacePlan')"
+      data-document-id="confinedSpacePlan"
+      data-name="밀폐공간 작업계획서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          밀폐공간 작업계획서
+        </div>
+
+        <div class="check-desc">
+          출입·감시·환기·구조계획
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'gasMeasurement')"
+      data-document-id="gasMeasurement"
+      data-name="가스측정 결과서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          가스측정 결과서
+        </div>
+
+        <div class="check-desc">
+          산소·유해가스·폭발하한 측정 결과
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'equipmentCertificate')"
+      data-document-id="equipmentCertificate"
+      data-name="장비 검사성적서"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          장비 검사성적서
+        </div>
+
+        <div class="check-desc">
+          반입 장비·인양 장비·고소작업대 등의 검사자료
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'safetyTrainingCertificate')"
+      data-document-id="safetyTrainingCertificate"
+      data-name="안전교육 이수증"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          안전교육 이수증
+        </div>
+
+        <div class="check-desc">
+          작업자 교육·자격 확인자료
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="check-item"
+      onclick="togDoc(this,'msdsDocument')"
+      data-document-id="msdsDocument"
+      data-name="MSDS"
+    >
+      <div class="check-ico"></div>
+
+      <div style="flex:1">
+        <div class="check-label">
+          MSDS
+        </div>
+
+        <div class="check-desc">
+          작업 중 사용하거나 노출될 수 있는 화학물질 자료
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
     <div class="form-group">
-      <label class="f-label">작업허가서 번호 (있는 경우)</label>
-      <input class="f-input" id="permit-no" placeholder="예: PTW-20251124-001">
+      <label
+        class="f-label"
+        for="documentNote"
+      >
+        관련 서류 비고
+      </label>
+
+      <textarea
+        class="f-textarea"
+        id="documentNote"
+        placeholder="서류 위치, 문서번호, 해당 없음 사유 등 선택 입력"
+      ></textarea>
     </div>
   </div>
-  <div class="sec-title">📋 선택 서류</div>
-  <div class="check-grid">
-    <div class="check-item" onclick="togDoc(this,'doc1')" data-name="작업계획서">
-      <div class="check-ico"></div>
-      <div><div class="check-label">작업계획서</div></div>
-    </div>
-    <div class="check-item" onclick="togDoc(this,'doc2')" data-name="안전교육 이수증">
-      <div class="check-ico"></div>
-      <div><div class="check-label">안전교육 이수증</div></div>
-    </div>
-    <div class="check-item" onclick="togDoc(this,'doc3')" data-name="가스측정 결과서">
-      <div class="check-ico"></div>
-      <div><div class="check-label">가스측정 결과서</div></div>
-    </div>
-    <div class="check-item" onclick="togDoc(this,'doc4')" data-name="장비 검사 성적서">
-      <div class="check-ico"></div>
-      <div><div class="check-label">장비 검사 성적서</div></div>
-    </div>
-  </div>
+
   <div class="btn-row">
-    <button class="btn-secondary" onclick="goToStep(2)">← 이전</button>
-    <button class="btn-primary" onclick="validateStep(3)">다음 →</button>
+    <button
+      class="btn-secondary"
+      onclick="goToStep(2)"
+    >
+      ← 이전
+    </button>
+
+    <button
+      class="btn-primary"
+      onclick="validateStep(3)"
+    >
+      다음 →
+    </button>
   </div>
 </div>
+
 
 <!-- ══ STEP 4: 공장 안전정보 ══ -->
 <div class="screen" id="screen-step4">
@@ -3545,6 +3808,592 @@ function onLocationChange(location){
 // ═══════════════════════════════════════════════
 // VALIDATION & NAVIGATION
 // ═══════════════════════════════════════════════
+ // ═══════════════════════════════════════════════
+// STEP 3 · 작업별 위험성평가 및 관련 서류
+// ═══════════════════════════════════════════════
+
+function riskLinkWorkName(
+  workId
+){
+  var linkedWorks =
+    Array.isArray(data.linkedWorks)
+      ? data.linkedWorks
+      : [];
+
+  var work =
+    linkedWorks.find(
+      function(item){
+        return (
+          item.workId === workId
+        );
+      }
+    );
+
+  return work
+    ? (
+        work.workName ||
+        workId
+      )
+    : workId;
+}
+
+function renderRiskWorkList(){
+  var container =
+    document.getElementById(
+      'riskWorkList'
+    );
+
+  if(!container){
+    return;
+  }
+
+  var links =
+    Array.isArray(
+      data.riskAssessmentLinks
+    )
+      ? data.riskAssessmentLinks
+      : [];
+
+  /*
+   * 기존 단건 진입 또는 직접 작성 화면과의 호환
+   */
+  if(
+    !links.length &&
+    data.workId
+  ){
+    links = [
+      {
+        workId:
+          data.workId,
+
+        applicability:
+          data.riskAssessmentNo
+            ? 'linked'
+            : 'notSelected',
+
+        riskId:
+          data.riskAssessmentNo ||
+          '',
+
+        status:
+          data.riskAssessmentNo
+            ? 'completed'
+            : 'notSelected',
+
+        reason:''
+      }
+    ];
+
+    data.riskAssessmentLinks =
+      links;
+  }
+
+  if(!links.length){
+    container.innerHTML =
+      '<div class="form-card">' +
+        '<div class="warn-box" style="margin:0">' +
+          '<div class="warn-box-t">' +
+            '⚠️ 연결 작업 없음' +
+          '</div>' +
+          '<div class="warn-box-b">' +
+            '대시보드에서 작업을 선택하지 않았습니다.' +
+            '<br>위험성평가 해당 여부를 직접 확인하세요.' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    return;
+  }
+
+  container.innerHTML =
+    links.map(
+      function(link,index){
+        var linked =
+          link.applicability ===
+            'linked' &&
+          Boolean(link.riskId);
+
+        return (
+          '<div class="form-card" ' +
+            'data-risk-work-card="' +
+            escapeHtml(
+              link.workId
+            ) +
+          '">' +
+
+            '<div style="' +
+              'display:flex;' +
+              'align-items:flex-start;' +
+              'gap:9px;' +
+              'margin-bottom:10px">' +
+
+              '<span style="' +
+                'flex-shrink:0;' +
+                'padding:3px 8px;' +
+                'border-radius:7px;' +
+                'background:' +
+                  (
+                    linked
+                      ? '#E8F5E9'
+                      : '#FFF3E0'
+                  ) +
+                ';color:' +
+                  (
+                    linked
+                      ? 'var(--green2)'
+                      : 'var(--orange)'
+                  ) +
+                ';font-size:11px;' +
+                'font-weight:800">' +
+                (
+                  linked
+                    ? '평가 완료'
+                    : '평가 미연계'
+                ) +
+              '</span>' +
+
+              '<div style="min-width:0">' +
+                '<div style="' +
+                  'color:var(--text);' +
+                  'font-size:13.5px;' +
+                  'font-weight:800;' +
+                  'line-height:1.45">' +
+                  (
+                    index + 1
+                  ) +
+                  '. ' +
+                  escapeHtml(
+                    riskLinkWorkName(
+                      link.workId
+                    )
+                  ) +
+                '</div>' +
+
+                '<div style="' +
+                  'margin-top:3px;' +
+                  'color:var(--sub);' +
+                  'font-size:11px;' +
+                  'font-weight:600">' +
+                  escapeHtml(
+                    link.workId
+                  ) +
+                '</div>' +
+              '</div>' +
+
+            '</div>' +
+
+            (
+              linked
+                ? (
+                    '<div class="success-box" ' +
+                      'style="margin:0">' +
+
+                      '<div class="info-box-t" ' +
+                        'style="color:var(--green2)">' +
+                        '✅ 기존 위험성평가 자동 연계' +
+                      '</div>' +
+
+                      '<div class="info-box-b">' +
+                        '문서번호: ' +
+                        escapeHtml(
+                          link.riskId
+                        ) +
+                        (
+                          link.riskLevel
+                            ? '<br>위험도: ' +
+                              escapeHtml(
+                                link.riskLevel
+                              )
+                            : ''
+                        ) +
+                      '</div>' +
+
+                    '</div>'
+                  )
+                : (
+                    '<label class="check-item ' +
+                      (
+                        link.applicability ===
+                          'notApplicable'
+                          ? 'checked'
+                          : ''
+                      ) +
+                      '" style="box-shadow:none" ' +
+                      'data-risk-na-card="' +
+                      escapeHtml(
+                        link.workId
+                      ) +
+                    '">' +
+
+                      '<input type="checkbox" ' +
+                        'data-risk-not-applicable="' +
+                        escapeHtml(
+                          link.workId
+                        ) +
+                        '" ' +
+                        (
+                          link.applicability ===
+                            'notApplicable'
+                            ? 'checked'
+                            : ''
+                        ) +
+                        ' style="' +
+                          'width:21px;' +
+                          'height:21px;' +
+                          'accent-color:var(--navy2)">' +
+
+                      '<div style="flex:1">' +
+                        '<div class="check-label">' +
+                          '위험성평가 해당 없음' +
+                        '</div>' +
+
+                        '<div class="check-desc">' +
+                          '완료된 위험성평가가 연결되지 않은 작업입니다.' +
+                        '</div>' +
+                      '</div>' +
+
+                    '</label>' +
+
+                    '<div class="form-group" ' +
+                      'style="margin-top:10px;margin-bottom:0">' +
+
+                      '<label class="f-label">' +
+                        '해당 없음 사유 (선택)' +
+                      '</label>' +
+
+                      '<input type="text" ' +
+                        'class="f-input" ' +
+                        'data-risk-na-reason="' +
+                        escapeHtml(
+                          link.workId
+                        ) +
+                        '" value="' +
+                        escapeHtml(
+                          link.reason || ''
+                        ) +
+                        '" placeholder="' +
+                          '예: 사무실 내 컴퓨터 단순 설정 작업">' +
+
+                    '</div>'
+                  )
+            ) +
+
+          '</div>'
+        );
+      }
+    ).join('');
+
+  updateRiskAssessmentSummary();
+}
+
+function setRiskNotApplicable(
+  workId,
+  checked
+){
+  var links =
+    Array.isArray(
+      data.riskAssessmentLinks
+    )
+      ? data.riskAssessmentLinks
+      : [];
+
+  var link =
+    links.find(
+      function(item){
+        return (
+          item.workId === workId
+        );
+      }
+    );
+
+  if(
+    !link ||
+    link.applicability ===
+      'linked'
+  ){
+    return;
+  }
+
+  link.applicability =
+    checked
+      ? 'notApplicable'
+      : 'notSelected';
+
+  link.status =
+    checked
+      ? 'notApplicable'
+      : 'notSelected';
+
+  link.confirmedAt =
+    checked
+      ? new Date()
+          .toISOString()
+      : '';
+
+  var session = {};
+
+  try{
+    session =
+      JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || '{}'
+      ) || {};
+  }catch(error){
+    session = {};
+  }
+
+  link.confirmedBy =
+    checked
+      ? (
+          session.displayName ||
+          sessionStorage.getItem(
+            'userName'
+          ) ||
+          ''
+        )
+      : '';
+
+  var card =
+    document.querySelector(
+      '[data-risk-na-card="' +
+      CSS.escape(workId) +
+      '"]'
+    );
+
+  if(card){
+    card.classList.toggle(
+      'checked',
+      checked
+    );
+  }
+
+  updateRiskAssessmentSummary();
+}
+
+function updateRiskAssessmentSummary(){
+  var links =
+    Array.isArray(
+      data.riskAssessmentLinks
+    )
+      ? data.riskAssessmentLinks
+      : [];
+
+  var linked =
+    links.filter(
+      function(item){
+        return (
+          item.applicability ===
+            'linked'
+        );
+      }
+    );
+
+  var notApplicable =
+    links.filter(
+      function(item){
+        return (
+          item.applicability ===
+            'notApplicable'
+        );
+      }
+    );
+
+  var pending =
+    links.filter(
+      function(item){
+        return (
+          item.applicability !==
+            'linked' &&
+          item.applicability !==
+            'notApplicable'
+        );
+      }
+    );
+
+  data.riskAssessmentNo =
+    linked
+      .map(function(item){
+        return item.riskId;
+      })
+      .filter(Boolean)
+      .join(', ');
+
+  var input =
+    document.getElementById(
+      'risk-assess-no'
+    );
+
+  if(input){
+    input.value =
+      data.riskAssessmentNo;
+
+    input.placeholder =
+      linked.length
+        ? ''
+        : '연계된 위험성평가 없음';
+  }
+
+  var result =
+    document.getElementById(
+      'risk-assess-result'
+    );
+
+  if(!result){
+    return;
+  }
+
+  result.style.display =
+    'block';
+
+  result.style.background =
+    pending.length
+      ? '#FFF3E0'
+      : '#E8F5E9';
+
+  result.style.borderColor =
+    pending.length
+      ? 'var(--orange2)'
+      : 'var(--green2)';
+
+  result.style.color =
+    pending.length
+      ? 'var(--orange)'
+      : 'var(--green2)';
+
+  result.innerHTML =
+    '전체 작업 ' +
+    links.length +
+    '건 · 위험성평가 연계 ' +
+    linked.length +
+    '건 · 해당 없음 ' +
+    notApplicable.length +
+    '건' +
+    (
+      pending.length
+        ? '<br>⚠️ 미결정 작업 ' +
+          pending.length +
+          '건이 있습니다.'
+        : '<br>✅ 모든 작업의 위험성평가 적용 구분이 확인되었습니다.'
+    );
+}
+
+function collectRiskStepData(){
+  var links =
+    Array.isArray(
+      data.riskAssessmentLinks
+    )
+      ? data.riskAssessmentLinks
+      : [];
+
+  document
+    .querySelectorAll(
+      '[data-risk-na-reason]'
+    )
+    .forEach(function(input){
+      var workId =
+        input.dataset
+          .riskNaReason;
+
+      var link =
+        links.find(
+          function(item){
+            return (
+              item.workId ===
+              workId
+            );
+          }
+        );
+
+      if(link){
+        link.reason =
+          String(
+            input.value || ''
+          ).trim();
+      }
+    });
+
+  data.riskAssessmentLinks =
+    links;
+
+  return links;
+}
+
+function validateRiskStep(){
+  var links =
+    collectRiskStepData();
+
+  if(!links.length){
+    showToast(
+      '연결된 작업정보를 확인할 수 없습니다.',
+      'danger'
+    );
+
+    return false;
+  }
+
+  var pending =
+    links.find(
+      function(item){
+        return (
+          item.applicability !==
+            'linked' &&
+          item.applicability !==
+            'notApplicable'
+        );
+      }
+    );
+
+  if(pending){
+    showToast(
+      '위험성평가 미연계 작업의 해당 없음 여부를 확인하세요.',
+      'danger'
+    );
+
+    var target =
+      document.querySelector(
+        '[data-risk-work-card="' +
+        CSS.escape(
+          pending.workId
+        ) +
+        '"]'
+      );
+
+    if(target){
+      target.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+/*
+ * 위험성평가 해당 없음 선택 이벤트
+ */
+document.addEventListener(
+  'change',
+  function(event){
+    if(
+      !event.target.matches(
+        '[data-risk-not-applicable]'
+      )
+    ){
+      return;
+    }
+
+    setRiskNotApplicable(
+      event.target.dataset
+        .riskNotApplicable,
+      event.target.checked
+    );
+  }
+);
+    
 function validateStep(step){
 if(step===1){
     var sc=getVal('subcontractor'), wn=getVal('work-name'),
@@ -3609,17 +4458,79 @@ if(step===1){
     }
   }
   else if(step===3){
-    var raNo=getVal('risk-assess-no');
-    if(!raNo){showToast('위험성평가 문서번호를 입력해주세요','danger'); return;}
-    data.riskAssessmentNo = raNo;
-    data.permitNo = getVal('permit-no');
-    var docs = [];
-    document.querySelectorAll('#screen-step3 .check-item.checked').forEach(function(el){
-      var name = el.getAttribute('data-name');
-      if(name) docs.push(name);
-    });
-    data.selectedDocs = docs;
+    /*
+     * 모든 작업은 다음 중 하나여야 합니다.
+     *
+     * 1. 완료된 위험성평가 자동 연계
+     * 2. 위험성평가 해당 없음
+     *
+     * 해당 없음 사유는 선택사항입니다.
+     */
+    if(
+      !validateRiskStep()
+    ){
+      return;
+    }
+
+    data.permitNo = '';
+
+    var selectedDocuments = [];
+
+    document
+      .querySelectorAll(
+        '#relatedDocumentList ' +
+        '.check-item.checked'
+      )
+      .forEach(function(element){
+        var documentId =
+          element.getAttribute(
+            'data-document-id'
+          );
+
+        var documentName =
+          element.getAttribute(
+            'data-name'
+          );
+
+        if(documentName){
+          selectedDocuments.push({
+            documentId:
+              documentId || '',
+
+            documentName:
+              documentName,
+
+            status:
+              'provided',
+
+            selected:true
+          });
+        }
+      });
+
+    data.selectedDocuments =
+      selectedDocuments;
+
+    /*
+     * 기존 수급인용 화면과의 호환성을 위해
+     * 문서명 문자열 배열도 유지합니다.
+     */
+    data.selectedDocs =
+      selectedDocuments.map(
+        function(documentItem){
+          return (
+            documentItem
+              .documentName
+          );
+        }
+      );
+
+    data.documentNote =
+      getVal(
+        'documentNote'
+      );
   }
+
   else if(step===4){
     var fac = [];
     document.querySelectorAll('#facilityGrid .check-item.checked').forEach(function(el){
@@ -3654,18 +4565,79 @@ if(step===1){
 
 function goToStep(step){
   currentStep = step;
-  goToScreen('screen-step' + step);
-  for(var i=1;i<=7;i++){
-    var el = document.getElementById('ps' + i);
-    if(el) el.className = 'ps' + (i<step?' done':i===step?' act':'');
+
+  goToScreen(
+    'screen-step' + step
+  );
+
+  for(
+    var index = 1;
+    index <= 7;
+    index++
+  ){
+    var element =
+      document.getElementById(
+        'ps' + index
+      );
+
+    if(element){
+      element.className =
+        'ps' +
+        (
+          index < step
+            ? ' done'
+            : index === step
+              ? ' act'
+              : ''
+        );
+    }
   }
-  var pl = document.getElementById('progLabel');
-  var pp = document.getElementById('progStep');
-  if(pl) pl.textContent = step + '단계: ' + (STEP_LABELS[step] || '');
-  if(pp) pp.textContent = step + '/7';
-  document.getElementById('progWrap').style.display = 'block';
-  window.scrollTo(0, 0);
+
+  var progressLabel =
+    document.getElementById(
+      'progLabel'
+    );
+
+  var progressStep =
+    document.getElementById(
+      'progStep'
+    );
+
+  if(progressLabel){
+    progressLabel.textContent =
+      step +
+      '단계: ' +
+      (
+        STEP_LABELS[step] ||
+        ''
+      );
+  }
+
+  if(progressStep){
+    progressStep.textContent =
+      step + '/7';
+  }
+
+  document.getElementById(
+    'progWrap'
+  ).style.display =
+    'block';
+
+  /*
+   * 3단계 진입 시 작업별 위험성평가
+   * 연계·해당 없음 화면을 다시 생성합니다.
+   */
+  if(
+    step === 3 &&
+    typeof renderRiskWorkList ===
+      'function'
+  ){
+    renderRiskWorkList();
+  }
+
+  window.scrollTo(0,0);
 }
+
 
 function goToScreen(id){
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
