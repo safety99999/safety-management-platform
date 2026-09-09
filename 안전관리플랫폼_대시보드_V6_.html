@@ -9212,6 +9212,15 @@ function standardWorkCard(
    * 원본은 *Raw 또는 workNameFull 필드에 보존하고,
    * 화면과 앱 연계에는 표준화 필드를 사용합니다.
    */
+  /*
+   * 작업관리대장 엑셀 자료를 표준 작업 구조로 변환합니다.
+   *
+   * - A열 날짜 병합에 따른 빈 날짜를 이전 행에서 승계
+   * - C·D열 조직정보 병합 대응
+   * - M열의 담당자명과 전화번호 분리
+   * - S열 이메일을 수급인 이메일로 저장
+   * - Q·R열 ILS 담당자 추가 저장
+   */
   function parseWorkDatabase(
     text
   ){
@@ -9220,22 +9229,137 @@ function standardWorkCard(
 
     var records = [];
 
+    var lastDate = '';
+    var lastOperatingDepartment = '';
+    var lastRequestingDepartment = '';
+
+    var previousRecord = null;
+
+    function splitContact(value){
+      var raw =
+        normalizeImportedValue(
+          value
+        )
+          .replace(
+            /^["'“”‘’]+/,
+            ''
+          )
+          .replace(
+            /["'“”‘’]+$/,
+            ''
+          )
+          .trim();
+
+      var phoneMatch =
+        raw.match(
+          /(?:01[016789]|0[2-6][1-5]?)[\s-]?\d{3,4}[\s-]?\d{4}/
+        );
+
+      var phone =
+        phoneMatch
+          ? phoneMatch[0]
+              .replace(/\D/g,'')
+          : '';
+
+      var name =
+        phoneMatch
+          ? raw
+              .replace(
+                phoneMatch[0],
+                ''
+              )
+              .replace(/\s+/g,' ')
+              .trim()
+          : raw;
+
+      return {
+        raw:raw,
+        name:
+          normalizeImportedValue(
+            name
+          ),
+        phone:phone
+      };
+    }
+
     rows.forEach(
       function(columns,index){
-        var date =
+        var parsedDate =
           parseDateValue(
             columns[0]
           );
+
+        if(parsedDate){
+          lastDate =
+            parsedDate;
+        }
 
         var originalNo =
           normalizeImportedValue(
             columns[1]
           ).replace(/\s+/g,'');
 
+        /*
+         * NO가 있는 데이터 행에서 A열 날짜가 비어 있으면
+         * Excel 세로 병합으로 판단해 직전 날짜를 사용합니다.
+         */
+        var date =
+          parsedDate ||
+          (
+            originalNo
+              ? lastDate
+              : ''
+          );
+
+        var rawOperatingDepartment =
+          normalizeImportedValue(
+            columns[2]
+          );
+
+        var rawRequestingDepartment =
+          normalizeImportedValue(
+            columns[3]
+          );
+
+        if(rawOperatingDepartment){
+          lastOperatingDepartment =
+            rawOperatingDepartment;
+        }
+
+        if(rawRequestingDepartment){
+          lastRequestingDepartment =
+            rawRequestingDepartment;
+        }
+
+        var operatingDepartment =
+          rawOperatingDepartment ||
+          (
+            originalNo
+              ? lastOperatingDepartment
+              : ''
+          );
+
+        var requestingDepartment =
+          rawRequestingDepartment ||
+          (
+            originalNo
+              ? lastRequestingDepartment
+              : ''
+          );
+
         var workNameFull =
           clean(
             columns[6]
-          );
+          )
+            .replace(
+              /^["'“”‘’]+/,
+              ''
+            )
+            .replace(
+              /["'“”‘’]+$/,
+              ''
+            )
+            .trim();
 
         if(
           !date ||
@@ -9259,22 +9383,6 @@ function standardWorkCard(
             columns[4]
           );
 
-        var locationDisplay =
-          normalizeImportedLocation(
-            locationRaw,
-            workNameFull
-          );
-
-        var operatingDepartment =
-          normalizeImportedValue(
-            columns[2]
-          );
-
-        var requestingDepartment =
-          normalizeImportedValue(
-            columns[3]
-          );
-
         var contractCompany =
           normalizeImportedValue(
             columns[9]
@@ -9285,20 +9393,108 @@ function standardWorkCard(
             columns[10]
           );
 
+        var workManager =
+          normalizeImportedValue(
+            columns[11]
+          );
+
+        var contractorContact =
+          splitContact(
+            columns[12]
+          );
+
+        var email =
+          normalizeImportedValue(
+            columns[18]
+          );
+
+        /*
+         * 같은 작업명이 연속되고 병합된 셀이 비어 있는 경우
+         * 직전 행의 위치·업체·담당자 정보를 승계합니다.
+         */
+        var sameAsPrevious =
+          Boolean(
+            previousRecord &&
+            normalizeImportedWorkName(
+              previousRecord.workNameFull
+            ) ===
+              normalizedWorkName
+          );
+
+        if(
+          sameAsPrevious &&
+          !locationRaw
+        ){
+          locationRaw =
+            previousRecord.locationRaw ||
+            '';
+        }
+
+        if(
+          sameAsPrevious &&
+          !contractCompany
+        ){
+          contractCompany =
+            previousRecord.contractCompany ||
+            '';
+        }
+
+        if(
+          sameAsPrevious &&
+          !executingCompany
+        ){
+          executingCompany =
+            previousRecord.executingCompany ||
+            '';
+        }
+
+        if(
+          sameAsPrevious &&
+          !workManager
+        ){
+          workManager =
+            previousRecord.workManager ||
+            '';
+        }
+
+        if(
+          sameAsPrevious &&
+          !contractorContact.name
+        ){
+          contractorContact.name =
+            previousRecord.contractorManager ||
+            '';
+        }
+
+        if(
+          sameAsPrevious &&
+          !contractorContact.phone
+        ){
+          contractorContact.phone =
+            previousRecord.contractorManagerPhone ||
+            '';
+        }
+
+        if(
+          sameAsPrevious &&
+          !email
+        ){
+          email =
+            previousRecord.contractorEmail ||
+            previousRecord.email ||
+            '';
+        }
+
         var company =
           normalizeImportedCompany(
             executingCompany,
             contractCompany
           );
 
-        var workManager =
-          normalizeImportedValue(
-            columns[11]
-          );
-
-        var contractorManager =
-          normalizeImportedValue(
-            columns[12]
+        var locationDisplay =
+          normalizeImportedLocation(
+            locationRaw,
+            workNameFull
           );
 
         var time =
@@ -9331,7 +9527,7 @@ function standardWorkCard(
           '_' +
           originalNo;
 
-        records.push({
+        var record = {
           workId:
             workId,
 
@@ -9344,9 +9540,6 @@ function standardWorkCard(
           date:
             date,
 
-          /*
-           * 조직정보
-           */
           operatingDepartment:
             operatingDepartment,
 
@@ -9359,9 +9552,6 @@ function standardWorkCard(
           instructionDept:
             requestingDepartment,
 
-          /*
-           * 위치정보
-           */
           locationRaw:
             locationRaw,
 
@@ -9398,9 +9588,6 @@ function standardWorkCard(
               )[1] || ''
           },
 
-          /*
-           * 작업정보
-           */
           workOrderNo:
             normalizeImportedValue(
               columns[5]
@@ -9434,9 +9621,6 @@ function standardWorkCard(
           workEndTime:
             time.end,
 
-          /*
-           * 업체정보
-           */
           contractCompany:
             contractCompany,
 
@@ -9452,9 +9636,6 @@ function standardWorkCard(
           companyDisplay:
             company,
 
-          /*
-           * 담당자 정보
-           */
           manager:
             workManager,
 
@@ -9465,14 +9646,20 @@ function standardWorkCard(
             workManager,
 
           contractorManager:
-            contractorManager,
+            contractorContact.name,
 
           supervisor:
-            contractorManager,
+            contractorContact.name,
 
-          /*
-           * 허가·ILS·연락정보
-           */
+          contractorManagerRaw:
+            contractorContact.raw,
+
+          contractorManagerPhone:
+            contractorContact.phone,
+
+          contractorPhone:
+            contractorContact.phone,
+
           permitLocation:
             normalizeImportedValue(
               columns[13]
@@ -9490,10 +9677,21 @@ function standardWorkCard(
               ? 'Y'
               : 'N',
 
-          email:
+          ilsApprover:
             normalizeImportedValue(
-              columns[18]
+              columns[16]
             ),
+
+          ilsInspector:
+            normalizeImportedValue(
+              columns[17]
+            ),
+
+          email:
+            email,
+
+          contractorEmail:
+            email,
 
           requiredWorkPlan:
             normalizeImportedValue(
@@ -9510,13 +9708,9 @@ function standardWorkCard(
               normalizeImportedValue(
                 columns[21]
               ),
-
             url:''
           },
 
-          /*
-           * 위험도
-           */
           risk:
             sourceHighRisk
               ? '고위험'
@@ -9530,9 +9724,6 @@ function standardWorkCard(
           isHighRiskFromSource:
             sourceHighRisk,
 
-          /*
-           * 원본 추적정보
-           */
           sourceType:
             'excel-paste',
 
@@ -9543,18 +9734,19 @@ function standardWorkCard(
             2,
 
           normalizationVersion:
-            '2026.09.09-1',
+            '2026.09.09-2',
 
           workStatus:
             '등록'
-        });
+        };
+
+        records.push(record);
+
+        previousRecord =
+          record;
       }
     );
 
-    /*
-     * 같은 일자·NO가 중복된 경우
-     * 마지막으로 입력된 행을 사용합니다.
-     */
     var recordMap =
       new Map();
 
@@ -9571,6 +9763,7 @@ function standardWorkCard(
       recordMap.values()
     );
   }
+
 
 
   async function savePastedDatabase(){
