@@ -8933,6 +8933,156 @@ function standardWorkCard(
     return null;
   }
 
+  /*
+   * 작업관리대장 원본값에서 업무에 사용할 수 없는
+   * 빈 값과 미지정 표현을 제거합니다.
+   */
+  function normalizeImportedValue(
+    value
+  ){
+    var text =
+      clean(value)
+        .replace(/\s+/g,' ')
+        .trim();
+
+    var invalidValues = [
+      '',
+      '-',
+      '미지정',
+      '부서 미지정',
+      '업체 미지정',
+      '담당자 미지정',
+      '해당 없음',
+      '해당없음',
+      'N/A',
+      'NA',
+      'NULL',
+      'UNDEFINED'
+    ];
+
+    return invalidValues.indexOf(
+      text.toUpperCase()
+    ) >= 0
+      ? ''
+      : text;
+  }
+
+  /*
+   * 작업명 원본의 불필요한 줄바꿈·중복 공백·따옴표를
+   * 정리한 후 기존 작업명 간소화 규칙을 적용합니다.
+   */
+  function normalizeImportedWorkName(
+    value
+  ){
+    var original =
+      clean(value);
+
+    if(!original){
+      return '';
+    }
+
+    var normalized =
+      original
+        .replace(/\r\n/g,' ')
+        .replace(/\r/g,' ')
+        .replace(/\n/g,' ')
+        .replace(/\t/g,' ')
+        .replace(/\s+/g,' ')
+        .trim();
+
+    /*
+     * 엑셀 셀 전체를 감싸는 따옴표만 제거합니다.
+     */
+    normalized =
+      normalized
+        .replace(
+          /^["'“”‘’]+/,
+          ''
+        )
+        .replace(
+          /["'“”‘’]+$/,
+          ''
+        )
+        .trim();
+
+    /*
+     * 작업내용 레이블이 있으면 실제 작업내용을 우선합니다.
+     */
+    var contentMatch =
+      normalized.match(
+        /작업\s*내용\s*[:：]\s*(.+)$/i
+      );
+
+    if(
+      contentMatch &&
+      contentMatch[1]
+    ){
+      normalized =
+        contentMatch[1].trim();
+    }
+
+    /*
+     * 기존 대시보드의 공장·위치·관리문구 제거 규칙을
+     * 마지막으로 적용합니다.
+     */
+    normalized =
+      simplifyWorkName(
+        normalized
+      );
+
+    return normalized ||
+      original;
+  }
+
+  /*
+   * 위치정보를 원본 문자열과 작업명에서 분석해
+   * 공장·라인·층 표시값으로 표준화합니다.
+   */
+  function normalizeImportedLocation(
+    locationRaw,
+    workNameFull
+  ){
+    var temporaryWork = {
+      locationRaw:
+        normalizeImportedValue(
+          locationRaw
+        ),
+
+      workNameFull:
+        normalizeImportedValue(
+          workNameFull
+        )
+    };
+
+    return workLocation(
+      temporaryWork
+    );
+  }
+
+  /*
+   * 작업관리대장의 수행업체를 하나의 표준 필드로 만듭니다.
+   */
+  function normalizeImportedCompany(
+    executingCompany,
+    contractCompany
+  ){
+    return (
+      normalizeImportedValue(
+        executingCompany
+      ) ||
+      normalizeImportedValue(
+        contractCompany
+      ) ||
+      ''
+    );
+  }
+
+  /*
+   * 작업관리대장 엑셀 자료를 대시보드 공통 구조로 변환합니다.
+   *
+   * 원본은 *Raw 또는 workNameFull 필드에 보존하고,
+   * 화면과 앱 연계에는 표준화 필드를 사용합니다.
+   */
   function parseWorkDatabase(
     text
   ){
@@ -8949,19 +9099,78 @@ function standardWorkCard(
           );
 
         var originalNo =
-          clean(columns[1])
-            .replace(/\s+/g,'');
+          normalizeImportedValue(
+            columns[1]
+          ).replace(/\s+/g,'');
 
-        var fullName =
-          clean(columns[6]);
+        var workNameFull =
+          clean(
+            columns[6]
+          );
 
         if(
           !date ||
           !originalNo ||
-          !fullName
+          !workNameFull
         ){
           return;
         }
+
+        var normalizedWorkName =
+          normalizeImportedWorkName(
+            workNameFull
+          );
+
+        if(!normalizedWorkName){
+          return;
+        }
+
+        var locationRaw =
+          normalizeImportedValue(
+            columns[4]
+          );
+
+        var locationDisplay =
+          normalizeImportedLocation(
+            locationRaw,
+            workNameFull
+          );
+
+        var operatingDepartment =
+          normalizeImportedValue(
+            columns[2]
+          );
+
+        var requestingDepartment =
+          normalizeImportedValue(
+            columns[3]
+          );
+
+        var contractCompany =
+          normalizeImportedValue(
+            columns[9]
+          );
+
+        var executingCompany =
+          normalizeImportedValue(
+            columns[10]
+          );
+
+        var company =
+          normalizeImportedCompany(
+            executingCompany,
+            contractCompany
+          );
+
+        var workManager =
+          normalizeImportedValue(
+            columns[11]
+          );
+
+        var contractorManager =
+          normalizeImportedValue(
+            columns[12]
+          );
 
         var time =
           parseWorkTime(
@@ -8970,7 +9179,11 @@ function standardWorkCard(
 
         var sourceHighRisk =
           [
-            25,26,27,28,29
+            25,
+            26,
+            27,
+            28,
+            29
           ].some(function(column){
             return (
               normalizeMark(
@@ -8978,74 +9191,105 @@ function standardWorkCard(
               ) === true
             );
           }) ||
-          fullName
+          workNameFull
             .replace(/\s+/g,'')
             .indexOf(
               '고위험작업'
             ) >= 0;
 
-        var locationRaw =
-          clean(columns[4]);
-
-        var company =
-          clean(columns[10]) ||
-          clean(columns[9]) ||
-          '미지정';
+        var workId =
+          date +
+          '_' +
+          originalNo;
 
         records.push({
           workId:
-            date +
-            '_' +
-            originalNo,
+            workId,
+
+          id:
+            workId,
 
           originalNo:
             originalNo,
 
-          date:date,
+          date:
+            date,
 
+          /*
+           * 조직정보
+           */
           operatingDepartment:
-            clean(columns[2]),
+            operatingDepartment,
+
+          operationDept:
+            operatingDepartment,
 
           requestingDepartment:
-            clean(columns[3]),
+            requestingDepartment,
 
+          instructionDept:
+            requestingDepartment,
+
+          /*
+           * 위치정보
+           */
           locationRaw:
             locationRaw,
 
+          workPlaceRaw:
+            locationRaw,
+
+          locationDisplay:
+            locationDisplay,
+
           location:{
-            raw:locationRaw,
+            raw:
+              locationRaw,
+
+            display:
+              locationDisplay,
+
             factory:
-              locationRaw.indexOf(
-                '2공장'
-              ) >= 0 ||
-              fullName.indexOf(
-                '2-2'
-              ) >= 0
-                ? '2공장'
-                : locationRaw.indexOf(
-                    '1공장'
-                  ) >= 0 ||
-                  fullName.indexOf(
-                    '2-1'
-                  ) >= 0
-                    ? '1공장'
-                    : '',
-            line:null
+              locationDisplay
+                .split(' · ')[0] ||
+              '',
+
+            line:
+              (
+                locationDisplay.match(
+                  /(\d+(?:~\d+)?)라인/
+                ) || []
+              )[1] || '',
+
+            floor:
+              (
+                locationDisplay.match(
+                  /(\d+)층/
+                ) || []
+              )[1] || ''
           },
 
+          /*
+           * 작업정보
+           */
           workOrderNo:
-            clean(columns[5]),
-
-          workName:
-            simplifyWorkName(
-              fullName
+            normalizeImportedValue(
+              columns[5]
             ),
 
+          workName:
+            normalizedWorkName,
+
           workNameFull:
-            fullName,
+            workNameFull,
+
+          workNameRaw:
+            workNameFull,
 
           workerCountRaw:
-            clean(columns[7]),
+            normalizeImportedValue(
+              columns[7]
+            ),
 
           workerCount:
             parseWorkerCount(
@@ -9061,29 +9305,54 @@ function standardWorkCard(
           workEndTime:
             time.end,
 
+          /*
+           * 업체정보
+           */
           contractCompany:
-            clean(columns[9]),
+            contractCompany,
+
+          subcontractCompany:
+            contractCompany,
 
           executingCompany:
-            clean(columns[10]),
+            executingCompany,
 
-          company:company,
+          company:
+            company,
 
+          companyDisplay:
+            company,
+
+          /*
+           * 담당자 정보
+           */
           manager:
-            clean(columns[11]) ||
-            '미지정',
+            workManager,
 
           workManager:
-            clean(columns[11]),
+            workManager,
+
+          companyManager:
+            workManager,
 
           contractorManager:
-            clean(columns[12]),
+            contractorManager,
 
+          supervisor:
+            contractorManager,
+
+          /*
+           * 허가·ILS·연락정보
+           */
           permitLocation:
-            clean(columns[13]),
+            normalizeImportedValue(
+              columns[13]
+            ),
 
           permitApprover:
-            clean(columns[14]),
+            normalizeImportedValue(
+              columns[14]
+            ),
 
           ilsExecution:
             normalizeMark(
@@ -9093,20 +9362,32 @@ function standardWorkCard(
               : 'N',
 
           email:
-            clean(columns[18]),
+            normalizeImportedValue(
+              columns[18]
+            ),
 
           requiredWorkPlan:
-            clean(columns[19]),
+            normalizeImportedValue(
+              columns[19]
+            ),
 
           safety:
-            clean(columns[20]),
+            normalizeImportedValue(
+              columns[20]
+            ),
 
           riskAssessmentReference:{
             raw:
-              clean(columns[21]),
+              normalizeImportedValue(
+                columns[21]
+              ),
+
             url:''
           },
 
+          /*
+           * 위험도
+           */
           risk:
             sourceHighRisk
               ? '고위험'
@@ -9120,21 +9401,48 @@ function standardWorkCard(
           isHighRiskFromSource:
             sourceHighRisk,
 
+          /*
+           * 원본 추적정보
+           */
           sourceType:
             'excel-paste',
 
           sourceRowIndex:
             index + 1,
 
-          schemaVersion:1,
+          schemaVersion:
+            2,
 
-          workStatus:'등록'
+          normalizationVersion:
+            '2026.09.09-1',
+
+          workStatus:
+            '등록'
         });
       }
     );
 
-    return records;
+    /*
+     * 같은 일자·NO가 중복된 경우
+     * 마지막으로 입력된 행을 사용합니다.
+     */
+    var recordMap =
+      new Map();
+
+    records.forEach(
+      function(record){
+        recordMap.set(
+          record.workId,
+          record
+        );
+      }
+    );
+
+    return Array.from(
+      recordMap.values()
+    );
   }
+
 
   async function savePastedDatabase(){
     var saveButton =
