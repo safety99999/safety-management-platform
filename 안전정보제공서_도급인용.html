@@ -1560,6 +1560,274 @@ function uniqueUsefulValues(
 }
 
 /*
+ * 기존 화면의 escHtml()을 복수 작업 연계 코드에서도
+ * 사용할 수 있도록 함수명을 호환합니다.
+ */
+function escapeHtml(value){
+  return escHtml(
+    String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    )
+  );
+}
+
+/*
+ * 미지정·공란 값은 자동입력 대상에서 제외하고,
+ * 전달된 값 중 첫 번째 유효값을 반환합니다.
+ */
+function usefulWorkValue(){
+  var invalidValues = [
+    '',
+    '-',
+    '미지정',
+    '부서 미지정',
+    '업체 미지정',
+    '담당자 미지정',
+    '해당 없음',
+    '해당없음',
+    'N/A',
+    'NA',
+    'null',
+    'undefined'
+  ];
+
+  for(
+    var index = 0;
+    index < arguments.length;
+    index++
+  ){
+    var value =
+      String(
+        arguments[index] === undefined ||
+        arguments[index] === null
+          ? ''
+          : arguments[index]
+      ).trim();
+
+    if(
+      invalidValues.indexOf(value) < 0
+    ){
+      return value;
+    }
+  }
+
+  return '';
+}
+
+/*
+ * 현재 로그인 세션의 담당자 정보를 반환합니다.
+ */
+function currentSessionProfile(){
+  var session = {};
+
+  try{
+    session =
+      JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || '{}'
+      ) || {};
+  }catch(error){
+    session = {};
+  }
+
+  return {
+    name:
+      usefulWorkValue(
+        session.displayName,
+        session.userName,
+        session.name,
+        sessionStorage.getItem(
+          'userName'
+        )
+      ),
+
+    department:
+      usefulWorkValue(
+        session.department,
+        session.dept,
+        session.organization
+      ),
+
+    phone:
+      usefulWorkValue(
+        session.phone,
+        session.phoneNumber,
+        session.mobile
+      ),
+
+    email:
+      usefulWorkValue(
+        session.email
+      )
+  };
+}
+
+/*
+ * 국내 전화번호 자동 형식화
+ *
+ * 01012345678 → 010-1234-5678
+ * 0542405191  → 054-240-5191
+ * 0212345678  → 02-1234-5678
+ * 15881234    → 1588-1234
+ */
+function formatKoreanPhone(value){
+  var digits =
+    String(value || '')
+      .replace(/\D/g,'')
+      .substring(0,11);
+
+  if(!digits){
+    return '';
+  }
+
+  if(
+    digits.length === 8 &&
+    /^(15|16|18)\d{6}$/.test(
+      digits
+    )
+  ){
+    return (
+      digits.substring(0,4) +
+      '-' +
+      digits.substring(4)
+    );
+  }
+
+  if(
+    digits.indexOf('02') === 0
+  ){
+    if(digits.length <= 2){
+      return digits;
+    }
+
+    if(digits.length <= 5){
+      return (
+        digits.substring(0,2) +
+        '-' +
+        digits.substring(2)
+      );
+    }
+
+    if(digits.length <= 9){
+      return (
+        digits.substring(0,2) +
+        '-' +
+        digits.substring(
+          2,
+          digits.length - 4
+        ) +
+        '-' +
+        digits.substring(
+          digits.length - 4
+        )
+      );
+    }
+
+    return (
+      digits.substring(0,2) +
+      '-' +
+      digits.substring(2,6) +
+      '-' +
+      digits.substring(6,10)
+    );
+  }
+
+  if(digits.length <= 3){
+    return digits;
+  }
+
+  if(digits.length <= 7){
+    return (
+      digits.substring(0,3) +
+      '-' +
+      digits.substring(3)
+    );
+  }
+
+  if(digits.length <= 10){
+    return (
+      digits.substring(0,3) +
+      '-' +
+      digits.substring(
+        3,
+        digits.length - 4
+      ) +
+      '-' +
+      digits.substring(
+        digits.length - 4
+      )
+    );
+  }
+
+  return (
+    digits.substring(0,3) +
+    '-' +
+    digits.substring(3,7) +
+    '-' +
+    digits.substring(7,11)
+  );
+}
+
+/*
+ * 연락처 입력란에 자동 하이픈을 적용합니다.
+ */
+function bindPhoneFormatting(){
+  [
+    'contractor-phone',
+    'sub-phone'
+  ].forEach(function(id){
+    var input =
+      document.getElementById(id);
+
+    if(
+      !input ||
+      input.dataset.phoneFormattingBound ===
+        'true'
+    ){
+      return;
+    }
+
+    input.dataset.phoneFormattingBound =
+      'true';
+
+    input.setAttribute(
+      'inputmode',
+      'numeric'
+    );
+
+    input.setAttribute(
+      'maxlength',
+      '13'
+    );
+
+    input.addEventListener(
+      'input',
+      function(){
+        this.value =
+          formatKoreanPhone(
+            this.value
+          );
+      }
+    );
+
+    input.addEventListener(
+      'blur',
+      function(){
+        this.value =
+          formatKoreanPhone(
+            this.value
+          );
+      }
+    );
+  });
+}
+
+
+/*
  * 선택한 작업들의 공통 업체·담당자·연락처를
  * 안전정보제공서에 자동 반영합니다.
  */
