@@ -5046,6 +5046,58 @@ function loadRiskAssessment(){
 // ═══════════════════════════════════════════════
 // 문서번호 시퀀스
 // ═══════════════════════════════════════════════
+/*
+ * 수급인 공개 링크에 사용하는 예측 불가능한 토큰입니다.
+ * 문서번호를 URL 접근키로 직접 사용하지 않습니다.
+ */
+function generateSafetyShareToken(){
+  if(
+    window.crypto &&
+    typeof window.crypto
+      .randomUUID ===
+        'function'
+  ){
+    return window.crypto
+      .randomUUID()
+      .replace(/-/g,'');
+  }
+
+  if(
+    window.crypto &&
+    typeof window.crypto
+      .getRandomValues ===
+        'function'
+  ){
+    var bytes =
+      new Uint8Array(24);
+
+    window.crypto
+      .getRandomValues(bytes);
+
+    return Array.from(bytes)
+      .map(function(value){
+        return value
+          .toString(16)
+          .padStart(2,'0');
+      })
+      .join('');
+  }
+
+  /*
+   * 구형 브라우저용 TEST 폴백입니다.
+   */
+  return (
+    Date.now()
+      .toString(36) +
+    Math.random()
+      .toString(36)
+      .slice(2) +
+    Math.random()
+      .toString(36)
+      .slice(2)
+  );
+}
+     
 function getNextSafeinfoNo(){
   var today = fmtDate(new Date()).replace(/-/g, '');
   try{
@@ -6059,15 +6111,6 @@ async function submitDoc(){
       pathParts.join('/') +
       '/';
 
-    data.signUrl =
-      baseUrl +
-      '안전정보제공서_수급인용.html' +
-      '?safeinfoNo=' +
-      encodeURIComponent(
-        data.safeinfoNo
-      ) +
-      '&mode=test';
-
     var saveData = {
       /*
        * 작업 연결
@@ -6094,6 +6137,15 @@ async function submitDoc(){
        */
       safeinfoNo:
         data.safeinfoNo,
+         
+            shareToken:
+        data.shareToken,
+
+      shareStatus:
+        'active',
+
+      shareCreatedAt:
+        nowIso,   
 
       /*
        * 기본정보
@@ -6844,14 +6896,10 @@ const firebaseConfig = {
 const firebaseApp =
   getApps().length
     ? getApp()
-    : initializeApp(
-        firebaseConfig
-      );
+    : initializeApp(firebaseConfig);
 
 const auth =
-  getAuth(
-    firebaseApp
-  );
+  getAuth(firebaseApp);
 
 let db;
 
@@ -6862,9 +6910,7 @@ try{
       {
         experimentalForceLongPolling:
           true,
-
-        useFetchStreams:
-          false
+        useFetchStreams:false
       }
     );
 
@@ -6874,9 +6920,7 @@ try{
 
 }catch(error){
   db =
-    getFirestore(
-      firebaseApp
-    );
+    getFirestore(firebaseApp);
 
   console.warn(
     '[안전정보제공서] 기존 Firestore 인스턴스 사용:',
@@ -6884,12 +6928,17 @@ try{
   );
 }
 
-const PROVISION_COLLECTION =
+const PRIVATE_COLLECTION =
   window.getCollectionName(
     'safetyProvisions'
   );
 
-function readAppSession(){
+const PUBLIC_COLLECTION =
+  window.getCollectionName(
+    'publicSafetyProvisions'
+  );
+
+function readProvisionSession(){
   try{
     return JSON.parse(
       sessionStorage.getItem(
@@ -6901,7 +6950,7 @@ function readAppSession(){
   }
 }
 
-function waitForAuthenticatedUser(){
+function waitForProvisionUser(){
   if(auth.currentUser){
     return Promise.resolve(
       auth.currentUser
@@ -6911,7 +6960,6 @@ function waitForAuthenticatedUser(){
   return new Promise(
     function(resolve){
       let completed = false;
-
       let unsubscribe =
         function(){};
 
@@ -6943,13 +6991,9 @@ function waitForAuthenticatedUser(){
             }
 
             completed = true;
-
             clearTimeout(timer);
             unsubscribe();
-
-            resolve(
-              user || null
-            );
+            resolve(user || null);
           },
 
           function(error){
@@ -6958,7 +7002,6 @@ function waitForAuthenticatedUser(){
             }
 
             completed = true;
-
             clearTimeout(timer);
             unsubscribe();
 
@@ -6974,18 +7017,19 @@ function waitForAuthenticatedUser(){
   );
 }
 
-function cleanFirestoreData(value){
-  if(value === undefined){
-    return null;
-  }
-
-  if(value === null){
+function cleanProvisionFirestoreValue(
+  value
+){
+  if(
+    value === undefined ||
+    value === null
+  ){
     return null;
   }
 
   if(Array.isArray(value)){
     return value.map(
-      cleanFirestoreData
+      cleanProvisionFirestoreValue
     );
   }
 
@@ -6998,7 +7042,7 @@ function cleanFirestoreData(value){
     Object.keys(value)
       .forEach(function(key){
         result[key] =
-          cleanFirestoreData(
+          cleanProvisionFirestoreValue(
             value[key]
           );
       });
@@ -7010,32 +7054,212 @@ function cleanFirestoreData(value){
 }
 
 /*
- * 안전정보제공서 원격 저장
- *
- * 관리자·일반 사용자:
- * test_safetyProvisions/{safeinfoNo} 저장
- *
- * 공개 테스터:
- * Firestore에 저장하지 않고 로컬 모드 반환
+ * 수급인 열람용 공개 데이터입니다.
+ * 도급인 연락처·내부 메타데이터는 최소화합니다.
  */
+function buildPublicProvision(
+  record
+){
+  return cleanProvisionFirestoreValue({
+    safeinfoNo:
+      record.safeinfoNo,
+
+    shareToken:
+      record.shareToken,
+
+    shareStatus:
+      record.shareStatus ||
+      'active',
+
+    workId:
+      record.workId || '',
+
+    primaryWorkId:
+      record.primaryWorkId ||
+      record.workId ||
+      '',
+
+    workIds:
+      Array.isArray(record.workIds)
+        ? record.workIds
+        : [],
+
+    linkedWorks:
+      Array.isArray(
+        record.linkedWorks
+      )
+        ? record.linkedWorks
+        : [],
+
+    workCount:
+      Number(
+        record.workCount || 1
+      ),
+
+    subcontractor:
+      record.subcontractor || '',
+
+    workName:
+      record.workName || '',
+
+    location:
+      record.location || '',
+
+    detailLocation:
+      record.detailLocation || '',
+
+    startDate:
+      record.startDate || '',
+
+    endDate:
+      record.endDate || '',
+
+    contractorManager:
+      record.contractorManager || '',
+
+    contractorDept:
+      record.contractorDept || '',
+
+    contractorPhone:
+      record.contractorPhone || '',
+
+    contractorEmail:
+      record.contractorEmail || '',
+
+    noChemical:
+      record.noChemical === true,
+
+    msdsItems:
+      Array.isArray(record.msdsItems)
+        ? record.msdsItems
+        : [],
+
+    msdsIds:
+      Array.isArray(record.msdsIds)
+        ? record.msdsIds
+        : [],
+
+    chemicalOther:
+      record.chemicalOther || '',
+
+    riskAssessmentNo:
+      record.riskAssessmentNo || '',
+
+    riskAssessmentLinks:
+      Array.isArray(
+        record.riskAssessmentLinks
+      )
+        ? record.riskAssessmentLinks
+        : [],
+
+    selectedDocs:
+      Array.isArray(record.selectedDocs)
+        ? record.selectedDocs
+        : [],
+
+    selectedDocuments:
+      Array.isArray(
+        record.selectedDocuments
+      )
+        ? record.selectedDocuments
+        : [],
+
+    documentNote:
+      record.documentNote || '',
+
+    factoryHazards:
+      Array.isArray(
+        record.factoryHazards
+      )
+        ? record.factoryHazards
+        : [],
+
+    facilityItems:
+      Array.isArray(
+        record.facilityItems
+      )
+        ? record.facilityItems
+        : [],
+
+    emergencyExit:
+      record.emergencyExit || '',
+
+    emergencyContact:
+      record.emergencyContact || '',
+
+    firstAid:
+      record.firstAid || '',
+
+    aedLocations:
+      record.aedLocations || '',
+
+    safetyItems:
+      Array.isArray(
+        record.safetyItems
+      )
+        ? record.safetyItems
+        : [],
+
+    safetyOther:
+      record.safetyOther || '',
+
+    ppeItems:
+      Array.isArray(record.ppeItems)
+        ? record.ppeItems
+        : [],
+
+    emergencyProc:
+      record.emergencyProc || '',
+
+    safetyManagerPhone:
+      record.safetyManagerPhone || '',
+
+    contractorSignature:
+      record.contractorSignature ||
+      null,
+
+    signUrl:
+      record.signUrl || '',
+
+    status:
+      record.status ||
+      '발행완료',
+
+    statusCode:
+      record.statusCode ||
+      'issued',
+
+    deliveryStatus:
+      record.deliveryStatus ||
+      'ready',
+
+    issuedAt:
+      record.createdAt ||
+      new Date().toISOString(),
+
+    environment:'test',
+
+    schemaVersion:2
+  });
+}
+
 window.saveSafetyProvisionRemote =
   async function(record){
     const session =
-      readAppSession();
+      readProvisionSession();
 
     if(
       session &&
-      session.role ===
-        'tester'
+      session.role === 'tester'
     ){
       return {
         success:false,
         localOnly:true,
-        reason:
-          'tester-local-only',
-
-        collection:
-          PROVISION_COLLECTION
+        reason:'tester-local-only',
+        privateCollection:
+          PRIVATE_COLLECTION,
+        publicCollection:
+          PUBLIC_COLLECTION
       };
     }
 
@@ -7052,20 +7276,21 @@ window.saveSafetyProvisionRemote =
       return {
         success:false,
         localOnly:true,
-        reason:
-          'invalid-session',
-
-        collection:
-          PROVISION_COLLECTION
+        reason:'invalid-session',
+        privateCollection:
+          PRIVATE_COLLECTION,
+        publicCollection:
+          PUBLIC_COLLECTION
       };
     }
 
     if(
       !record ||
-      !record.safeinfoNo
+      !record.safeinfoNo ||
+      !record.shareToken
     ){
       throw new Error(
-        '안전정보제공서 번호가 없습니다.'
+        '문서번호 또는 공유 토큰이 없습니다.'
       );
     }
 
@@ -7074,13 +7299,15 @@ window.saveSafetyProvisionRemote =
         success:false,
         localOnly:true,
         reason:'offline',
-        collection:
-          PROVISION_COLLECTION
+        privateCollection:
+          PRIVATE_COLLECTION,
+        publicCollection:
+          PUBLIC_COLLECTION
       };
     }
 
     const user =
-      await waitForAuthenticatedUser();
+      await waitForProvisionUser();
 
     if(
       !user ||
@@ -7089,51 +7316,81 @@ window.saveSafetyProvisionRemote =
       return {
         success:false,
         localOnly:true,
-        reason:
-          'firebase-user-mismatch',
-
-        collection:
-          PROVISION_COLLECTION
+        reason:'firebase-user-mismatch',
+        privateCollection:
+          PRIVATE_COLLECTION,
+        publicCollection:
+          PUBLIC_COLLECTION
       };
     }
 
     const savedAt =
-      new Date()
-        .toISOString();
+      new Date().toISOString();
 
-    const cloudRecord =
-      cleanFirestoreData(
+    const privateRecord =
+      cleanProvisionFirestoreValue(
         Object.assign(
           {},
           record,
           {
-            environment:'test',
-
-            updatedAt:
-              savedAt,
-
-            updatedByUid:
-              user.uid,
-
+            updatedAt:savedAt,
+            updatedByUid:user.uid,
             firestoreSaved:true,
-
             syncPending:false,
-
             syncStatus:'synced'
           }
         )
       );
 
+    const publicRecord =
+      buildPublicProvision(
+        Object.assign(
+          {},
+          record,
+          {
+            updatedAt:savedAt
+          }
+        )
+      );
+
+    /*
+     * 내부 원본 문서
+     */
     await setDoc(
       doc(
         db,
-        PROVISION_COLLECTION,
+        PRIVATE_COLLECTION,
         record.safeinfoNo
       ),
 
       Object.assign(
         {},
-        cloudRecord,
+        privateRecord,
+        {
+          updatedAtServer:
+            serverTimestamp()
+        }
+      ),
+
+      {
+        merge:true
+      }
+    );
+
+    /*
+     * 수급인 공유용 문서
+     * 임의 토큰을 문서 ID로 사용합니다.
+     */
+    await setDoc(
+      doc(
+        db,
+        PUBLIC_COLLECTION,
+        record.shareToken
+      ),
+
+      Object.assign(
+        {},
+        publicRecord,
         {
           updatedAtServer:
             serverTimestamp()
@@ -7148,17 +7405,20 @@ window.saveSafetyProvisionRemote =
     console.log(
       '[안전정보제공서] Firestore 저장 완료:',
       {
-        collection:
-          PROVISION_COLLECTION,
-
         safeinfoNo:
           record.safeinfoNo,
 
-        workIds:
-          record.workIds || [],
+        shareToken:
+          record.shareToken,
 
-        uid:
-          user.uid
+        privateCollection:
+          PRIVATE_COLLECTION,
+
+        publicCollection:
+          PUBLIC_COLLECTION,
+
+        workIds:
+          record.workIds || []
       }
     );
 
@@ -7166,7 +7426,9 @@ window.saveSafetyProvisionRemote =
       success:true,
       localOnly:false,
       collection:
-        PROVISION_COLLECTION,
+        PRIVATE_COLLECTION,
+      publicCollection:
+        PUBLIC_COLLECTION,
       savedAt:savedAt
     };
   };
@@ -7174,22 +7436,27 @@ window.saveSafetyProvisionRemote =
 window.SafetyProvisionFirebase = {
   app:
     firebaseApp,
-
   auth:
     auth,
-
   db:
     db,
-
-  collection:
-    PROVISION_COLLECTION
+  privateCollection:
+    PRIVATE_COLLECTION,
+  publicCollection:
+    PUBLIC_COLLECTION
 };
 
 console.log(
   '[안전정보제공서] Firestore 저장 모듈 준비 완료:',
-  PROVISION_COLLECTION
+  {
+    privateCollection:
+      PRIVATE_COLLECTION,
+    publicCollection:
+      PUBLIC_COLLECTION
+  }
 );
 </script>
+
      
 </body>
 </html>
