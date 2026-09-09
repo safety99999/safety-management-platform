@@ -5561,6 +5561,268 @@ function migrateLegacyKeys(){
 var safetyProvisionSubmitting =
   false;
 
+/*
+ * 작업번호 배열을 비교 가능한 문자열로 변환합니다.
+ * 작업 순서가 달라도 같은 작업 묶음으로 판정합니다.
+ */
+function safetyProvisionWorkKey(
+  workIds
+){
+  return (
+    Array.isArray(workIds)
+      ? workIds
+      : []
+  )
+    .map(function(workId){
+      return String(
+        workId || ''
+      ).trim();
+    })
+    .filter(Boolean)
+    .sort()
+    .join('|');
+}
+
+/*
+ * 동일 작업 묶음으로 최근 발행된 활성 문서를 찾습니다.
+ *
+ * 서명 완료·취소 문서는 재사용하지 않습니다.
+ * 10분 이내 중복 제출만 차단합니다.
+ */
+function findRecentDuplicateProvision(
+  workIds
+){
+  var targetKey =
+    safetyProvisionWorkKey(
+      workIds
+    );
+
+  if(!targetKey){
+    return null;
+  }
+
+  var documents = [];
+
+  try{
+    documents =
+      JSON.parse(
+        localStorage.getItem(
+          'safetyProvisions'
+        ) || '[]'
+      );
+
+    if(!Array.isArray(documents)){
+      documents = [];
+    }
+
+  }catch(error){
+    documents = [];
+  }
+
+  var tenMinutes =
+    10 * 60 * 1000;
+
+  return documents
+    .filter(function(record){
+      if(!record){
+        return false;
+      }
+
+      var recordWorkIds =
+        Array.isArray(
+          record.workIds
+        ) &&
+        record.workIds.length
+          ? record.workIds
+          : record.workId
+            ? [record.workId]
+            : [];
+
+      var sameWorkSet =
+        safetyProvisionWorkKey(
+          recordWorkIds
+        ) === targetKey;
+
+      var status =
+        String(
+          record.statusCode ||
+          record.status ||
+          ''
+        ).trim();
+
+      var active =
+        [
+          'issued',
+          'contractorViewing',
+          '발행완료',
+          '수급인확인중',
+          '수급인확인'
+        ].indexOf(status) >= 0;
+
+      var createdTime =
+        new Date(
+          record.createdAt ||
+          record.updatedAt ||
+          ''
+        ).getTime();
+
+      var recent =
+        Number.isFinite(
+          createdTime
+        ) &&
+        Date.now() -
+        createdTime <=
+        tenMinutes;
+
+      return (
+        sameWorkSet &&
+        active &&
+        recent
+      );
+    })
+    .sort(function(first,second){
+      return (
+        new Date(
+          second.createdAt ||
+          second.updatedAt ||
+          0
+        ).getTime() -
+        new Date(
+          first.createdAt ||
+          first.updatedAt ||
+          0
+        ).getTime()
+      );
+    })[0] || null;
+}
+
+/*
+ * 기존 문서를 완료 화면에 다시 표시합니다.
+ */
+function showExistingProvision(
+  record
+){
+  Object.assign(
+    data,
+    record
+  );
+
+  setTxt(
+    'fin-doc-id',
+    record.safeinfoNo ||
+    '-'
+  );
+
+  setTxt(
+    'fin-subcontractor',
+    record.subcontractor ||
+    '-'
+  );
+
+  setTxt(
+    'fin-location',
+    record.location ||
+    '-'
+  );
+
+  setTxt(
+    'fin-period',
+    (
+      record.startDate ||
+      '-'
+    ) +
+    ' ~ ' +
+    (
+      record.endDate ||
+      '-'
+    )
+  );
+
+  setTxt(
+    'fin-datetime',
+    record.createdAt
+      ? new Date(
+          record.createdAt
+        ).toLocaleString(
+          'ko-KR'
+        )
+      : '-'
+  );
+
+  var chemicalSummary =
+    record.noChemical
+      ? '사용 안 함'
+      : Array.isArray(
+          record.msdsItems
+        ) &&
+        record.msdsItems.length
+        ? record.msdsItems
+            .slice(0,2)
+            .join(', ') +
+          (
+            record.msdsItems.length > 2
+              ? ' 외 ' +
+                (
+                  record.msdsItems.length -
+                  2
+                ) +
+                '종'
+              : ''
+          )
+        : record.chemicalOther ||
+          '-';
+
+  setTxt(
+    'fin-chemicals',
+    chemicalSummary
+  );
+
+  renderCompletedWorkList();
+
+  setShareLink(
+    record.signUrl ||
+    ''
+  );
+
+  var sendEmailInput =
+    document.getElementById(
+      'send-email'
+    );
+
+  if(sendEmailInput){
+    sendEmailInput.value =
+      record.subcontractorEmail ||
+      '';
+  }
+
+  var saveStatus =
+    document.getElementById(
+      'finSaveStatus'
+    );
+
+  if(saveStatus){
+    saveStatus.className =
+      record.firestoreSaved
+        ? 'save-status-card server'
+        : 'save-status-card local';
+
+    saveStatus.innerHTML =
+      record.firestoreSaved
+        ? '<span>☁️ 서버 저장 완료</span>'
+        : '<span>🧪 기존 TEST 로컬 문서를 불러왔습니다.</span>';
+  }
+
+  goToScreen(
+    'screen-complete'
+  );
+
+  showToast(
+    '동일한 작업으로 최근 발행된 문서를 불러왔습니다.',
+    'info'
+  );
+}
+
+
 async function submitDoc(){
   if(safetyProvisionSubmitting){
     return;
