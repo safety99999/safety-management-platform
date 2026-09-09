@@ -1783,28 +1783,89 @@ function goToRiskAssessment(){
 // ═══════════════════════════════════════════════════
 // 대시보드 / 뒤로가기
 // ═══════════════════════════════════════════════════
-function goHome(){
-  var url = '안전관리플랫폼_대시보드_V6_.html';
-  if(window.navigateWithFade) window.navigateWithFade(url);
-  else window.location.href = url;
+function leaveSafetyProvisionViewer(){
+  var returnUrl =
+    sessionStorage.getItem(
+      'safetyProvisionReturnUrl'
+    ) || '';
+
+  /*
+   * 도급인 발행 완료 화면에서 열었으면
+   * 동일 탭의 이전 화면으로 돌아갑니다.
+   */
+  if(
+    document.referrer &&
+    window.history.length > 1
+  ){
+    window.history.back();
+    return;
+  }
+
+  /*
+   * 저장된 복귀 주소가 있으면 사용합니다.
+   */
+  if(returnUrl){
+    window.location.href =
+      returnUrl;
+
+    return;
+  }
+
+  /*
+   * 이메일 링크처럼 직접 열린 경우에는
+   * 대시보드로 이동합니다.
+   */
+  window.location.href =
+    '안전관리플랫폼_대시보드_V6_.html';
 }
 
 function goBack(){
-  var sigSection = document.getElementById('view-signature-section');
-  if(sigSection && sigSection.style.display !== 'none' && clChecked > 0){
-    showCustomConfirm({
-      icon: '⚠️',
-      title: '작성 취소',
-      message: '작성 중인 내용이 사라집니다.\n뒤로 가시겠습니까?',
-      okText: '나가기',
-      okType: 'warn'
-    }, function(ok){
-      if(ok) history.back();
-    });
+  var signatureSection =
+    document.getElementById(
+      'view-signature-section'
+    );
+
+  var hasEnteredData =
+    clChecked > 0 ||
+    Boolean(
+      getVal('sub-supervisor')
+    ) ||
+    Boolean(
+      getVal('sub-phone')
+    ) ||
+    hasSignature();
+
+  if(
+    signatureSection &&
+    signatureSection.style.display !==
+      'none' &&
+    hasEnteredData &&
+    !isAlreadySigned
+  ){
+    showCustomConfirm(
+      {
+        icon:'⚠️',
+        title:'확인 화면 나가기',
+        message:
+          '입력 중인 확인사항과 서명이 저장되지 않습니다.\n' +
+          '이전 화면으로 돌아가시겠습니까?',
+        okText:'뒤로가기',
+        okType:'warn'
+      },
+
+      function(confirmed){
+        if(confirmed){
+          leaveSafetyProvisionViewer();
+        }
+      }
+    );
+
     return;
   }
-  history.back();
+
+  leaveSafetyProvisionViewer();
 }
+
 </script>
 
 <!-- ═══════════════════════════════════════════════════
