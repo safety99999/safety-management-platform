@@ -1775,87 +1775,737 @@ function showWorkInfoBanner(work){
 /**
  * 폼 필드 자동 채움
  */
+/*
+ * 작업관리대장에 저장된 미지정·공란 표현을
+ * 실제 입력값으로 사용하지 않도록 정리합니다.
+ */
+function usefulWorkValue(){
+  var invalidValues = [
+    '',
+    '-',
+    '미지정',
+    '부서 미지정',
+    '업체 미지정',
+    '담당자 미지정',
+    '해당 없음',
+    '해당없음',
+    'N/A',
+    'NA',
+    'null',
+    'undefined'
+  ];
+
+  for(
+    var index = 0;
+    index < arguments.length;
+    index++
+  ){
+    var value =
+      arguments[index];
+
+    if(
+      value === undefined ||
+      value === null
+    ){
+      continue;
+    }
+
+    var text =
+      String(value).trim();
+
+    if(
+      invalidValues.indexOf(
+        text
+      ) < 0
+    ){
+      return text;
+    }
+  }
+
+  return '';
+}
+
+/*
+ * 국내 전화번호를 입력 중 자동으로 형식화합니다.
+ *
+ * 01012345678 → 010-1234-5678
+ * 0542405191  → 054-240-5191
+ * 0212345678  → 02-1234-5678
+ * 15881234    → 1588-1234
+ */
+function formatKoreanPhone(value){
+  var digits =
+    String(value || '')
+      .replace(/\D/g,'');
+
+  if(!digits){
+    return '';
+  }
+
+  /*
+   * 국내 전화번호 입력을 기준으로
+   * 최대 11자리까지만 사용합니다.
+   */
+  digits =
+    digits.substring(0,11);
+
+  /*
+   * 15XX·16XX·18XX 등 대표번호
+   */
+  if(
+    digits.length === 8 &&
+    /^(15|16|18)\d{6}$/
+      .test(digits)
+  ){
+    return (
+      digits.substring(0,4) +
+      '-' +
+      digits.substring(4)
+    );
+  }
+
+  /*
+   * 서울 지역번호
+   */
+  if(digits.indexOf('02') === 0){
+    if(digits.length <= 2){
+      return digits;
+    }
+
+    if(digits.length <= 5){
+      return (
+        digits.substring(0,2) +
+        '-' +
+        digits.substring(2)
+      );
+    }
+
+    if(digits.length <= 9){
+      return (
+        digits.substring(0,2) +
+        '-' +
+        digits.substring(
+          2,
+          digits.length - 4
+        ) +
+        '-' +
+        digits.substring(
+          digits.length - 4
+        )
+      );
+    }
+
+    return (
+      digits.substring(0,2) +
+      '-' +
+      digits.substring(2,6) +
+      '-' +
+      digits.substring(6,10)
+    );
+  }
+
+  /*
+   * 휴대전화 및 일반 지역번호
+   */
+  if(digits.length <= 3){
+    return digits;
+  }
+
+  if(digits.length <= 7){
+    return (
+      digits.substring(0,3) +
+      '-' +
+      digits.substring(3)
+    );
+  }
+
+  if(digits.length <= 10){
+    return (
+      digits.substring(0,3) +
+      '-' +
+      digits.substring(
+        3,
+        digits.length - 4
+      ) +
+      '-' +
+      digits.substring(
+        digits.length - 4
+      )
+    );
+  }
+
+  return (
+    digits.substring(0,3) +
+    '-' +
+    digits.substring(3,7) +
+    '-' +
+    digits.substring(7,11)
+  );
+}
+
+/*
+ * 전화번호 필드에 자동 하이픈 기능을 연결합니다.
+ */
+function bindPhoneFormatting(){
+  [
+    'contractor-phone',
+    'sub-phone'
+  ].forEach(function(id){
+    var input =
+      document.getElementById(id);
+
+    if(
+      !input ||
+      input.dataset.phoneFormattingBound ===
+        'true'
+    ){
+      return;
+    }
+
+    input.dataset.phoneFormattingBound =
+      'true';
+
+    input.setAttribute(
+      'inputmode',
+      'tel'
+    );
+
+    input.setAttribute(
+      'maxlength',
+      '13'
+    );
+
+    input.addEventListener(
+      'input',
+      function(){
+        var formatted =
+          formatKoreanPhone(
+            this.value
+          );
+
+        if(this.value !== formatted){
+          this.value = formatted;
+        }
+      }
+    );
+
+    input.addEventListener(
+      'blur',
+      function(){
+        this.value =
+          formatKoreanPhone(
+            this.value
+          );
+      }
+    );
+  });
+}
+
+/*
+ * 현재 로그인 사용자의 부서·연락처 등
+ * 자동 입력 가능한 정보를 반환합니다.
+ */
+function currentSessionProfile(){
+  var session = {};
+
+  try{
+    session =
+      JSON.parse(
+        sessionStorage.getItem(
+          'appSession'
+        ) || '{}'
+      ) || {};
+  }catch(error){
+    session = {};
+  }
+
+  return {
+    name:
+      usefulWorkValue(
+        session.displayName,
+        session.userName,
+        session.name
+      ),
+
+    department:
+      usefulWorkValue(
+        session.department,
+        session.dept,
+        session.organization
+      ),
+
+    phone:
+      usefulWorkValue(
+        session.phone,
+        session.phoneNumber,
+        session.mobile
+      ),
+
+    email:
+      usefulWorkValue(
+        session.email
+      )
+  };
+}
+
+/*
+ * 작업관리대장 정보를 안전정보제공서에 자동 입력합니다.
+ * 자동 입력값은 현장 변경을 고려해 사용자가 수정할 수 있습니다.
+ */
 function autoFillFields(work){
+  work =
+    work || {};
+
+  var profile =
+    currentSessionProfile();
+
   var filledCount = 0;
-  
-  // 수급인(협력사)명
-  var company = work.company || work.executingCompany || work.contractCompany || '';
+
+  /*
+   * 수행업체·협력사
+   */
+  var company =
+    usefulWorkValue(
+      work.executingCompany,
+      work.subcontractCompany,
+      work.contractCompany,
+      work.company
+    );
+
   if(company){
-    setValAuto('subcontractor', company);
+    setValAuto(
+      'subcontractor',
+      company
+    );
+
     filledCount++;
   }
-  
-  // 작업명
-  var workName = work.workName || work.workNameFull || '';
+
+  /*
+   * 작업명은 관리대장 원문을 우선 사용합니다.
+   */
+  var workName =
+    usefulWorkValue(
+      work.workNameFull,
+      work.workName
+    );
+
   if(workName){
-    setValAuto('work-name', workName);
+    setValAuto(
+      'work-name',
+      workName
+    );
+
     filledCount++;
   }
-  
-  // 세부 위치
-  var detailLoc = work.locationRaw || work.workPlaceRaw || '';
-  if(work.location && typeof work.location === 'object'){
-    detailLoc = work.location.raw || detailLoc;
-  }
-  if(detailLoc){
-    setValAuto('detail-location', detailLoc);
+
+  /*
+   * 세부 작업 위치
+   */
+  var locationObject =
+    work.location &&
+    typeof work.location ===
+      'object'
+      ? work.location
+      : {};
+
+  var detailLocation =
+    usefulWorkValue(
+      work.locationRaw,
+      work.workPlaceRaw,
+      locationObject.raw,
+      work.locationDisplay,
+      typeof work.location ===
+        'string'
+        ? work.location
+        : ''
+    );
+
+  if(detailLocation){
+    setValAuto(
+      'detail-location',
+      detailLocation
+    );
+
     filledCount++;
   }
-  
-  // 작업일 (시작/종료 동일)
-  var workDate = work.date || fmtDate(new Date());
-  if(workDate){
-    setVal('start-date', workDate);
-    setVal('end-date', workDate);
-    filledCount++;
-  }
-  
-  // 작업장소 자동 선택 (1공장/2공장 판별)
-  var factory = '';
-  if(work.location && typeof work.location === 'object'){
-    factory = work.location.factory || '';
-  }
-  var combinedText = (factory + ' ' + detailLoc + ' ' + (work.workNameFull || '')).toLowerCase();
-  
+
+  /*
+   * 작업일은 관리대장 일자를 사용합니다.
+   */
+  var workDate =
+    usefulWorkValue(
+      work.date
+    ) ||
+    fmtDate(
+      new Date()
+    );
+
+  setValAuto(
+    'start-date',
+    workDate
+  );
+
+  setValAuto(
+    'end-date',
+    workDate
+  );
+
+  filledCount++;
+
+  /*
+   * 공장 자동 판정
+   *
+   * 1단계·2-1단계·1~5라인 → 1공장
+   * 2-2단계·6~9라인       → 2공장
+   */
+  var factory =
+    usefulWorkValue(
+      locationObject.factory
+    );
+
+  var combinedText =
+    [
+      factory,
+      detailLocation,
+      work.workNameFull || '',
+      work.workName || ''
+    ]
+      .join(' ')
+      .replace(/\s+/g,'')
+      .toLowerCase();
+
   var selectedLocation = '';
-  if(combinedText.indexOf('2-2') >= 0 || combinedText.indexOf('2공장') >= 0){
-    selectedLocation = '포항양극재 2공장';
-  } else if(combinedText.indexOf('1공장') >= 0 || combinedText.indexOf('2-1') >= 0){
-    selectedLocation = '포항양극재 1공장';
+
+  if(
+    combinedText.indexOf(
+      '2공장'
+    ) >= 0 ||
+    combinedText.indexOf(
+      '2-2단계'
+    ) >= 0
+  ){
+    selectedLocation =
+      '포항양극재 2공장';
+
+  }else if(
+    combinedText.indexOf(
+      '1공장'
+    ) >= 0 ||
+    combinedText.indexOf(
+      '2-1단계'
+    ) >= 0 ||
+    (
+      combinedText.indexOf(
+        '1단계'
+      ) >= 0 &&
+      combinedText.indexOf(
+        '2-1단계'
+      ) < 0
+    )
+  ){
+    selectedLocation =
+      '포항양극재 1공장';
   }
-  
+
   if(selectedLocation){
-    var locSelect = document.getElementById('location');
-    if(locSelect){
-      locSelect.value = selectedLocation;
-      locSelect.classList.add('auto-filled');
-      onLocationChange(selectedLocation);
+    var locationSelect =
+      document.getElementById(
+        'location'
+      );
+
+    if(locationSelect){
+      locationSelect.value =
+        selectedLocation;
+
+      locationSelect.classList.add(
+        'auto-filled'
+      );
+
+      onLocationChange(
+        selectedLocation
+      );
+
       filledCount++;
     }
   }
-  
-  // 담당자명 자동 채움
-  var manager = work.workManager || work.manager || work.contractorManager || '';
-  if(manager){
-    setValAuto('contractor-manager', manager);
+
+  /*
+   * 도급인 작업담당자
+   *
+   * 작업관리대장의 당사 작업담당자를 우선하고,
+   * 없으면 현재 로그인 사용자를 사용합니다.
+   */
+  var contractorManager =
+    usefulWorkValue(
+      work.workManager,
+      work.manager,
+      work.companyManager,
+      work.companyManagerName,
+      profile.name
+    );
+
+  if(contractorManager){
+    setValAuto(
+      'contractor-manager',
+      contractorManager
+    );
+
     filledCount++;
   }
-  
-  // 안내 토스트
+
+  /*
+   * 도급인 담당 부서
+   */
+  var contractorDepartment =
+    usefulWorkValue(
+      work.requestingDepartment,
+      work.instructionDept,
+      work.operatingDepartment,
+      work.operationDept,
+      profile.department
+    );
+
+  if(contractorDepartment){
+    setValAuto(
+      'contractor-dept',
+      contractorDepartment
+    );
+
+    filledCount++;
+  }
+
+  /*
+   * 도급인 담당자 연락처
+   */
+  var contractorPhone =
+    usefulWorkValue(
+      work.workManagerPhone,
+      work.managerPhone,
+      work.companyManagerPhone,
+      profile.phone
+    );
+
+  if(contractorPhone){
+    setValAuto(
+      'contractor-phone',
+      formatKoreanPhone(
+        contractorPhone
+      )
+    );
+
+    filledCount++;
+  }
+
+  /*
+   * 도급인 담당자 이메일은
+   * 로그인 사용자 이메일을 우선 사용합니다.
+   */
+  var contractorEmail =
+    usefulWorkValue(
+      profile.email,
+      work.companyManagerEmail,
+      work.workManagerEmail
+    );
+
+  if(contractorEmail){
+    setValAuto(
+      'contractor-email',
+      contractorEmail
+    );
+
+    filledCount++;
+  }
+
+  /*
+   * 관리대장에 수급인 담당 연락처가 있으면
+   * 최종 서명·전달 단계에도 자동 입력합니다.
+   */
+  var subcontractorEmail =
+    usefulWorkValue(
+      work.contractorManagerEmail,
+      work.supervisorEmail,
+      work.contractorEmail,
+      work.email
+    );
+
+  if(subcontractorEmail){
+    setValAuto(
+      'sub-email',
+      subcontractorEmail
+    );
+
+    filledCount++;
+  }
+
+  var subcontractorPhone =
+    usefulWorkValue(
+      work.contractorManagerPhone,
+      work.supervisorPhone,
+      work.contractorPhone
+    );
+
+  if(subcontractorPhone){
+    setValAuto(
+      'sub-phone',
+      formatKoreanPhone(
+        subcontractorPhone
+      )
+    );
+
+    filledCount++;
+  }
+
+  /*
+   * 후속 단계에서 재사용할 관리대장 원본 정보를
+   * 안전정보제공서 데이터에 보존합니다.
+   */
+  data.workSource = {
+    workId:
+      data.workId || '',
+
+    workOrderNo:
+      usefulWorkValue(
+        work.workOrderNo
+      ),
+
+    workerCount:
+      Number(
+        work.workerCount || 0
+      ),
+
+    workTimeRaw:
+      usefulWorkValue(
+        work.workTimeRaw
+      ),
+
+    workStartTime:
+      usefulWorkValue(
+        work.workStartTime
+      ),
+
+    workEndTime:
+      usefulWorkValue(
+        work.workEndTime
+      ),
+
+    operatingDepartment:
+      usefulWorkValue(
+        work.operatingDepartment,
+        work.operationDept
+      ),
+
+    requestingDepartment:
+      usefulWorkValue(
+        work.requestingDepartment,
+        work.instructionDept
+      ),
+
+    workManager:
+      usefulWorkValue(
+        work.workManager,
+        work.manager
+      ),
+
+    contractorManager:
+      usefulWorkValue(
+        work.contractorManager
+      ),
+
+    ilsExecution:
+      usefulWorkValue(
+        work.ilsExecution
+      ),
+
+    requiredWorkPlan:
+      usefulWorkValue(
+        work.requiredWorkPlan
+      ),
+
+    sourceType:
+      usefulWorkValue(
+        work.sourceType
+      ),
+
+    capturedAt:
+      new Date()
+        .toISOString()
+  };
+
+  bindPhoneFormatting();
+
   if(filledCount > 0){
-    showToast('✨ ' + filledCount + '개 항목이 자동 입력되었습니다', 'success');
+    showToast(
+      '✨ 작업관리대장 정보 ' +
+      filledCount +
+      '개 항목을 자동 입력했습니다.',
+      'success'
+    );
+  }
+
+  console.log(
+    '[안전정보제공서] 작업관리대장 자동 입력:',
+    {
+      workId:
+        data.workId,
+      filledCount:
+        filledCount,
+      company:
+        company,
+      manager:
+        contractorManager,
+      department:
+        contractorDepartment,
+      workSource:
+        data.workSource
+    }
+  );
+}
+
+/*
+ * 자동 입력값을 화면에 적용합니다.
+ */
+function setValAuto(id,val){
+  var element =
+    document.getElementById(id);
+
+  if(!element){
+    return;
+  }
+
+  var value =
+    usefulWorkValue(val);
+
+  element.value =
+    value;
+
+  if(value){
+    element.classList.add(
+      'auto-filled'
+    );
+
+    element.dataset
+      .autoFilled =
+      'true';
+  }else{
+    element.classList.remove(
+      'auto-filled'
+    );
+
+    delete element.dataset
+      .autoFilled;
   }
 }
 
-/**
- * 자동 채움 필드 설정 (시각적 표시 포함)
+/*
+ * workId 없이 안전정보제공서를 직접 열어도
+ * 연락처 자동 하이픈 기능은 작동해야 합니다.
  */
-function setValAuto(id, val){
-  var el = document.getElementById(id);
-  if(!el) return;
-  el.value = val || '';
-  if(val) el.classList.add('auto-filled');
-}
+document.addEventListener(
+  'DOMContentLoaded',
+  bindPhoneFormatting
+);
+
 
 // 자동 채움 필드를 사용자가 수정하면 시각 표시 해제
 document.addEventListener('DOMContentLoaded', function(){
