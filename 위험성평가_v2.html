@@ -3677,83 +3677,300 @@ function calculateReferenceScore(item, workName, workType, workDescription, prof
   };
 }
 
-function searchRiskDatabase(workName, workType, workDescription){
-  var profile = buildCurrentWorkProfile();
+/*
+ * 대량 평가자료 검색 중 브라우저가 멈추지 않도록
+ * 일정 건수마다 화면 처리 시간을 반환합니다.
+ */
+function yieldRiskAnalysis(){
+  return new Promise(
+    function(resolve){
+      setTimeout(
+        resolve,
+        0
+      );
+    }
+  );
+}
+
+async function searchRiskDatabase(
+  workName,
+  workType,
+  workDescription
+){
+  var startedAt =
+    performance.now();
+
+  var profile =
+    buildCurrentWorkProfile();
+
   var rejected = [];
+  var candidates = [];
 
-  var candidates = riskDatabase
-    .map(function(item){
-      var score = calculateReferenceScore(item, workName, workType, workDescription, profile);
+  /*
+   * 한 번에 519건을 모두 계산하지 않고
+   * 20건마다 브라우저에 제어권을 반환합니다.
+   *
+   * 판정식과 점수 기준은 기존과 동일합니다.
+   */
+  var chunkSize = 20;
 
-      if(!score.eligible){
-        rejected.push({
-          workName: item.workName,
-          workType: item.workType,
-          workSubType: item.workSubType,
-          reason: score.reasons.join(' · ')
-        });
-        return null;
+  for(
+    var index = 0;
+    index < riskDatabase.length;
+    index++
+  ){
+    var item =
+      riskDatabase[index];
+
+    var score =
+      calculateReferenceScore(
+        item,
+        workName,
+        workType,
+        workDescription,
+        profile
+      );
+
+    if(!score.eligible){
+      rejected.push({
+        workName:
+          item.workName,
+
+        workType:
+          item.workType,
+
+        workSubType:
+          item.workSubType,
+
+        reason:
+          score.reasons.join(
+            ' · '
+          )
+      });
+
+    }else if(
+      score.relevance >=
+      SEARCH_CONFIG
+        .RELAXED_THRESHOLD
+    ){
+      candidates.push({
+        item:item,
+
+        relevance:
+          score.relevance,
+
+        weightedScore:
+          score.rankingScore,
+
+        reasons:
+          score.reasons,
+
+        tier:
+          score.relevance >=
+          SEARCH_CONFIG
+            .TIER1_THRESHOLD
+            ? 1
+            : 2
+      });
+    }
+
+    /*
+     * Edge와 모바일 브라우저가 화면·입력 이벤트를
+     * 처리할 수 있도록 검색을 잠시 양보합니다.
+     */
+    if(
+      (index + 1) %
+      chunkSize === 0
+    ){
+      await yieldRiskAnalysis();
+    }
+  }
+
+  candidates.sort(
+    function(first,second){
+      if(
+        second.relevance !==
+        first.relevance
+      ){
+        return (
+          second.relevance -
+          first.relevance
+        );
       }
 
-      return {
-        item: item,
-        relevance: score.relevance,
-        weightedScore: score.rankingScore,
-        reasons: score.reasons,
-        tier: score.relevance >= SEARCH_CONFIG.TIER1_THRESHOLD ? 1 : 2
-      };
-    })
-    .filter(function(result){
-      return result && result.relevance >= SEARCH_CONFIG.RELAXED_THRESHOLD;
-    });
+      return (
+        second.weightedScore -
+        first.weightedScore
+      );
+    }
+  );
 
-  candidates.sort(function(a, b){
-    if(b.relevance !== a.relevance){ return b.relevance - a.relevance; }
-    return b.weightedScore - a.weightedScore;
-  });
+  var tier1 =
+    candidates.filter(
+      function(result){
+        return (
+          result.tier === 1
+        );
+      }
+    );
 
-  var tier1 = candidates.filter(function(r){ return r.tier === 1; });
-  var tier2 = candidates.filter(function(r){
-    return r.tier === 2 && r.relevance >= SEARCH_CONFIG.BASE_THRESHOLD;
-  });
+  var tier2 =
+    candidates.filter(
+      function(result){
+        return (
+          result.tier === 2 &&
+          result.relevance >=
+            SEARCH_CONFIG
+              .BASE_THRESHOLD
+        );
+      }
+    );
 
   var finalResults = [];
   var thresholdText = '';
 
   if(tier1.length > 0){
-    finalResults = tier1.slice(0, SEARCH_CONFIG.MAX_REFERENCE_RESULTS);
-    if(finalResults.length < SEARCH_CONFIG.MAX_REFERENCE_RESULTS){
-      finalResults = finalResults.concat(
-        tier2.filter(function(r){ return r.relevance >= 55; })
-             .slice(0, SEARCH_CONFIG.MAX_REFERENCE_RESULTS - finalResults.length)
+    finalResults =
+      tier1.slice(
+        0,
+        SEARCH_CONFIG
+          .MAX_REFERENCE_RESULTS
       );
+
+    if(
+      finalResults.length <
+      SEARCH_CONFIG
+        .MAX_REFERENCE_RESULTS
+    ){
+      finalResults =
+        finalResults.concat(
+          tier2
+            .filter(
+              function(result){
+                return (
+                  result.relevance >= 55
+                );
+              }
+            )
+            .slice(
+              0,
+              SEARCH_CONFIG
+                .MAX_REFERENCE_RESULTS -
+              finalResults.length
+            )
+        );
     }
-    thresholdText = '작업군·작업단계 정밀 매칭';
-  } else if(tier2.length > 0){
-    finalResults = tier2.slice(0, SEARCH_CONFIG.MAX_REFERENCE_RESULTS);
-    thresholdText = '작업군 일치 보조 매칭';
-  } else {
-    finalResults = candidates.slice(0, Math.min(3, SEARCH_CONFIG.MAX_REFERENCE_RESULTS));
-    thresholdText = '작업군 일치 최소 매칭';
+
+    thresholdText =
+      '작업군·작업단계 정밀 매칭';
+
+  }else if(tier2.length > 0){
+    finalResults =
+      tier2.slice(
+        0,
+        SEARCH_CONFIG
+          .MAX_REFERENCE_RESULTS
+      );
+
+    thresholdText =
+      '작업군 일치 보조 매칭';
+
+  }else{
+    finalResults =
+      candidates.slice(
+        0,
+        Math.min(
+          3,
+          SEARCH_CONFIG
+            .MAX_REFERENCE_RESULTS
+        )
+      );
+
+    thresholdText =
+      '작업군 일치 최소 매칭';
   }
 
-  riskData.workProfile = profile;
+  riskData.workProfile =
+    profile;
 
-  console.log('[위험성평가 DB 검색]', {
-    profile: profile,
-    totalDatabase: riskDatabase.length,
-    candidateCount: candidates.length,
-    resultCount: finalResults.length,
-    threshold: thresholdText
-  });
+  var elapsedMs =
+    Math.round(
+      performance.now() -
+      startedAt
+    );
+
+  console.log(
+    '[위험성평가 DB 분할 검색]',
+    {
+      profile:profile,
+
+      totalDatabase:
+        riskDatabase.length,
+
+      candidateCount:
+        candidates.length,
+
+      rejectedCount:
+        rejected.length,
+
+      resultCount:
+        finalResults.length,
+
+      threshold:
+        thresholdText,
+
+      chunkSize:
+        chunkSize,
+
+      elapsedMs:
+        elapsedMs
+    }
+  );
 
   return {
-    results: finalResults,
-    tier1Count: finalResults.filter(function(r){ return r.tier === 1; }).length,
-    tier2Count: finalResults.filter(function(r){ return r.tier === 2; }).length,
-    candidateCount: candidates.length,
-    thresholdApplied: thresholdText,
-    workProfile: profile
+    results:
+      finalResults,
+
+    tier1Count:
+      finalResults.filter(
+        function(result){
+          return (
+            result.tier === 1
+          );
+        }
+      ).length,
+
+    tier2Count:
+      finalResults.filter(
+        function(result){
+          return (
+            result.tier === 2
+          );
+        }
+      ).length,
+
+    candidateCount:
+      candidates.length,
+
+    thresholdApplied:
+      thresholdText,
+
+    workProfile:
+      profile,
+
+    analysisPerformance:{
+      mode:
+        'chunked',
+
+      chunkSize:
+        chunkSize,
+
+      totalDatabase:
+        riskDatabase.length,
+
+      elapsedMs:
+        elapsedMs
+    }
   };
 }
 
@@ -5014,9 +5231,12 @@ async function runAssessmentAnalysis(){
     return;
   }
 
-  var searchData = searchRiskDatabase(
-    riskData.workName, riskData.workType, riskData.workDescription
-  );
+  var searchData =
+    await searchRiskDatabase(
+      riskData.workName,
+      riskData.workType,
+      riskData.workDescription
+    );
 
   currentSearchResults = searchData.results;
   riskData.workProfile = searchData.workProfile;
