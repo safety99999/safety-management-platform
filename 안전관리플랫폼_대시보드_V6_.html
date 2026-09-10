@@ -9073,9 +9073,73 @@ function standardWorkCard(
     );
   }
 
-   function openPermitMenu(){
+  function permitCreationSummary(){
+    var works =
+      todayWorks();
+
+    var indexes =
+      buildProcessIndexes();
+
+    var creatableCount = 0;
+    var existingCount = 0;
+
+    works.forEach(
+      function(work){
+        var existingPermit =
+          indexes
+            .permitByWorkId[
+              work.workId
+            ] ||
+          null;
+
+        if(!existingPermit){
+          creatableCount++;
+          return;
+        }
+
+        var code =
+          normalizePermitCode(
+            existingPermit
+          );
+
+        /*
+         * 반려·취소 문서는 신규 작성이 가능하도록 분류합니다.
+         * 나머지는 기존 허가서가 있는 작업입니다.
+         */
+        if(
+          code === 'rejected' ||
+          code === 'cancelled'
+        ){
+          creatableCount++;
+        }else{
+          existingCount++;
+        }
+      }
+    );
+
+    return {
+      total:
+        works.length,
+
+      creatable:
+        creatableCount,
+
+      existing:
+        existingCount
+    };
+  }
+
+  function openPermitMenu(){
+    /*
+     * 메뉴를 열 때 최신 로컬 캐시를 다시 반영합니다.
+     */
+    loadAllData();
+
     var counts =
       permitCounts();
+
+    var creation =
+      permitCreationSummary();
 
     var admin =
       global.isAdminUser();
@@ -9083,8 +9147,43 @@ function standardWorkCard(
     var tester =
       global.isPublicTester();
 
+    var actionRequiredCount =
+      admin
+        ? counts.pending
+        : counts.revision;
+
+    var managementName =
+      admin
+        ? '허가서 관리'
+        : tester
+          ? '내 테스트 허가서'
+          : '내 허가서';
+
+    var managementDescription =
+      admin
+        ? (
+            '승인대기 ' +
+            counts.pending +
+            '건 · 전체 ' +
+            counts.total +
+            '건'
+          )
+        : (
+            (
+              counts.revision
+                ? '보완요청 ' +
+                  counts.revision +
+                  '건 · '
+                : ''
+            ) +
+            '전체 ' +
+            counts.total +
+            '건'
+          );
+
     var html =
       '<div class="permit-menu-summary">' +
+
         '<div class="permit-menu-summary-title">' +
           (
             admin
@@ -9096,79 +9195,56 @@ function standardWorkCard(
         '<div class="permit-menu-summary-text">' +
           (
             admin
-              ? '승인대기 문서를 처리하거나 오늘 작업에서 허가서를 작성합니다.'
+              ? '신규 허가서를 작성하거나 신청·승인·진행 상태를 관리합니다.'
               : tester
-                ? 'TEST 허가서를 작성하거나 작성한 허가서의 상태를 확인합니다.'
-                : '오늘 작업에서 허가서를 작성하거나 내 허가서의 상태를 확인합니다.'
+                ? 'TEST 허가서를 작성하거나 내 테스트 문서를 확인합니다.'
+                : '신규 허가서를 작성하거나 내가 작성한 문서를 확인합니다.'
           ) +
         '</div>' +
+
       '</div>' +
 
-      '<div class="permit-menu-grid">' +
+      '<div class="permit-menu-grid" ' +
+        'style="grid-template-columns:1fr">' +
 
         permitMenuCard({
           action:'create',
           className:'primary',
+          count:
+            creation.creatable,
           icon:'📝',
           name:
             tester
-              ? 'TEST 허가서 작성'
-              : '오늘 작업에서 작성',
+              ? 'TEST 신규 허가서 작성'
+              : '신규 허가서 작성',
           description:
-            '오늘 작업목록으로 바로 이동'
+            (
+              '오늘 작업 ' +
+              creation.total +
+              '건 · 작성 가능 ' +
+              creation.creatable +
+              '건'
+            )
         }) +
 
-        (
-          admin
-            ? permitMenuCard({
-                action:'pending',
-                className:'warning',
-                count:
-                  counts.pending,
-                countClass:
-                  'pending',
-                icon:'⏳',
-                name:'승인대기 문서',
-                description:
-                  '승인·보완·반려 처리'
-              })
-            : permitMenuCard({
-                action:'mine',
-                className:
-                  counts.revision
-                    ? 'revision'
-                    : 'all',
-                count:
-                  counts.total,
-                countClass:
-                  counts.revision
-                    ? 'revision'
-                    : '',
-                icon:'📂',
-                name:'내 허가서',
-                description:
-                  counts.revision
-                    ? '보완요청 ' +
-                      counts.revision +
-                      '건 포함'
-                    : '상태 및 처리결과 확인'
-              })
-        ) +
-
-        (
-          admin
-            ? permitMenuCard({
-                action:'all',
-                className:'all',
-                count:
-                  counts.total,
-                icon:'📚',
-                name:'전체 허가서',
-                description:
-                  '전체 상태 및 처리결과 확인'
-              })
-            : ''
-        ) +
+        permitMenuCard({
+          action:'all',
+          className:
+            actionRequiredCount > 0
+              ? 'warning'
+              : 'all',
+          count:
+            actionRequiredCount,
+          countClass:
+            actionRequiredCount > 0
+              ? 'pending'
+              : '',
+          icon:'📂',
+          name:
+            managementName,
+          description:
+            managementDescription
+        }) +
 
       '</div>';
 
@@ -9179,6 +9255,8 @@ function standardWorkCard(
       html
     );
   }
+
+
 
   function permitListCard(
     record
@@ -9313,41 +9391,202 @@ function standardWorkCard(
   function openPermitList(
     type
   ){
-    var records =
+    var filterType =
+      type || 'all';
+
+    var allRecords =
       visiblePermits();
+
+    var records =
+      allRecords.slice();
 
     var title =
       global.isAdminUser()
-        ? '전체 허가서'
-        : '내 허가서';
+        ? '허가서 관리'
+        : global.isPublicTester()
+          ? '내 테스트 허가서'
+          : '내 허가서';
 
-    if(type === 'revision'){
-      title =
-        '보완요청 문서';
+    function recordMatchesFilter(
+      record,
+      filter
+    ){
+      var code =
+        normalizePermitCode(
+          record
+        );
 
-      records =
-        records.filter(
+      if(filter === 'pending'){
+        return [
+          'pendingApproval',
+          'resubmitted'
+        ].indexOf(code) >= 0;
+      }
+
+      if(filter === 'revision'){
+        return (
+          code ===
+          'revisionRequested'
+        );
+      }
+
+      if(filter === 'active'){
+        return [
+          'approved',
+          'tbmCompleted',
+          'inProgress',
+          'stopped'
+        ].indexOf(code) >= 0;
+      }
+
+      if(filter === 'completed'){
+        return (
+          code === 'completed'
+        );
+      }
+
+      if(filter === 'draft'){
+        return (
+          code === 'draft'
+        );
+      }
+
+      return true;
+    }
+
+    records =
+      records.filter(
+        function(record){
+          return recordMatchesFilter(
+            record,
+            filterType
+          );
+        }
+      );
+
+    var filterCounts = {
+      all:
+        allRecords.length,
+
+      pending:
+        allRecords.filter(
           function(record){
-            return (
-              normalizePermitCode(
-                record
-              ) ===
-              'revisionRequested'
+            return recordMatchesFilter(
+              record,
+              'pending'
             );
           }
-        );
-    }
+        ).length,
+
+      revision:
+        allRecords.filter(
+          function(record){
+            return recordMatchesFilter(
+              record,
+              'revision'
+            );
+          }
+        ).length,
+
+      active:
+        allRecords.filter(
+          function(record){
+            return recordMatchesFilter(
+              record,
+              'active'
+            );
+          }
+        ).length,
+
+      completed:
+        allRecords.filter(
+          function(record){
+            return recordMatchesFilter(
+              record,
+              'completed'
+            );
+          }
+        ).length
+    };
+
+    var filterOptions = [
+      {
+        code:'all',
+        label:'전체',
+        count:
+          filterCounts.all
+      },
+      {
+        code:'pending',
+        label:'승인대기',
+        count:
+          filterCounts.pending
+      },
+      {
+        code:'revision',
+        label:'보완요청',
+        count:
+          filterCounts.revision
+      },
+      {
+        code:'active',
+        label:'진행중',
+        count:
+          filterCounts.active
+      },
+      {
+        code:'completed',
+        label:'완료',
+        count:
+          filterCounts.completed
+      }
+    ];
 
     var html =
       '<div class="permit-list-toolbar">' +
+
         '<span class="permit-list-guide">' +
-          '최신 처리순으로 표시됩니다.' +
+          '서버 기준 최신 처리순' +
         '</span>' +
+
         '<button type="button" ' +
           'class="permit-menu-back" ' +
           'data-permit-menu="menu">' +
           '‹ 메뉴' +
         '</button>' +
+
+      '</div>' +
+
+      '<div class="prework-filterbar">' +
+
+        filterOptions
+          .map(function(option){
+            return (
+              '<button type="button" ' +
+                'class="prework-filter ' +
+                (
+                  filterType ===
+                    option.code
+                    ? 'active'
+                    : ''
+                ) +
+                '" data-permit-menu="' +
+                escapeHtml(
+                  option.code
+                ) +
+              '">' +
+
+                escapeHtml(
+                  option.label
+                ) +
+                ' ' +
+                option.count +
+
+              '</button>'
+            );
+          })
+          .join('') +
+
       '</div>';
 
     html +=
@@ -9360,7 +9599,7 @@ function standardWorkCard(
         : '<div class="empty">' +
             '<div class="empty-ico">📭</div>' +
             '<div class="empty-txt">' +
-              '해당 허가서가 없습니다.' +
+              '해당 상태의 허가서가 없습니다.' +
             '</div>' +
           '</div>';
 
@@ -9372,6 +9611,8 @@ function standardWorkCard(
       html
     );
   }
+
+
 
   /* DASHBOARD V8 PART 3 END */
   /* =====================================================
@@ -15347,10 +15588,13 @@ async function loadPermits(
   var session =
     readSession();
 
+  /*
+   * 테스터 허가서는 Firestore가 아니라
+   * testerSafetyPermits 로컬 저장소를 사용합니다.
+   */
   if(
     session &&
-    session.role ===
-      'tester'
+    session.role === 'tester'
   ){
     return [];
   }
@@ -15366,23 +15610,26 @@ async function loadPermits(
   var cached =
     localPermits();
 
-  var lastSync =
-    Number(
-      localStorage.getItem(
-        'permitsLastSync'
-      ) || 0
-    );
+  console.log(
+    '[Dashboard Firebase] 허가서 서버 동기화 시작:',
+    {
+      collection:
+        PERMIT_COLLECTION,
 
-  if(
-    !force &&
-    cached.length &&
-    Date.now() -
-    lastSync <
-    10 * 60 * 1000
-  ){
-    return cached;
-  }
+      force:
+        force === true,
 
+      cachedCount:
+        cached.length
+    }
+  );
+
+  /*
+   * 인증 사용자의 허가서는 Firestore를 정본으로 사용합니다.
+   *
+   * 서버에서 삭제된 문서를 로컬 캐시가 다시 살려내지 않도록
+   * 기존의 일반 로컬·서버 병합 방식은 사용하지 않습니다.
+   */
   var snapshot =
     await getDocs(
       collection(
@@ -15407,16 +15654,16 @@ async function loadPermits(
     }
   );
 
-  var map =
+  var cloudMap =
     new Map();
 
-  cached.forEach(
+  cloud.forEach(
     function(record){
       if(
         record &&
         record.permitNo
       ){
-        map.set(
+        cloudMap.set(
           record.permitNo,
           record
         );
@@ -15424,41 +15671,53 @@ async function loadPermits(
     }
   );
 
-  cloud.forEach(
+  /*
+   * 아직 Firestore에 전송하지 못한 로컬 문서만 보존합니다.
+   *
+   * 일반 캐시 문서는 서버에 없으면 삭제된 것으로 판단하여
+   * 모바일 캐시에서도 제거합니다.
+   */
+  cached.forEach(
     function(record){
-      var local =
-        map.get(
-          record.permitNo
-        );
-
       if(
-        local &&
-        local.syncPending === true &&
-        recordTime(local) >
-        recordTime(record)
+        !record ||
+        !record.permitNo ||
+        record.syncPending !== true
       ){
         return;
       }
 
-      map.set(
-        record.permitNo,
-        record
-      );
+      var cloudRecord =
+        cloudMap.get(
+          record.permitNo
+        );
+
+      if(
+        !cloudRecord ||
+        recordTime(record) >
+          recordTime(cloudRecord)
+      ){
+        cloudMap.set(
+          record.permitNo,
+          record
+        );
+      }
     }
   );
 
-  var merged =
+  var synchronized =
     Array.from(
-      map.values()
-    ).sort(function(a,b){
-      return (
-        recordTime(b) -
-        recordTime(a)
-      );
-    });
+      cloudMap.values()
+    )
+      .sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      });
 
   saveLocalPermits(
-    merged
+    synchronized
   );
 
   window.dispatchEvent(
@@ -15466,9 +15725,19 @@ async function loadPermits(
       'app-data-changed',
       {
         detail:{
-          key:'safetyPermits',
+          key:
+            'safetyPermits',
+
           source:
-            'firestore-sync',
+            'firestore-authoritative-sync',
+
+          serverCount:
+            cloud.length,
+
+          preservedPendingCount:
+            synchronized.length -
+            cloud.length,
+
           timestamp:
             Date.now()
         }
@@ -15476,8 +15745,27 @@ async function loadPermits(
     )
   );
 
-  return merged;
+  console.log(
+    '[Dashboard Firebase] 허가서 서버 기준 동기화 완료:',
+    {
+      serverCount:
+        cloud.length,
+
+      localCacheCount:
+        synchronized.length,
+
+      removedLocalCount:
+        Math.max(
+          0,
+          cached.length -
+          synchronized.length
+        )
+    }
+  );
+
+  return synchronized;
 }
+
 
 function isPending(record){
   var code =
@@ -16484,7 +16772,7 @@ console.log(
       promises.push(
         window
           .DashboardFirebase
-          .loadPermits(false)
+          .loadPermits(true)
       );
     }
 
