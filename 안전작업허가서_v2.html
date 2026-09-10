@@ -8901,6 +8901,594 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
         .test(clean(value))
     );
   }
+  /* =====================================================
+   * TEST 임시 업체 연락처 캐시
+   *
+   * 자동입력 우선순위:
+   * 1. 작업관리대장의 현재 작업 담당자
+   * 2. 같은 작업의 안전정보제공서 확정값
+   * 3. 브라우저에 저장된 업체별 최근 입력값
+   * 4. 로그인 사용자 정보
+   *
+   * 서버 작업관리대장 전환 전까지만 사용하는
+   * 브라우저별 임시 보완 기능입니다.
+   * ===================================================== */
+
+  var CONTRACTOR_CONTACT_CACHE_KEY =
+    'permitContractorContactCache';
+
+  function usefulPermitValue(){
+    var invalidValues = [
+      '',
+      '-',
+      '미지정',
+      '부서 미지정',
+      '업체 미지정',
+      '담당자 미지정',
+      '해당 없음',
+      '해당없음',
+      'N/A',
+      'NA',
+      'null',
+      'undefined'
+    ];
+
+    for(
+      var index = 0;
+      index < arguments.length;
+      index++
+    ){
+      var value =
+        clean(
+          arguments[index]
+        );
+
+      if(
+        value &&
+        invalidValues.indexOf(
+          value
+        ) < 0
+      ){
+        return value;
+      }
+    }
+
+    return '';
+  }
+
+  function contractorCacheCompanyKey(
+    companyName
+  ){
+    return clean(
+      companyName
+    )
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        ''
+      )
+      .replace(
+        /[()
+\[\]
+{}.,·ㆍ\-_/\\]
+/g,
+        ''
+      );
+  }
+
+  function readContractorContactCache(){
+    try{
+      var parsed =
+        JSON.parse(
+          localStorage.getItem(
+            CONTRACTOR_CONTACT_CACHE_KEY
+          ) || '{}'
+        );
+
+      return (
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed)
+      )
+        ? parsed
+        : {};
+
+    }catch(error){
+      console.warn(
+        '[Permit] 업체 연락처 캐시 읽기 실패:',
+        error
+      );
+
+      return {};
+    }
+  }
+
+  function setPermitValueIfEmpty(
+    id,
+    value,
+    phoneField
+  ){
+    var element =
+      byId(id);
+
+    if(!element){
+      return false;
+    }
+
+    /*
+     * 사용자가 이미 입력했거나 앞 단계에서 확정된 값은
+     * 업체 캐시가 덮어쓰지 않습니다.
+     */
+    if(
+      usefulPermitValue(
+        element.value
+      )
+    ){
+      return false;
+    }
+
+    var nextValue =
+      usefulPermitValue(
+        value
+      );
+
+    if(!nextValue){
+      return false;
+    }
+
+    element.value =
+      phoneField
+        ? formatKoreanPhone(
+            nextValue
+          )
+        : nextValue;
+
+    element.classList.add(
+      'auto'
+    );
+
+    return true;
+  }
+
+  function latestSafetyProvisionContact(
+    workId,
+    companyName
+  ){
+    var targetWorkId =
+      clean(workId);
+
+    var companyKey =
+      contractorCacheCompanyKey(
+        companyName
+      );
+
+    var documents =
+      readArray(
+        'safetyProvisions'
+      )
+        .filter(function(record){
+          if(!record){
+            return false;
+          }
+
+          var workIds =
+            Array.isArray(
+              record.workIds
+            )
+              ? record.workIds
+                  .map(clean)
+              : [];
+
+          if(record.workId){
+            workIds.push(
+              clean(
+                record.workId
+              )
+            );
+          }
+
+          if(
+            targetWorkId &&
+            workIds.indexOf(
+              targetWorkId
+            ) >= 0
+          ){
+            return true;
+          }
+
+          return Boolean(
+            companyKey &&
+            contractorCacheCompanyKey(
+              record.subcontractor ||
+              record.companyName ||
+              record.company ||
+              ''
+            ) === companyKey
+          );
+        })
+        .sort(function(first,second){
+          return (
+            recordTime(second) -
+            recordTime(first)
+          );
+        });
+
+    if(!documents.length){
+      return null;
+    }
+
+    var documentRecord =
+      documents[0];
+
+    var linkedWorks =
+      Array.isArray(
+        documentRecord.linkedWorks
+      )
+        ? documentRecord.linkedWorks
+        : [];
+
+    var linkedWork =
+      linkedWorks.find(
+        function(item){
+          return (
+            targetWorkId &&
+            clean(
+              item &&
+              item.workId
+            ) === targetWorkId
+          );
+        }
+      ) ||
+      linkedWorks[0] ||
+      {};
+
+    return {
+      name:
+        usefulPermitValue(
+          linkedWork.contractorManager,
+          documentRecord
+            .contractorSupervisorName,
+          documentRecord
+            .subcontractorManager
+        ),
+
+      phone:
+        usefulPermitValue(
+          linkedWork.contractorPhone,
+          linkedWork
+            .contractorManagerPhone,
+          documentRecord
+            .subcontractorPhone
+        ),
+
+      email:
+        usefulPermitValue(
+          linkedWork.contractorEmail,
+          documentRecord
+            .subcontractorEmail
+        ),
+
+      source:
+        'safetyProvision'
+    };
+  }
+
+  function applyPermitContactAutofill(
+    work
+  ){
+    work =
+      work || {};
+
+    var session =
+      readSession() || {};
+
+    var companyName =
+      usefulPermitValue(
+        work.company,
+        work.executingCompany,
+        work.subcontractCompany,
+        work.contractCompany,
+        byId('companyName') &&
+          byId('companyName').value,
+        permitData.companyName
+      );
+
+    setPermitValueIfEmpty(
+      'companyName',
+      companyName,
+      false
+    );
+
+    var safetyContact =
+      latestSafetyProvisionContact(
+        makeWorkId(work) ||
+        permitData.workId ||
+        state.workId,
+        companyName
+      ) || {};
+
+    var cache =
+      readContractorContactCache();
+
+    var cacheContact =
+      cache[
+        contractorCacheCompanyKey(
+          companyName
+        )
+      ] || {};
+
+    /*
+     * 당사 작업담당자:
+     * 작업관리대장 값이 없으면 로그인 사용자를 사용합니다.
+     */
+    setPermitValueIfEmpty(
+      'companyManagerName',
+      usefulPermitValue(
+        work.workManager,
+        work.manager,
+        work.companyManager,
+        session.displayName,
+        sessionStorage.getItem(
+          'userName'
+        )
+      ),
+      false
+    );
+
+    setPermitValueIfEmpty(
+      'companyManagerDepartment',
+      usefulPermitValue(
+        work.requestingDepartment,
+        work.instructionDept,
+        work.operatingDepartment,
+        work.operationDept,
+        session.department,
+        session.dept
+      ),
+      false
+    );
+
+    setPermitValueIfEmpty(
+      'companyManagerPhone',
+      usefulPermitValue(
+        work.workManagerPhone,
+        work.managerPhone,
+        work.companyManagerPhone,
+        session.phone,
+        session.phoneNumber
+      ),
+      true
+    );
+
+    /*
+     * 수급인 작업책임자:
+     * 작업관리대장 → 안전정보제공서 → 업체 최근값
+     */
+    var contractorName =
+      usefulPermitValue(
+        work.contractorManager,
+        work.supervisor,
+        safetyContact.name,
+        cacheContact.name
+      );
+
+    var contractorPhone =
+      usefulPermitValue(
+        work.contractorManagerPhone,
+        work.contractorPhone,
+        work.supervisorPhone,
+        safetyContact.phone,
+        cacheContact.phone
+      );
+
+    var contractorEmail =
+      usefulPermitValue(
+        work.contractorEmail,
+        work.email,
+        work.contractorManagerEmail,
+        work.supervisorEmail,
+        safetyContact.email,
+        cacheContact.email
+      );
+
+    setPermitValueIfEmpty(
+      'contractorSupervisorName',
+      contractorName,
+      false
+    );
+
+    setPermitValueIfEmpty(
+      'contractorSupervisorPhone',
+      contractorPhone,
+      true
+    );
+
+    setPermitValueIfEmpty(
+      'contractorSupervisorEmail',
+      contractorEmail,
+      false
+    );
+
+    /*
+     * 1단계 작업책임자도 값이 비어 있으면
+     * 수급인 작업책임자를 사용합니다.
+     */
+    if(
+      state.executionType !== 'direct'
+    ){
+      setPermitValueIfEmpty(
+        'supervisor',
+        contractorName,
+        false
+      );
+    }
+
+    /*
+     * 자동입력 값을 허가서 데이터에도 유지합니다.
+     */
+    permitData.contractorWorkSupervisor =
+      Object.assign(
+        {},
+        permitData
+          .contractorWorkSupervisor ||
+          {},
+        {
+          applicable:
+            state.executionType !==
+              'direct',
+
+          roleType:
+            'contractor-work-supervisor',
+
+          roleLabel:
+            '수급인 작업책임자',
+
+          company:
+            companyName,
+
+          name:
+            usefulPermitValue(
+              byId(
+                'contractorSupervisorName'
+              ).value
+            ),
+
+          phone:
+            formatKoreanPhone(
+              byId(
+                'contractorSupervisorPhone'
+              ).value
+            ),
+
+          email:
+            usefulPermitValue(
+              byId(
+                'contractorSupervisorEmail'
+              ).value
+            )
+        }
+      );
+
+    console.log(
+      '[Permit] 담당자 자동입력 확인:',
+      {
+        company:
+          companyName,
+
+        workId:
+          makeWorkId(work) ||
+          permitData.workId ||
+          state.workId,
+
+        contractorName:
+          contractorName,
+
+        source:
+          usefulPermitValue(
+            work.contractorManager,
+            work.supervisor
+          )
+            ? 'workDatabase'
+            : safetyContact.name
+              ? 'safetyProvision'
+              : cacheContact.name
+                ? 'localCompanyCache'
+                : 'empty'
+      }
+    );
+  }
+
+  function savePermitContactCache(){
+    var companyName =
+      usefulPermitValue(
+        byId('companyName') &&
+          byId('companyName').value,
+        permitData.companyName
+      );
+
+    var companyKey =
+      contractorCacheCompanyKey(
+        companyName
+      );
+
+    if(!companyKey){
+      return false;
+    }
+
+    var name =
+      usefulPermitValue(
+        byId(
+          'contractorSupervisorName'
+        ).value,
+        byId('supervisor').value
+      );
+
+    var phone =
+      formatKoreanPhone(
+        byId(
+          'contractorSupervisorPhone'
+        ).value
+      );
+
+    var email =
+      usefulPermitValue(
+        byId(
+          'contractorSupervisorEmail'
+        ).value
+      );
+
+    /*
+     * 연락처 정보가 하나도 없으면 빈 주소록을 만들지 않습니다.
+     */
+    if(
+      !name &&
+      !phone &&
+      !email
+    ){
+      return false;
+    }
+
+    /*
+     * 형식이 잘못된 이메일은 임시 주소록에 저장하지 않습니다.
+     */
+    if(
+      email &&
+      !validateEmail(email)
+    ){
+      email = '';
+    }
+
+    var cache =
+      readContractorContactCache();
+
+    cache[companyKey] = {
+      companyName:
+        companyName,
+
+      name:
+        name,
+
+      phone:
+        phone,
+
+      email:
+        email,
+
+      updatedAt:
+        nowIso(),
+
+      source:
+        'permit-confirmed-local'
+    };
+
+    localStorage.setItem(
+      CONTRACTOR_CONTACT_CACHE_KEY,
+      JSON.stringify(cache)
+    );
+
+    return true;
+  }
+
 
   function collectBasicInformation(){
     var manual =
@@ -9703,9 +10291,16 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       );
     }
 
+    /*
+     * 검증된 수급인 책임자 정보를
+     * 현재 브라우저의 업체별 최근값으로 보관합니다.
+     */
+    savePermitContactCache();
+
     submitPermit();
 
     return true;
+
   }
 
   /* =====================================================
@@ -10549,6 +11144,38 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     fillBasicFields(record);
     restoreRoleFields(record);
+    /*
+     * 기존 허가서에 없는 연락처만 업체 최근값으로 보완합니다.
+     * 복원된 기존 값은 덮어쓰지 않습니다.
+     */
+    applyPermitContactAutofill({
+      workId:
+        record.workId ||
+        record.sourceWorkId ||
+        '',
+
+      company:
+        record.companyName ||
+        '',
+
+      contractorManager:
+        record.contractorWorkSupervisor &&
+        record.contractorWorkSupervisor
+          .name ||
+        '',
+
+      contractorManagerPhone:
+        record.contractorWorkSupervisor &&
+        record.contractorWorkSupervisor
+          .phone ||
+        '',
+
+      contractorEmail:
+        record.contractorWorkSupervisor &&
+        record.contractorWorkSupervisor
+          .email ||
+        ''
+    });
 
     permitData.workTypes =
       Array.isArray(record.workTypes)
@@ -11655,6 +12282,14 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     applyRiskToForm(risk);
 
+    applyPermitContactAutofill(
+      work
+    );
+
+    permitData.workTypes =
+      detectWorkTypes(risk);
+
+
     permitData.workTypes =
       detectWorkTypes(risk);
 
@@ -11687,6 +12322,28 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     );
 
     applyRiskToForm(risk);
+    applyPermitContactAutofill({
+      workId:
+        risk.workId ||
+        risk.sourceWorkId ||
+        '',
+
+      company:
+        risk.company ||
+        '',
+
+      contractorManager:
+        risk.contractorManager ||
+        '',
+
+      contractorManagerPhone:
+        risk.contractorManagerPhone ||
+        '',
+
+      contractorEmail:
+        risk.contractorEmail ||
+        ''
+    });
 
     permitData.workTypes =
       detectWorkTypes(risk);
