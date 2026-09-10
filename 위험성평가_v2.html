@@ -6037,97 +6037,266 @@ function setLocationValue(
 
 
 
-function detectWorkTypeFromText(value){
-  var text = compactText(value);
+function detectWorkTypeFromText(
+  value
+){
+  var text =
+    compactText(value);
 
-  if(includesAny(text, ['밀폐','질식','탱크내부','맨홀'])){ return '밀폐공간'; }
-  if(includesAny(text, ['용접','용단','연삭','그라인더','화기'])){ return '화기'; }
-  if(includesAny(text, ['비계','고소','추락','떨어짐','사다리'])){ return '떨어짐 위험'; }
-  if(includesAny(text, ['전기','감전','판넬','전자접촉기','수배전','차단기','vcb'])){ return '전기'; }
-  if(includesAny(text, ['양중','인양','크레인','호이스트'])){ return '양중'; }
-  if(includesAny(text, ['화학','황산','염산','가성소다','약품'])){ return '화학물질'; }
-  if(includesAny(text, ['굴착','터파기'])){ return '굴착작업'; }
-  if(includesAny(text, ['운반','운송','지게차'])){ return '운반'; }
-  if(includesAny(text, ['정비','수리','보수','교체'])){ return '정비'; }
+  if(
+    includesAny(
+      text,
+      [
+        '밀폐',
+        '질식',
+        '탱크내부',
+        '맨홀'
+      ]
+    )
+  ){
+    return '밀폐공간';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '용접',
+        '용단',
+        '연삭',
+        '그라인더',
+        '화기'
+      ]
+    )
+  ){
+    return '화기';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '비계',
+        '고소',
+        '추락',
+        '떨어짐',
+        '사다리'
+      ]
+    )
+  ){
+    return '떨어짐 위험';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '전기',
+        '감전',
+        '판넬',
+        '전자접촉기',
+        '수배전',
+        '차단기',
+        'vcb'
+      ]
+    )
+  ){
+    return '전기';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '양중',
+        '인양',
+        '크레인',
+        '호이스트'
+      ]
+    )
+  ){
+    return '양중';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '화학',
+        '황산',
+        '염산',
+        '가성소다',
+        '약품'
+      ]
+    )
+  ){
+    return '화학물질';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '굴착',
+        '터파기'
+      ]
+    )
+  ){
+    return '굴착작업';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '운반',
+        '운송',
+        '지게차'
+      ]
+    )
+  ){
+    return '운반';
+  }
+
+  if(
+    includesAny(
+      text,
+      [
+        '정비',
+        '수리',
+        '보수',
+        '교체'
+      ]
+    )
+  ){
+    return '정비';
+  }
 
   return '일반작업';
 }
 
-    setLocationValue(
-      [
-        riskData.location || '',
-        riskData.detailLocation || '',
-        work.locationDisplay || '',
-        work.locationRaw || '',
-        work.workPlaceRaw || '',
-        typeof work.location ===
-          'string'
-          ? work.location
-          : '',
-        work.location &&
-        typeof work.location ===
-          'object'
-          ? (
-              work.location.factory ||
-              ''
-            )
-          : '',
-        riskData.workName || '',
-        work.workNameFull || ''
-      ].join(' ')
-    );
-
+/*
+ * 작업관리대장에서 선택한 작업으로
+ * 위험성평가 기본정보를 구성합니다.
+ */
+function startAssessmentFromWork(
+  workId,
+  reassessment
+){
   resetAssessment();
 
-  try {
-    var raw = localStorage.getItem('safetyDatabase');
-    if(!raw){ throw new Error('작업 데이터가 없습니다.'); }
+  try{
+    var raw =
+      localStorage.getItem(
+        'safetyDatabase'
+      );
 
-    var database = JSON.parse(raw);
+    if(!raw){
+      throw new Error(
+        '작업 데이터가 없습니다.'
+      );
+    }
+
+    var database =
+      JSON.parse(raw);
+
+    var workHistory =
+      Array.isArray(
+        database.workHistory
+      )
+        ? database.workHistory
+        : [];
+
+    var targetWorkId =
+      String(
+        workId || ''
+      )
+        .replace(/\s+/g,'')
+        .trim();
+
     var work =
-      (
-        database.workHistory ||
-        []
-      ).find(function(item){
-        var itemWorkId =
-          String(
-            item.workId ||
-            (
-              item.date &&
-              item.originalNo
-                ? item.date +
-                  '_' +
-                  item.originalNo
-                : ''
+      workHistory.find(
+        function(item){
+          var itemWorkId =
+            String(
+              item.workId ||
+              item.id ||
+              (
+                item.date &&
+                item.originalNo
+                  ? item.date +
+                    '_' +
+                    item.originalNo
+                  : ''
+              )
             )
-          ).trim();
+              .replace(/\s+/g,'')
+              .trim();
 
-        return (
-          itemWorkId ===
-          String(workId || '').trim()
+          return (
+            itemWorkId ===
+            targetWorkId
+          );
+        }
+      );
+
+    if(!work){
+      throw new Error(
+        '선택한 작업을 찾을 수 없습니다.'
+      );
+    }
+
+    riskData.workId =
+      targetWorkId;
+
+    riskData.workName =
+      String(
+        work.workName ||
+        work.workNameFull ||
+        ''
+      )
+        .trim()
+        .replace(
+          /^["'“”‘’]+|["'“”‘’]+$/g,
+          ''
         );
-      });
 
+    riskData.company =
+      String(
+        work.company ||
+        work.executingCompany ||
+        work.subcontractCompany ||
+        work.contractCompany ||
+        ''
+      ).trim();
 
-    if(!work){ throw new Error('선택한 작업을 찾을 수 없습니다.'); }
+    riskData.date =
+      work.date ||
+      formatDateKST(
+        new Date()
+      );
 
-    riskData.workId = workId;
-    riskData.workName = String(work.workName || work.workNameFull || '')
-      .trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '');
-    riskData.company = work.company || '';
-    riskData.date = work.date || formatDateKST(new Date());
-    riskData.workDescription = work.workNameFull || work.safety || '';
-    riskData.workType = detectWorkTypeFromText(
-      [riskData.workName, riskData.workDescription].join(' ')
-    );
+    riskData.workers =
+      work.workerCount ||
+      work.workerCountRaw ||
+      '';
 
-    /*
-     * 작업장소가 비어 있어도 작업명·원본 위치·표시 위치에서
-     * 공장과 라인을 판정합니다.
-     *
-     * 1~5라인 → 포항양극재 1공장
-     * 6~9라인 → 포항양극재 2공장
-     */
+    riskData.workDescription =
+      String(
+        work.workNameFull ||
+        work.safety ||
+        work.workDescription ||
+        ''
+      ).trim();
+
+    riskData.workType =
+      detectWorkTypeFromText(
+        [
+          riskData.workName,
+          riskData.workDescription
+        ].join(' ')
+      );
+
     var locationObject =
       work.location &&
       typeof work.location ===
@@ -6144,165 +6313,165 @@ function detectWorkTypeFromText(value){
           typeof work.location ===
             'string'
             ? work.location
-            : locationObject.raw ||
-              locationObject.display ||
+            : locationObject.display ||
+              locationObject.raw ||
               ''
         ) ||
         ''
       ).trim();
 
-    var factorySourceText =
+    var locationSource =
       [
         locationObject.factory || '',
         originalLocation,
-        work.workName || '',
+        riskData.workName,
         work.workNameFull || ''
-      ]
-        .join(' ')
-        .replace(/\s+/g,' ');
-
-    var compactFactoryText =
-      factorySourceText
-        .replace(/\s+/g,'');
-
-    var detectedFactory = '';
+      ].join(' ');
 
     /*
-     * 명시된 공장·단계 정보를 먼저 판정합니다.
+     * 세부 위치는 원본 표시값을 우선 보존합니다.
      */
-    if(
-      compactFactoryText.indexOf(
-        '2공장'
-      ) >= 0 ||
-      compactFactoryText.indexOf(
-        '2-2단계'
-      ) >= 0
-    ){
-      detectedFactory =
-        '포항양극재 2공장';
-
-    }else if(
-      compactFactoryText.indexOf(
-        '1공장'
-      ) >= 0 ||
-      compactFactoryText.indexOf(
-        '2-1단계'
-      ) >= 0 ||
-      (
-        compactFactoryText.indexOf(
-          '1단계'
-        ) >= 0 &&
-        compactFactoryText.indexOf(
-          '2-1단계'
-        ) < 0
-      )
-    ){
-      detectedFactory =
-        '포항양극재 1공장';
-    }
-
-    /*
-     * 공장 정보가 없으면 라인 번호로 판정합니다.
-     * 9A·9B·9C라인도 9라인으로 판정합니다.
-     */
-    var lineMatch =
-      factorySourceText.match(
-        /(?:^|[^0-9])([1-9])\s*[A-C]?\s*라인/i
-      );
-
-    var lineNumber =
-      lineMatch
-        ? Number(lineMatch[1])
-        : 0;
-
-    if(
-      !detectedFactory &&
-      lineNumber >= 1 &&
-      lineNumber <= 5
-    ){
-      detectedFactory =
-        '포항양극재 1공장';
-    }
-
-    if(
-      !detectedFactory &&
-      lineNumber >= 6 &&
-      lineNumber <= 9
-    ){
-      detectedFactory =
-        '포항양극재 2공장';
-    }
-
-    riskData.location =
-      detectedFactory ||
-      '기타';
-
     riskData.detailLocation =
-      originalLocation ||
-      (
-        lineNumber
-          ? lineNumber +
-            '라인'
-          : ''
-      );
+      originalLocation;
 
+    /*
+     * 공장 선택값은 setLocationValue()에서 다음 기준으로 판정합니다.
+     *
+     * 1~5라인 → 포항양극재 1공장
+     * 6~9라인 → 포항양극재 2공장
+     */
+    setLocationValue(
+      locationSource
+    );
+
+    /*
+     * 공장 판정 과정에서 세부 위치를 변경하지 않고
+     * 원본 위치를 다시 보존합니다.
+     */
+    riskData.detailLocation =
+      originalLocation;
 
     var permits = [];
-    try {
-      permits = JSON.parse(localStorage.getItem('safetyPermits') || '[]');
-    } catch(error){ permits = []; }
 
-    var linkedPermit = permits.find(function(permit){
-      return permit.sourceWorkId === workId;
-    });
+    try{
+      permits =
+        JSON.parse(
+          localStorage.getItem(
+            getPermitStorageKey()
+          ) || '[]'
+        );
 
-    if(linkedPermit){ riskData.permitNo = linkedPermit.permitNo || ''; }
+      if(!Array.isArray(permits)){
+        permits = [];
+      }
 
-    setAutoInput('workNameInput', riskData.workName);
-    set    setLocationValue(
-      [
-        riskData.location || '',
-        riskData.detailLocation || '',
-        work.locationDisplay || '',
-        work.locationRaw || '',
-        work.workPlaceRaw || '',
-        typeof work.location ===
-          'string'
-          ? work.location
-          : '',
-        work.location &&
-        typeof work.location ===
-          'object'
-          ? (
-              work.location.factory ||
+    }catch(permitError){
+      permits = [];
+    }
+
+    var linkedPermit =
+      permits.find(
+        function(permit){
+          return (
+            String(
+              permit.sourceWorkId ||
+              permit.workId ||
+              (
+                permit.workflowLink &&
+                permit.workflowLink
+                  .workId
+              ) ||
               ''
             )
-          : '',
-        riskData.workName || '',
-        work.workNameFull || ''
+              .replace(/\s+/g,'')
+              .trim() ===
+            targetWorkId
+          );
+        }
+      );
+
+    if(linkedPermit){
+      riskData.permitNo =
+        linkedPermit.permitNo ||
+        '';
+    }
+
+    setAutoInput(
+      'workNameInput',
+      riskData.workName
+    );
+
+    /*
+     * 위에서 판정된 riskData.location을
+     * 작업장소 선택란에 확실히 반영합니다.
+     */
+    setLocationValue(
+      [
+        riskData.location || '',
+        locationSource
       ].join(' ')
     );
-LocationValue(riskData.location);
-    setAutoInput('detailLocationInput', riskData.detailLocation);
-    setInputValue('assessmentDateInput', riskData.date);
-    setAutoInput('companyInput', riskData.company);
-    setAutoInput('workTypeSelect', riskData.workType);
-    setAutoInput('workDescriptionInput', riskData.workDescription);
 
-    if(riskData.permitNo){ showPermitBanner(riskData.permitNo); }
+    setAutoInput(
+      'detailLocationInput',
+      riskData.detailLocation
+    );
+
+    setInputValue(
+      'assessmentDateInput',
+      riskData.date
+    );
+
+    setAutoInput(
+      'companyInput',
+      riskData.company
+    );
+
+    setAutoInput(
+      'workerCountInput',
+      riskData.workers
+    );
+
+    setAutoInput(
+      'workTypeSelect',
+      riskData.workType
+    );
+
+    setAutoInput(
+      'workDescriptionInput',
+      riskData.workDescription
+    );
+
+    if(riskData.permitNo){
+      showPermitBanner(
+        riskData.permitNo
+      );
+    }
 
     goToStep(1);
 
     showToast(
-      reassessment ? '기존 작업의 재평가를 시작합니다.' : '작업정보를 불러왔습니다.',
+      reassessment
+        ? '기존 작업의 재평가를 시작합니다.'
+        : '작업정보를 불러왔습니다.',
       'success'
     );
 
-  } catch(error){
-    console.error(error);
-    showToast(error.message || '작업정보를 불러오지 못했습니다.', 'danger');
+  }catch(error){
+    console.error(
+      '[위험성평가] 작업정보 연결 실패:',
+      error
+    );
+
+    showToast(
+      error.message ||
+      '작업정보를 불러오지 못했습니다.',
+      'danger'
+    );
   }
 }
+
+
 
 function startAssessmentFromPermit(permitNo){
   resetAssessment();
