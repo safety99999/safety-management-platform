@@ -1548,6 +1548,50 @@ button{touch-action:manipulation}
 }
   
 </style>
+<style>
+/* ═══════════════════════════════════════
+ * 작업현황 카드 압축 표시
+ * - 위험구분과 진행상태를 나란히 표시
+ * - 작업전에는 사용 불가능한 버튼 숨김
+ * - TBM 시작 버튼 강조
+ * ═══════════════════════════════════════ */
+
+.work-item.compact .wi-top{
+  justify-content:flex-start;
+  gap:6px;
+}
+
+.work-item.compact .wi-status{
+  margin-left:0;
+}
+
+.work-item.compact{
+  padding:9px 10px;
+}
+
+.work-item.compact .wi-name{
+  margin-bottom:2px;
+}
+
+.work-item.compact .wi-meta{
+  margin-bottom:5px;
+}
+
+.work-item.wait .work-mini-action.disabled{
+  display:none;
+}
+
+.work-item.wait .work-mini-action.tbm{
+  border-color:var(--warn);
+  background:var(--warn-bg);
+  color:var(--warn);
+}
+
+.work-item.wait .work-mini-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+</style>
+  
 </head>
 
 <body>
@@ -8347,11 +8391,14 @@ function standardWorkCard(
                 tbmUrl
               ) +
             '">' +
-              (
-                tbmCompleted
-                  ? '✅ TBM'
-                  : '📝 TBM'
-              ) +
+(
+  tbmCompleted
+    ? '✅ TBM 완료'
+    : status.code ===
+        'approved'
+      ? '📝 TBM 시작'
+      : '📝 TBM'
+) +
             '</a>'
           )
         : (
