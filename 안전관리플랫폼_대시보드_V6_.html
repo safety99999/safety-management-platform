@@ -2834,6 +2834,75 @@ button{touch-action:manipulation}
 
     return '';
   }
+  /*
+   * 작업관리대장 유효 작업 판정
+   *
+   * 작업관리대장의 정상 작업번호는 숫자 NO를 사용합니다.
+   * 과거 다중행 셀 파싱 오류로 담당자명·위치·작업내용 등이
+   * originalNo로 저장된 자료는 화면과 정적 배포에서 제외합니다.
+   */
+  function isValidWorkRecord(
+    work
+  ){
+    work =
+      work || {};
+
+    var date =
+      clean(
+        work.date
+      );
+
+    var originalNo =
+      clean(
+        work.originalNo
+      );
+
+    var id =
+      makeWorkId(
+        work
+      );
+
+    var name =
+      clean(
+        work.workNameFull ||
+        work.workNameRaw ||
+        work.workName
+      );
+
+    var normalizedName =
+      name.toUpperCase();
+
+    var validDate =
+      /^\d{4}-\d{2}-\d{2}$/
+        .test(date);
+
+    var validNumber =
+      /^\d+$/
+        .test(originalNo);
+
+    var validName =
+      Boolean(
+        name &&
+        normalizedName !== 'X' &&
+        normalizedName !== '-' &&
+        normalizedName !==
+          '작업명 미지정' &&
+        normalizedName !==
+          '미지정' &&
+        normalizedName !==
+          'N/A' &&
+        normalizedName !==
+          'NA'
+      );
+
+    return Boolean(
+      validDate &&
+      validNumber &&
+      id &&
+      validName
+    );
+  }
+
 
   function simplifyWorkName(
     value
@@ -3715,8 +3784,8 @@ button{touch-action:manipulation}
           );
         })
         .filter(function(work){
-          return Boolean(
-            work.workId
+          return isValidWorkRecord(
+            work
           );
         });
 
@@ -10726,6 +10795,20 @@ function standardWorkCard(
           normalizeImportedValue(
             columns[1]
           ).replace(/\s+/g,'');
+        /*
+         * 작업관리대장의 NO는 숫자만 허용합니다.
+         *
+         * 다중행 셀 파싱 오류로 담당자명·위치·작업내용 등이
+         * NO열로 밀린 행은 작업으로 생성하지 않습니다.
+         */
+        if(
+          !/^\d+$/.test(
+            originalNo
+          )
+        ){
+          return;
+        }
+
 
         /*
          * NO가 있는 데이터 행에서 A열 날짜가 비어 있으면
@@ -11873,10 +11956,11 @@ function standardWorkCard(
 
     return works
       .filter(function(work){
-        return Boolean(
-          makeWorkId(work)
+        return isValidWorkRecord(
+          work
         );
       })
+
       .map(function(work){
         return Object.assign(
           {},
