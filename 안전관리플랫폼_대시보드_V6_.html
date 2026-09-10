@@ -2202,6 +2202,7 @@ button{touch-action:manipulation}
     allWorks:[],
     displayedWorks:[],
     permits:[],
+    testerPermits:[],    
     risks:[],
     safetyInfos:[],
     quizzes:[],
@@ -3789,15 +3790,37 @@ button{touch-action:manipulation}
           );
         });
 
+    /*
+     * 작업현황은 서버 허가서 기준으로 계산합니다.
+     *
+     * 테스터가 직접 작성한 로컬 문서는 별도 배열에 보관하여
+     * 실제 서버 현황과 혼합되지 않도록 합니다.
+     */
     state.permits =
       uniqueRecords(
         readArray(
-          storagePermitKey()
+          global.isPublicTester()
+            ? 'serverSafetyPermitsSnapshot'
+            : 'safetyPermits'
         ),
         function(record){
           return record.permitNo;
         }
       );
+
+    state.testerPermits =
+      global.isPublicTester()
+        ? uniqueRecords(
+            readArray(
+              'testerSafetyPermits'
+            ),
+            function(record){
+              return record.permitNo;
+            }
+          )
+        : [];
+
+
 
     state.risks =
       uniqueRecords(
@@ -5706,7 +5729,18 @@ if(
   }
 
   function approvedTodayPermits(){
-    return state.permits
+    /*
+     * 상단 현황은 서버 기준입니다.
+     *
+     * 테스터가 TBM을 실행할 때는 해당 브라우저에서 작성하고
+     * TEST 로컬 승인한 허가서만 대상으로 사용합니다.
+     */
+    var records =
+      global.isPublicTester()
+        ? state.testerPermits
+        : state.permits;
+
+    return records
       .filter(function(permit){
         return (
           normalizePermitCode(
@@ -5717,6 +5751,8 @@ if(
         );
       });
   }
+
+
 
   function navigate(url){
     document.body.classList.add(
@@ -7109,26 +7145,32 @@ if(
    * ===================================================== */
 
   function visiblePermits(){
+    /*
+     * 관리자·일반 사용자는 서버 동기화 허가서를 표시합니다.
+     *
+     * 테스터의 허가서 메뉴에는 서버 전체 허가서가 아니라
+     * 해당 브라우저에서 직접 작성한 테스트 문서만 표시합니다.
+     */
+    var records =
+      global.isPublicTester()
+        ? state.testerPermits
+        : state.permits;
+
     if(
-      global.isAdminUser()
+      global.isAdminUser() ||
+      global.isPublicTester()
     ){
-      return state.permits
+      return records
         .slice()
-        .sort(function(a,b){
+        .sort(function(first,second){
           return (
-            recordTime(b) -
-            recordTime(a)
+            recordTime(second) -
+            recordTime(first)
           );
         });
     }
 
-    if(
-      global.isPublicTester()
-    ){
-      return state.permits;
-    }
-
-    return state.permits
+    return records
       .filter(function(record){
         return (
           record.createdByUid &&
@@ -7136,13 +7178,15 @@ if(
             appSession.uid
         );
       })
-      .sort(function(a,b){
+      .sort(function(first,second){
         return (
-          recordTime(b) -
-          recordTime(a)
+          recordTime(second) -
+          recordTime(first)
         );
       });
   }
+
+
 
   function permitCounts(){
     var records =
@@ -8126,14 +8170,33 @@ function standardWorkCard(
     null;
 
   var actionHtml = '';
+  /*
+   * 테스터가 조회한 서버 허가서는 대시보드 현황 확인용입니다.
+   * 이번 단계에서는 서버 원문 수정·승인 화면으로 이동시키지 않습니다.
+   */
+  var testerServerSnapshot =
+    Boolean(
+      global.isPublicTester() &&
+      permit &&
+      permit.dashboardReadSource ===
+        'firestore-server'
+    );
+
 
   /*
    * 허가서가 없는 오늘 작업
    */
-  if(
+   if(testerServerSnapshot){
+    actionHtml =
+      '<div class="wi-btn secondary">' +
+        '🌐 서버 현황 · 읽기 전용' +
+      '</div>';
+
+  }else if(
     work.date === today() &&
     !permit
   ){
+
     actionHtml =
       '<a class="wi-btn" href="' +
         URLS.permit +
@@ -9146,8 +9209,20 @@ function standardWorkCard(
     var works =
       todayWorks();
 
-    var indexes =
-      buildProcessIndexes();
+    /*
+     * 테스터의 신규 작성 가능 여부는 서버 실제 허가서가 아니라
+     * 해당 브라우저의 로컬 테스트 허가서를 기준으로 판단합니다.
+     */
+    var permitRecords =
+      global.isPublicTester()
+        ? state.testerPermits
+        : state.permits;
+
+    var permitByWorkId =
+      buildIndex(
+        permitRecords,
+        getLinkedWorkId
+      );
 
     var creatableCount = 0;
     var existingCount = 0;
@@ -9155,10 +9230,9 @@ function standardWorkCard(
     works.forEach(
       function(work){
         var existingPermit =
-          indexes
-            .permitByWorkId[
-              work.workId
-            ] ||
+          permitByWorkId[
+            work.workId
+          ] ||
           null;
 
         if(!existingPermit){
@@ -9171,10 +9245,6 @@ function standardWorkCard(
             existingPermit
           );
 
-        /*
-         * 반려·취소 문서는 신규 작성이 가능하도록 분류합니다.
-         * 나머지는 기존 허가서가 있는 작업입니다.
-         */
         if(
           code === 'rejected' ||
           code === 'cancelled'
@@ -9197,6 +9267,8 @@ function standardWorkCard(
         existingCount
     };
   }
+
+
 
   function openPermitMenu(){
     /*
@@ -13818,7 +13890,7 @@ async function completeCurrentWork(){
           ? '<div class="warn-box" ' +
               'style="margin-bottom:10px">' +
               '<div class="warn-box-title">' +
-                '🧪 테스터 로컬 모드' +
+                '🧪 테스트 모드 · 서버 현황 조회' +
               '</div>' +
               '<div class="warn-box-text">' +
                 '테스트 결과는 이 브라우저에만 저장됩니다.' +
@@ -14117,7 +14189,13 @@ async function completeCurrentWork(){
        * Firestore에서 실시간으로 갱신합니다.
        */
       if(
-        !global.isPublicTester() &&
+      /*
+       * 관리자·일반 사용자·테스터 모두 서버 허가서 현황을
+       * 최신 조회합니다.
+       *
+       * 테스터는 공개 읽기만 수행하고 서버 쓰기는 하지 않습니다.
+       */
+      if(
         global.DashboardFirebase &&
         typeof global
           .DashboardFirebase
@@ -14130,6 +14208,8 @@ async function completeCurrentWork(){
             .loadPermits(true)
         );
       }
+
+
 
       var results =
         await Promise.allSettled(
@@ -14996,6 +15076,7 @@ if(completionButton){
         if([
           'safetyDatabase',
           'safetyPermits',
+           'serverSafetyPermitsSnapshot',         
           'testerSafetyPermits',
           'riskAssessments',
           'riskAssessmentResults',
@@ -15674,6 +15755,280 @@ function localPermits(){
     return [];
   }
 }
+
+function serverPermitSnapshot(){
+  try{
+    var records =
+      JSON.parse(
+        localStorage.getItem(
+          'serverSafetyPermitsSnapshot'
+        ) || '[]'
+      );
+
+    return Array.isArray(records)
+      ? records
+      : [];
+
+  }catch(error){
+    return [];
+  }
+}
+
+function saveLocalPermits(
+  records
+){
+  localStorage.setItem(
+    'safetyPermits',
+    JSON.stringify(records)
+  );
+
+  localStorage.setItem(
+    'permitsLastSync',
+    String(Date.now())
+  );
+}
+
+function saveServerPermitSnapshot(
+  records
+){
+  localStorage.setItem(
+    'serverSafetyPermitsSnapshot',
+    JSON.stringify(records)
+  );
+
+  localStorage.setItem(
+    'serverPermitsLastSync',
+    String(Date.now())
+  );
+}
+
+async function loadPermits(
+  force
+){
+  var session =
+    readSession();
+
+  var tester =
+    Boolean(
+      session &&
+      session.environment ===
+        'test' &&
+      session.accessMode ===
+        'tester' &&
+      session.role ===
+        'tester'
+    );
+
+  /*
+   * 관리자·일반 사용자만 Firebase Authentication
+   * 사용자 검증을 수행합니다.
+   *
+   * 테스터는 Firestore Rules에서 공개 읽기가 허용된
+   * TEST 허가서 컬렉션을 읽기 전용으로 조회합니다.
+   */
+  if(!tester){
+    var user =
+      await waitForAuth();
+
+    validateUser(
+      user,
+      false
+    );
+  }
+
+  var cached =
+    tester
+      ? serverPermitSnapshot()
+      : localPermits();
+
+  console.log(
+    '[Dashboard Firebase] 허가서 서버 동기화 시작:',
+    {
+      collection:
+        PERMIT_COLLECTION,
+
+      role:
+        tester
+          ? 'tester'
+          : (
+              session &&
+              session.role ||
+              'authenticated'
+            ),
+
+      force:
+        force === true,
+
+      cachedCount:
+        cached.length
+    }
+  );
+
+  var snapshot =
+    await getDocs(
+      collection(
+        db,
+        PERMIT_COLLECTION
+      )
+    );
+
+  var cloud = [];
+
+  snapshot.forEach(
+    function(documentSnapshot){
+      var record =
+        documentSnapshot.data() ||
+        {};
+
+      record.permitNo =
+        record.permitNo ||
+        documentSnapshot.id;
+
+      /*
+       * 대시보드 캐시에만 서버 자료 출처를 표시합니다.
+       * Firestore 원본은 변경하지 않습니다.
+       */
+      if(tester){
+        record.dashboardReadSource =
+          'firestore-server';
+      }
+
+      cloud.push(record);
+    }
+  );
+
+  var cloudMap =
+    new Map();
+
+  cloud.forEach(
+    function(record){
+      if(
+        record &&
+        record.permitNo
+      ){
+        cloudMap.set(
+          record.permitNo,
+          record
+        );
+      }
+    }
+  );
+
+  /*
+   * 인증 사용자의 전송 대기 로컬 문서만 보존합니다.
+   * 테스터 서버 스냅샷에는 로컬 테스트 문서를 합치지 않습니다.
+   */
+  if(!tester){
+    cached.forEach(
+      function(record){
+        if(
+          !record ||
+          !record.permitNo ||
+          record.syncPending !== true
+        ){
+          return;
+        }
+
+        var cloudRecord =
+          cloudMap.get(
+            record.permitNo
+          );
+
+        if(
+          !cloudRecord ||
+          recordTime(record) >
+            recordTime(cloudRecord)
+        ){
+          cloudMap.set(
+            record.permitNo,
+            record
+          );
+        }
+      }
+    );
+  }
+
+  var synchronized =
+    Array.from(
+      cloudMap.values()
+    )
+      .sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      });
+
+  if(tester){
+    saveServerPermitSnapshot(
+      synchronized
+    );
+  }else{
+    saveLocalPermits(
+      synchronized
+    );
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(
+      'app-data-changed',
+      {
+        detail:{
+          key:
+            tester
+              ? 'serverSafetyPermitsSnapshot'
+              : 'safetyPermits',
+
+          source:
+            tester
+              ? 'firestore-public-read'
+              : 'firestore-authoritative-sync',
+
+          serverCount:
+            cloud.length,
+
+          preservedPendingCount:
+            tester
+              ? 0
+              : synchronized.length -
+                cloud.length,
+
+          timestamp:
+            Date.now()
+        }
+      }
+    )
+  );
+
+  console.log(
+    '[Dashboard Firebase] 허가서 서버 기준 동기화 완료:',
+    {
+      role:
+        tester
+          ? 'tester'
+          : (
+              session &&
+              session.role ||
+              'authenticated'
+            ),
+
+      serverCount:
+        cloud.length,
+
+      localCacheCount:
+        synchronized.length,
+
+      snapshotKey:
+        tester
+          ? 'serverSafetyPermitsSnapshot'
+          : 'safetyPermits'
+    }
+  );
+
+  return synchronized;
+}
+
+
 
 function saveLocalPermits(
   records
@@ -16867,21 +17222,20 @@ console.log(
     ];
 
     /*
-     * 테스터는 Firestore 허가서를 조회하지 않습니다.
-     * 관리자·일반 사용자만 허가서를 동기화합니다.
+    /*
+     * 모든 역할이 로그인 직후 최신 서버 허가서 현황을
+     * 조회합니다.
+     *
+     * 테스터는 공개 읽기만 수행하고 결과는
+     * serverSafetyPermitsSnapshot에 저장합니다.
      */
-    if(
-      !(
-        window.isPublicTester &&
-        window.isPublicTester()
-      )
-    ){
-      promises.push(
-        window
-          .DashboardFirebase
-          .loadPermits(true)
-      );
-    }
+    promises.push(
+      window
+        .DashboardFirebase
+        .loadPermits(true)
+    );
+
+
 
     var results =
       await Promise.allSettled(
