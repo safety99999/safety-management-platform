@@ -7235,48 +7235,161 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
         });
       });
 
+       /*
+     * 현장에서 직접 추가한 확인항목을 통합합니다.
+     *
+     * 화면을 다시 그릴 때 기존 선택 결과가 사라지지 않도록
+     * unifiedSafetyChecklist의 이전 결과를 우선 보존합니다.
+     */
     (
       permitData
         .additionalPermitChecklist ||
       []
     ).forEach(function(item,index){
+      item = item || {};
+
       var meaningKey =
         item.meaningKey ||
         normalizeMeaning(
           item.text
         );
 
-      if(!map.has(meaningKey)){
-        map.set(
-          meaningKey,
-          Object.assign(
-            {
-              checklistItemId:
-                'ADDITIONAL-' +
-                index,
-              meaningKey:
-                meaningKey,
-              result:'',
-              reason:'',
-              findings:[],
-              sources:[
-                {
-                  type:
-                    'permit-additional',
-                  sourceItemId:
-                    item.checklistItemId ||
-                    'ADDITIONAL-' +
-                    index,
-                  text:
-                    item.text
-                }
-              ]
-            },
-            clone(item)
-          )
-        );
+      var old =
+        previousMap[
+          meaningKey
+        ] ||
+        {};
+
+      if(map.has(meaningKey)){
+        return;
       }
+
+      var checklistItem = {
+        checklistItemId:
+          old.checklistItemId ||
+          item.checklistItemId ||
+          (
+            'ADDITIONAL-' +
+            index
+          ),
+
+        meaningKey:
+          meaningKey,
+
+        text:
+          item.text || '',
+
+        result:
+          old.result ||
+          item.result ||
+          '',
+
+        reason:
+          old.reason !== undefined
+            ? old.reason
+            : item.reason || '',
+
+        findings:
+          clone(
+            old.findings ||
+            item.findings ||
+            []
+          ),
+
+        sources:
+          clone(
+            old.sources ||
+            item.sources ||
+            [
+              {
+                type:
+                  'permit-additional',
+
+                sourceItemId:
+                  item.checklistItemId ||
+                  (
+                    'ADDITIONAL-' +
+                    index
+                  ),
+
+                text:
+                  item.text || ''
+              }
+            ]
+          ),
+
+        checkedBy:
+          old.checkedBy ||
+          item.checkedBy ||
+          '',
+
+        checkedAt:
+          old.checkedAt ||
+          item.checkedAt ||
+          '',
+
+        addedAt:
+          item.addedAt ||
+          '',
+
+        addedBy:
+          item.addedBy ||
+          '',
+
+        fieldAdded:true
+      };
+
+      map.set(
+        meaningKey,
+        checklistItem
+      );
+
+      /*
+       * 원본 현장 추가 배열에도 현재 상태를 반영합니다.
+       */
+      permitData
+        .additionalPermitChecklist[
+          index
+        ] =
+        Object.assign(
+          {},
+          item,
+          {
+            checklistItemId:
+              checklistItem
+                .checklistItemId,
+
+            meaningKey:
+              meaningKey,
+
+            text:
+              checklistItem.text,
+
+            result:
+              checklistItem.result,
+
+            reason:
+              checklistItem.reason,
+
+            findings:
+              clone(
+                checklistItem
+                  .findings
+              ),
+
+            checkedBy:
+              checklistItem
+                .checkedBy,
+
+            checkedAt:
+              checklistItem
+                .checkedAt,
+
+            fieldAdded:true
+          }
+        );
     });
+
 
     var items =
       Array.from(
@@ -7491,7 +7604,7 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                       'data-unified-reason="' +
                       index +
                       '" placeholder="' +
-                        '미흡 사유와 필요한 조치를 입력하세요.">' +
+                     '미흡 사유와 필요한 조치 (선택)'
                       escapeHtml(
                         item.reason || ''
                       ) +
@@ -7508,7 +7621,7 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                         'data-unified-reason="' +
                         index +
                         '" placeholder="' +
-                          '해당 없음 사유를 입력하세요.">' +
+                          '해당 없음 사유 (선택)' +
                         escapeHtml(
                           item.reason || ''
                         ) +
@@ -7600,6 +7713,10 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     var previousReason =
       item.reason || '';
 
+    /*
+     * 미흡 항목을 적합으로 재확인하면
+     * 기존 미흡 내용을 조치 이력으로 보존합니다.
+     */
     if(
       result === 'ok' &&
       previousResult === 'no' &&
@@ -7648,10 +7765,11 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     item.result =
       result;
 
-    if(
-      result === 'ok' ||
-      previousResult !== result
-    ){
+    /*
+     * 다른 상태로 변경하면 이전 상태의 사유를 초기화합니다.
+     * 미흡·해당 없음 사유 작성은 선택사항입니다.
+     */
+    if(previousResult !== result){
       item.reason = '';
     }
 
@@ -7661,8 +7779,92 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     item.checkedBy =
       actor.name;
 
+    /*
+     * 현장 추가 항목이면 원본 배열에도 선택 결과를 저장합니다.
+     * 이 처리가 없으면 화면을 다시 그릴 때 선택이 풀립니다.
+     */
+    if(
+      item.fieldAdded === true ||
+      String(
+        item.checklistItemId || ''
+      ).indexOf(
+        'ADDITIONAL-'
+      ) === 0
+    ){
+      var additionalIndex =
+        permitData
+          .additionalPermitChecklist
+          .findIndex(
+            function(additionalItem){
+              return (
+                additionalItem &&
+                (
+                  additionalItem
+                    .checklistItemId ===
+                    item.checklistItemId ||
+                  additionalItem
+                    .meaningKey ===
+                    item.meaningKey
+                )
+              );
+            }
+          );
+
+      if(additionalIndex >= 0){
+        permitData
+          .additionalPermitChecklist[
+            additionalIndex
+          ] =
+          Object.assign(
+            {},
+            permitData
+              .additionalPermitChecklist[
+                additionalIndex
+              ],
+            {
+              result:
+                item.result,
+
+              reason:
+                item.reason,
+
+              findings:
+                clone(
+                  item.findings ||
+                  []
+                ),
+
+              checkedAt:
+                item.checkedAt,
+
+              checkedBy:
+                item.checkedBy,
+
+              fieldAdded:true
+            }
+          );
+      }
+    }
+
+    /*
+     * 통합 체크리스트에도 현재 변경 결과를 명시적으로 반영합니다.
+     */
+    permitData
+      .unifiedSafetyChecklist
+      .items =
+      items;
+
+    permitData
+      .unifiedSafetyChecklist
+      .updatedAt =
+      nowIso();
+
     renderUnifiedChecklist();
 
+    /*
+     * 미흡 또는 해당 없음 사유는 선택사항입니다.
+     * 사용자가 작성하려는 경우에만 입력란으로 이동합니다.
+     */
     if(
       result === 'no' ||
       result === 'na'
@@ -7677,14 +7879,16 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
             );
 
           if(reasonInput){
-            reasonInput.focus();
+            reasonInput.scrollIntoView({
+              behavior:'smooth',
+              block:'nearest'
+            });
           }
         },
         50
       );
     }
   }
-
 
   function setUnifiedReason(
     index,
@@ -7693,9 +7897,68 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     var items =
       buildUnifiedChecklist();
 
-    if(items[index]){
-      items[index].reason =
-        clean(value);
+    var item =
+      items[index];
+
+    if(!item){
+      return;
+    }
+
+    item.reason =
+      clean(value);
+
+    if(
+      permitData
+        .unifiedSafetyChecklist
+    ){
+      permitData
+        .unifiedSafetyChecklist
+        .items =
+        items;
+
+      permitData
+        .unifiedSafetyChecklist
+        .updatedAt =
+        nowIso();
+    }
+
+    /*
+     * 현장 추가 항목이면 원본 배열에도 사유를 저장합니다.
+     */
+    if(
+      item.fieldAdded === true ||
+      String(
+        item.checklistItemId || ''
+      ).indexOf(
+        'ADDITIONAL-'
+      ) === 0
+    ){
+      var additionalIndex =
+        permitData
+          .additionalPermitChecklist
+          .findIndex(
+            function(additionalItem){
+              return (
+                additionalItem &&
+                (
+                  additionalItem
+                    .checklistItemId ===
+                    item.checklistItemId ||
+                  additionalItem
+                    .meaningKey ===
+                    item.meaningKey
+                )
+              );
+            }
+          );
+
+      if(additionalIndex >= 0){
+        permitData
+          .additionalPermitChecklist[
+            additionalIndex
+          ].reason =
+          item.reason;
+      }
     }
   }
 
@@ -8913,22 +9176,6 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     if(unselected){
       return showValidation(
         '통합 안전 체크리스트를 모두 확인하세요.',
-        byId('unifiedChecklist')
-      );
-    }
-    var missingNotApplicableReason =
-      unified.find(
-        function(item){
-          return (
-            item.result === 'na' &&
-            clean(item.reason).length < 2
-          );
-        }
-      );
-
-    if(missingNotApplicableReason){
-      return showValidation(
-        '해당 없음 항목의 사유를 2자 이상 입력하세요.',
         byId('unifiedChecklist')
       );
     }
