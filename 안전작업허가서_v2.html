@@ -7593,6 +7593,7 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
             '</div>' +
 
             (
+            (
               item.result === 'no'
                 ? (
                     '<textarea ' +
@@ -7602,10 +7603,11 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                         'min-height:72px;' +
                         'border-color:var(--stop)" ' +
                       'data-unified-reason="' +
-                      index +
-                      '" placeholder="' +
-                     '미흡 사유와 필요한 조치 (선택)'
-                      escapeHtml(
+                        index +
+                      '" ' +
+'placeholder="미흡 사유와 필요한 조치 (선택)">' +
+escapeHtml(
+
                         item.reason || ''
                       ) +
                     '</textarea>'
@@ -7619,9 +7621,9 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                           'min-height:66px;' +
                           'border-color:var(--sub)" ' +
                         'data-unified-reason="' +
-                        index +
-                        '" placeholder="' +
-                          '해당 없음 사유 (선택)' +
+                          index +
+                        '" ' +
+                        'placeholder="해당 없음 사유 (선택)">' +
                         escapeHtml(
                           item.reason || ''
                         ) +
@@ -7629,6 +7631,7 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                     )
                   : ''
             ) +
+
 
           '</div>';
       }
