@@ -7454,40 +7454,28 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       buildUnifiedChecklist();
 
     var confirmedCount =
-      items.filter(
-        function(item){
-          return (
-            item.result === 'ok' ||
-            item.result === 'na'
-          );
-        }
-      ).length;
+      items.filter(function(item){
+        return (
+          item.result === 'ok' ||
+          item.result === 'na'
+        );
+      }).length;
 
     var okCount =
-      items.filter(
-        function(item){
-          return (
-            item.result === 'ok'
-          );
-        }
-      ).length;
+      items.filter(function(item){
+        return item.result === 'ok';
+      }).length;
 
     var notApplicableCount =
-      items.filter(
-        function(item){
-          return (
-            item.result === 'na'
-          );
-        }
-      ).length;
+      items.filter(function(item){
+        return item.result === 'na';
+      }).length;
 
     var html =
       '<div class="cl-section">' +
-
         '<div class="cl-section-header general">' +
           '✅ 통합 안전 체크리스트' +
         '</div>' +
-
         '<div class="cl-progress">' +
           '<div class="cl-progress-txt">' +
             '상태 확인 ' +
@@ -7498,7 +7486,6 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
             notApplicableCount +
             '건' +
           '</div>' +
-
           '<div class="cl-progress-val">' +
             confirmedCount +
             ' / ' +
@@ -7506,136 +7493,126 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
           '</div>' +
         '</div>';
 
-    items.forEach(
-      function(item,index){
-        var itemClass = '';
+    items.forEach(function(item,index){
+      var itemClass = '';
 
-        if(item.result === 'ok'){
-          itemClass = 'ok';
-
-        }else if(item.result === 'no'){
-          itemClass = 'no';
-
-        }else if(item.result === 'na'){
-          itemClass = 'na';
-        }
-
-        html +=
-          '<div class="cl-item ' +
-            escapeHtml(itemClass) +
-          '">' +
-
-            '<span class="cl-num">' +
-              (index + 1) +
-            '</span>' +
-
-            '<div style="flex:1;min-width:0">' +
-
-              '<div class="cl-text">' +
-                escapeHtml(
-                  item.text
-                ) +
-              '</div>' +
-
-              '<div style="' +
-                'display:flex;' +
-                'gap:5px;' +
-                'flex-wrap:wrap;' +
-                'margin-top:6px">' +
-                sourceBadges(item) +
-              '</div>' +
-
-            '</div>' +
-
-            '<div class="cl-radios">' +
-
-              '<button type="button" ' +
-                'class="cl-radio-btn ' +
-                (
-                  item.result === 'ok'
-                    ? 'ok'
-                    : ''
-                ) +
-                '" data-unified-index="' +
-                index +
-                '" data-unified-result="ok" ' +
-                'aria-label="적합">' +
-                '⭕' +
-              '</button>' +
-
-              '<button type="button" ' +
-                'class="cl-radio-btn ' +
-                (
-                  item.result === 'no'
-                    ? 'no'
-                    : ''
-                ) +
-                '" data-unified-index="' +
-                index +
-                '" data-unified-result="no" ' +
-                'aria-label="미흡">' +
-                '❌' +
-              '</button>' +
-
-              '<button type="button" ' +
-                'class="cl-radio-btn na-btn ' +
-                (
-                  item.result === 'na'
-                    ? 'na-active'
-                    : ''
-                ) +
-                '" data-unified-index="' +
-                index +
-                '" data-unified-result="na">' +
-                '해당없음' +
-              '</button>' +
-
-            '</div>' +
-
-            (
-            (
-              item.result === 'no'
-                ? (
-                    '<textarea ' +
-                      'class="f-textarea" ' +
-                      'style="' +
-                        'width:100%;' +
-                        'min-height:72px;' +
-                        'border-color:var(--stop)" ' +
-                      'data-unified-reason="' +
-                        index +
-                      '" ' +
-'placeholder="미흡 사유와 필요한 조치 (선택)">' +
-escapeHtml(
-
-                        item.reason || ''
-                      ) +
-                    '</textarea>'
-                  )
-                : item.result === 'na'
-                  ? (
-                      '<textarea ' +
-                        'class="f-textarea" ' +
-                        'style="' +
-                          'width:100%;' +
-                          'min-height:66px;' +
-                          'border-color:var(--sub)" ' +
-                        'data-unified-reason="' +
-                          index +
-                        '" ' +
-                        'placeholder="해당 없음 사유 (선택)">' +
-                        escapeHtml(
-                          item.reason || ''
-                        ) +
-                      '</textarea>'
-                    )
-                  : ''
-            ) +
-
-
-          '</div>';
+      if(item.result === 'ok'){
+        itemClass = 'ok';
+      }else if(item.result === 'no'){
+        itemClass = 'no';
+      }else if(item.result === 'na'){
+        itemClass = 'na';
       }
-    );
+
+      var reasonHtml = '';
+
+      if(item.result === 'no'){
+        reasonHtml =
+          '<textarea ' +
+            'class="f-textarea" ' +
+            'style="' +
+              'width:100%;' +
+              'min-height:72px;' +
+              'border-color:var(--stop)" ' +
+            'data-unified-reason="' +
+              index +
+            '" ' +
+            'placeholder="미흡 사유와 필요한 조치 (선택)">' +
+            escapeHtml(
+              item.reason || ''
+            ) +
+          '</textarea>';
+
+      }else if(item.result === 'na'){
+        reasonHtml =
+          '<textarea ' +
+            'class="f-textarea" ' +
+            'style="' +
+              'width:100%;' +
+              'min-height:66px;' +
+              'border-color:var(--sub)" ' +
+            'data-unified-reason="' +
+              index +
+            '" ' +
+            'placeholder="해당 없음 사유 (선택)">' +
+            escapeHtml(
+              item.reason || ''
+            ) +
+          '</textarea>';
+      }
+
+      html +=
+        '<div class="cl-item ' +
+          escapeHtml(itemClass) +
+        '">' +
+
+          '<span class="cl-num">' +
+            (index + 1) +
+          '</span>' +
+
+          '<div style="flex:1;min-width:0">' +
+            '<div class="cl-text">' +
+              escapeHtml(
+                item.text
+              ) +
+            '</div>' +
+
+            '<div style="' +
+              'display:flex;' +
+              'gap:5px;' +
+              'flex-wrap:wrap;' +
+              'margin-top:6px">' +
+              sourceBadges(item) +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cl-radios">' +
+            '<button type="button" ' +
+              'class="cl-radio-btn ' +
+              (
+                item.result === 'ok'
+                  ? 'ok'
+                  : ''
+              ) +
+              '" data-unified-index="' +
+              index +
+              '" data-unified-result="ok" ' +
+              'aria-label="적합">' +
+              '⭕' +
+            '</button>' +
+
+            '<button type="button" ' +
+              'class="cl-radio-btn ' +
+              (
+                item.result === 'no'
+                  ? 'no'
+                  : ''
+              ) +
+              '" data-unified-index="' +
+              index +
+              '" data-unified-result="no" ' +
+              'aria-label="미흡">' +
+              '❌' +
+            '</button>' +
+
+            '<button type="button" ' +
+              'class="cl-radio-btn na-btn ' +
+              (
+                item.result === 'na'
+                  ? 'na-active'
+                  : ''
+              ) +
+              '" data-unified-index="' +
+              index +
+              '" data-unified-result="na">' +
+              '해당없음' +
+            '</button>' +
+          '</div>' +
+
+          reasonHtml +
+
+        '</div>';
+    });
 
     html +=
       '<div style="' +
@@ -7667,10 +7644,8 @@ escapeHtml(
           '</button>' +
 
         '</div>' +
-
       '</div>' +
-
-      '</div>';
+    '</div>';
 
     var container =
       byId(
