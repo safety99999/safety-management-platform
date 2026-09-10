@@ -4103,14 +4103,14 @@ var HAZARD_PROFILE_LIBRARY = {
     scenario: '운반 중 적재물이 흔들리거나 보행자 동선과 간섭하여 충돌·끼임 사고가 발생할 수 있음'
   },
   'rotating-maintenance': {
-    hazards: ['불시기동','회전체와 끼임점','잔류에너지'],
+    hazards: ['설비 불시 기동','회전체와 끼임점','잔류에너지'],
     accidentTypes: ['끼임','협착','절단'],
     scenario: '에너지 차단과 잔류에너지 제거가 미흡한 상태에서 설비가 기동하여 작업자가 회전체에 끼일 수 있음'
   },
   maintenance: {
-    hazards: ['불시기동','잔류에너지','방호장치 해체'],
+    hazards: ['설비 불시 기동','잔류에너지','방호장치 해체'],
     accidentTypes: ['끼임','협착','감전'],
-    scenario: '설비 정지와 에너지 격리가 미흡한 상태에서 정비하여 불시기동 또는 잔류에너지에 노출될 수 있음'
+    scenario: '설비 정지와 에너지 격리가 미흡한 상태에서 정비하여 설비 불시 기동 또는 잔류에너지에 노출될 수 있음'
   },
   fall: {
     hazards: ['고소작업','개구부','불완전한 작업발판'],
@@ -4342,7 +4342,7 @@ var CORE_MEASURE_LIBRARY = {
     ['설비 운전정지 및 작업범위 확인','essential',3],
     ['모든 에너지원 차단 및 ILS 실시','essential',32],
     ['잔류에너지 제거와 무동력 상태 확인','essential',32],
-    ['불시기동과 위험부 접근 방지','essential',3],
+    ['설비 불시 기동과 위험부 접근 방지','essential',3],
     ['방호덮개와 안전장치 상태 확인','engineering',3],
     ['전용공구와 적정 규격 공구 사용','engineering',3],
     ['작업 전 TBM과 역할분담 실시','administrative',3],
