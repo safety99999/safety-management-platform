@@ -10474,12 +10474,17 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       .join('');
   }
 
-   function renderChecklistDetail(record){
+   function renderChecklistDetail(
+    record
+  ){
     var checklist =
-      record.unifiedSafetyChecklist || {};
+      record.unifiedSafetyChecklist ||
+      {};
 
     var items =
-      Array.isArray(checklist.items)
+      Array.isArray(
+        checklist.items
+      )
         ? checklist.items
         : [];
 
@@ -10491,58 +10496,69 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       );
     }
 
-            var resultClass =
-          item.result === 'ok'
-            ? 'ok'
-            : item.result === 'no'
-              ? 'no'
-              : item.result === 'na'
-                ? 'na'
-                : '';
+    return items
+      .map(
+        function(item,index){
+          var resultClass =
+            item.result === 'ok'
+              ? 'ok'
+              : item.result === 'no'
+                ? 'no'
+                : item.result === 'na'
+                  ? 'na'
+                  : '';
 
-        var resultLabel =
-          item.result === 'ok'
-            ? '적합'
-            : item.result === 'no'
-              ? '미흡'
-              : item.result === 'na'
-                ? '해당 없음'
-                : '미확인';
+          var resultLabel =
+            item.result === 'ok'
+              ? '적합'
+              : item.result === 'no'
+                ? '미흡'
+                : item.result === 'na'
+                  ? '해당 없음'
+                  : '미확인';
 
-        return (
-          '<div class="detail-check-item ' +
-            resultClass +
-          '">' +
-
-            '<div class="detail-check-text">' +
-              '<strong>' +
-                (index + 1) +
-                '.</strong> ' +
-              escapeHtml(item.text) +
-            '</div>' +
-
-            '<span class="detail-check-result ' +
+          return (
+            '<div class="detail-check-item ' +
               resultClass +
             '">' +
-              escapeHtml(resultLabel) +
-            '</span>' +
 
-            (
-              item.reason
-                ? '<div class="detail-check-reason">' +
-                    '사유: ' +
-                    escapeHtml(
-                      item.reason
-                    ) +
-                  '</div>'
-                : ''
-            ) +
+              '<div class="detail-check-text">' +
+                '<strong>' +
+                  (index + 1) +
+                  '.</strong> ' +
+                escapeHtml(
+                  item.text
+                ) +
+              '</div>' +
 
-          '</div>'
-        );
-      }
-    ).join('');
+              '<span class="detail-check-result ' +
+                resultClass +
+              '">' +
+                escapeHtml(
+                  resultLabel
+                ) +
+              '</span>' +
+
+              (
+                item.reason
+                  ? (
+                      '<div class="detail-check-reason">' +
+                        '사유: ' +
+                        escapeHtml(
+                          item.reason
+                        ) +
+                      '</div>'
+                    )
+                  : ''
+              ) +
+
+            '</div>'
+          );
+        }
+      )
+      .join('');
   }
+
 
 
   function renderPermitView(record){
