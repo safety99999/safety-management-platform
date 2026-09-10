@@ -5190,17 +5190,33 @@ if(
       };
     }
 
-if(
-  permitCode ===
-    'approved'
-){
-  return {
-    code:'approved',
-    label:'TBM 대기',
-    permit:permit,
-    tbm:tbm
-  };
-}
+document
+  .querySelector(
+    '[data-status-filter="all"]'
+  )
+  .click();
+
+setTimeout(function(){
+  console.table(
+    Array.from(
+      document.querySelectorAll(
+        '#sheetBody .work-item'
+      )
+    ).map(function(card){
+      return {
+        작업명:
+          card.querySelector(
+            '.wi-name'
+          )?.textContent.trim(),
+        화면배지:
+          card.querySelector(
+            '.wi-status'
+          )?.textContent.trim()
+      };
+    })
+  );
+},300);
+
 
     return {
       code:'waiting',
@@ -5456,13 +5472,17 @@ if(
     });
   }
 
-  function statusClass(code){
-    if(
-      code === 'approved' ||
-      code === 'inProgress'
-    ){
-      return 'run';
-    }
+ if(
+  code === 'inProgress'
+){
+  return 'run';
+}
+
+if(
+  code === 'approved'
+){
+  return 'wait';
+}
 
     if(code === 'stopped'){
       return 'stop';
@@ -5578,34 +5598,34 @@ if(
           }
         );
 
-    }else if(filter === 'wait'){
-      items =
-        items.filter(
-          function(item){
-            return [
-             'waiting',
-  'pendingApproval',
-  'revisionRequested',
-  'rejected',
-  'cancelled',
-  'approved'
-            ].indexOf(
-              item.status.code
-            ) >= 0;
-          }
-        );
+}else if(filter === 'wait'){
+  items =
+    items.filter(
+      function(item){
+        return [
+          'waiting',
+          'pendingApproval',
+          'revisionRequested',
+          'rejected',
+          'cancelled',
+          'approved'
+        ].indexOf(
+          item.status.code
+        ) >= 0;
+      }
+    );
 
-    }else if(filter === 'run'){
-      items =
-        items.filter(
-          function(item){
-            return [          
-              'inProgress'
-            ].indexOf(
-              item.status.code
-            ) >= 0;
-          }
+   }else if(filter === 'run'){
+  items =
+    items.filter(
+      function(item){
+        return (
+          item.status.code ===
+            'inProgress'
         );
+      }
+    );
+
 
     }else if(filter === 'stop'){
       items =
