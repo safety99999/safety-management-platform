@@ -1587,6 +1587,18 @@ button:disabled{
   background:var(--stop-bg);
   color:var(--stop);
 }
+.cl-item.na{
+  background:var(--sunk);
+}
+
+.detail-check-item.na{
+  border-left-color:var(--sub);
+}
+
+.detail-check-result.na{
+  background:var(--sunk);
+  color:var(--sub);
+}
 
 .detail-check-reason{
   grid-column:1 / -1;
@@ -1815,6 +1827,52 @@ button:disabled{
     box-shadow:none!important;
   }
 }
+/* =========================================================
+ * 모바일 날짜·시간 및 입력 필드 폭 안정화
+ * ========================================================= */
+
+.f-row > .form-group{
+  min-width:0;
+}
+
+.f-input,
+.f-select,
+.f-textarea{
+  min-width:0;
+  max-width:100%;
+}
+
+input[type="date"].f-input,
+input[type="time"].f-input{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+
+/*
+ * 모바일의 date/time 네이티브 입력은 최소 폭이 커서
+ * 두 칸 배치 시 잘릴 수 있으므로 일정 입력만 1열로 표시합니다.
+ */
+@media(max-width:480px){
+  #screen-step1 .f-row:has(
+    input[type="date"]
+  ),
+  #screen-step1 .f-row:has(
+    input[type="time"]
+  ){
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  input[type="date"].f-input,
+  input[type="time"].f-input{
+    min-height:54px;
+    padding:12px 13px;
+    font-size:16px;
+  }
+}
+  
 </style>
 
 <script type="module">
@@ -7282,24 +7340,54 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     var items =
       buildUnifiedChecklist();
 
-    var completeCount =
-      items.filter(function(item){
-        return item.result === 'ok';
-      }).length;
+    var confirmedCount =
+      items.filter(
+        function(item){
+          return (
+            item.result === 'ok' ||
+            item.result === 'na'
+          );
+        }
+      ).length;
+
+    var okCount =
+      items.filter(
+        function(item){
+          return (
+            item.result === 'ok'
+          );
+        }
+      ).length;
+
+    var notApplicableCount =
+      items.filter(
+        function(item){
+          return (
+            item.result === 'na'
+          );
+        }
+      ).length;
 
     var html =
       '<div class="cl-section">' +
-        '<div class="' +
-          'cl-section-header general">' +
+
+        '<div class="cl-section-header general">' +
           '✅ 통합 안전 체크리스트' +
         '</div>' +
 
         '<div class="cl-progress">' +
           '<div class="cl-progress-txt">' +
-            '적합 확인 현황' +
+            '상태 확인 ' +
+            confirmedCount +
+            '건 · 적합 ' +
+            okCount +
+            '건 · 해당 없음 ' +
+            notApplicableCount +
+            '건' +
           '</div>' +
+
           '<div class="cl-progress-val">' +
-            completeCount +
+            confirmedCount +
             ' / ' +
             items.length +
           '</div>' +
@@ -7307,22 +7395,33 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     items.forEach(
       function(item,index){
+        var itemClass = '';
+
+        if(item.result === 'ok'){
+          itemClass = 'ok';
+
+        }else if(item.result === 'no'){
+          itemClass = 'no';
+
+        }else if(item.result === 'na'){
+          itemClass = 'na';
+        }
+
         html +=
           '<div class="cl-item ' +
-            escapeHtml(
-              item.result || ''
-            ) +
+            escapeHtml(itemClass) +
           '">' +
 
             '<span class="cl-num">' +
               (index + 1) +
             '</span>' +
 
-            '<div style="' +
-              'flex:1;min-width:0">' +
+            '<div style="flex:1;min-width:0">' +
 
               '<div class="cl-text">' +
-                escapeHtml(item.text) +
+                escapeHtml(
+                  item.text
+                ) +
               '</div>' +
 
               '<div style="' +
@@ -7336,6 +7435,7 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
             '</div>' +
 
             '<div class="cl-radios">' +
+
               '<button type="button" ' +
                 'class="cl-radio-btn ' +
                 (
@@ -7345,7 +7445,8 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                 ) +
                 '" data-unified-index="' +
                 index +
-                '" data-unified-result="ok">' +
+                '" data-unified-result="ok" ' +
+                'aria-label="적합">' +
                 '⭕' +
               '</button>' +
 
@@ -7358,32 +7459,65 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
                 ) +
                 '" data-unified-index="' +
                 index +
-                '" data-unified-result="no">' +
+                '" data-unified-result="no" ' +
+                'aria-label="미흡">' +
                 '❌' +
               '</button>' +
+
+              '<button type="button" ' +
+                'class="cl-radio-btn na-btn ' +
+                (
+                  item.result === 'na'
+                    ? 'na-active'
+                    : ''
+                ) +
+                '" data-unified-index="' +
+                index +
+                '" data-unified-result="na">' +
+                '해당없음' +
+              '</button>' +
+
             '</div>' +
-
-                '</div>' +
-
-              '</div>' +
 
             (
               item.result === 'no'
-                ? '<textarea ' +
-                    'class="f-textarea" ' +
-                    'style="width:100%;min-height:72px;border-color:var(--stop)" ' +
-                    'data-unified-reason="' +
-                    index +
-                    '" placeholder="미흡 사유와 필요한 조치">' +
-                    escapeHtml(
-                      item.reason || ''
-                    ) +
-                  '</textarea>'
-                : ''
+                ? (
+                    '<textarea ' +
+                      'class="f-textarea" ' +
+                      'style="' +
+                        'width:100%;' +
+                        'min-height:72px;' +
+                        'border-color:var(--stop)" ' +
+                      'data-unified-reason="' +
+                      index +
+                      '" placeholder="' +
+                        '미흡 사유와 필요한 조치를 입력하세요.">' +
+                      escapeHtml(
+                        item.reason || ''
+                      ) +
+                    '</textarea>'
+                  )
+                : item.result === 'na'
+                  ? (
+                      '<textarea ' +
+                        'class="f-textarea" ' +
+                        'style="' +
+                          'width:100%;' +
+                          'min-height:66px;' +
+                          'border-color:var(--sub)" ' +
+                        'data-unified-reason="' +
+                        index +
+                        '" placeholder="' +
+                          '해당 없음 사유를 입력하세요.">' +
+                        escapeHtml(
+                          item.reason || ''
+                        ) +
+                      '</textarea>'
+                    )
+                  : ''
             ) +
 
           '</div>';
-
       }
     );
 
@@ -7392,35 +7526,45 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
         'padding:13px;' +
         'border-top:1px solid var(--line)">' +
 
-        '<label class="f-label">' +
+        '<label class="f-label" ' +
+          'for="additionalChecklistInput">' +
           '➕ 현장 확인항목 추가' +
         '</label>' +
 
         '<div style="' +
           'display:grid;' +
-          'grid-template-columns:1fr auto;' +
+          'grid-template-columns:minmax(0,1fr) auto;' +
           'gap:7px">' +
 
           '<input type="text" ' +
             'class="f-input" ' +
             'id="additionalChecklistInput" ' +
-            'placeholder="추가 확인사항">' +
+            'placeholder="현장에서 추가로 확인할 사항">' +
 
           '<button type="button" ' +
             'class="btn-primary" ' +
             'id="addChecklistButton" ' +
-            'style="padding:10px 14px">' +
+            'style="' +
+              'min-height:51px;' +
+              'padding:10px 14px">' +
             '추가' +
           '</button>' +
 
         '</div>' +
 
       '</div>' +
+
       '</div>';
 
-    byId(
-      'unifiedChecklist'
-    ).innerHTML = html;
+    var container =
+      byId(
+        'unifiedChecklist'
+      );
+
+    if(container){
+      container.innerHTML =
+        html;
+    }
   }
 
   function setUnifiedResult(
@@ -7437,56 +7581,110 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       return;
     }
 
+    if(
+      [
+        'ok',
+        'no',
+        'na'
+      ].indexOf(result) < 0
+    ){
+      return;
+    }
+
     var actor =
       currentActor();
 
-    if(result === 'no'){
-      item.result = 'no';
-      item.reason = '';
-    }else{
-      if(
-        item.result === 'no' &&
-        clean(item.reason)
-      ){
-        item.findings =
-          Array.isArray(
-            item.findings
-          )
-            ? item.findings
-            : [];
+    var previousResult =
+      item.result || '';
 
-        item.findings.push({
-          findingId:
-            'FINDING-' +
-            Date.now(),
-          initialResult:'no',
-          reason:item.reason,
-          foundAt:
-            item.checkedAt ||
-            nowIso(),
-          foundBy:
-            item.checkedBy ||
-            actor.name,
-          resolved:true,
-          correctiveAction:
-            '현장 확인 후 적합으로 재확인',
-          recheckResult:'ok',
-          recheckedAt:nowIso(),
-          recheckedBy:
-            actor.name
-        });
-      }
+    var previousReason =
+      item.reason || '';
 
-      item.result = 'ok';
+    if(
+      result === 'ok' &&
+      previousResult === 'no' &&
+      clean(previousReason)
+    ){
+      item.findings =
+        Array.isArray(
+          item.findings
+        )
+          ? item.findings
+          : [];
+
+      item.findings.push({
+        findingId:
+          'FINDING-' +
+          Date.now(),
+
+        initialResult:'no',
+
+        reason:
+          previousReason,
+
+        foundAt:
+          item.checkedAt ||
+          nowIso(),
+
+        foundBy:
+          item.checkedBy ||
+          actor.name,
+
+        resolved:true,
+
+        correctiveAction:
+          '현장 확인 후 적합으로 재확인',
+
+        recheckResult:'ok',
+
+        recheckedAt:
+          nowIso(),
+
+        recheckedBy:
+          actor.name
+      });
+    }
+
+    item.result =
+      result;
+
+    if(
+      result === 'ok' ||
+      previousResult !== result
+    ){
       item.reason = '';
     }
 
-    item.checkedAt = nowIso();
+    item.checkedAt =
+      nowIso();
+
     item.checkedBy =
       actor.name;
 
     renderUnifiedChecklist();
+
+    if(
+      result === 'no' ||
+      result === 'na'
+    ){
+      setTimeout(
+        function(){
+          var reasonInput =
+            document.querySelector(
+              '[data-unified-reason="' +
+              index +
+              '"]'
+            );
+
+          if(reasonInput){
+            reasonInput.focus();
+          }
+        },
+        50
+      );
+    }
   }
+
 
   function setUnifiedReason(
     index,
@@ -8295,6 +8493,166 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     return null;
   }
+  /*
+   * 국내 전화번호 화면 표시 형식
+   *
+   * 01012345678 → 010-1234-5678
+   * 0542405191  → 054-240-5191
+   * 0212345678  → 02-1234-5678
+   * 15881234    → 1588-1234
+   */
+  function formatKoreanPhone(
+    value
+  ){
+    var digits =
+      String(value || '')
+        .replace(/\D/g,'')
+        .substring(0,11);
+
+    if(!digits){
+      return '';
+    }
+
+    if(
+      digits.length === 8 &&
+      /^(15|16|18)\d{6}$/
+        .test(digits)
+    ){
+      return (
+        digits.substring(0,4) +
+        '-' +
+        digits.substring(4)
+      );
+    }
+
+    if(
+      digits.indexOf('02') === 0
+    ){
+      if(digits.length <= 2){
+        return digits;
+      }
+
+      if(digits.length <= 5){
+        return (
+          digits.substring(0,2) +
+          '-' +
+          digits.substring(2)
+        );
+      }
+
+      if(digits.length <= 9){
+        return (
+          digits.substring(0,2) +
+          '-' +
+          digits.substring(
+            2,
+            digits.length - 4
+          ) +
+          '-' +
+          digits.substring(
+            digits.length - 4
+          )
+        );
+      }
+
+      return (
+        digits.substring(0,2) +
+        '-' +
+        digits.substring(2,6) +
+        '-' +
+        digits.substring(6,10)
+      );
+    }
+
+    if(digits.length <= 3){
+      return digits;
+    }
+
+    if(digits.length <= 7){
+      return (
+        digits.substring(0,3) +
+        '-' +
+        digits.substring(3)
+      );
+    }
+
+    if(digits.length <= 10){
+      return (
+        digits.substring(0,3) +
+        '-' +
+        digits.substring(
+          3,
+          digits.length - 4
+        ) +
+        '-' +
+        digits.substring(
+          digits.length - 4
+        )
+      );
+    }
+
+    return (
+      digits.substring(0,3) +
+      '-' +
+      digits.substring(3,7) +
+      '-' +
+      digits.substring(7,11)
+    );
+  }
+
+  function bindPhoneFormatting(){
+    [
+      'companyManagerPhone',
+      'companySupervisorPhone',
+      'contractorSupervisorPhone'
+    ].forEach(
+      function(id){
+        var input =
+          byId(id);
+
+        if(
+          !input ||
+          input.dataset.phoneBound ===
+            'true'
+        ){
+          return;
+        }
+
+        input.dataset.phoneBound =
+          'true';
+
+        input.setAttribute(
+          'inputmode',
+          'numeric'
+        );
+
+        input.setAttribute(
+          'maxlength',
+          '13'
+        );
+
+        input.addEventListener(
+          'input',
+          function(){
+            this.value =
+              formatKoreanPhone(
+                this.value
+              );
+          }
+        );
+
+        input.addEventListener(
+          'blur',
+          function(){
+            this.value =
+              formatKoreanPhone(
+                this.value
+              );
+          }
+        );
+      }
+    );
+  }
 
   function validateEmail(value){
     return (
@@ -8558,6 +8916,22 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
         byId('unifiedChecklist')
       );
     }
+    var missingNotApplicableReason =
+      unified.find(
+        function(item){
+          return (
+            item.result === 'na' &&
+            clean(item.reason).length < 2
+          );
+        }
+      );
+
+    if(missingNotApplicableReason){
+      return showValidation(
+        '해당 없음 항목의 사유를 2자 이상 입력하세요.',
+        byId('unifiedChecklist')
+      );
+    }
 
     var failed =
       unified.find(function(item){
@@ -8796,11 +9170,12 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
           ).value
         ),
       phone:
-        clean(
+        formatKoreanPhone(
           byId(
             'companyManagerPhone'
           ).value
         ),
+
       signatureProvided:true,
       signatureSaved:false,
       signedAt:nowIso(),
@@ -8850,12 +9225,13 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
             'companySupervisorDepartment'
           ).value
         ),
-      phone:
-        clean(
+           phone:
+        formatKoreanPhone(
           byId(
             'companySupervisorPhone'
           ).value
         ),
+
       email:
         clean(
           byId(
@@ -8883,11 +9259,12 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
           ).value
         ),
       phone:
-        clean(
+        formatKoreanPhone(
           byId(
             'contractorSupervisorPhone'
           ).value
         ),
+
       email:
         clean(
           byId(
@@ -9857,7 +10234,9 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     setValue(
       'companyManagerPhone',
-      manager.phone || ''
+      formatKoreanPhone(
+        manager.phone || ''
+      )
     );
 
     setValue(
@@ -9872,8 +10251,12 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     setValue(
       'companySupervisorPhone',
-      companySupervisor.phone || ''
+      formatKoreanPhone(
+        companySupervisor.phone ||
+        ''
+      )
     );
+
 
     setValue(
       'companySupervisorEmail',
@@ -9889,9 +10272,11 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
     setValue(
       'contractorSupervisorPhone',
-      contractorSupervisor.phone ||
-      record.supervisorPhone ||
-      ''
+      formatKoreanPhone(
+        contractorSupervisor.phone ||
+        record.supervisorPhone ||
+        ''
+      )
     );
 
     setValue(
@@ -10106,21 +10491,23 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       );
     }
 
-    return items.map(
-      function(item,index){
-        var resultClass =
+            var resultClass =
           item.result === 'ok'
             ? 'ok'
             : item.result === 'no'
               ? 'no'
-              : '';
+              : item.result === 'na'
+                ? 'na'
+                : '';
 
         var resultLabel =
           item.result === 'ok'
             ? '적합'
             : item.result === 'no'
               ? '미흡'
-              : '미확인';
+              : item.result === 'na'
+                ? '해당 없음'
+                : '미확인';
 
         return (
           '<div class="detail-check-item ' +
@@ -10889,6 +11276,138 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     fillBasicFields(
       permitData
     );
+    /*
+     * 작업관리대장의 담당자 정보를
+     * 허가서 7단계 담당자 입력란에 자동 반영합니다.
+     */
+    var session =
+      readSession() || {};
+
+    var companyManagerName =
+      clean(
+        work.workManager ||
+        work.manager ||
+        session.displayName ||
+        ''
+      );
+
+    var companyManagerDepartment =
+      clean(
+        work.requestingDepartment ||
+        work.instructionDept ||
+        work.operatingDepartment ||
+        work.operationDept ||
+        session.department ||
+        session.dept ||
+        ''
+      );
+
+    var companyManagerPhone =
+      formatKoreanPhone(
+        work.workManagerPhone ||
+        work.managerPhone ||
+        session.phone ||
+        session.phoneNumber ||
+        ''
+      );
+
+    var contractorManagerName =
+      clean(
+        work.contractorManager ||
+        work.supervisor ||
+        ''
+      );
+
+    var contractorManagerPhone =
+      formatKoreanPhone(
+        work.contractorManagerPhone ||
+        work.contractorPhone ||
+        work.supervisorPhone ||
+        ''
+      );
+
+    var contractorManagerEmail =
+      clean(
+        work.contractorEmail ||
+        work.email ||
+        work.contractorManagerEmail ||
+        work.supervisorEmail ||
+        ''
+      );
+
+    /*
+     * 1단계 작업책임자는 도급·외주 작업인 경우
+     * 수급인 작업책임자를 우선합니다.
+     */
+    if(contractorManagerName){
+      permitData.supervisor =
+        contractorManagerName;
+
+      setValue(
+        'supervisor',
+        contractorManagerName
+      );
+    }
+
+    setValue(
+      'companyManagerName',
+      companyManagerName
+    );
+
+    setValue(
+      'companyManagerDepartment',
+      companyManagerDepartment
+    );
+
+    setValue(
+      'companyManagerPhone',
+      companyManagerPhone
+    );
+
+    setValue(
+      'contractorSupervisorName',
+      contractorManagerName
+    );
+
+    setValue(
+      'contractorSupervisorPhone',
+      contractorManagerPhone
+    );
+
+    setValue(
+      'contractorSupervisorEmail',
+      contractorManagerEmail
+    );
+
+    permitData.companyWorkManager = {
+      applicable:true,
+      roleType:
+        'company-work-manager',
+      roleLabel:
+        '당사 작업담당자',
+      name:
+        companyManagerName,
+      department:
+        companyManagerDepartment,
+      phone:
+        companyManagerPhone
+    };
+
+    permitData.contractorWorkSupervisor = {
+      applicable:true,
+      roleType:
+        'contractor-work-supervisor',
+      roleLabel:
+        '수급인 작업책임자',
+      company:
+        permitData.companyName,
+      name:
+        contractorManagerName,
+      phone:
+        contractorManagerPhone,
+      email:
+        contractorManagerEmail
+    };
 
     state.workId =
       workId;
@@ -11703,6 +12222,16 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
   /* =====================================================
    * 초기화와 이벤트
    * ===================================================== */
+    if(
+      approvalButton &&
+      isTester()
+    ){
+      approvalButton.textContent =
+        '🧪 TEST 로컬 승인';
+    }
+
+    bindPhoneFormatting();
+  }
 
    function initializeDefaults(){
     setValue(
@@ -11917,6 +12446,15 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
 
           return;
         }
+        var addChecklistButton =
+          event.target.closest(
+            '#addChecklistButton'
+          );
+
+        if(addChecklistButton){
+          addChecklistItem();
+          return;
+        }
 
         var unified =
           event.target.closest(
@@ -12068,6 +12606,20 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
             ),
             event.target.value
           );
+        }
+      }
+    );
+    document.addEventListener(
+      'keydown',
+      function(event){
+        if(
+          event.key === 'Enter' &&
+          event.target &&
+          event.target.id ===
+            'additionalChecklistInput'
+        ){
+          event.preventDefault();
+          addChecklistItem();
         }
       }
     );
