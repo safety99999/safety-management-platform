@@ -5472,36 +5472,37 @@ setTimeout(function(){
     });
   }
 
- if(
-  code === 'inProgress'
-){
-  return 'run';
-}
+function statusClass(code){
+  if(
+    code === 'inProgress'
+  ){
+    return 'run';
+  }
 
-if(
-  code === 'approved'
-){
-  return 'wait';
-}
-
-    if(code === 'stopped'){
-      return 'stop';
-    }
-
-    if(
-      code === 'completed'
-    ){
-      return 'ended';
-    }
-
-    if(
-      code === 'scheduled'
-    ){
-      return 'scheduled';
-    }
-
+  if(
+    code === 'approved'
+  ){
     return 'wait';
   }
+
+  if(code === 'stopped'){
+    return 'stop';
+  }
+
+  if(
+    code === 'completed'
+  ){
+    return 'ended';
+  }
+
+  if(
+    code === 'scheduled'
+  ){
+    return 'scheduled';
+  }
+
+  return 'wait';
+}
 
   function openSheet(
     title,
