@@ -1,0 +1,4306 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<script>
+/* 다크모드 사전 적용 (렌더링 전 실행 → 흰 화면 깜빡임 방지) */
+(function(){
+  try{
+    var saved = localStorage.getItem('theme');
+    var theme = saved || (window.matchMedia && 
+      window.matchMedia('(prefers-color-scheme: dark)').matches 
+      ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003C7E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TBM 일지 · Tool Box Meeting</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="styles/device-frame.css?v=3">
+
+<!-- ═══════════════════════════════════════════════════
+     🧪 APP MODE 시스템 + Firebase 초기화 (2026-08-31 신규)
+     - 테스트/운영 모드 자동 전환
+     - Firebase 연동으로 TBM Firestore 저장/조회
+     ═══════════════════════════════════════════════════ -->
+<script>
+(function(){
+  var urlMode = new URLSearchParams(location.search).get('mode');
+  if(urlMode === 'test' || urlMode === 'prod'){
+    localStorage.setItem('appMode', urlMode === 'test' ? 'test' : 'production');
+  }
+  window.APP_MODE = localStorage.getItem('appMode') || 'test';
+  window.COLLECTION_PREFIX = window.APP_MODE === 'test' ? 'test_' : '';
+  window.getCollectionName = function(baseName){
+    return window.COLLECTION_PREFIX + baseName;
+  };
+  console.log(
+    '%c[APP MODE] ' + window.APP_MODE.toUpperCase(),
+    'background:' + (window.APP_MODE === 'test' ? '#dc3545' : '#28a745') +
+    ';color:white;padding:4px 12px;border-radius:4px;font-weight:bold;'
+  );
+})();
+</script>
+
+<!-- Firebase 초기화 -->
+<script type="module">
+  import { 
+    initializeApp, 
+    getApps, 
+    getApp 
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  
+  import { 
+    getFirestore, 
+    initializeFirestore,
+    doc, 
+    setDoc, 
+    getDoc,
+    getDocs,
+    collection,
+    query,
+    where,
+    serverTimestamp 
+  } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU",
+    authDomain: "safety-management-platfo-5f413.firebaseapp.com",
+    projectId: "safety-management-platfo-5f413",
+    storageBucket: "safety-management-platfo-5f413.appspot.com",
+    messagingSenderId: "96226952530",
+    appId: "1:96226952530:web:07e7cb286dc4e120cea68b"
+  };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const needsLongPolling = isIOS || isSafari;
+
+  console.log("[TBM Firebase] 환경 감지:", {
+    isIOS: isIOS, isSafari: isSafari, longPolling: needsLongPolling
+  });
+
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  
+  let db;
+  try {
+    if (needsLongPolling) {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+      });
+      console.log("[TBM Firebase] iOS/Safari 모드로 초기화");
+    } else {
+      db = getFirestore(app);
+      console.log("[TBM Firebase] 표준 모드로 초기화");
+    }
+  } catch (initError) {
+    console.warn("[TBM Firebase] 초기화 재시도:", initError.message);
+    db = getFirestore(app);
+  }
+
+  window.firebaseApp = { 
+    db: db, doc: doc, setDoc: setDoc, getDoc: getDoc,
+    getDocs: getDocs, collection: collection,
+    query: query, where: where,
+    serverTimestamp: serverTimestamp
+  };
+  
+  // ⭐ TBM 컬렉션명 자동 접두사 적용
+  window.firebaseApp.TBM_COLLECTION = window.getCollectionName("safetyTBM");
+  console.log("[TBM Firebase] 사용할 컬렉션:", window.firebaseApp.TBM_COLLECTION);
+  console.log("[TBM Firebase] 초기화 완료");
+</script>
+
+<style>
+
+/* ═══════════════════════════════════════
+   TBM 일지 v2.0 (신규 독립 앱)
+   Tool Box Meeting · 작업 전 안전 미팅
+   최종 수정: 2026-08-29
+   
+   ⭐ 특징:
+   - TBM 일지 전용 (작업중지권 분리)
+   - 대시보드 디자인 시스템 통일
+   - 허가서 자동 연동 (?permitNo=)
+   - 상단 🛑 긴급 버튼 (작업중지권으로 즉시 이동)
+   ═══════════════════════════════════════ */
+
+:root{
+  --deep:#003C7E; --posco:#0067B1; --bright:#3FA9F5; --tint:#E7F0FA;
+  --bg:#EEF2F7; --card:#FFFFFF; --sunk:#F3F6FA;
+  --ink:#0F1D2B; --body:#22374A; --sub:#5E7183; --faint:#93A5B5;
+  --line:#DFE7EF;
+  --run:#E8590C; --run-bg:#FFF4EC;
+  --stop:#D6273D; --stop-bg:#FFF3F5;
+  --stop-dark:#8B1728;
+  --done:#0E8A6B; --done-bg:#EDFAF6;
+  --warn:#B45309; --warn-bg:#FEF6E7;
+  --r:18px; --r-s:14px; --r-xs:10px;
+  --sh:0 2px 10px rgba(15,29,43,.06);
+  --sh-m:0 4px 16px rgba(15,29,43,.09);
+}
+
+[data-theme="dark"]{
+  --deep:#0A1B2E; --posco:#3FA9F5; --bright:#6BC0FF; --tint:#12283F;
+  --bg:#080F17; --card:#111E2C; --sunk:#0C1825;
+  --ink:#F7FAFC; --body:#E2E8F0; --sub:#A0AEC0;
+  --faint:#5A7288; --line:#1E3145;
+  --run:#FF8A3D; --run-bg:#2A1A0E;
+  --stop:#FF5F70; --stop-bg:#2B1116;
+  --stop-dark:#4A0F1A;
+  --done:#3DD9AE; --done-bg:#0D2620;
+  --warn:#FBBF24; --warn-bg:#2A2010;
+  --sh:0 2px 10px rgba(0,0,0,.35);
+  --sh-m:0 4px 16px rgba(0,0,0,.45);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+html,body{width:100%;overflow-x:hidden;
+  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+
+body{
+  color:var(--ink);line-height:1.5;font-size:16px;
+  padding-bottom:max(20px,env(safe-area-inset-bottom));
+  min-height:100vh;
+  background:linear-gradient(135deg,
+    #003C7E 0%,
+    #0067B1 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+  transition:background .25s,color .25s;
+}
+[data-theme="dark"] body{
+  background:linear-gradient(135deg,
+    #0A1B2E 0%,
+    #12283F 45%,
+    var(--bg) 45%,
+    var(--bg) 100%);
+  background-attachment:fixed;
+}
+
+.app{
+  max-width:480px;margin:0 auto;min-height:100vh;
+  background:var(--bg);position:relative;
+}
+
+@media(min-width:768px){
+  body{padding:24px 0 max(20px,env(safe-area-inset-bottom));}
+  .app{
+    min-height:calc(100vh - 48px);
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:
+      0 0 40px rgba(0,60,126,.2),
+      0 20px 60px rgba(0,0,0,.15);
+  }
+}
+
+/* ═══ TOP NAV ═══ */
+.topnav{
+  position:sticky;top:0;z-index:200;
+  background:linear-gradient(158deg,var(--deep) 0%,var(--posco) 100%);
+  height:56px;padding:0 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 16px rgba(0,60,126,.35);
+  overflow:hidden;
+}
+.topnav::after{
+  content:'';position:absolute;right:-40px;top:-46px;width:150px;height:150px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.08) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.topnav-l{display:flex;align-items:center;gap:10px;position:relative;z-index:1;min-width:0;}
+.topnav-title{
+  color:#fff;font-size:16px;font-weight:800;
+  letter-spacing:-.03em;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
+}
+.topnav-r{display:flex;align-items:center;gap:6px;position:relative;z-index:1;flex-shrink:0;}
+
+.back-btn,.theme-btn,.home-btn{
+  background:rgba(255,255,255,.16);border:none;color:#fff;
+  border-radius:12px;font-size:20px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+.back-btn{width:40px;height:40px;font-size:22px;}
+.theme-btn{width:34px;height:34px;font-size:16px;}
+.home-btn{width:40px;height:40px;font-size:20px;}
+.back-btn:active,.theme-btn:active,.home-btn:active{
+  transform:scale(.9);background:rgba(255,255,255,.3);
+}
+
+/* Permit 배지 */
+.permit-badge{background:rgba(255,255,255,.18);color:#fff;
+  font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;
+  letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  display:none;}
+.permit-badge.show{display:inline-block;}
+
+/* ═══ MAIN ═══ */
+.main{padding:16px 14px;}
+
+/* ═══ 히어로 ═══ */
+.hero-tbm{
+  background:linear-gradient(158deg,var(--deep),var(--posco));color:#fff;
+  border-radius:22px;padding:26px 22px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 6px 20px rgba(0,60,126,.25);
+}
+.hero-tbm::after{
+  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.09) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.hero-ico{font-size:44px;margin-bottom:8px;position:relative;z-index:1;line-height:1;}
+.hero-title{
+  font-size:22px;font-weight:800;letter-spacing:-.035em;
+  position:relative;z-index:1;line-height:1.3;
+}
+.hero-sub{
+  font-size:14px;opacity:.9;margin-top:8px;
+  line-height:1.6;font-weight:600;position:relative;z-index:1;
+}
+
+/* ═══ 연결된 허가서 배너 ═══ */
+.permit-info-banner{
+  background:var(--tint);border-left:5px solid var(--posco);
+  border-radius:0 var(--r-s) var(--r-s) 0;padding:14px 16px;margin-bottom:14px;
+  animation:slideDown .35s cubic-bezier(.32,.72,0,1);
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.pib-top{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin-bottom:8px;
+}
+.pib-badge{
+  background:var(--posco);color:#fff;
+  font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;
+  letter-spacing:.5px;
+}
+.pib-no{
+  font-size:14px;font-weight:900;color:var(--posco);
+  font-family:'Courier New',monospace;letter-spacing:.5px;
+}
+[data-theme="dark"] .pib-no{color:var(--bright);}
+.pib-name{
+  font-size:15px;font-weight:800;color:var(--ink);
+  line-height:1.4;margin-bottom:6px;letter-spacing:-.02em;
+}
+.pib-meta{
+  font-size:12px;color:var(--sub);font-weight:600;
+  line-height:1.6;
+}
+.pib-meta-row{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:3px;
+}
+.pib-tag{
+  display:inline-block;padding:2px 8px;border-radius:6px;
+  background:var(--card);color:var(--posco);
+  font-size:10.5px;font-weight:700;
+}
+[data-theme="dark"] .pib-tag{color:var(--bright);}
+
+/* ═══ INFO BOXES ═══ */
+.info-box,.warn-box,.danger-box,.success-box{
+  padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:12px;
+}
+.info-box{background:var(--tint);border-left:4px solid var(--posco);}
+.warn-box{background:var(--warn-bg);border-left:4px solid var(--warn);}
+.danger-box{background:var(--stop-bg);border-left:4px solid var(--stop);}
+.success-box{background:var(--done-bg);border-left:4px solid var(--done);}
+.info-box-t,.warn-box-t,.danger-box-t,.success-box-t{
+  font-size:12px;font-weight:800;margin-bottom:4px;letter-spacing:-.01em;
+}
+.info-box-t{color:var(--posco);}
+[data-theme="dark"] .info-box-t{color:var(--bright);}
+.warn-box-t{color:var(--warn);}
+.danger-box-t{color:var(--stop);}
+.success-box-t{color:var(--done);}
+.info-box-b,.warn-box-b,.danger-box-b,.success-box-b{
+  font-size:13px;line-height:1.65;font-weight:600;
+}
+.info-box-b{color:var(--body);}
+.warn-box-b{color:var(--warn);}
+.danger-box-b{color:var(--stop);}
+[data-theme="dark"] .danger-box-b{color:#FF9BAB;}
+.success-box-b{color:var(--done);}
+</style>
+<style>
+/* ═══════════════════════════════════════
+   Part 2: 폼 + 위험요인 카드 + 가스 측정
+   ═══════════════════════════════════════ */
+
+/* ═══ FORM SECTION ═══ */
+.form-section{
+  background:var(--card);border-radius:var(--r);padding:18px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.form-section-title{
+  font-size:15px;font-weight:800;color:var(--ink);
+  margin-bottom:14px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--line);
+}
+.form-section-title.danger{
+  color:var(--stop);
+  border-bottom-color:var(--stop);
+}
+.form-group{margin-bottom:14px;}
+.form-group:last-child{margin-bottom:0;}
+.f-label{
+  font-size:14px;font-weight:800;color:var(--body);
+  margin-bottom:7px;display:block;letter-spacing:-.02em;
+}
+.f-label-hint{
+  font-size:11px;color:var(--sub);font-weight:600;
+  margin-left:6px;font-family:inherit;
+}
+.req{color:var(--stop);margin-left:2px;}
+
+.f-input,.f-textarea{
+  width:100%;padding:14px 15px;border:2px solid var(--line);
+  border-radius:12px;font-size:15px;background:var(--sunk);color:var(--ink);
+  font-family:inherit;font-weight:600;min-height:48px;
+  box-sizing:border-box;transition:.15s;
+}
+.f-input:focus,.f-textarea:focus{
+  outline:none;border-color:var(--posco);background:var(--card);
+  box-shadow:0 0 0 3px rgba(0,103,177,.1);
+}
+.f-input::placeholder,.f-textarea::placeholder{color:var(--faint);font-weight:500;}
+.f-textarea{resize:vertical;min-height:80px;line-height:1.6;}
+
+.f-input[type="datetime-local"],
+.f-input[type="date"]{
+  -webkit-appearance:none;appearance:none;
+  padding:13px 44px 13px 15px;
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:20px 20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E7183' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .f-input[type="datetime-local"],
+[data-theme="dark"] .f-input[type="date"]{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A0AEC0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* 자동 채움 필드 */
+.f-input.auto-filled{
+  background:var(--done-bg);border-color:var(--done);color:var(--ink);
+}
+
+/* ═══ 위험요인 카드 ═══ */
+.hazard-list{
+  display:flex;flex-direction:column;gap:10px;margin-bottom:12px;
+}
+.hazard-card{
+  background:var(--sunk);border-radius:var(--r-s);padding:14px;
+  border:1.5px solid var(--line);
+  transition:.15s;
+}
+.hazard-card-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hazard-num{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,var(--deep),var(--posco));
+  color:#fff;font-size:12px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.hazard-del-btn{
+  background:var(--stop);color:#fff;border:none;
+  width:28px;height:28px;border-radius:50%;
+  font-size:14px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;
+}
+.hazard-del-btn:active{transform:scale(.9);}
+.hazard-card .form-group{margin-bottom:10px;}
+.hazard-card .form-group:last-child{margin-bottom:0;}
+.hazard-card .f-label{
+  font-size:12px;font-weight:800;color:var(--sub);
+  margin-bottom:6px;letter-spacing:-.01em;
+}
+.hazard-card .f-input,
+.hazard-card .f-textarea{
+  padding:11px 13px;font-size:14px;min-height:auto;
+  background:var(--card);border:1.5px solid var(--line);
+}
+.hazard-card .f-textarea{min-height:60px;}
+
+.hazard-add-btn{
+  width:100%;padding:14px;
+  background:var(--card);border:2px dashed var(--line);
+  border-radius:12px;color:var(--sub);
+  font-family:inherit;font-size:14px;font-weight:800;
+  cursor:pointer;transition:.15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.hazard-add-btn:active{transform:scale(.98);}
+.hazard-add-btn:hover{
+  border-color:var(--posco);color:var(--posco);
+  background:var(--tint);
+}
+
+/* ═══ Yes/No 토글 (밀폐공간 등) ═══ */
+.toggle-yn-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-bottom:12px;
+}
+.toggle-yn-btn{
+  padding:16px 12px;border-radius:12px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;transition:.15s;
+  background:var(--card);border:2px solid var(--line);color:var(--sub);
+  min-height:56px;
+  display:flex;align-items:center;justify-content:center;
+}
+.toggle-yn-btn:active{transform:scale(.96);}
+.toggle-yn-btn.active-yes{
+  background:linear-gradient(135deg,var(--deep),var(--bright));
+  color:#fff;border-color:var(--posco);
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.toggle-yn-btn.active-no{
+  background:linear-gradient(135deg,#0B7A5F,var(--done));
+  color:#fff;border-color:var(--done);
+  box-shadow:0 4px 12px rgba(14,138,107,.25);
+}
+
+/* ═══ 가스 측정 ═══ */
+.gas-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  margin-bottom:10px;
+}
+.gas-item{
+  background:var(--sunk);border-radius:10px;padding:10px 8px;
+  text-align:center;border:1.5px solid var(--line);transition:.15s;
+}
+.gas-item.danger-gas{border-color:var(--stop);background:var(--stop-bg);}
+.gas-item.safe-gas{border-color:var(--done);background:var(--done-bg);}
+.gas-lbl{
+  font-size:10.5px;font-weight:800;color:var(--sub);
+  margin-bottom:5px;letter-spacing:-.01em;
+}
+.gas-inp{
+  width:100%;padding:8px 4px;
+  border:1.5px solid var(--line);border-radius:7px;
+  font-size:14px;font-weight:700;text-align:center;
+  background:var(--card);color:var(--ink);
+  font-family:inherit;
+}
+.gas-inp:focus{outline:none;border-color:var(--posco);}
+.gas-unit{font-size:10px;color:var(--sub);margin-top:3px;font-weight:600;}
+.gas-std{font-size:10px;color:var(--faint);font-weight:600;}
+.gas-msg-area{margin-top:8px;}
+
+/* ═══ 안전대책 카드 (자동 채움) ═══ */
+.safety-measures-list{
+  display:flex;flex-direction:column;gap:8px;margin-top:8px;
+}
+.measure-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;background:var(--sunk);
+  border-radius:10px;border-left:3px solid var(--done);
+  font-size:13px;color:var(--body);font-weight:600;line-height:1.55;
+}
+.measure-item-num{
+  flex-shrink:0;width:20px;height:20px;
+  background:var(--done);color:#fff;border-radius:50%;
+  display:grid;place-items:center;
+  font-size:10.5px;font-weight:800;margin-top:1px;
+}
+</style>
+<style>
+/* ═══════════════════════════════════════
+   Part 3: 서명 + 참여자 + 버튼 + 다이얼로그
+   ═══════════════════════════════════════ */
+
+/* ═══ 서명 ═══ */
+.sig-wrap{
+  background:var(--sunk);border-radius:var(--r-s);padding:14px;
+}
+.sig-name-row{
+  display:flex;gap:8px;align-items:center;margin-bottom:10px;
+}
+.sig-name-inp{
+  flex:1;padding:11px 13px;border:1.5px solid var(--line);
+  border-radius:10px;font-size:14px;
+  background:var(--card);color:var(--ink);
+  font-weight:600;font-family:inherit;
+}
+.sig-name-inp:focus{outline:none;border-color:var(--posco);}
+.sig-canvas{
+  width:100%;height:140px;background:#fff;
+  border:2.5px dashed var(--line);border-radius:var(--r-s);
+  cursor:crosshair;touch-action:none;display:block;
+}
+[data-theme="dark"] .sig-canvas{background:#F7FAFC;}
+.sig-clear{
+  width:100%;padding:10px;margin-top:8px;
+  border:2px solid var(--line);border-radius:10px;
+  background:var(--card);color:var(--sub);
+  font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
+  transition:.15s;
+}
+.sig-clear:active{transform:scale(.98);}
+
+/* ═══ 참여자 명단 (작업중지권 고지) ═══ */
+.participants-section{
+  background:var(--card);border-radius:var(--r);padding:18px;
+  margin-bottom:12px;box-shadow:var(--sh);
+  border-left:5px solid var(--stop);
+}
+.participants-title{
+  font-size:15px;font-weight:800;color:var(--stop);
+  margin-bottom:14px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--stop-bg);
+}
+
+.legal-notice{
+  background:var(--stop-bg);border-radius:var(--r-s);
+  padding:12px 14px;margin-bottom:12px;
+  border-left:4px solid var(--stop);
+}
+.legal-notice-title{
+  font-size:12px;font-weight:800;color:var(--stop);
+  margin-bottom:5px;letter-spacing:-.01em;
+}
+.legal-notice-content{
+  font-size:13px;line-height:1.7;font-weight:600;color:var(--body);
+}
+.legal-notice-content strong{color:var(--stop);font-weight:800;}
+
+.rights-summary{
+  background:var(--tint);border-radius:var(--r-s);
+  padding:12px 14px;margin-bottom:12px;
+  border-left:4px solid var(--posco);
+}
+.rights-summary-title{
+  font-size:12px;font-weight:800;color:var(--posco);
+  margin-bottom:5px;letter-spacing:-.01em;
+}
+[data-theme="dark"] .rights-summary-title{color:var(--bright);}
+.rights-summary-content{
+  font-size:13px;line-height:1.75;font-weight:600;color:var(--body);
+}
+.rights-summary-content strong{font-weight:800;}
+
+/* ═══ 버튼 ═══ */
+.btn-row{display:flex;gap:10px;margin-top:16px;margin-bottom:20px;}
+.btn-primary,.btn-secondary,.btn-success,.btn-warn,.btn-danger,.btn-save{
+  flex:1;padding:16px;border:none;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.btn-primary:active,.btn-secondary:active,.btn-success:active,
+.btn-warn:active,.btn-danger:active,.btn-save:active{
+  transform:scale(.98);
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--deep),var(--bright));
+  color:#fff;box-shadow:0 4px 14px rgba(0,60,126,.28);
+}
+.btn-primary:disabled{
+  background:var(--line);color:var(--faint);
+  box-shadow:none;cursor:not-allowed;transform:none;
+}
+.btn-secondary{
+  background:var(--card);color:var(--sub);
+  border:2px solid var(--line);
+}
+.btn-success{
+  background:linear-gradient(135deg,#0B7A5F,var(--done));
+  color:#fff;box-shadow:0 4px 14px rgba(14,138,107,.28);
+}
+.btn-warn{
+  background:linear-gradient(135deg,#B45309,var(--warn));
+  color:#fff;box-shadow:0 4px 14px rgba(180,83,9,.28);
+}
+.btn-danger{
+  background:linear-gradient(135deg,#8B1728,var(--stop));
+  color:#fff;box-shadow:0 4px 14px rgba(214,39,61,.28);
+}
+.btn-save{
+  background:var(--sunk);color:var(--sub);
+  border:2px solid var(--line);
+}
+
+/* ═══ 완료 화면 ═══ */
+.complete-hero{
+  background:linear-gradient(158deg,#0B7A5F,var(--done));color:#fff;
+  border-radius:22px;padding:32px 22px 24px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 6px 22px rgba(14,138,107,.28);
+}
+.complete-hero::after{
+  content:'';position:absolute;right:-40px;bottom:-50px;width:180px;height:180px;
+  background:repeating-linear-gradient(-45deg,rgba(255,255,255,.1) 0 9px,transparent 9px 18px);
+  border-radius:50%;pointer-events:none;
+}
+.complete-ico{
+  font-size:64px;margin-bottom:12px;line-height:1;position:relative;z-index:1;
+}
+.complete-title{
+  font-size:24px;font-weight:900;letter-spacing:-.035em;
+  position:relative;z-index:1;
+}
+.complete-sub{
+  font-size:14px;opacity:.9;margin-top:10px;
+  line-height:1.65;font-weight:600;position:relative;z-index:1;
+  white-space:pre-line;
+}
+
+.tbm-no-box{
+  background:var(--card);border:2px solid var(--done);
+  border-radius:var(--r);padding:18px;
+  text-align:center;margin-bottom:14px;box-shadow:var(--sh);
+}
+.tbm-no-label{
+  font-size:11px;font-weight:800;color:var(--done);
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
+}
+.tbm-no-value{
+  font-size:22px;font-weight:900;color:var(--done);
+  font-family:'Courier New',monospace;letter-spacing:1px;
+}
+
+/* ═══ 정보 카드 (완료 화면) ═══ */
+.summary-card{
+  background:var(--card);border-radius:var(--r);padding:16px;
+  margin-bottom:12px;box-shadow:var(--sh);
+}
+.summary-title{
+  font-size:14px;font-weight:800;color:var(--ink);
+  margin-bottom:12px;letter-spacing:-.02em;
+  display:flex;align-items:center;gap:6px;
+  padding-bottom:10px;border-bottom:1.5px solid var(--line);
+}
+.summary-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--line);
+  font-size:13.5px;gap:12px;
+}
+.summary-row:last-child{border-bottom:none;}
+.summary-key{color:var(--sub);font-weight:700;flex-shrink:0;}
+.summary-val{
+  color:var(--ink);font-weight:800;text-align:right;
+  max-width:60%;word-break:break-word;letter-spacing:-.01em;
+}
+.summary-val.hl{color:var(--posco);}
+[data-theme="dark"] .summary-val.hl{color:var(--bright);}
+.summary-val.danger{color:var(--stop);}
+.summary-val.success{color:var(--done);}
+
+/* ═══ 다음 앱 이동 섹션 ═══ */
+.next-app-section{
+  background:var(--tint);border:2px solid var(--posco);
+  border-radius:var(--r);padding:18px 16px;margin-bottom:14px;
+}
+[data-theme="dark"] .next-app-section{border-color:var(--bright);}
+.nas-title{
+  font-size:12px;font-weight:800;color:var(--posco);
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:8px;text-align:center;
+}
+[data-theme="dark"] .nas-title{color:var(--bright);}
+.nas-desc{
+  font-size:13px;color:var(--body);
+  text-align:center;line-height:1.6;font-weight:600;
+  margin-bottom:14px;
+}
+.nas-desc strong{font-weight:900;color:var(--posco);}
+[data-theme="dark"] .nas-desc strong{color:var(--bright);}
+.nas-btn-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.nas-btn{
+  padding:14px 10px;border:none;border-radius:12px;
+  font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:.15s;line-height:1.3;
+}
+.nas-btn:active{transform:scale(.97);}
+.nas-btn-ico{font-size:22px;line-height:1;}
+.nas-btn.primary{
+  background:linear-gradient(135deg,var(--deep),var(--bright));
+  color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.nas-btn.secondary{
+  background:var(--card);color:var(--posco);
+  border:2px solid var(--posco);
+}
+[data-theme="dark"] .nas-btn.secondary{
+  color:var(--bright);border-color:var(--bright);
+}
+
+/* ═══ TOAST ═══ */
+.toast-wrap{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;flex-direction:column;gap:7px;
+  pointer-events:none;width:90%;max-width:390px;
+}
+.toast{
+  padding:13px 17px;border-radius:12px;
+  font-size:14px;font-weight:800;color:#fff;
+  display:flex;align-items:center;gap:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+  animation:tslide .3s ease;pointer-events:all;
+  letter-spacing:-.02em;
+}
+.toast.success{background:linear-gradient(135deg,#0B7A5F,var(--done));}
+.toast.danger{background:linear-gradient(135deg,#8B1728,var(--stop));}
+.toast.info{background:linear-gradient(135deg,var(--deep),var(--bright));}
+.toast.warn{background:linear-gradient(135deg,#B45309,var(--warn));}
+@keyframes tslide{
+  from{opacity:0;transform:translateY(-12px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ═══ 커스텀 다이얼로그 ═══ */
+.custom-confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(6,17,28,.6);backdrop-filter:blur(4px);
+  z-index:99999;opacity:0;pointer-events:none;transition:.25s;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.custom-confirm-overlay.active{opacity:1;pointer-events:auto;}
+.custom-confirm-modal{
+  width:100%;max-width:340px;background:var(--card);
+  border-radius:22px;padding:26px 22px 20px;
+  box-shadow:0 25px 70px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.95);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.custom-confirm-overlay.active .custom-confirm-modal{
+  transform:translateY(0) scale(1);
+}
+.custom-confirm-icon{
+  font-size:44px;text-align:center;margin-bottom:12px;line-height:1;
+}
+.custom-confirm-title{
+  font-size:18px;font-weight:800;letter-spacing:-.035em;
+  color:var(--ink);text-align:center;margin-bottom:8px;
+  line-height:1.35;
+}
+.custom-confirm-message{
+  font-size:14px;color:var(--sub);font-weight:600;
+  text-align:center;margin-bottom:20px;line-height:1.6;
+  white-space:pre-wrap;
+}
+.custom-confirm-buttons{
+  display:flex;gap:10px;
+}
+.custom-confirm-btn{
+  flex:1;padding:14px;border:0;border-radius:13px;
+  font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;letter-spacing:-.02em;transition:.15s;
+}
+.custom-confirm-btn:active{transform:scale(.97);}
+.custom-confirm-btn-cancel{
+  background:var(--sunk);color:var(--sub);
+  border:2px solid var(--line);
+}
+.custom-confirm-btn-confirm{
+  background:linear-gradient(135deg,var(--deep),var(--posco));color:#fff;
+  box-shadow:0 4px 12px rgba(0,60,126,.25);
+}
+.custom-confirm-btn-confirm.danger{
+  background:linear-gradient(135deg,#8B1728,var(--stop));
+  box-shadow:0 4px 12px rgba(214,39,61,.25);
+}
+.custom-confirm-btn-confirm.warn{
+  background:linear-gradient(135deg,#B45309,var(--warn));
+  box-shadow:0 4px 12px rgba(180,83,9,.25);
+}
+.custom-confirm-btn-confirm.success{
+  background:linear-gradient(135deg,#0B7A5F,var(--done));
+  box-shadow:0 4px 12px rgba(14,138,107,.25);
+}
+.custom-confirm-buttons.single{justify-content:center;}
+.custom-confirm-buttons.single .custom-confirm-btn-cancel{display:none;}
+
+/* ═══ 반응형 ═══ */
+@media(max-width:360px){
+  .topnav-title{font-size:14px;}
+  .theme-btn{width:32px;height:32px;font-size:15px;}
+  .back-btn,.home-btn{width:36px;height:36px;font-size:18px;}
+  .hero-title{font-size:20px;}
+  .btn-row{flex-wrap:wrap;}
+  .gas-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   페이지 전환 페이드아웃 트리거 (v1.0)
+   - 링크 클릭 시 페이드아웃 후 이동
+   ═══════════════════════════════════════════════════ */
+(function(){
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    
+    var href = link.getAttribute('href');
+    if(!href) return;
+    
+    if(href.startsWith('#')) return;
+    if(href.startsWith('javascript:')) return;
+    if(href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if(link.target === '_blank') return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey) return;
+    
+    try{
+      var url = new URL(href, window.location.href);
+      if(url.origin !== window.location.origin) return;
+    }catch(err){}
+    
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = href;
+    }, 220);
+  });
+  
+  window.navigateWithFade = function(url){
+    document.body.classList.add('page-leaving');
+    setTimeout(function(){
+      window.location.href = url;
+    }, 220);
+  };
+})();
+</script>
+</head>
+<body>
+<div class="phone-frame">
+<div class="phone-screen">
+<div class="app">
+
+<!-- ═══ TOP NAV ═══ -->
+<nav class="topnav">
+  <div class="topnav-l">
+    <button class="back-btn" onclick="goBack()" aria-label="뒤로가기">←</button>
+    <div class="topnav-title">
+      <span>📋</span>
+      <span>TBM 일지</span>
+    </div>
+  </div>
+  <div class="topnav-r">
+    <div class="permit-badge" id="permitBadge"></div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="테마">🌙</button>
+    <button class="home-btn" onclick="goHome()" aria-label="홈">🏠</button>
+  </div>
+</nav>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ══════════════════════════════════════
+     메인 콘텐츠
+     ══════════════════════════════════════ -->
+<div class="main">
+
+  <!-- 히어로 -->
+  <div class="hero-tbm">
+    <div class="hero-ico">📋</div>
+    <div class="hero-title">TBM 일지</div>
+    <div class="hero-sub">
+      Tool Box Meeting<br>
+      작업 시작 전 10-15분 필수 실시
+    </div>
+  </div>
+
+  <!-- 연결된 허가서 배너 (URL 파라미터 있을 때만) -->
+  <div id="permitInfoBanner" style="display:none;"></div>
+
+  <!-- 안내 -->
+  <div class="warn-box">
+    <div class="warn-box-t">⚠️ TBM 실시 안내</div>
+    <div class="warn-box-b">
+      • 안전작업허가서 <strong>승인 완료 후 실시</strong><br>
+      • 작업 시작 <strong>10~15분 전</strong>에 진행<br>
+      • 참여자 <strong>전원 서명</strong> 필수 (작업중지권 고지)
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       1. 기본 정보
+       ═══════════════════════════════════ -->
+  <div class="form-section">
+    <div class="form-section-title">
+      <span>📌</span>
+      <span>1. 기본 정보</span>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">작업명<span class="req">*</span></label>
+      <input class="f-input" id="tbm-work-name" placeholder="예: 4라인 단결정 젯밀 개방점검">
+    </div>
+    
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">TBM 일시<span class="req">*</span></label>
+        <input class="f-input" type="datetime-local" id="tbm-datetime">
+      </div>
+      <div class="form-group">
+        <label class="f-label">작업 장소<span class="req">*</span></label>
+        <input class="f-input" id="tbm-location" placeholder="1공장 2층">
+      </div>
+    </div>
+    
+    <div class="f-row">
+      <div class="form-group">
+        <label class="f-label">협력사</label>
+        <input class="f-input" id="tbm-company" placeholder="예: 원준산업">
+      </div>
+      <div class="form-group">
+        <label class="f-label">작업인원<span class="req">*</span></label>
+        <input class="f-input" type="number" id="tbm-workers" min="1" placeholder="5">
+      </div>
+    </div>
+    
+    <div class="info-box" style="margin:8px 0 0;">
+      <div class="info-box-b" style="font-size:12px;">
+        💡 <strong>작업 시작/종료 시간</strong>은 안전작업허가서에서 관리됩니다
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       2. 위험요인 및 안전대책
+       ═══════════════════════════════════ -->
+  <div class="form-section">
+    <div class="form-section-title danger">
+      <span>⚠️</span>
+      <span>2. 잠재 위험요인 및 안전대책</span>
+    </div>
+    
+    <div class="info-box" style="margin-bottom:12px;">
+      <div class="info-box-b" style="font-size:12.5px;">
+        위험요인, 대책, 조치 담당자를 <strong>최소 1건 이상</strong> 입력하세요
+      </div>
+    </div>
+    
+    <div class="hazard-list" id="hazardList">
+      <!-- JS로 동적 생성 -->
+    </div>
+    
+    <button class="hazard-add-btn" onclick="addHazard()">
+      <span>+</span>
+      <span>위험요인 추가</span>
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       3. 밀폐공간 작업 여부
+       ═══════════════════════════════════ -->
+  <div class="form-section">
+    <div class="form-section-title">
+      <span>🔒</span>
+      <span>3. 밀폐공간 작업 여부<span class="req">*</span></span>
+    </div>
+    
+    <div class="toggle-yn-row">
+      <button class="toggle-yn-btn" id="btn-confined-yes" onclick="setConfined(true)">
+        예 (밀폐공간)
+      </button>
+      <button class="toggle-yn-btn" id="btn-confined-no" onclick="setConfined(false)">
+        아니오
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       4. 가스 농도 측정 (밀폐공간 시)
+       ═══════════════════════════════════ -->
+  <div class="form-section" id="gasSection" style="display:none;">
+    <div class="form-section-title danger">
+      <span>🧪</span>
+      <span>4. 가스 농도 측정<span class="req">*</span></span>
+    </div>
+    
+    <div class="danger-box" style="margin-bottom:12px;">
+      <div class="danger-box-t">📏 안전 기준치</div>
+      <div class="danger-box-b" style="font-size:12px;">
+        <strong>O₂</strong>: 18~23.5% · <strong>CO</strong>: 30ppm 미만 · <strong>H₂S</strong>: 10ppm 미만<br>
+        <strong>CO₂</strong>: 1.5% 미만 · <strong>LEL</strong>: 10% 미만
+      </div>
+    </div>
+    
+    <div class="gas-grid">
+      <div class="gas-item" id="gi-o2">
+        <div class="gas-lbl">산소 O₂</div>
+        <input class="gas-inp" id="g-o2" type="number" step="0.1" placeholder="21.0" oninput="checkGas()">
+        <div class="gas-unit">%</div>
+        <div class="gas-std">18~23.5</div>
+      </div>
+      <div class="gas-item" id="gi-co">
+        <div class="gas-lbl">일산화탄소 CO</div>
+        <input class="gas-inp" id="g-co" type="number" step="0.1" placeholder="0" oninput="checkGas()">
+        <div class="gas-unit">ppm</div>
+        <div class="gas-std">&lt;30</div>
+      </div>
+      <div class="gas-item" id="gi-h2s">
+        <div class="gas-lbl">황화수소 H₂S</div>
+        <input class="gas-inp" id="g-h2s" type="number" step="0.1" placeholder="0" oninput="checkGas()">
+        <div class="gas-unit">ppm</div>
+        <div class="gas-std">&lt;10</div>
+      </div>
+      <div class="gas-item" id="gi-co2">
+        <div class="gas-lbl">이산화탄소 CO₂</div>
+        <input class="gas-inp" id="g-co2" type="number" step="0.1" placeholder="0" oninput="checkGas()">
+        <div class="gas-unit">%</div>
+        <div class="gas-std">&lt;1.5</div>
+      </div>
+      <div class="gas-item" id="gi-lel">
+        <div class="gas-lbl">가연성 LEL</div>
+        <input class="gas-inp" id="g-lel" type="number" step="0.1" placeholder="0" oninput="checkGas()">
+        <div class="gas-unit">%</div>
+        <div class="gas-std">&lt;10</div>
+      </div>
+      <div class="gas-item">
+        <div class="gas-lbl">측정자</div>
+        <input class="gas-inp" id="g-measurer" type="text" placeholder="이안전">
+        <div class="gas-unit">이름</div>
+        <div class="gas-std">&nbsp;</div>
+      </div>
+    </div>
+    
+    <div class="gas-msg-area" id="gasMsgArea"></div>
+  </div>
+</div><!-- /.main (이어짐, Part 5에서 계속) -->
+<!-- Part 5: 이어지는 main div -->
+<div class="main" style="padding-top:0;">
+
+  <!-- ═══════════════════════════════════
+       5. TBM 서명
+       ═══════════════════════════════════ -->
+  <div class="form-section">
+    <div class="form-section-title">
+      <span>✍️</span>
+      <span>5. TBM 서명</span>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">
+        작업수행자<span class="req">*</span>
+        <span class="f-label-hint">(작업책임자)</span>
+      </label>
+      <div class="sig-wrap">
+        <div class="sig-name-row">
+          <input class="sig-name-inp" id="supervisor-name" placeholder="이름 입력">
+        </div>
+        <canvas class="sig-canvas" id="supervisor-sig" width="400" height="140"></canvas>
+        <button class="sig-clear" onclick="clearSig('supervisor-sig')">🗑️ 서명 지우기</button>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">
+        작업감독자<span class="req">*</span>
+        <span class="f-label-hint">(관리감독자)</span>
+      </label>
+      <div class="sig-wrap">
+        <div class="sig-name-row">
+          <input class="sig-name-inp" id="manager-name" placeholder="이름 입력">
+        </div>
+        <canvas class="sig-canvas" id="manager-sig" width="400" height="140"></canvas>
+        <button class="sig-clear" onclick="clearSig('manager-sig')">🗑️ 서명 지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       6. 작업중지권 고지 및 참여자 명단
+       ═══════════════════════════════════ -->
+  <div class="participants-section">
+    <div class="participants-title">
+      <span>🛑</span>
+      <span>6. 작업중지권 고지 및 확인</span>
+    </div>
+    
+    <div class="legal-notice">
+      <div class="legal-notice-title">📢 법정 고지사항 (산업안전보건법 제52조)</div>
+      <div class="legal-notice-content">
+        본 작업에 참여하는 <strong>모든 근로자</strong>는 아래의 권리를 가짐을 고지받았습니다.
+      </div>
+    </div>
+    
+    <div class="rights-summary">
+      <div class="rights-summary-title">✅ 작업중지권 요약</div>
+      <div class="rights-summary-content">
+        • <strong>위험 상황 발견 시</strong> 즉시 작업을 중지할 권리<br>
+        • <strong>사업주에게 즉시 보고</strong>하고 대피할 수 있음<br>
+        • <strong>행사 후 불이익 처우 금지</strong> (해고·전보 등)<br>
+        • 위험 요소 해소 전 <strong>작업 재개 강요 금지</strong>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">
+        📝 작업 참여자 명단<span class="req">*</span>
+        <span class="f-label-hint">(쉼표로 구분)</span>
+      </label>
+      <textarea class="f-textarea" id="participants-list" 
+                placeholder="이호출, 박소용, 신여짐, 양운석, 박상전" 
+                style="min-height:70px;"></textarea>
+    </div>
+    
+    <div class="form-group">
+      <label class="f-label">
+        작업자 대표 서명<span class="req">*</span>
+        <span class="f-label-hint">(참여자를 대표하여 확인)</span>
+      </label>
+      <div class="sig-wrap">
+        <div class="sig-name-row">
+          <input class="sig-name-inp" id="rep-name" placeholder="대표자 이름">
+        </div>
+        <canvas class="sig-canvas" id="rep-sig" width="400" height="140"></canvas>
+        <button class="sig-clear" onclick="clearSig('rep-sig')">🗑️ 서명 지우기</button>
+      </div>
+    </div>
+    
+    <div class="warn-box" style="margin-bottom:0;">
+      <div class="warn-box-b" style="font-size:12.5px;">
+        ⚠️ 대표자는 <strong>참여자 전원에게 위 내용을 전달</strong>하고 서명해주세요
+      </div>
+    </div>
+  </div>
+
+  <!-- 제출 버튼 -->
+  <div class="btn-row">
+    <button class="btn-save" onclick="saveDraft()">💾 임시저장</button>
+    <button class="btn-primary" style="flex:2;" onclick="submitTBM()">
+      ✅ TBM 제출
+    </button>
+  </div>
+
+</div><!-- /.main -->
+
+<!-- ══════════════════════════════════════
+     완료 화면 (별도)
+     ══════════════════════════════════════ -->
+<div id="completeScreen" style="display:none;">
+  <div class="main">
+    <div class="complete-hero">
+      <div class="complete-ico">✅</div>
+      <div class="complete-title">TBM 완료!</div>
+      <div class="complete-sub">TBM 일지가 저장되었습니다.
+이제 작업을 시작할 수 있습니다.
+안전한 작업 되시기 바랍니다.</div>
+    </div>
+
+    <!-- TBM 번호 -->
+    <div class="tbm-no-box">
+      <div class="tbm-no-label">📋 TBM 번호</div>
+      <div class="tbm-no-value" id="fin-tbm-no">-</div>
+    </div>
+
+    <!-- 요약 정보 -->
+    <div class="summary-card">
+      <div class="summary-title">
+        <span>📋</span>
+        <span>TBM 요약</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">작업명</span>
+        <span class="summary-val hl" id="fin-work-name">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">TBM 일시</span>
+        <span class="summary-val" id="fin-datetime">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">작업 장소</span>
+        <span class="summary-val" id="fin-location">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">협력사</span>
+        <span class="summary-val" id="fin-company">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">작업 인원</span>
+        <span class="summary-val" id="fin-workers">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">위험요인</span>
+        <span class="summary-val" id="fin-hazards">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">밀폐공간</span>
+        <span class="summary-val" id="fin-confined">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">참여자</span>
+        <span class="summary-val" id="fin-participants">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">허가서 연결</span>
+        <span class="summary-val hl" id="fin-permit">-</span>
+      </div>
+    </div>
+
+    <!-- 다음 단계 안내 -->
+    <div class="next-app-section">
+      <div class="nas-title">📌 다음 단계</div>
+      <div class="nas-desc">
+        TBM 완료 후 <strong>작업 시작</strong> 가능합니다.<br>
+        작업 중 위험 발견 시 <strong>즉시 작업중지권</strong>을 행사하세요.
+      </div>
+      <div class="nas-btn-grid">
+        <button class="nas-btn primary" onclick="goHome()">
+          <span class="nas-btn-ico">🏠</span>
+          <span>대시보드</span>
+        </button>
+        <button class="nas-btn secondary" onclick="goToEmergency()">
+          <span class="nas-btn-ico">🛑</span>
+          <span>작업중지권</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 안내 -->
+    <div class="success-box">
+      <div class="success-box-t">✅ 허가서 상태 자동 변경</div>
+      <div class="success-box-b">
+        연결된 허가서의 상태가 <strong>"허가완료" → "작업중"</strong>으로<br>
+        자동 변경되었습니다.
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="location.reload()">새 TBM 작성</button>
+      <button class="btn-primary" style="flex:2;" onclick="goHome()">
+        🏠 대시보드로 이동
+      </button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- 커스텀 확인 다이얼로그 -->
+<div class="custom-confirm-overlay" id="customConfirmOverlay">
+  <div class="custom-confirm-modal">
+    <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
+    <div class="custom-confirm-title" id="customConfirmTitle">확인</div>
+    <div class="custom-confirm-message" id="customConfirmMessage">진행하시겠습니까?</div>
+    <div class="custom-confirm-buttons" id="customConfirmButtons">
+      <button class="custom-confirm-btn custom-confirm-btn-cancel" 
+              onclick="customConfirmClose(false)">취소</button>
+      <button class="custom-confirm-btn custom-confirm-btn-confirm" 
+              id="customConfirmOk" 
+              onclick="customConfirmClose(true)">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// TBM 일지 v2.0 - JavaScript
+// 작업중지권 로직 제거 · 대시보드 시스템 통일
+// ═══════════════════════════════════════════════════
+
+// STATE
+var tbmData = {
+  tbmNo: '',
+  workId: '',
+  permitNo: '',
+  riskId: '',
+  workName: '',
+  datetime: '',
+  location: '',
+  company: '',
+  workers: '',
+  supervisor: '',
+  manager: '',
+  hazards: [],
+  isConfined: null,
+  gasMeasurement: {},
+  supervisorSig: null,
+  managerSig: null,
+  stopNotice: {},
+  date: '',
+  status: '완료',
+  createdAt: '',
+  createdBy: ''
+};
+
+var hazardCount = 0;
+var isConfined = null;
+var permitData = null;
+
+// ═══════════════════════════════════════════════════
+// 커스텀 다이얼로그
+// ═══════════════════════════════════════════════════
+var customConfirmCallback = null;
+
+function showCustomConfirm(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  
+  var iconEl = document.getElementById('customConfirmIcon');
+  var titleEl = document.getElementById('customConfirmTitle');
+  var messageEl = document.getElementById('customConfirmMessage');
+  var okBtn = document.getElementById('customConfirmOk');
+  var overlay = document.getElementById('customConfirmOverlay');
+  var buttonsEl = document.getElementById('customConfirmButtons');
+  
+  if(!overlay){
+    var result = confirm((opts.title || '') + '\n\n' + (opts.message || ''));
+    if(callback) callback(result);
+    return;
+  }
+  
+  if(iconEl) iconEl.textContent = opts.icon || '⚠️';
+  if(titleEl) titleEl.textContent = opts.title || '확인';
+  if(messageEl) messageEl.textContent = opts.message || '진행하시겠습니까?';
+  
+  if(okBtn){
+    okBtn.textContent = opts.okText || '확인';
+    okBtn.className = 'custom-confirm-btn custom-confirm-btn-confirm';
+    if(opts.okType === 'danger') okBtn.classList.add('danger');
+    else if(opts.okType === 'warn') okBtn.classList.add('warn');
+    else if(opts.okType === 'success') okBtn.classList.add('success');
+  }
+  
+  if(buttonsEl){
+    if(opts.alertOnly){
+      buttonsEl.classList.add('single');
+    } else {
+      buttonsEl.classList.remove('single');
+    }
+  }
+  
+  customConfirmCallback = callback || function(){};
+  overlay.classList.add('active');
+}
+
+function customConfirmClose(result){
+  var overlay = document.getElementById('customConfirmOverlay');
+  if(overlay) overlay.classList.remove('active');
+  
+  var cb = customConfirmCallback;
+  customConfirmCallback = null;
+  if(typeof cb === 'function'){
+    setTimeout(function(){ cb(result); }, 150);
+  }
+}
+
+function showCustomAlert(options, callback){
+  var opts = typeof options === 'string' 
+    ? { message: options } 
+    : (options || {});
+  opts.alertOnly = true;
+  opts.okText = opts.okText || '확인';
+  showCustomConfirm(opts, callback);
+}
+
+// ═══════════════════════════════════════════════════
+// 시간 유틸
+// ═══════════════════════════════════════════════════
+function pad(n){ return ('0' + n).slice(-2); }
+
+function fmtDate(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+
+function fmtDateTime(d){
+  d = d || new Date();
+  return fmtDate(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+// ═══════════════════════════════════════════════════
+// 테마
+// ═══════════════════════════════════════════════════
+function initTheme(){
+  var saved = localStorage.getItem('theme');
+  if(saved) applyTheme(saved);
+  else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){
+    applyTheme('dark');
+  } else {
+    applyTheme('light');
+  }
+}
+
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  var btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', t);
+}
+
+function toggleTheme(){
+  var c = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(c === 'dark' ? 'light' : 'dark');
+}
+
+function setupThemeSync(){
+  window.addEventListener('storage', function(e){
+    if(e.key === 'theme' && e.newValue) applyTheme(e.newValue);
+  });
+}
+</script>
+<script>
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+
+function readTbmSession(){
+  try{
+    return JSON.parse(
+      sessionStorage.getItem(
+        'appSession'
+      ) || 'null'
+    );
+  }catch(error){
+    return null;
+  }
+}
+
+function isTbmTester(){
+  var session =
+    readTbmSession();
+
+  return Boolean(
+    session &&
+    session.environment === 'test' &&
+    session.accessMode === 'tester' &&
+    session.role === 'tester'
+  );
+}
+
+function permitStorageKey(){
+  return isTbmTester()
+    ? 'testerSafetyPermits'
+    : 'safetyPermits';
+}
+
+function tbmStorageKey(){
+  return isTbmTester()
+    ? 'testerSafetyTBM'
+    : 'safetyTBM';
+}
+
+function simplifyTbmWorkName(value){
+  var original =
+    String(
+      value === undefined ||
+      value === null
+        ? ''
+        : value
+    );
+
+  /*
+   * 줄바꿈과 탭을 공백으로 변경합니다.
+   */
+  var text =
+    original
+      .split('\r').join(' ')
+      .split('\n').join(' ')
+      .split('\t').join(' ')
+      .trim();
+
+  while(
+    text.indexOf('  ') >= 0
+  ){
+    text =
+      text.split('  ').join(' ');
+  }
+
+  if(!text){
+    return '작업명 미지정';
+  }
+
+  /*
+   * "작업장소: ... 작업내용: ..." 형식에서는
+   * 작업내용 이후의 문구를 사용합니다.
+   */
+  var contentMarkers = [
+    '작업내용:',
+    '작업내용：',
+    '작업 내용:',
+    '작업 내용：'
+  ];
+
+  for(
+    var markerIndex = 0;
+    markerIndex <
+      contentMarkers.length;
+    markerIndex++
+  ){
+    var marker =
+      contentMarkers[
+        markerIndex
+      ];
+
+    var markerPosition =
+      text.indexOf(marker);
+
+    if(markerPosition >= 0){
+      text =
+        text.substring(
+          markerPosition +
+          marker.length
+        ).trim();
+
+      break;
+    }
+  }
+
+  /*
+   * 선두 관리·분류 태그를 제거합니다.
+   */
+  var removableTags = [
+    '[기계]',
+    '[전기]',
+    '[계획]',
+    '[예정]',
+    '[확정]',
+    '[긴급]',
+    '[토목]',
+    '[건축]',
+    '[계장]'
+  ];
+
+  var tagRemoved = true;
+
+  while(tagRemoved){
+    tagRemoved = false;
+
+    for(
+      var tagIndex = 0;
+      tagIndex <
+        removableTags.length;
+      tagIndex++
+    ){
+      var tag =
+        removableTags[
+          tagIndex
+        ];
+
+      if(
+        text.indexOf(tag) === 0
+      ){
+        text =
+          text.substring(
+            tag.length
+          ).trim();
+
+        tagRemoved = true;
+        break;
+      }
+    }
+  }
+
+  /*
+   * 작업장소 관리 문구를 제거합니다.
+   */
+  var placePrefixes = [
+    '작업장소:',
+    '작업장소：',
+    '작업 장소:',
+    '작업 장소：',
+    '장소:',
+    '장소：'
+  ];
+
+  placePrefixes.some(
+    function(prefix){
+      if(
+        text.indexOf(prefix) === 0
+      ){
+        text =
+          text.substring(
+            prefix.length
+          ).trim();
+
+        return true;
+      }
+
+      return false;
+    }
+  );
+
+  /*
+   * 작업명 앞쪽의 공장·단계 문구를 제거합니다.
+   * 긴 표현부터 확인합니다.
+   */
+  var locationPrefixes = [
+    '포항양극재 2-2 단계공장',
+    '포항양극재 2-1 단계공장',
+    '포항양극재 2-2단계공장',
+    '포항양극재 2-1단계공장',
+    '포항 양극재 2-2 단계공장',
+    '포항 양극재 2-1 단계공장',
+    '포항 양극재 2-2 단계',
+    '포항 양극재 2-1 단계',
+    '포항양극재 2-2단계',
+    '포항양극재 2-1단계',
+    '포항양극재 1단계',
+    '포항양극재공장',
+    '포항 양극재',
+    '포항양극재',
+    '양극재공장',
+    '2-2 단계공장',
+    '2-1 단계공장',
+    '2-2단계공장',
+    '2-1단계공장',
+    '2-2 단계',
+    '2-1 단계',
+    '2-2단계',
+    '2-1단계',
+    '1단계공장',
+    '1단계'
+  ];
+
+  var prefixRemoved = true;
+
+  while(prefixRemoved){
+    prefixRemoved = false;
+
+    for(
+      var prefixIndex = 0;
+      prefixIndex <
+        locationPrefixes.length;
+      prefixIndex++
+    ){
+      var locationPrefix =
+        locationPrefixes[
+          prefixIndex
+        ];
+
+      if(
+        text.indexOf(
+          locationPrefix
+        ) === 0
+      ){
+        text =
+          text.substring(
+            locationPrefix.length
+          ).trim();
+
+        prefixRemoved = true;
+        break;
+      }
+    }
+  }
+
+  /*
+   * 선두의 층·라인 정보만 제거합니다.
+   * 중간에 있는 설비명과 라인 정보는 보존합니다.
+   *
+   * 정규식 리터럴 대신 RegExp 생성자를 사용하여
+   * HTML 편집 과정의 정규식 구문 오류를 방지합니다.
+   */
+  var leadingPatterns = [
+    new RegExp(
+      '^\\s*(?:공장동\\s*)?\\d+\\s*층\\s*',
+      'i'
+    ),
+
+    new RegExp(
+      '^\\s*\\d+\\s*[A-C]?\\s*라인\\s*',
+      'i'
+    ),
+
+    new RegExp(
+      '^\\s*\\d+\\s*[A-C]\\s+',
+      'i'
+    )
+  ];
+
+  var locationRemoved = true;
+
+  while(locationRemoved){
+    locationRemoved = false;
+
+    for(
+      var patternIndex = 0;
+      patternIndex <
+        leadingPatterns.length;
+      patternIndex++
+    ){
+      var before =
+        text;
+
+      text =
+        text.replace(
+          leadingPatterns[
+            patternIndex
+          ],
+          ''
+        ).trim();
+
+      if(before !== text){
+        locationRemoved = true;
+        break;
+      }
+    }
+  }
+
+  /*
+   * 앞쪽에 남은 구분기호를 제거합니다.
+   */
+  var leadingCharacters =
+    ',.:;·-– ';
+
+  while(
+    text.length &&
+    leadingCharacters.indexOf(
+      text.charAt(0)
+    ) >= 0
+  ){
+    text =
+      text.substring(1);
+  }
+
+  while(
+    text.indexOf('  ') >= 0
+  ){
+    text =
+      text.split('  ').join(' ');
+  }
+
+  text = text.trim();
+
+  if(!text){
+    text = original.trim();
+  }
+
+  return text.length > 60
+    ? text.substring(0,60) +
+      '...'
+    : text;
+}
+
+function normalizeTbmLocation(
+  locationValue,
+  workNameValue
+){
+  var locationText =
+    String(
+      locationValue === undefined ||
+      locationValue === null
+        ? ''
+        : locationValue
+    );
+
+  var workNameText =
+    String(
+      workNameValue === undefined ||
+      workNameValue === null
+        ? ''
+        : workNameValue
+    );
+
+  var source =
+    (
+      locationText +
+      ' ' +
+      workNameText
+    )
+      .split('\r').join(' ')
+      .split('\n').join(' ')
+      .split('\t').join(' ')
+      .trim();
+
+  while(
+    source.indexOf('  ') >= 0
+  ){
+    source =
+      source.split(' ').join(' ');
+  }
+
+  var compact =
+    source.split(' ').join('');
+
+  var factory = '';
+
+  /*
+   * 공장 판정 정본
+   *
+   * 1단계   = 1~3라인 = 1공장
+   * 2-1단계 = 4~5라인 = 1공장
+   * 2-2단계 = 6~9라인 = 2공장
+   */
+  if(
+    compact.indexOf(
+      '2공장'
+    ) >= 0 ||
+    compact.indexOf(
+      '2-2단계'
+    ) >= 0
+  ){
+    factory = '2공장';
+
+  }else if(
+    compact.indexOf(
+      '1공장'
+    ) >= 0 ||
+    compact.indexOf(
+      '2-1단계'
+    ) >= 0 ||
+    (
+      compact.indexOf(
+        '1단계'
+      ) >= 0 &&
+      compact.indexOf(
+        '2-1단계'
+      ) < 0
+    )
+  ){
+    factory = '1공장';
+  }
+
+  /*
+   * 9A·9B·9C는 모두 9라인으로 처리합니다.
+   */
+  var lineNumber = 0;
+
+  var lineExpression =
+    new RegExp(
+      '(?:^|[^0-9])([1-9])\\s*[A-C]?\\s*라인',
+      'i'
+    );
+
+  var lineMatch =
+    source.match(
+      lineExpression
+    );
+
+  if(
+    !lineMatch
+  ){
+    var letterLineExpression =
+      new RegExp(
+        '(?:^|[^0-9])([1-9])\\s*[A-C](?:[^A-Z]|$)',
+        'i'
+      );
+
+    lineMatch =
+      source.match(
+        letterLineExpression
+      );
+  }
+
+  if(lineMatch){
+    lineNumber =
+      Number(lineMatch[1]) ||
+      0;
+  }
+
+  /*
+   * 단계만 있고 구체적인 라인이 없으면
+   * 범위를 임의의 단일 라인으로 바꾸지 않습니다.
+   */
+  if(!factory && lineNumber){
+    if(
+      lineNumber >= 1 &&
+      lineNumber <= 5
+    ){
+      factory = '1공장';
+
+    }else if(
+      lineNumber >= 6 &&
+      lineNumber <= 9
+    ){
+      factory = '2공장';
+    }
+  }
+
+  var floorExpression =
+    new RegExp(
+      '(?:공장동\\s*)?(\\d+)\\s*층',
+      'i'
+    );
+
+  var floorMatch =
+    source.match(
+      floorExpression
+    );
+
+  var parts = [];
+
+  if(factory){
+    parts.push(factory);
+  }
+
+  if(lineNumber){
+    parts.push(
+      lineNumber +
+      '라인'
+    );
+  }
+
+  if(floorMatch){
+    var floorText =
+      floorMatch[1] +
+      '층';
+
+    if(
+      parts.indexOf(
+        floorText
+      ) < 0
+    ){
+      parts.push(
+        floorText
+      );
+    }
+  }
+
+  if(parts.length){
+    return parts.join(
+      ' · '
+    );
+  }
+
+  var fallback =
+    locationText.trim();
+
+  return fallback ||
+    '위치 미지정';
+}
+
+
+function fillIfBlank(
+  id,
+  value
+){
+  var element =
+    document.getElementById(id);
+
+  if(
+    !element ||
+    String(element.value || '')
+      .trim()
+  ){
+    return false;
+  }
+
+  element.value = value;
+
+  element.classList.add(
+    'auto-filled'
+  );
+
+  return true;
+}
+
+function drawTesterSignature(
+  canvasId,
+  label
+){
+  var canvas =
+    document.getElementById(
+      canvasId
+    );
+
+  if(
+    !canvas ||
+    hasSig(canvasId)
+  ){
+    return;
+  }
+
+  var context =
+    canvas.getContext('2d');
+
+  context.save();
+  context.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  context.strokeStyle =
+    '#1C2B3A';
+
+  context.fillStyle =
+    '#1C2B3A';
+
+  context.lineWidth = 2.5;
+  context.font =
+    'bold 28px sans-serif';
+
+  context.fillText(
+    label || 'TEST',
+    120,
+    78
+  );
+
+  context.beginPath();
+  context.moveTo(85,95);
+  context.lineTo(310,95);
+  context.stroke();
+  context.restore();
+
+  canvas.dataset
+    .testSignature = 'true';
+}
+
+function applyTesterQuickFill(){
+  if(!isTbmTester()){
+    return;
+  }
+
+  fillIfBlank(
+    'tbm-work-name',
+    'TEST 설비 점검 및 안전조치'
+  );
+
+  fillIfBlank(
+    'tbm-datetime',
+    fmtDateTime()
+  );
+
+  fillIfBlank(
+    'tbm-location',
+    '1공장 · 1라인'
+  );
+
+  fillIfBlank(
+    'tbm-company',
+    'TEST 협력사'
+  );
+
+  fillIfBlank(
+    'tbm-workers',
+    '3'
+  );
+
+  fillIfBlank(
+    'supervisor-name',
+    '테스트 작업책임자'
+  );
+
+  fillIfBlank(
+    'manager-name',
+    '테스트 관리감독자'
+  );
+
+  fillIfBlank(
+    'participants-list',
+    '테스트 작업자1, 테스트 작업자2, 테스트 작업자3'
+  );
+
+  fillIfBlank(
+    'rep-name',
+    '테스트 작업자대표'
+  );
+
+  if(isConfined === null){
+    setConfined(false);
+  }
+
+  var cards =
+    document.querySelectorAll(
+      '.hazard-card'
+    );
+
+  if(!cards.length){
+    addHazard();
+
+    cards =
+      document.querySelectorAll(
+        '.hazard-card'
+      );
+  }
+
+  cards.forEach(function(card,index){
+    var number =
+      card.dataset.num;
+
+    fillIfBlank(
+      'hz-hazard-' + number,
+      index === 0
+        ? '작업 중 설비 접촉 및 협착 위험'
+        : '작업구역 내 이동 중 충돌 위험'
+    );
+
+    fillIfBlank(
+      'hz-measure-' + number,
+      index === 0
+        ? '설비 정지 확인, 작업구역 통제 및 보호구 착용'
+        : '이동통로 확보 및 작업 전 위험요인 공유'
+    );
+
+    fillIfBlank(
+      'hz-person-' + number,
+      '테스트 작업책임자'
+    );
+  });
+
+  fillIfBlank(
+    'g-o2',
+    '20.9'
+  );
+
+  fillIfBlank(
+    'g-co',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-h2s',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-co2',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-lel',
+    '0'
+  );
+
+  fillIfBlank(
+    'g-measurer',
+    '테스트 측정자'
+  );
+
+  drawTesterSignature(
+    'supervisor-sig',
+    'TEST 작업책임자'
+  );
+
+  drawTesterSignature(
+    'manager-sig',
+    'TEST 감독자'
+  );
+
+  drawTesterSignature(
+    'rep-sig',
+    'TEST 대표'
+  );
+
+  console.log(
+    '[TBM TEST] 빠른 입력 완료:',
+    {
+      tester:true,
+      permitStorage:
+        permitStorageKey(),
+      tbmStorage:
+        tbmStorageKey(),
+      firestoreAllowed:false
+    }
+  );
+}
+
+window.addEventListener(
+  'DOMContentLoaded',
+  function(){
+    initTheme();
+    setupThemeSync();
+
+    addHazard();
+    initAllSigs();
+
+    var element =
+      document.getElementById(
+        'tbm-datetime'
+      );
+
+    if(
+      element &&
+      !element.value
+    ){
+      element.value =
+        fmtDateTime();
+    }
+
+    var parameters =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    var permitNo =
+      parameters.get('permitNo');
+
+    var workId =
+      parameters.get('workId');
+
+    var riskId =
+      parameters.get('riskId');
+
+    if(riskId){
+      tbmData.riskId =
+        riskId;
+    }
+
+    if(permitNo){
+      console.log(
+        '[TBM v2.0] URL permitNo:',
+        permitNo
+      );
+
+      tbmData.permitNo =
+        permitNo;
+
+      var existingTbm =
+        findExistingTbm(
+          permitNo
+        );
+
+      if(existingTbm){
+        loadFromPermit(
+          permitNo
+        );
+
+        setTimeout(function(){
+          loadTbmReadOnly(
+            existingTbm
+          );
+        },100);
+
+      }else{
+        loadFromPermit(
+          permitNo
+        );
+      }
+
+    }else if(workId){
+      console.log(
+        '[TBM v2.0] URL workId:',
+        workId
+      );
+
+      tbmData.workId =
+        workId;
+
+      loadFromWorkId(
+        workId
+      );
+    }
+
+    if(
+      !permitNo &&
+      !workId
+    ){
+      loadDraft();
+    }
+
+    /*
+     * 허가서·작업정보 자동 입력이 끝난 다음
+     * 비어 있는 TEST 필드만 채웁니다.
+     */
+    setTimeout(
+      applyTesterQuickFill,
+      180
+    );
+
+    document.addEventListener(
+      'keydown',
+      function(event){
+        if(event.key === 'Escape'){
+          var overlay =
+            document.getElementById(
+              'customConfirmOverlay'
+            );
+
+          if(
+            overlay &&
+            overlay.classList
+              .contains('active')
+          ){
+            customConfirmClose(false);
+          }
+        }
+      }
+    );
+
+    var overlay =
+      document.getElementById(
+        'customConfirmOverlay'
+      );
+
+    if(overlay){
+      overlay.addEventListener(
+        'click',
+        function(event){
+          if(event.target === overlay){
+            customConfirmClose(false);
+          }
+        }
+      );
+    }
+  }
+);
+
+
+// ═══════════════════════════════════════════════════
+// 허가서에서 자동 채움
+// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// ⭐ 기존 TBM 조회 (2026-08-31 신규)
+// permitNo로 이미 저장된 TBM이 있는지 확인
+// 있으면 → 읽기 전용 모드로 표시
+// 없으면 → 신규 작성 모드 (기존 로직)
+// ═══════════════════════════════════════════════════
+function findExistingTbm(permitNo){
+  try{
+    var records =
+      JSON.parse(
+        localStorage.getItem(
+          tbmStorageKey()
+        ) || '[]'
+      );
+
+    if(!Array.isArray(records)){
+      return null;
+    }
+
+    var matched =
+      records
+        .filter(function(record){
+          return (
+            record &&
+            record.permitNo ===
+              permitNo
+          );
+        })
+        .sort(function(first,second){
+          return (
+            new Date(
+              second.createdAt || 0
+            ).getTime() -
+            new Date(
+              first.createdAt || 0
+            ).getTime()
+          );
+        });
+
+    return matched.length
+      ? matched[0]
+      : null;
+
+  }catch(error){
+    console.error(
+      '[findExistingTbm] 오류:',
+      error
+    );
+
+    return null;
+  }
+}
+
+function loadTbmReadOnly(tbm){
+  console.log('[loadTbmReadOnly] 기존 TBM 로드:', tbm.tbmNo);
+  
+  // 폼 필드 채우기
+  setVal('tbm-work-name', tbm.workName || '');
+  setVal('tbm-datetime', tbm.datetime || '');
+  setVal('tbm-location', tbm.location || '');
+  setVal('tbm-company', tbm.company || '');
+  setVal('tbm-workers', tbm.workers || '');
+  setVal('supervisor-name', tbm.supervisor || '');
+  setVal('manager-name', tbm.manager || '');
+  
+  // 위험요인 복원
+  if(tbm.hazards && tbm.hazards.length > 0){
+    document.getElementById('hazardList').innerHTML = '';
+    hazardCount = 0;
+    tbm.hazards.forEach(function(hz){
+      addHazard();
+      setVal('hz-hazard-' + hazardCount, hz.hazard || '');
+      setVal('hz-measure-' + hazardCount, hz.measure || '');
+      setVal('hz-person-' + hazardCount, hz.person || '');
+    });
+  }
+  
+  // 밀폐공간 상태
+  if(tbm.isConfined !== null && tbm.isConfined !== undefined){
+    setConfined(tbm.isConfined);
+    
+    // 가스 측정 데이터
+    if(tbm.gasMeasurement){
+      setVal('g-o2', tbm.gasMeasurement.o2 || '');
+      setVal('g-co', tbm.gasMeasurement.co || '');
+      setVal('g-h2s', tbm.gasMeasurement.h2s || '');
+      setVal('g-co2', tbm.gasMeasurement.co2 || '');
+      setVal('g-lel', tbm.gasMeasurement.lel || '');
+      setVal('g-measurer', tbm.gasMeasurement.measurer || '');
+      if(typeof checkGas === 'function') checkGas();
+    }
+  }
+  
+  // 참여자 명단
+  if(tbm.stopNotice){
+    setVal('participants-list', tbm.stopNotice.participantsText || 
+           (tbm.stopNotice.participants || []).join(', '));
+    setVal('rep-name', tbm.stopNotice.representativeName || '');
+    
+    // 서명 복원 (이미지 표시)
+    if(tbm.supervisorSig){
+      restoreSignature('supervisor-sig', tbm.supervisorSig);
+    }
+    if(tbm.managerSig){
+      restoreSignature('manager-sig', tbm.managerSig);
+    }
+    if(tbm.stopNotice.representativeSig){
+      restoreSignature('rep-sig', tbm.stopNotice.representativeSig);
+    }
+  }
+  
+  // ⭐ 읽기 전용 모드 활성화
+  enableReadOnlyMode(tbm);
+}
+
+function restoreSignature(canvasId, dataUrl){
+  var canvas = document.getElementById(canvasId);
+  if(!canvas || !dataUrl) return;
+  
+  var ctx = canvas.getContext('2d');
+  var img = new Image();
+  img.onload = function(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = dataUrl;
+}
+
+function enableReadOnlyMode(tbm){
+  // 상단에 안내 배너 표시
+  var mainEl = document.querySelector('.main');
+  if(mainEl){
+    var banner = document.createElement('div');
+    banner.className = 'success-box';
+    banner.style.marginBottom = '14px';
+    banner.innerHTML = 
+      '<div class="success-box-t">✅ TBM 이미 작성됨 (읽기 전용)</div>' +
+      '<div class="success-box-b">' +
+        'TBM 번호: <strong>' + escHtml(tbm.tbmNo) + '</strong><br>' +
+        '작성일시: ' + new Date(tbm.createdAt).toLocaleString('ko-KR') + '<br>' +
+        '작성자: ' + escHtml(tbm.createdBy || '-') + '<br><br>' +
+        '<em style="font-size:11.5px;">TBM은 작성 후 수정할 수 없습니다.<br>' +
+        '변경 사항은 <strong>점검등록</strong>으로 기록해주세요.</em>' +
+      '</div>';
+    
+    // 히어로 다음에 삽입
+    var hero = mainEl.querySelector('.hero-tbm');
+    if(hero && hero.nextSibling){
+      mainEl.insertBefore(banner, hero.nextSibling);
+    } else {
+      mainEl.insertBefore(banner, mainEl.firstChild);
+    }
+  }
+  
+  // 모든 입력 필드 비활성화
+  var inputs = document.querySelectorAll('.main input, .main textarea, .main select');
+  inputs.forEach(function(el){
+    el.disabled = true;
+    el.readOnly = true;
+    el.style.opacity = '0.85';
+    el.style.cursor = 'not-allowed';
+  });
+  
+  // 서명 캔버스 비활성화
+  var canvases = document.querySelectorAll('.sig-canvas');
+  canvases.forEach(function(canvas){
+    canvas.style.pointerEvents = 'none';
+    canvas.style.opacity = '0.85';
+  });
+  
+  // 버튼 숨기기
+  var deleteBtns = document.querySelectorAll('.hazard-del-btn, .hazard-add-btn, .sig-clear');
+  deleteBtns.forEach(function(btn){ btn.style.display = 'none'; });
+  
+  var toggleBtns = document.querySelectorAll('.toggle-yn-btn');
+  toggleBtns.forEach(function(btn){
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.85';
+  });
+  
+  // 하단 버튼 변경 (제출 → 대시보드로 이동)
+  var btnRow = document.querySelector('.btn-row');
+  if(btnRow){
+    btnRow.innerHTML = 
+      '<button class="btn-secondary" onclick="goHome()">← 대시보드로</button>' +
+      '<button class="btn-primary" style="flex:2;" onclick="printTbm()">' +
+        '🖨️ TBM 인쇄' +
+      '</button>';
+  }
+  
+  // 상단 뱃지
+  var badge = document.getElementById('permitBadge');
+  if(badge){
+    badge.textContent = '📄 ' + tbm.tbmNo;
+    badge.classList.add('show');
+    badge.style.background = 'rgba(255,255,255,0.3)';
+  }
+  
+  showToast('📄 기존 TBM 조회 모드', 'info');
+  console.log('[읽기 전용] 활성화 완료:', tbm.tbmNo);
+}
+
+// TBM 인쇄
+function printTbm(){
+  window.print();
+}
+  
+function loadFromPermit(permitNo){
+  try{
+    var key =
+      permitStorageKey();
+
+    var permits =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(!Array.isArray(permits)){
+      permits = [];
+    }
+
+    var permit =
+      permits.find(function(record){
+        return (
+          record &&
+          record.permitNo ===
+            permitNo
+        );
+      });
+
+    if(!permit){
+      console.warn(
+        '[loadFromPermit] 허가서 없음:',
+        {
+          permitNo:permitNo,
+          storageKey:key,
+          count:permits.length
+        }
+      );
+
+      showToast(
+        '⚠️ 연결된 허가서를 찾을 수 없습니다',
+        'warn'
+      );
+
+      return;
+    }
+
+    var code =
+      String(
+        permit.statusCode ||
+        ''
+      );
+
+    var approved =
+      code === 'approved' ||
+      code === 'inProgress' ||
+      permit.status === '허가완료' ||
+      permit.permitStatus ===
+        '허가완료' ||
+      (
+        permit.approvalWorkflow &&
+        permit.approvalWorkflow
+          .permitApprovalCompleted ===
+          true
+      );
+
+    if(!approved){
+      console.warn(
+        '[loadFromPermit] 승인되지 않은 허가서:',
+        {
+          permitNo:permitNo,
+          statusCode:code
+        }
+      );
+
+      showToast(
+        '⚠️ 승인된 허가서만 TBM을 진행할 수 있습니다',
+        'warn'
+      );
+
+      return;
+    }
+
+    permitData = permit;
+
+    tbmData.workId =
+      permit.workId ||
+      permit.sourceWorkId ||
+      (
+        permit.workflowLink &&
+        permit.workflowLink.workId
+      ) ||
+      '';
+
+    tbmData.riskId =
+      permit.riskId ||
+      (
+        permit.workflowLink &&
+        permit.workflowLink.riskId
+      ) ||
+      tbmData.riskId ||
+      '';
+
+    var badge =
+      document.getElementById(
+        'permitBadge'
+      );
+
+    if(badge){
+      badge.textContent =
+        permitNo;
+
+      badge.classList.add(
+        'show'
+      );
+    }
+
+    showPermitBanner(permit);
+
+    var filledCount = 0;
+
+    var simplifiedName =
+      simplifyTbmWorkName(
+        permit.workNameFull ||
+        permit.workName
+      );
+
+    if(simplifiedName){
+      setValAuto(
+        'tbm-work-name',
+        simplifiedName
+      );
+
+      filledCount++;
+    }
+
+    var rawLocation = [
+      permit.location || '',
+      permit.detailLocation || ''
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    var normalizedLocation =
+      normalizeTbmLocation(
+        rawLocation,
+        permit.workNameFull ||
+        permit.workName
+      );
+
+    if(normalizedLocation){
+      setValAuto(
+        'tbm-location',
+        normalizedLocation
+      );
+
+      filledCount++;
+    }
+
+    var company =
+      permit.companyName ||
+      permit.company ||
+      '';
+
+    if(company){
+      setValAuto(
+        'tbm-company',
+        company
+      );
+
+      filledCount++;
+    }
+
+    if(permit.workerCount){
+      setValAuto(
+        'tbm-workers',
+        permit.workerCount
+      );
+
+      filledCount++;
+    }
+
+    var supervisor =
+      permit.supervisorName ||
+      permit.supervisor ||
+      (
+        permit
+          .contractorWorkSupervisor &&
+        permit
+          .contractorWorkSupervisor
+          .name
+      ) ||
+      (
+        permit
+          .companyWorkSupervisor &&
+        permit
+          .companyWorkSupervisor
+          .name
+      ) ||
+      '';
+
+    if(supervisor){
+      setValAuto(
+        'supervisor-name',
+        supervisor
+      );
+
+      filledCount++;
+    }
+
+    var manager =
+      permit.companyWorkManager &&
+      permit.companyWorkManager.name ||
+      '';
+
+    if(manager){
+      setValAuto(
+        'manager-name',
+        manager
+      );
+
+      filledCount++;
+    }
+
+    if(
+      Array.isArray(
+        permit.workTypes
+      ) &&
+      permit.workTypes
+        .indexOf('confined') >= 0
+    ){
+      setConfined(true);
+      filledCount++;
+
+    }else if(
+      Array.isArray(
+        permit.workTypes
+      ) &&
+      permit.workTypes.length
+    ){
+      setConfined(false);
+      filledCount++;
+    }
+
+    var measures = [];
+
+    if(
+      permit.riskSnapshot &&
+      Array.isArray(
+        permit.riskSnapshot
+          .selectedMeasures
+      )
+    ){
+      measures =
+        permit.riskSnapshot
+          .selectedMeasures;
+
+    }else if(
+      Array.isArray(
+        permit.riskMeasures
+      )
+    ){
+      measures =
+        permit.riskMeasures;
+    }
+
+    if(measures.length){
+      document.getElementById(
+        'hazardList'
+      ).innerHTML = '';
+
+      hazardCount = 0;
+
+      measures
+        .slice(0,5)
+        .forEach(function(measure){
+          var measureText =
+            typeof measure === 'string'
+              ? measure
+              : (
+                  measure.text ||
+                  measure.measure ||
+                  measure.description ||
+                  ''
+                );
+
+          if(!measureText){
+            return;
+          }
+
+          addHazard();
+
+          setVal(
+            'hz-hazard-' +
+            hazardCount,
+            '위험성평가 연계 위험요인'
+          );
+
+          setVal(
+            'hz-measure-' +
+            hazardCount,
+            measureText
+          );
+
+          setVal(
+            'hz-person-' +
+            hazardCount,
+            supervisor ||
+            '작업책임자'
+          );
+        });
+    }
+
+    setTimeout(function(){
+      applyTesterQuickFill();
+
+      showToast(
+        '✨ 허가서 정보 ' +
+        filledCount +
+        '개 항목 자동 입력',
+        'success'
+      );
+    },100);
+
+    console.log(
+      '[loadFromPermit] 완료:',
+      {
+        permitNo:permitNo,
+        storageKey:key,
+        statusCode:
+          permit.statusCode,
+        workName:
+          simplifiedName,
+        location:
+          normalizedLocation,
+        tester:
+          isTbmTester()
+      }
+    );
+
+  }catch(error){
+    console.error(
+      '[loadFromPermit] 오류:',
+      error
+    );
+
+    showToast(
+      '❌ 허가서 정보 로드 실패',
+      'danger'
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// workId로부터 자동 채움 (허가서 없을 때)
+// ═══════════════════════════════════════════════════
+function loadFromWorkId(workId){
+  try{
+    var raw =
+      localStorage.getItem(
+        'safetyDatabase'
+      );
+
+    if(!raw){
+      return;
+    }
+
+    var database =
+      JSON.parse(raw);
+
+    var works =
+      Array.isArray(
+        database.workHistory
+      )
+        ? database.workHistory
+        : [];
+
+    var work =
+      works.find(function(record){
+        var id =
+          record.workId ||
+          (
+            record.date +
+            '_' +
+            (
+              record.originalNo ||
+              ''
+            )
+          );
+
+        return id === workId;
+      });
+
+    if(!work){
+      return;
+    }
+
+    var originalName =
+      work.workNameFull ||
+      work.workName ||
+      '';
+
+    var displayName =
+      simplifyTbmWorkName(
+        originalName
+      );
+
+    if(displayName){
+      setValAuto(
+        'tbm-work-name',
+        displayName
+      );
+    }
+
+    var rawLocation =
+      work.locationDisplay ||
+      work.locationRaw ||
+      (
+        work.location &&
+        work.location.raw
+      ) ||
+      '';
+
+    var displayLocation =
+      normalizeTbmLocation(
+        rawLocation,
+        originalName
+      );
+
+    if(displayLocation){
+      setValAuto(
+        'tbm-location',
+        displayLocation
+      );
+    }
+
+    var company =
+      work.company ||
+      work.executingCompany ||
+      work.contractCompany ||
+      '';
+
+    if(company){
+      setValAuto(
+        'tbm-company',
+        company
+      );
+    }
+
+    if(work.workerCount){
+      setValAuto(
+        'tbm-workers',
+        work.workerCount
+      );
+    }
+
+    var banner =
+      document.getElementById(
+        'permitInfoBanner'
+      );
+
+    if(banner){
+      banner.innerHTML =
+        '<div class="permit-info-banner">' +
+          '<div class="pib-top">' +
+            '<span class="pib-badge">📋 작업 연결</span>' +
+            '<span class="pib-no">' +
+              escHtml(workId) +
+            '</span>' +
+          '</div>' +
+          '<div class="pib-name">' +
+            escHtml(displayName) +
+          '</div>' +
+          '<div class="pib-meta">' +
+            '<div>📍 ' +
+              escHtml(displayLocation) +
+            '</div>' +
+            '<div>💡 승인된 허가서 연결 후 TBM 진행</div>' +
+          '</div>' +
+        '</div>';
+
+      banner.style.display =
+        'block';
+    }
+
+    setTimeout(
+      applyTesterQuickFill,
+      100
+    );
+
+    showToast(
+      '✨ 작업 정보 자동 입력됨',
+      'success'
+    );
+
+  }catch(error){
+    console.error(
+      '[loadFromWorkId] 오류:',
+      error
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 허가서 배너 표시
+// ═══════════════════════════════════════════════════
+function showPermitBanner(permit){
+  var banner = document.getElementById('permitInfoBanner');
+  if(!banner) return;
+  
+  var startDT = permit.startDate + ' ' + permit.startTime;
+  var endDT = permit.endDate + ' ' + permit.endTime;
+  
+  // 연장 정보
+  if(permit.validity && permit.validity.currentEndDateTime){
+    var newEnd = new Date(permit.validity.currentEndDateTime);
+    endDT = permit.startDate + ' ' + permit.startTime + ' → ' +
+            newEnd.getFullYear() + '-' + pad(newEnd.getMonth()+1) + '-' + pad(newEnd.getDate()) +
+            ' ' + pad(newEnd.getHours()) + ':' + pad(newEnd.getMinutes()) +
+            ' (연장 ' + (permit.validity.extensionCount || 0) + '회)';
+  }
+  
+  // 작업 유형 태그
+  var workTypeEmoji = {
+    'general': '✅ 일반',
+    'fire': '🔥 화기',
+    'electric': '⚡ 전기',
+    'electric-live': '⚡ 충전',
+    'height': '⬆️ 고소',
+    'heavy': '🏗️ 중량',
+    'confined': '🚪 밀폐'
+  };
+  var typesHtml = '';
+  if(permit.workTypes && permit.workTypes.length > 0){
+    typesHtml = '<div class="pib-meta-row">';
+    permit.workTypes.forEach(function(t){
+      typesHtml += '<span class="pib-tag">' + (workTypeEmoji[t] || t) + '</span>';
+    });
+    typesHtml += '</div>';
+  }
+  
+  banner.innerHTML = 
+    '<div class="permit-info-banner">' +
+      '<div class="pib-top">' +
+        '<span class="pib-badge">🔗 연결된 허가서</span>' +
+        '<span class="pib-no">' + escHtml(permit.permitNo) + '</span>' +
+      '</div>' +
+      '<div class="pib-name">' + escHtml(permit.workName || '-') + '</div>' +
+      '<div class="pib-meta">' +
+        '<div>📅 ' + escHtml(startDT) + ' ~ ' + escHtml(endDT) + '</div>' +
+        '<div>👥 ' + escHtml(String(permit.workerCount || 0)) + '명 · 🏢 ' + escHtml(permit.companyName || '-') + '</div>' +
+        (permit.riskId ? '<div>⚠️ 위험성평가: ' + escHtml(permit.riskId) + '</div>' : '') +
+      '</div>' +
+      typesHtml +
+    '</div>';
+  banner.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════
+// 자동 채움 헬퍼
+// ═══════════════════════════════════════════════════
+function setValAuto(id, val){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.value = val || '';
+  if(val) el.classList.add('auto-filled');
+}
+
+// 자동 채움 필드 수정 시 시각 해제
+document.addEventListener('DOMContentLoaded', function(){
+  document.body.addEventListener('input', function(e){
+    if(e.target.classList && e.target.classList.contains('auto-filled')){
+      e.target.classList.remove('auto-filled');
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 위험요인 관리
+// ═══════════════════════════════════════════════════
+function addHazard(){
+  hazardCount++;
+  var list = document.getElementById('hazardList');
+  if(!list) return;
+  
+  var div = document.createElement('div');
+  div.className = 'hazard-card';
+  div.id = 'hazard-' + hazardCount;
+  div.dataset.num = hazardCount;
+  
+  var visibleCount = getVisibleHazardCount();
+  var delBtnHtml = visibleCount > 0 
+    ? '<button class="hazard-del-btn" onclick="delHazard(' + hazardCount + ')">×</button>'
+    : '<div></div>';
+  
+  div.innerHTML = 
+    '<div class="hazard-card-top">' +
+      '<div class="hazard-num">' + (visibleCount + 1) + '</div>' +
+      delBtnHtml +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label class="f-label">잠재 위험요인<span class="req">*</span></label>' +
+      '<textarea class="f-textarea" id="hz-hazard-' + hazardCount + '" ' +
+                'placeholder="예: 용접 불티 비산으로 인한 화재 위험"></textarea>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label class="f-label">안전조치 대책<span class="req">*</span></label>' +
+      '<textarea class="f-textarea" id="hz-measure-' + hazardCount + '" ' +
+                'placeholder="예: 소화기 2대 비치, 화재감시자 배치"></textarea>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label class="f-label">조치 담당자<span class="req">*</span></label>' +
+      '<input class="f-input" id="hz-person-' + hazardCount + '" placeholder="이호출">' +
+    '</div>';
+  
+  list.appendChild(div);
+  renumberHazards();
+}
+
+function getVisibleHazardCount(){
+  return document.querySelectorAll('.hazard-card').length;
+}
+
+function delHazard(n){
+  if(getVisibleHazardCount() <= 1){
+    showToast('최소 1개 위험요인이 필요합니다', 'info');
+    return;
+  }
+  var el = document.getElementById('hazard-' + n);
+  if(el) el.remove();
+  renumberHazards();
+}
+
+function renumberHazards(){
+  document.querySelectorAll('.hazard-card').forEach(function(card, i){
+    var numEl = card.querySelector('.hazard-num');
+    if(numEl) numEl.textContent = i + 1;
+    var delBtn = card.querySelector('.hazard-del-btn');
+    if(delBtn){
+      delBtn.style.display = getVisibleHazardCount() > 1 ? 'flex' : 'none';
+    }
+  });
+}
+
+function collectHazards(){
+  var items = [];
+  document.querySelectorAll('.hazard-card').forEach(function(card){
+    var id = card.dataset.num;
+    var hazard = getVal('hz-hazard-' + id);
+    var measure = getVal('hz-measure-' + id);
+    var person = getVal('hz-person-' + id);
+    if(hazard && measure && person){
+      items.push({ hazard: hazard, measure: measure, person: person });
+    }
+  });
+  return items;
+}
+
+// ═══════════════════════════════════════════════════
+// 밀폐공간 토글
+// ═══════════════════════════════════════════════════
+function setConfined(v){
+  isConfined = v;
+  tbmData.isConfined = v;
+  
+  var gasSection = document.getElementById('gasSection');
+  var btnYes = document.getElementById('btn-confined-yes');
+  var btnNo = document.getElementById('btn-confined-no');
+  
+  if(gasSection) gasSection.style.display = v ? 'block' : 'none';
+  
+  if(btnYes){
+    btnYes.classList.remove('active-yes', 'active-no');
+    if(v) btnYes.classList.add('active-yes');
+  }
+  if(btnNo){
+    btnNo.classList.remove('active-yes', 'active-no');
+    if(!v) btnNo.classList.add('active-no');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 가스 측정 체크
+// ═══════════════════════════════════════════════════
+function checkGas(){
+  var o2 = getVal('g-o2');
+  var co = getVal('g-co');
+  var h2s = getVal('g-h2s');
+  var co2 = getVal('g-co2');
+  var lel = getVal('g-lel');
+  
+  var hasO2 = o2 !== '', hasCO = co !== '', hasH2S = h2s !== '', 
+      hasCO2 = co2 !== '', hasLEL = lel !== '';
+  var o2Val = parseFloat(o2) || 0, coVal = parseFloat(co) || 0,
+      h2sVal = parseFloat(h2s) || 0, co2Val = parseFloat(co2) || 0,
+      lelVal = parseFloat(lel) || 0;
+  
+  var o2Danger = hasO2 && (o2Val < 18 || o2Val >= 23.5);
+  var coDanger = hasCO && coVal >= 30;
+  var h2sDanger = hasH2S && h2sVal >= 10;
+  var co2Danger = hasCO2 && co2Val >= 1.5;
+  var lelDanger = hasLEL && lelVal >= 10;
+  
+  setGasCell('gi-o2', hasO2, o2Danger);
+  setGasCell('gi-co', hasCO, coDanger);
+  setGasCell('gi-h2s', hasH2S, h2sDanger);
+  setGasCell('gi-co2', hasCO2, co2Danger);
+  setGasCell('gi-lel', hasLEL, lelDanger);
+  
+  var anyDanger = o2Danger || coDanger || h2sDanger || co2Danger || lelDanger;
+  var anyInput = hasO2 || hasCO || hasH2S || hasCO2 || hasLEL;
+  var msgArea = document.getElementById('gasMsgArea');
+  
+  if(anyDanger){
+    var dangerList = [];
+    if(o2Danger) dangerList.push('O₂(' + o2Val + '%)');
+    if(coDanger) dangerList.push('CO(' + coVal + 'ppm)');
+    if(h2sDanger) dangerList.push('H₂S(' + h2sVal + 'ppm)');
+    if(co2Danger) dangerList.push('CO₂(' + co2Val + '%)');
+    if(lelDanger) dangerList.push('LEL(' + lelVal + '%)');
+    
+    msgArea.innerHTML = 
+      '<div class="danger-box" style="margin-top:10px;margin-bottom:0;">' +
+        '<div class="danger-box-t">🚨 가스 농도 기준 초과!</div>' +
+        '<div class="danger-box-b">' +
+          '위험 항목: ' + dangerList.join(', ') + '<br>' +
+          '즉시 작업을 중지하고 환기 후 재측정하세요' +
+        '</div>' +
+      '</div>';
+    showToast('🚨 가스 농도 기준 초과!', 'danger');
+  } else if(anyInput){
+    msgArea.innerHTML = 
+      '<div class="success-box" style="margin-top:10px;margin-bottom:0;">' +
+        '<div class="success-box-b">✅ 가스 농도 정상 - 작업 가능</div>' +
+      '</div>';
+  } else {
+    msgArea.innerHTML = '';
+  }
+}
+
+function setGasCell(id, hasValue, isDanger){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('danger-gas', 'safe-gas');
+  if(!hasValue) return;
+  if(isDanger) el.classList.add('danger-gas');
+  else el.classList.add('safe-gas');
+}
+
+// ═══════════════════════════════════════════════════
+// 서명 캔버스
+// ═══════════════════════════════════════════════════
+function initAllSigs(){
+  initSig('supervisor-sig');
+  initSig('manager-sig');
+  initSig('rep-sig');
+}
+
+function initSig(canvasId){
+  var canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#1C2B3A';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  var drawing = false, lx = 0, ly = 0;
+  
+  function pos(e){
+    var r = canvas.getBoundingClientRect();
+    var src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - r.left) * (canvas.width / r.width),
+      y: (src.clientY - r.top) * (canvas.height / r.height)
+    };
+  }
+  
+  canvas.onmousedown = canvas.ontouchstart = function(e){
+    e.preventDefault();
+    drawing = true;
+    var p = pos(e);
+    lx = p.x;
+    ly = p.y;
+  };
+  
+  canvas.onmousemove = canvas.ontouchmove = function(e){
+    e.preventDefault();
+    if(!drawing) return;
+    var p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(lx, ly);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lx = p.x;
+    ly = p.y;
+  };
+  
+  canvas.onmouseup = canvas.ontouchend = function(){ drawing = false; };
+  canvas.onmouseleave = function(){ drawing = false; };
+}
+
+function clearSig(id){
+  var canvas = document.getElementById(id);
+  if(canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function hasSig(id){
+  var canvas = document.getElementById(id);
+  if(!canvas) return false;
+  var d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  for(var i = 3; i < d.length; i += 4){
+    if(d[i] > 0) return true;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════
+// 임시저장 / 복구
+// ═══════════════════════════════════════════════════
+function saveDraft(){
+  var draft = {
+    workName: getVal('tbm-work-name'),
+    datetime: getVal('tbm-datetime'),
+    location: getVal('tbm-location'),
+    company: getVal('tbm-company'),
+    workers: getVal('tbm-workers'),
+    supervisor: getVal('supervisor-name'),
+    manager: getVal('manager-name'),
+    hazards: collectHazards(),
+    isConfined: isConfined,
+    permitNo: tbmData.permitNo,
+    workId: tbmData.workId,
+    riskId: tbmData.riskId,
+    participants: getVal('participants-list'),
+    repName: getVal('rep-name'),
+    savedAt: new Date().toISOString()
+  };
+  
+  localStorage.setItem('tbm-v2-draft', JSON.stringify(draft));
+  showToast('💾 임시저장 완료', 'info');
+}
+
+function loadDraft(){
+  try{
+    var draft = localStorage.getItem('tbm-v2-draft');
+    if(!draft) return;
+    
+    var d = JSON.parse(draft);
+    var age = Date.now() - new Date(d.savedAt).getTime();
+    
+    if(age > 24 * 60 * 60 * 1000){
+      localStorage.removeItem('tbm-v2-draft');
+      return;
+    }
+    
+    showCustomConfirm({
+      icon: '💾',
+      title: '임시저장 복구',
+      message: '이전에 작성 중이던 TBM이 있습니다.\n이어서 작성하시겠습니까?\n\n저장 시간: ' + new Date(d.savedAt).toLocaleString('ko-KR'),
+      okText: '복구',
+      okType: 'primary'
+    }, function(ok){
+      if(!ok){
+        localStorage.removeItem('tbm-v2-draft');
+        return;
+      }
+      restoreDraft(d);
+    });
+  }catch(e){
+    console.warn('드래프트 복구 실패:', e);
+  }
+}
+
+function restoreDraft(d){
+  if(d.workName) setVal('tbm-work-name', d.workName);
+  if(d.datetime) setVal('tbm-datetime', d.datetime);
+  if(d.location) setVal('tbm-location', d.location);
+  if(d.company) setVal('tbm-company', d.company);
+  if(d.workers) setVal('tbm-workers', d.workers);
+  if(d.supervisor) setVal('supervisor-name', d.supervisor);
+  if(d.manager) setVal('manager-name', d.manager);
+  if(d.participants) setVal('participants-list', d.participants);
+  if(d.repName) setVal('rep-name', d.repName);
+  
+  if(d.hazards && d.hazards.length > 0){
+    document.getElementById('hazardList').innerHTML = '';
+    hazardCount = 0;
+    d.hazards.forEach(function(hz){
+      addHazard();
+      setVal('hz-hazard-' + hazardCount, hz.hazard);
+      setVal('hz-measure-' + hazardCount, hz.measure);
+      setVal('hz-person-' + hazardCount, hz.person);
+    });
+  }
+  
+  if(d.isConfined !== null && d.isConfined !== undefined) setConfined(d.isConfined);
+  
+  if(d.permitNo){
+    tbmData.permitNo = d.permitNo;
+    tbmData.workId = d.workId || '';
+    tbmData.riskId = d.riskId || '';
+    var badge = document.getElementById('permitBadge');
+    if(badge){
+      badge.textContent = d.permitNo;
+      badge.classList.add('show');
+    }
+  }
+  
+  showToast('✅ 임시저장 내용 복구됨', 'success');
+}
+
+// ═══════════════════════════════════════════════════
+// TBM 제출
+// ═══════════════════════════════════════════════════
+function submitTBM(){
+  // 유효성 검증
+  var workName = getVal('tbm-work-name');
+  var datetime = getVal('tbm-datetime');
+  var location = getVal('tbm-location');
+  var workers = getVal('tbm-workers');
+  var supervisor = getVal('supervisor-name');
+  var manager = getVal('manager-name');
+  
+  if(!workName || !datetime || !location || !workers){
+    showToast('기본정보를 모두 입력해주세요', 'danger');
+    return;
+  }
+  
+  if(!supervisor || !manager){
+    showToast('작업수행자·감독자 이름을 입력해주세요', 'danger');
+    return;
+  }
+  
+  if(!hasSig('supervisor-sig')){
+    showToast('작업수행자 서명을 해주세요', 'danger');
+    return;
+  }
+  
+  if(!hasSig('manager-sig')){
+    showToast('작업감독자 서명을 해주세요', 'danger');
+    return;
+  }
+  
+  if(isConfined === null){
+    showToast('밀폐공간 작업 여부를 선택해주세요', 'danger');
+    return;
+  }
+  
+  var hazards = collectHazards();
+  if(hazards.length === 0){
+    showToast('위험요인·대책·담당자를 모두 입력해주세요', 'danger');
+    return;
+  }
+  
+  var participants = getVal('participants-list');
+  var repName = getVal('rep-name');
+  
+  if(!participants){
+    showToast('🛑 작업중지권 고지: 참여자 명단을 입력해주세요', 'danger');
+    return;
+  }
+  
+  if(!repName){
+    showToast('🛑 작업중지권 고지: 대표자 이름을 입력해주세요', 'danger');
+    return;
+  }
+  
+  if(!hasSig('rep-sig')){
+    showToast('🛑 작업중지권 고지: 대표자 서명을 해주세요', 'danger');
+    return;
+  }
+  
+  // 밀폐공간 시 가스 측정 검증
+  if(isConfined){
+    var o2 = getVal('g-o2'), co = getVal('g-co'), h2s = getVal('g-h2s');
+    var co2 = getVal('g-co2'), lel = getVal('g-lel'), measurer = getVal('g-measurer');
+    
+    if(!o2 || !co || !h2s || !co2 || !lel){
+      showToast('5가지 가스 농도를 모두 측정해주세요', 'danger');
+      return;
+    }
+    
+    if(!measurer){
+      showToast('가스 측정자 이름을 입력해주세요', 'danger');
+      return;
+    }
+    
+    var o2Val = parseFloat(o2), coVal = parseFloat(co), h2sVal = parseFloat(h2s);
+    var co2Val = parseFloat(co2), lelVal = parseFloat(lel);
+    
+    if(o2Val < 18 || o2Val >= 23.5){ showToast('산소 농도 기준 초과 - 작업 불가', 'danger'); return; }
+    if(coVal >= 30){ showToast('CO 농도 기준 초과 - 작업 불가', 'danger'); return; }
+    if(h2sVal >= 10){ showToast('H₂S 농도 기준 초과 - 작업 불가', 'danger'); return; }
+    if(co2Val >= 1.5){ showToast('CO₂ 농도 기준 초과 - 작업 불가', 'danger'); return; }
+    if(lelVal >= 10){ showToast('LEL 농도 기준 초과 - 작업 불가', 'danger'); return; }
+    
+    tbmData.gasMeasurement = {
+      o2: o2Val, co: coVal, h2s: h2sVal, co2: co2Val, lel: lelVal,
+      measurer: measurer,
+      measuredAt: new Date().toISOString()
+    };
+  }
+  
+  // 최종 확인
+  showCustomConfirm({
+    icon: '📋',
+    title: 'TBM 제출',
+    message: 'TBM을 제출하시겠습니까?\n\n제출 후 허가서 상태가\n"작업중"으로 자동 변경됩니다.',
+    okText: '제출',
+    okType: 'success'
+  }, function(ok){
+    if(!ok) return;
+    executeSubmit(workName, datetime, location, workers, supervisor, manager, 
+                  hazards, participants, repName);
+  });
+}
+
+function executeSubmit(
+  workName,
+  datetime,
+  location,
+  workers,
+  supervisor,
+  manager,
+  hazards,
+  participants,
+  repName
+){
+  try{
+    var tbmNo =
+      getNextTbmNo();
+
+    var now =
+      new Date();
+
+    var today =
+      fmtDate(now);
+
+    var session =
+      readTbmSession() || {};
+
+    var userName =
+      session.displayName ||
+      sessionStorage.getItem(
+        'userName'
+      ) ||
+      supervisor ||
+      'anonymous';
+
+    var participantsList =
+      participants
+        .split(/[,、，]/)
+        .map(function(value){
+          return value.trim();
+        })
+        .filter(function(value){
+          return value.length > 0;
+        });
+
+    var saveData = {
+      tbmNo:tbmNo,
+      permitNo:
+        tbmData.permitNo || '',
+      workId:
+        tbmData.workId || '',
+      riskId:
+        tbmData.riskId || '',
+      workName:
+        simplifyTbmWorkName(
+          workName
+        ),
+      datetime:datetime,
+      location:
+        normalizeTbmLocation(
+          location,
+          workName
+        ),
+      company:
+        getVal('tbm-company'),
+      workers:workers,
+      date:today,
+      supervisor:supervisor,
+      manager:manager,
+      hazards:hazards,
+      isConfined:
+        isConfined,
+      gasMeasurement:
+        tbmData.gasMeasurement ||
+        {},
+      supervisorSig:
+        document
+          .getElementById(
+            'supervisor-sig'
+          )
+          .toDataURL(),
+      managerSig:
+        document
+          .getElementById(
+            'manager-sig'
+          )
+          .toDataURL(),
+      stopNotice:{
+        participants:
+          participantsList,
+        participantsText:
+          participants,
+        representativeName:
+          repName,
+        representativeSig:
+          document
+            .getElementById(
+              'rep-sig'
+            )
+            .toDataURL(),
+        noticedAt:
+          now.toISOString(),
+        legalBasis:
+          '산업안전보건법 제52조'
+      },
+      status:'완료',
+      statusCode:'completed',
+      createdAt:
+        now.toISOString(),
+      createdBy:
+        userName,
+      updatedAt:
+        now.toISOString(),
+      updatedBy:
+        userName,
+      environment:
+        window.APP_MODE ||
+        'test',
+      isTestData:
+        window.APP_MODE ===
+        'test',
+      testerLocal:
+        isTbmTester(),
+      firestoreWritten:false,
+      schemaVersion:2
+    };
+
+    var storageKey =
+      tbmStorageKey();
+
+    var tbmList =
+      JSON.parse(
+        localStorage.getItem(
+          storageKey
+        ) || '[]'
+      );
+
+    if(!Array.isArray(tbmList)){
+      tbmList = [];
+    }
+
+    tbmList.push(saveData);
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(tbmList)
+    );
+
+    console.log(
+      '[TBM] localStorage 저장 완료:',
+      {
+        tbmNo:tbmNo,
+        storageKey:storageKey,
+        tester:isTbmTester()
+      }
+    );
+
+    /*
+     * 테스터는 Firestore 저장을 호출하지 않습니다.
+     */
+    if(!isTbmTester()){
+      saveTbmToFirestore(
+        saveData
+      );
+    }else{
+      console.log(
+        '[TBM TEST] Firestore 쓰기 차단:',
+        tbmNo
+      );
+    }
+
+    if(tbmData.permitNo){
+      updatePermitStatus(
+        tbmData.permitNo,
+        tbmNo,
+        userName
+      );
+    }
+
+    localStorage.removeItem(
+      'tbm-v2-draft'
+    );
+
+    try{
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:storageKey,
+              workId:
+                tbmData.workId,
+              permitNo:
+                tbmData.permitNo,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:
+                permitStorageKey(),
+              permitNo:
+                tbmData.permitNo,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+    }catch(eventError){}
+
+    tbmData.tbmNo =
+      tbmNo;
+
+    window.lastTbmSaveResult = {
+      success:true,
+      tbmNo:tbmNo,
+      permitNo:
+        tbmData.permitNo,
+      storageKey:
+        storageKey,
+      permitStorageKey:
+        permitStorageKey(),
+      tester:
+        isTbmTester(),
+      firestoreWriteCount:
+        isTbmTester()
+          ? 0
+          : 1,
+      statusCode:
+        'completed'
+    };
+
+    console.table(
+      window.lastTbmSaveResult
+    );
+
+    showCompleteScreen(
+      saveData
+    );
+
+  }catch(error){
+    console.error(
+      '❌ TBM 저장 실패:',
+      error
+    );
+
+    showCustomAlert({
+      icon:'❌',
+      title:'저장 실패',
+      message:
+        '저장 중 오류가 발생했습니다.\n\n' +
+        error.message,
+      okType:'danger'
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// ⭐ Firestore에 TBM 저장 (2026-08-31 신규)
+// ═══════════════════════════════════════════════════
+async function saveTbmToFirestore(record){
+  if(isTbmTester()){
+    console.log(
+      '[TBM TEST] Firestore 저장 차단:',
+      record &&
+      record.tbmNo
+    );
+
+    return {
+      success:false,
+      reason:'tester-local-only',
+      firestoreWriteCount:0
+    };
+  }
+
+  try{
+    if(
+      !window.firebaseApp ||
+      !window.firebaseApp.db
+    ){
+      console.warn(
+        '[TBM] Firebase 미로드 - Firestore 저장 건너뜀'
+      );
+
+      return {
+        success:false,
+        reason:'firebase-not-ready'
+      };
+    }
+
+    if(
+      !record ||
+      !record.tbmNo
+    ){
+      return {
+        success:false,
+        reason:'missing-tbm-no'
+      };
+    }
+
+    if(!navigator.onLine){
+      return {
+        success:false,
+        reason:'offline'
+      };
+    }
+
+    var firebase =
+      window.firebaseApp;
+
+    var collectionName =
+      firebase.TBM_COLLECTION ||
+      window.getCollectionName(
+        'safetyTBM'
+      );
+
+    var reference =
+      firebase.doc(
+        firebase.db,
+        collectionName,
+        record.tbmNo
+      );
+
+    var timeoutMs = 15000;
+
+    var savePromise =
+      firebase.setDoc(
+        reference,
+        Object.assign(
+          {},
+          record,
+          {
+            firestoreWritten:true,
+            updatedAtServer:
+              firebase.serverTimestamp()
+          }
+        )
+      );
+
+    var timeoutPromise =
+      new Promise(
+        function(resolve,reject){
+          setTimeout(function(){
+            reject(
+              new Error(
+                'Firestore 타임아웃 (' +
+                timeoutMs / 1000 +
+                '초)'
+              )
+            );
+          },timeoutMs);
+        }
+      );
+
+    await Promise.race([
+      savePromise,
+      timeoutPromise
+    ]);
+
+    console.log(
+      '[TBM] ✅ Firestore 저장 완료:',
+      record.tbmNo
+    );
+
+    return {
+      success:true,
+      firestoreWriteCount:1
+    };
+
+  }catch(error){
+    console.error(
+      '[TBM] Firestore 저장 실패:',
+      error.message
+    );
+
+    return {
+      success:false,
+      reason:'firestore-error',
+      error:error
+    };
+  }
+}
+
+
+function updatePermitStatus(
+  permitNo,
+  tbmNo,
+  userName
+){
+  try{
+    var key =
+      permitStorageKey();
+
+    var permits =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        '[]'
+      );
+
+    if(!Array.isArray(permits)){
+      permits = [];
+    }
+
+    var updated = false;
+    var processedAt =
+      new Date().toISOString();
+
+    permits.forEach(
+      function(permit){
+        if(
+          !permit ||
+          permit.permitNo !==
+            permitNo
+        ){
+          return;
+        }
+
+        var previousStatus =
+          permit.statusCode ||
+          'approved';
+
+        permit.status =
+          '작업중';
+
+        permit.permitStatus =
+          '작업중';
+
+        permit.statusCode =
+          'inProgress';
+
+        permit.tbmNo =
+          tbmNo;
+
+        permit.tbmCompletedAt =
+          processedAt;
+
+        permit.updatedAt =
+          processedAt;
+
+        permit.updatedBy =
+          userName;
+
+        permit.syncPending =
+          isTbmTester()
+            ? false
+            : true;
+
+        permit.syncStatus =
+          isTbmTester()
+            ? 'tester-local-in-progress'
+            : 'pending';
+
+        permit.approvalWorkflow =
+          Object.assign(
+            {},
+            permit.approvalWorkflow ||
+              {},
+            {
+              currentStep:
+                'WORK_IN_PROGRESS',
+              currentStatusCode:
+                'inProgress',
+              permitApprovalCompleted:
+                true,
+              tbmLinkDeliveryAllowed:
+                true,
+              tbmLinkDelivered:
+                true,
+              lastAction:
+                'tbmCompleted',
+              lastActorName:
+                userName,
+              lastProcessedAt:
+                processedAt,
+              testLocalAction:
+                isTbmTester()
+            }
+          );
+
+        permit.statusHistory =
+          Array.isArray(
+            permit.statusHistory
+          )
+            ? permit.statusHistory
+            : [];
+
+        permit.statusHistory.push({
+          from:
+            previousStatus,
+          to:'inProgress',
+          changedAt:
+            processedAt,
+          changedBy:
+            userName,
+          reason:
+            'TBM 완료 후 작업 시작',
+          environment:
+            window.APP_MODE,
+          isTestAction:
+            isTbmTester(),
+          tbmNo:
+            tbmNo
+        });
+
+        updated = true;
+      }
+    );
+
+    if(updated){
+      localStorage.setItem(
+        key,
+        JSON.stringify(permits)
+      );
+
+      console.log(
+        '✅ 허가서 상태 업데이트:',
+        {
+          permitNo:permitNo,
+          statusCode:'inProgress',
+          storageKey:key,
+          tester:isTbmTester()
+        }
+      );
+    }
+
+  }catch(error){
+    console.warn(
+      '허가서 상태 업데이트 실패:',
+      error
+    );
+  }
+}
+
+function showCompleteScreen(data){
+  // 메인 숨기고 완료 화면 표시
+  document.querySelector('.app > .main').style.display = 'none';
+  var completeScreen = document.getElementById('completeScreen');
+  if(completeScreen) completeScreen.style.display = 'block';
+  
+  // 데이터 채움
+  setTxt('fin-tbm-no', data.tbmNo);
+  setTxt('fin-work-name', data.workName);
+  setTxt('fin-datetime', new Date(data.datetime).toLocaleString('ko-KR'));
+  setTxt('fin-location', data.location);
+  setTxt('fin-company', data.company || '-');
+  setTxt('fin-workers', data.workers + '명');
+  setTxt('fin-hazards', data.hazards.length + '개 항목');
+  setTxt('fin-confined', data.isConfined ? '예 (가스측정 완료)' : '아니오');
+  setTxt('fin-participants', data.stopNotice.participants.length + '명');
+  setTxt('fin-permit', data.permitNo || '연결 없음');
+  
+  window.scrollTo(0, 0);
+  showToast('✅ TBM 제출 완료!', 'success');
+}
+
+function getNextTbmNo(){
+  var dateText =
+    fmtDate(
+      new Date()
+    ).replace(/-/g,'');
+
+  var records =
+    JSON.parse(
+      localStorage.getItem(
+        tbmStorageKey()
+      ) || '[]'
+    );
+
+  if(!Array.isArray(records)){
+    records = [];
+  }
+
+  var prefix =
+    (
+      isTbmTester()
+        ? 'TEST-TBM-'
+        : 'TBM-'
+    ) +
+    dateText +
+    '-';
+
+  var sequence =
+    records
+      .filter(function(record){
+        return (
+          record &&
+          String(
+            record.tbmNo || ''
+          ).indexOf(prefix) === 0
+        );
+      })
+      .map(function(record){
+        return Number(
+          String(record.tbmNo)
+            .split('-')
+            .pop()
+        ) || 0;
+      })
+      .reduce(function(max,value){
+        return Math.max(
+          max,
+          value
+        );
+      },0) + 1;
+
+  return (
+    prefix +
+    String(sequence)
+      .padStart(3,'0')
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// 홈 / 뒤로가기 / 긴급 이동
+// ═══════════════════════════════════════════════════
+function goHome(){
+  var hasContent = checkUnsavedData();
+  
+  if(hasContent){
+    showCustomConfirm({
+      icon: '🏠',
+      title: '대시보드로 이동',
+      message: '작성 중인 내용이 사라집니다.\n계속하시겠습니까?',
+      okText: '이동',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+    });
+    return;
+  }
+  
+  window.location.href = '안전관리플랫폼_대시보드_V6_.html';
+}
+
+function goBack(){
+  var hasContent = checkUnsavedData();
+  
+  if(hasContent){
+    showCustomConfirm({
+      icon: '⚠️',
+      title: '뒤로 가기',
+      message: '작성 중인 내용이 사라집니다.\n계속하시겠습니까?',
+      okText: '나가기',
+      okType: 'warn'
+    }, function(ok){
+      if(ok) history.back();
+    });
+    return;
+  }
+  
+  history.back();
+}
+
+function goToEmergency(){
+  var url = '작업중지권_v2.html';
+  var params = [];
+  
+  if(tbmData.permitNo) params.push('permitNo=' + encodeURIComponent(tbmData.permitNo));
+  if(tbmData.workId) params.push('workId=' + encodeURIComponent(tbmData.workId));
+  
+  if(params.length > 0) url += '?' + params.join('&');
+  
+  showCustomConfirm({
+    icon: '🛑',
+    title: '작업중지권 행사',
+    message: '작업중지권 신고 화면으로\n이동하시겠습니까?\n\n현재 작성 중인 TBM은\n임시저장됩니다.',
+    okText: '이동',
+    okType: 'danger'
+  }, function(ok){
+    if(!ok) return;
+    saveDraft();  // 자동 임시저장
+    window.location.href = url;
+  });
+}
+
+function checkUnsavedData(){
+  var wn = getVal('tbm-work-name');
+  if(wn) return true;
+  if(hasSig('supervisor-sig') || hasSig('manager-sig')) return true;
+  if(hasSig('rep-sig')) return true;
+  return false;
+}
+
+// ═══════════════════════════════════════════════════
+// UTIL
+// ═══════════════════════════════════════════════════
+function getVal(id){
+  var el = document.getElementById(id);
+  return el ? (el.value || '').trim() : '';
+}
+
+function setVal(id, v){
+  var el = document.getElementById(id);
+  if(el) el.value = v;
+}
+
+function setTxt(id, v){
+  var el = document.getElementById(id);
+  if(el) el.textContent = v;
+}
+
+function escHtml(s){
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showToast(msg, type){
+  var wrap = document.getElementById('toastWrap');
+  if(!wrap) return;
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(function(){
+    if(t.parentNode) t.parentNode.removeChild(t);
+  }, 3500);
+}
+</script>
+
+</div><!-- /.phone-screen -->
+</div><!-- /.phone-frame -->
+</body>
+</html>
