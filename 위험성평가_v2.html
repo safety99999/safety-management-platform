@@ -5836,6 +5836,75 @@ function goHomeDirect(){
 // ═══════════════════════════════════════════════════════
 // 33. 오늘 작업 목록
 // ═══════════════════════════════════════════════════════
+/*
+ * 작업관리대장 유효 작업 판정
+ *
+ * 작업관리대장의 정상 작업번호는 숫자 NO를 사용합니다.
+ * 과거 파싱 오류로 생성된 비정상 작업은 목록에서 제외합니다.
+ */
+function isValidManagementWork(
+  work
+){
+  work =
+    work || {};
+
+  var date =
+    String(
+      work.date || ''
+    ).trim();
+
+  var originalNo =
+    String(
+      work.originalNo || ''
+    ).trim();
+
+  var workId =
+    String(
+      work.workId ||
+      work.id ||
+      (
+        date &&
+        originalNo
+          ? date +
+            '_' +
+            originalNo
+          : ''
+      )
+    )
+      .replace(/\s+/g,'')
+      .trim();
+
+  var workName =
+    String(
+      work.workNameFull ||
+      work.workNameRaw ||
+      work.workName ||
+      ''
+    ).trim();
+
+  var normalizedName =
+    workName.toUpperCase();
+
+  return Boolean(
+    /^\d{4}-\d{2}-\d{2}$/
+      .test(date) &&
+    /^\d+$/
+      .test(originalNo) &&
+    workId &&
+    workName &&
+    normalizedName !== 'X' &&
+    normalizedName !== '-' &&
+    normalizedName !==
+      '작업명 미지정' &&
+    normalizedName !==
+      '미지정' &&
+    normalizedName !==
+      'N/A' &&
+    normalizedName !==
+      'NA'
+  );
+}
+
 
 function loadTodayWorkList(){
   var today = formatDateKST(new Date());
@@ -5846,9 +5915,21 @@ function loadTodayWorkList(){
       todayWorks = [];
     } else {
       var database = JSON.parse(raw);
-      todayWorks = (database.workHistory || []).filter(function(work){
-        return work.date === today;
-      });
+      todayWorks =
+        (
+          database.workHistory ||
+          []
+        ).filter(function(work){
+          return (
+            isValidManagementWork(
+              work
+            ) &&
+            String(
+              work.date || ''
+            ).trim() === today
+          );
+        });
+
     }
   } catch(error){
     console.warn('오늘 작업 목록 로드 실패:', error);
@@ -5948,15 +6029,7 @@ function renderTodayWorkList(){
       return;
     }
 
-    var workId =
-      String(
-        work.workId ||
-        (
-          work.date +
-          '_' +
-          work.originalNo
-        )
-      ).trim();
+
     var workId =
       String(
         work.workId ||
