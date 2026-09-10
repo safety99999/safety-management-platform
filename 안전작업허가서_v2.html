@@ -8959,22 +8959,41 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
   function contractorCacheCompanyKey(
     companyName
   ){
-    return clean(
-      companyName
-    )
-      .toLowerCase()
-      .replace(
-        /\s+/g,
-        ''
-      )
-      .replace(
-        /[()
-\[\]
-{}.,·ㆍ\-_/\\]
-/g,
-        ''
-      );
+    var key =
+      clean(companyName)
+        .toLowerCase()
+        .replace(/\s+/g,'');
+
+    /*
+     * 정규식 안의 특수문자 오류를 방지하기 위해
+     * 업체명 비교에 불필요한 문자를 한 글자씩 제거합니다.
+     */
+    [
+      '(',
+      ')',
+      '[',
+      ']',
+      '{',
+      '}',
+      '.',
+      ',',
+      '·',
+      'ㆍ',
+      '-',
+      '_',
+      '/',
+      '\\'
+    ].forEach(function(character){
+      key =
+        key
+          .split(character)
+          .join('');
+    });
+
+    return key;
   }
+
+
 
   function readContractorContactCache(){
     try{
