@@ -1647,7 +1647,7 @@ button{touch-action:manipulation}
       <div class="status-detail">
         <div class="status-dt-card wait" data-status-filter="wait">
           <div class="status-dt-value" id="cntWait">0</div>
-          <div class="status-dt-label">허가전</div>
+          <div class="status-dt-label">작업전</div>
         </div>
         <div class="status-dt-card run" data-status-filter="run">
           <div class="status-dt-value" id="cntRun">0</div>
@@ -3831,10 +3831,13 @@ button{touch-action:manipulation}
         'safetyQuizzes'
       );
 
-    state.tbms =
-      readArray(
-        'safetyTBM'
-      );
+state.tbms =
+  readArray(
+    global.isPublicTester()
+      ? 'testerSafetyTBM'
+      : 'safetyTBM'
+  );
+
 
     state.violations =
       readArray(
@@ -5081,7 +5084,7 @@ button{touch-action:manipulation}
     if(!permit){
       return {
         code:'waiting',
-        label:'허가전',
+        label:'작업전',
         permit:null,
         tbm:null
       };
@@ -5187,21 +5190,21 @@ if(
       };
     }
 
-    if(
-      permitCode ===
-        'approved'
-    ){
-      return {
-        code:'approved',
-        label:'허가완료',
-        permit:permit,
-        tbm:tbm
-      };
-    }
+if(
+  permitCode ===
+    'approved'
+){
+  return {
+    code:'approved',
+    label:'TBM 대기',
+    permit:permit,
+    tbm:tbm
+  };
+}
 
     return {
       code:'waiting',
-      label:'허가전',
+      label:'작업전',
       permit:permit,
       tbm:tbm
     };
@@ -5375,13 +5378,18 @@ if(
         ){
           counts.done++;
 
-        }else if(
-          status.code ===
-            'inProgress' ||
-          status.code ===
-            'approved'
-        ){
-          counts.run++;
+       }else if(
+  status.code ===
+    'inProgress'
+){
+  counts.run++;
+
+}else if(
+  status.code ===
+    'approved'
+){
+  counts.wait++;
+
 
         }else if(
           status.code ===
@@ -5575,11 +5583,12 @@ if(
         items.filter(
           function(item){
             return [
-              'waiting',
-              'pendingApproval',
-              'revisionRequested',
-              'rejected',
-              'cancelled'
+             'waiting',
+  'pendingApproval',
+  'revisionRequested',
+  'rejected',
+  'cancelled',
+  'approved'
             ].indexOf(
               item.status.code
             ) >= 0;
@@ -5590,8 +5599,7 @@ if(
       items =
         items.filter(
           function(item){
-            return [
-              'approved',
+            return [          
               'inProgress'
             ].indexOf(
               item.status.code
@@ -5625,7 +5633,7 @@ if(
     var titles = {
       all:'📋 전체 작업',
       danger:'🚨 고위험 작업',
-      wait:'🟡 허가전 작업',
+      wait:'🟡 작업전 작업',
       run:'🟠 작업중',
       stop:'🔴 작업중지',
       done:'🟢 작업종료'
@@ -7953,10 +7961,11 @@ if(
       );
 
     if(labels.length >= 4){
-      labels[0].textContent =
-        targetDate > current
-          ? '준비중'
-          : '허가전';
+labels[0].textContent =
+  targetDate > current
+    ? '준비중'
+    : '작업전';
+
 
       labels[1].textContent =
         '작업중';
@@ -8047,11 +8056,17 @@ if(
 
   function statusClass(code){
     if(
-      code === 'approved' ||
-      code === 'inProgress'
-    ){
-      return 'run';
-    }
+  code === 'inProgress'
+){
+  return 'run';
+}
+
+if(
+  code === 'approved'
+){
+  return 'wait';
+}
+
 
     if(code === 'stopped'){
       return 'stop';
@@ -8260,16 +8275,10 @@ function standardWorkCard(
         }
       );
 
-    var canUseTbm =
-      [
-        'approved',
-        'tbmCompleted',
-        'inProgress',
-        'stopped',
-        'completed'
-      ].indexOf(
-        permitCode
-      ) >= 0;
+var canInspect =
+  status.code ===
+    'inProgress';
+
 
     var canInspect =
       [
@@ -8655,7 +8664,7 @@ function standardWorkCard(
     var titles = {
       all:'📋 전체 작업',
       danger:'🚨 고위험 작업',
-      wait:'🟡 허가전 작업',
+      wait:'🟡 작업전 작업',
       run:'🟠 작업중',
       stop:'🔴 작업중지',
       done:'🟢 작업종료'
@@ -14428,11 +14437,10 @@ byId('inspectionRegisterButton')
               );
 
             var allowedStatus =
-              [
-                'approved',
-                'tbmCompleted',
-                'inProgress'
-              ].indexOf(code) >= 0;
+  [
+    'tbmCompleted',
+    'inProgress'
+  ].indexOf(code) >= 0;
 
             var todayPermit =
               clean(
