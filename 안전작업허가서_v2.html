@@ -12235,21 +12235,11 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
     setTimeout(goHome,700);
   }
 
-  /* =====================================================
+    /* =====================================================
    * 초기화와 이벤트
    * ===================================================== */
-    if(
-      approvalButton &&
-      isTester()
-    ){
-      approvalButton.textContent =
-        '🧪 TEST 로컬 승인';
-    }
 
-    bindPhoneFormatting();
-  }
-
-   function initializeDefaults(){
+  function initializeDefaults(){
     setValue(
       'startDate',
       today()
@@ -12268,6 +12258,10 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       permitData.woNumber
     );
 
+    /*
+     * 로그인 사용자명을 당사 작업담당자 이름의
+     * 기본값으로 사용합니다.
+     */
     setValue(
       'companyManagerName',
       currentActor().name
@@ -12292,6 +12286,11 @@ window.TESTER_AUTOFILL_DELAY = 600; // Firebase 인증 + 데이터 로드 대기
       approvalButton.textContent =
         '🧪 TEST 로컬 승인';
     }
+
+    /*
+     * 모든 연락처 입력란에 자동 하이픈 처리를 연결합니다.
+     */
+    bindPhoneFormatting();
   }
 
 
