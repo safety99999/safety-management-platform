@@ -14660,13 +14660,36 @@ byId('inspectionRegisterButton')
           );
 
         if(quickButton){
-          quickAction(
+          var quickAppType =
             quickButton.dataset
-              .quickApp
+              .quickApp;
+
+          /*
+           * 대시보드의 AI 위험성평가 빠른 실행은
+           * 작업 선택 팝업을 중복으로 표시하지 않고
+           * 위험성평가 기본 화면으로 바로 이동합니다.
+           *
+           * 특정 작업 카드에서 진입하는 경우에는
+           * 기존 workId 직접 연결 방식을 유지합니다.
+           */
+          if(
+            quickAppType ===
+              'risk'
+          ){
+            navigate(
+              QUICK_URLS.risk
+            );
+
+            return;
+          }
+
+          quickAction(
+            quickAppType
           );
 
           return;
         }
+
 
         var preworkUrl =
           event.target.closest(
