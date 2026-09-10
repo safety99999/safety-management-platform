@@ -8070,7 +8070,7 @@ labels[0].textContent =
     running +
     ' · 중지 ' +
     stopped +
-    ' · 허가전 ' +
+    ' · 작업전 ' +
     waiting
   );
 }
@@ -8576,146 +8576,145 @@ var canInspect =
 
 
   function openStatusList(filter){
-    var targetDate =
-      selectedWorkDate();
+  var targetDate =
+    selectedWorkDate();
 
-    if(
-      targetDate > today()
-    ){
-      state.preworkFilter =
-        filter === 'danger'
-          ? 'high'
-          : filter === 'wait'
-            ? 'incomplete'
-            : filter === 'done'
-              ? 'complete'
-              : 'all';
+  if(
+    targetDate > today()
+  ){
+    state.preworkFilter =
+      filter === 'danger'
+        ? 'high'
+        : filter === 'wait'
+          ? 'incomplete'
+          : filter === 'done'
+            ? 'complete'
+            : 'all';
 
-      state.preworkSearch = '';
-
-      openSheet(
-        '📅 예정 작업 사전 준비',
-        renderPreworkList(
-          state.displayedWorks
-        )
-      );
-
-      return;
-    }
-
-    var indexes =
-      buildProcessIndexes();
-
-    var items =
-      state.displayedWorks
-        .map(function(work){
-          return {
-            work:work,
-            status:
-              displayStatus(
-                work,
-                indexes
-              )
-          };
-        });
-
-    if(filter === 'danger'){
-      items =
-        items.filter(
-          function(item){
-            return (
-              item.work.riskLevel ===
-                '고위험'
-            );
-          }
-        );
-
-    }else if(filter === 'wait'){
-      items =
-        items.filter(
-          function(item){
-            return [
-              'waiting',
-              'pendingApproval',
-              'revisionRequested',
-              'rejected',
-              'cancelled'
-            ].indexOf(
-              item.status.code
-            ) >= 0;
-          }
-        );
-
-    }else if(filter === 'run'){
-      items =
-        items.filter(
-          function(item){
-            return [
-              'approved',
-              'inProgress'
-            ].indexOf(
-              item.status.code
-            ) >= 0;
-          }
-        );
-
-    }else if(filter === 'stop'){
-      items =
-        items.filter(
-          function(item){
-            return (
-              item.status.code ===
-                'stopped'
-            );
-          }
-        );
-
-    }else if(filter === 'done'){
-      items =
-        items.filter(
-          function(item){
-            return (
-              item.status.code ===
-                'completed'
-            );
-          }
-        );
-    }
-
-    var titles = {
-      all:'📋 전체 작업',
-      danger:'🚨 고위험 작업',
-      wait:'🟡 작업전 작업',
-      run:'🟠 작업중',
-      stop:'🔴 작업중지',
-      done:'🟢 작업종료'
-    };
-
-    var html =
-      items.length
-        ? items
-            .map(
-              standardWorkCard
-            )
-            .join('')
-        : '<div class="empty">' +
-            '<div class="empty-ico">📭</div>' +
-            '<div class="empty-txt">' +
-              '해당 작업이 없습니다.' +
-            '</div>' +
-          '</div>';
+    state.preworkSearch = '';
 
     openSheet(
-      (
-        titles[filter] ||
-        titles.all
-      ) +
-      ' · ' +
-      items.length +
-      '건',
-      html
+      '📅 예정 작업 사전 준비',
+      renderPreworkList(
+        state.displayedWorks
+      )
     );
+
+    return;
   }
+
+  var indexes =
+    buildProcessIndexes();
+
+  var items =
+    state.displayedWorks
+      .map(function(work){
+        return {
+          work:work,
+          status:
+            displayStatus(
+              work,
+              indexes
+            )
+        };
+      });
+
+  if(filter === 'danger'){
+    items =
+      items.filter(
+        function(item){
+          return (
+            item.work.riskLevel ===
+              '고위험'
+          );
+        }
+      );
+
+  }else if(filter === 'wait'){
+    items =
+      items.filter(
+        function(item){
+          return [
+            'waiting',
+            'pendingApproval',
+            'revisionRequested',
+            'rejected',
+            'cancelled',
+            'approved'
+          ].indexOf(
+            item.status.code
+          ) >= 0;
+        }
+      );
+
+  }else if(filter === 'run'){
+    items =
+      items.filter(
+        function(item){
+          return (
+            item.status.code ===
+              'inProgress'
+          );
+        }
+      );
+
+  }else if(filter === 'stop'){
+    items =
+      items.filter(
+        function(item){
+          return (
+            item.status.code ===
+              'stopped'
+          );
+        }
+      );
+
+  }else if(filter === 'done'){
+    items =
+      items.filter(
+        function(item){
+          return (
+            item.status.code ===
+              'completed'
+          );
+        }
+      );
+  }
+
+  var titles = {
+    all:'📋 전체 작업',
+    danger:'🚨 고위험 작업',
+    wait:'🟡 작업전 작업',
+    run:'🟠 작업중',
+    stop:'🔴 작업중지',
+    done:'🟢 작업종료'
+  };
+
+  var html =
+    items.length
+      ? items
+          .map(
+            standardWorkCard
+          )
+          .join('')
+      : '<div class="empty">' +
+          '<div class="empty-ico">📭</div>' +
+          '<div class="empty-txt">' +
+            '해당 작업이 없습니다.' +
+          '</div>' +
+        '</div>';
+
+  openSheet(
+    (
+      titles[filter] ||
+      titles.all
+    ) +
+    ' · ' +
+    items.length +
+    '건',
+    html
+  );
+}
 
   function rerenderPreworkSheet(){
     if(
