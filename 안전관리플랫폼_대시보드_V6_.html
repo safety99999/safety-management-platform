@@ -8296,19 +8296,48 @@ function standardWorkCard(
         }
       );
 
-var canInspect =
-  status.code ===
-    'inProgress';
-
-
-    var canInspect =
+    /*
+     * TBM은 허가완료 이후 사용할 수 있습니다.
+     * 작업중지·작업종료 상태에서는 기존 TBM 조회를 허용합니다.
+     */
+    var canUseTbm =
       [
         'approved',
         'tbmCompleted',
-        'inProgress'
+        'inProgress',
+        'stopped',
+        'completed'
       ].indexOf(
         permitCode
       ) >= 0;
+
+    /*
+     * TBM 제출 완료 후 작업중 상태에서만
+     * 안전점검을 시작할 수 있습니다.
+     */
+    var canInspect =
+      status.code ===
+        'inProgress';
+
+    /*
+     * 작업중 상태에서만 작업종료 처리가 가능합니다.
+     */
+    var canComplete =
+      status.code ===
+        'inProgress';
+
+    var tbmCompleted =
+      Boolean(
+        status.tbm ||
+        [
+          'tbmCompleted',
+          'inProgress',
+          'stopped',
+          'completed'
+        ].indexOf(
+          permitCode
+        ) >= 0
+      );
 
     var tbmButton =
       canUseTbm
@@ -8319,7 +8348,7 @@ var canInspect =
               ) +
             '">' +
               (
-                status.tbm
+                tbmCompleted
                   ? '✅ TBM'
                   : '📝 TBM'
               ) +
@@ -8369,7 +8398,8 @@ var canInspect =
      * 작업별 완료리포트를 표시합니다.
      */
     if(
-      permitCode === 'completed'
+      permitCode ===
+        'completed'
     ){
       var workReportUrl =
         '작업리포트_v1.html' +
@@ -8444,13 +8474,7 @@ var canInspect =
           inspectionButton +
 
           (
-            [
-              'approved',
-              'tbmCompleted',
-              'inProgress'
-            ].indexOf(
-              permitCode
-            ) >= 0
+            canComplete
               ? (
                   '<button type="button" ' +
                     'class="work-mini-action completion" ' +
@@ -8571,6 +8595,9 @@ var canInspect =
     '</article>'
   );
 }
+
+function openStatusList(filter){
+
 
 
 
