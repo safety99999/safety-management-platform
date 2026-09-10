@@ -7877,7 +7877,7 @@ if(
     ){
       return {
         code:'approved',
-        label:'허가완료',
+        label:'TBM 대기',
         permit:permit,
         tbm:tbm
       };
@@ -8074,38 +8074,38 @@ labels[0].textContent =
   );
 }
 
-  function statusClass(code){
-    if(
-  code === 'inProgress'
-){
-  return 'run';
-}
+function statusClass(code){
+  if(
+    code === 'inProgress'
+  ){
+    return 'run';
+  }
 
-if(
-  code === 'approved'
-){
+  if(
+    code === 'approved'
+  ){
+    return 'wait';
+  }
+
+  if(code === 'stopped'){
+    return 'stop';
+  }
+
+  if(
+    code === 'completed'
+  ){
+    return 'ended';
+  }
+
+  if(
+    code === 'scheduled'
+  ){
+    return 'scheduled';
+  }
+
   return 'wait';
 }
 
-
-    if(code === 'stopped'){
-      return 'stop';
-    }
-
-    if(
-      code === 'completed'
-    ){
-      return 'ended';
-    }
-
-    if(
-      code === 'scheduled'
-    ){
-      return 'scheduled';
-    }
-
-    return 'wait';
-  }
 
   function openSheet(
     title,
