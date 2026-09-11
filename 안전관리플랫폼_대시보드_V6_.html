@@ -7055,18 +7055,80 @@ function statusClass(code){
      * TBM은 반드시 승인된 허가서를
      * 기준으로 실행합니다.
      */
-    if(appType === 'tbm'){
-      var approved =
-        approvedTodayPermits();
+if(appType === 'tbm'){
+  var tbmKey = global.isPublicTester() ? 'testerSafetyTBM' : 'safetyTBM';
+  var tbmList = readArray(tbmKey);
+  var works = todayWorks();
 
-      if(!approved.length){
-        showToast(
-          '오늘 승인된 안전작업허가서가 없습니다.',
-          'warning'
-        );
+  var latestPermitByWork = {};
+  state.permits.forEach(function(permit){
+    if(!permit || !permit.workId){ return; }
+    var prev = latestPermitByWork[permit.workId];
+    var prevTime = new Date(prev && (prev.updatedAt || prev.createdAt || 0)).getTime();
+    var nowTime = new Date(permit.updatedAt || permit.createdAt || 0).getTime();
+    if(!prev || nowTime >= prevTime){
+      latestPermitByWork[permit.workId] = permit;
+    }
+  });
 
-        return;
-      }
+  var waiting = [];
+  var completed = [];
+
+  works.forEach(function(work){
+    var permit = latestPermitByWork[work.workId];
+    if(!permit){ return; }
+
+    var permitCode = normalizeStatusCode(
+      permit.statusCode || permit.status || permit.permitStatus
+    );
+    var done = tbmList.some(function(t){
+      return String(t.permitNo || '') === String(permit.permitNo || '') &&
+        normalizeStatusCode(t.statusCode || t.status) === 'completed';
+    });
+
+    if(permitCode === 'approved' && !done){
+      waiting.push({ work:work, permit:permit });
+    }else if(permitCode === 'inProgress' || done){
+      completed.push({ work:work, permit:permit });
+    }
+  });
+
+  function renderTbmRow(item, done){
+    var work = item.work || {};
+    var permit = item.permit || {};
+    var url =
+      'TBM_v2.html?permitNo=' + encodeURIComponent(permit.permitNo || '') +
+      '&workId=' + encodeURIComponent(work.workId || permit.workId || '');
+    return (
+      '<div class="permit-row">' +
+        '<div class="permit-main">' +
+          '<div class="permit-name">' + escapeHtml(work.workName || permit.workName || '-') + '</div>' +
+          '<div class="permit-meta">📄 ' + escapeHtml(permit.permitNo || '-') + '</div>' +
+        '</div>' +
+        '<a class="wi-btn" href="' + url + '">' + (done ? 'TBM 보기' : 'TBM 시작') + '</a>' +
+      '</div>'
+    );
+  }
+
+  var html =
+    '<div class="prework-summary">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<span class="pill">작성 대기 ' + waiting.length + '</span>' +
+        '<span class="pill">완료·조회 ' + completed.length + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<h4 style="margin:10px 0 6px">📝 작성 대기</h4>' +
+    (waiting.length
+      ? waiting.map(function(x){ return renderTbmRow(x, false); }).join('')
+      : '<div class="empty">작성 대기 대상이 없습니다.</div>') +
+    '<h4 style="margin:14px 0 6px">📚 완료·조회</h4>' +
+    (completed.length
+      ? completed.map(function(x){ return renderTbmRow(x, true); }).join('')
+      : '<div class="empty">완료·조회 대상이 없습니다.</div>');
+
+  openSheet('오늘 TBM', html);
+  return;
+}
 
       if(approved.length === 1){
         var permit =
@@ -9049,7 +9111,59 @@ function standardWorkCard(
 
       return;
     }
+if(appType === 'inspect'){
+  var runPermits = state.permits.filter(function(permit){
+    var code = normalizeStatusCode(
+      permit.statusCode || permit.status || permit.permitStatus
+    );
+    return code === 'inProgress';
+  });
 
+  var highRiskCount = runPermits.filter(function(permit){
+    var risk = String(permit.finalRiskLevel || permit.riskLevel || '');
+    return risk.indexOf('고') >= 0;
+  }).length;
+
+  var inspectHtml =
+    '<div class="prework-summary">' +
+      '<div class="permit-meta">🛡️ 안전점검</div>' +
+    '</div>' +
+    '<div class="permit-row">' +
+      '<div class="permit-main">' +
+        '<div class="permit-name">작업 연계 안전점검</div>' +
+        '<div class="permit-meta">현재 가능 ' + runPermits.length + '건</div>' +
+      '</div>' +
+      '<button class="wi-btn" type="button" onclick="window.__openWorkLinkedInspect && window.__openWorkLinkedInspect()">열기</button>' +
+    '</div>' +
+    '<div class="permit-row">' +
+      '<div class="permit-main">' +
+        '<div class="permit-name">고위험작업 정기점검</div>' +
+        '<div class="permit-meta">현재 대상 ' + highRiskCount + '건</div>' +
+      '</div>' +
+      '<button class="wi-btn" type="button" disabled>준비 중</button>' +
+    '</div>' +
+    '<div class="permit-row">' +
+      '<div class="permit-main">' +
+        '<div class="permit-name">일반 안전점검</div>' +
+        '<div class="permit-meta">휴게실·지게차·컨베이어 등</div>' +
+      '</div>' +
+      '<button class="wi-btn" type="button" disabled>준비 중</button>' +
+    '</div>';
+
+  global.__openWorkLinkedInspect = function(){
+    if(!runPermits.length){
+      showToast('현재 작업 연계 안전점검 가능한 작업이 없습니다.', 'info');
+      return;
+    }
+    var target = runPermits[0];
+    navigate(
+      '안전점검_v2.html?permitNo=' + encodeURIComponent(target.permitNo || '') +
+      '&workId=' + encodeURIComponent(target.workId || '')
+    );
+  };
+
+  openSheet('안전점검', inspectHtml);
+  return;
     var works =
       todayWorks();
 
