@@ -7336,50 +7336,128 @@ function uniqueTexts(values){
     var validation =
       validateSubmission();
 
-if(!validation.valid){
-  var diag =
-    (
-      window.TBMV3 &&
-      typeof window.TBMV3.diagnose === 'function'
-    )
-      ? window.TBMV3.diagnose()
-      : null;
+    if(!validation.valid){
+      showToast(
+        validation.message,
+        'danger'
+      );
 
-  if(diag){
-    var reasons = [];
-    if(!diag.finalChecksComplete){
-      reasons.push('작업 전 최종 확인');
-    }
-    if(!diag.stopRightConfirmed){
-      reasons.push('작업중지권 고지 확인');
-    }
-    if(!diag.managerSignature){
-      reasons.push('당사 작업담당자 서명');
-    }
-    if(!diag.supervisorSignatures){
-      reasons.push('작업책임자 서명');
-    }
-    if(
-      Number(diag.expectedWorkers || 0) !==
-      Number(diag.signedWorkers || 0)
-    ){
-      reasons.push('작업자 전원 서명');
+      return;
     }
 
-    showToast(
-      reasons.length
-        ? ('제출 불가: ' + reasons.join(', ') + ' 항목을 확인하세요.')
-        : validation.message,
-      'danger'
-    );
-  }else{
-    showToast(
-      validation.message,
-      'danger'
-    );
-  }
-  return;
-}
+    var confirmed =
+      await showConfirm({
+        icon:'✅',
+        title:'TBM 완료·작업시작',
+        message:
+          'TBM을 완료하시겠습니까?\n\n' +
+          '완료하면 해당 작업의 상태가\n' +
+          '“TBM 대기”에서 “작업중”으로 변경됩니다.',
+        okText:'완료·작업시작'
+      });
+
+    if(!confirmed){
+      return;
+    }
+
+    state.saving = true;
+
+    var submitButton =
+      byId('submitTbmButton');
+
+    if(submitButton){
+      submitButton.disabled =
+        true;
+
+      submitButton.textContent =
+        '저장 중...';
+    }
+
+    try{
+      var record =
+        buildTbmRecord();
+
+      upsertLocalTbm(
+        record
+      );
+
+      var tbmCloudResult =
+        await saveTbmToFirestore(
+          record
+        );
+
+      if(
+        tbmCloudResult.success
+      ){
+        record.firestoreWritten =
+          true;
+
+        record.syncPending =
+          false;
+
+        upsertLocalTbm(
+          record
+        );
+      }
+
+      var permitResult =
+        await updatePermitAfterTbm(
+          record
+        );
+
+      localStorage.removeItem(
+        draftStorageKey()
+      );
+
+      state.existingTbm =
+        clone(record);
+
+      dispatchDataChange(
+        tbmStorageKey(),
+        {
+          tbmNo:
+            record.tbmNo,
+
+          permitNo:
+            record.permitNo,
+
+          workId:
+            record.workId,
+
+          operation:
+            'completed'
+        }
+      );
+
+      dispatchDataChange(
+        permitStorageKey(),
+        {
+          permitNo:
+            record.permitNo,
+
+          workId:
+            record.workId,
+
+          statusCode:
+            'inProgress'
+        }
+      );
+
+      renderCompletion(
+        record
+      );
+
+      if(
+        !isTester() &&
+        (
+          !tbmCloudResult.success ||
+          !permitResult.success
+        )
+      ){
+        showToast(
+          '로컬 저장은 완료됐지만 일부 서버 반영을 확인하지 못했습니다.',
+          'warning'
+        );
 
       }else{
         showToast(
