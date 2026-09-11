@@ -3765,42 +3765,48 @@ button{
     );
   }
 
-  function uniqueTexts(values){
-    var result = [];
-    var normalized = [];
+function uniqueTexts(values){
+  var result = [];
+  var normalized = [];
 
-    (
-      Array.isArray(values)
-        ? values
-        : []
-    ).forEach(function(value){
-      var text =
-        textFromItem(value);
+  (
+    Array.isArray(values)
+      ? values
+      : []
+  ).forEach(function(value){
+    var text =
+      textFromItem(value);
 
-      if(!text){
-        return;
-      }
+    if(!text){
+      return;
+    }
 
-      var key =
-        text
-          .toLowerCase()
-          .replace(/\s+/g,'')
-          .replace(
-            /[.,·ㆍ:;()[\]
-{}"'`~!@#$%^&*+=?<>/\\|-]/g,
-            ''
-          );
+    /*
+     * 비교용 키에서는 공백과 특수문자를 제거합니다.
+     * 복잡한 문자 클래스 정규식을 사용하지 않아
+     * 줄바꿈 및 슬래시 문법 오류를 방지합니다.
+     */
+    var key =
+      text
+        .toLowerCase()
+        .replace(
+          /[^0-9a-z가-힣]/gi,
+          ''
+        );
 
-      if(
-        !key ||
-        normalized.indexOf(key) >= 0
-      ){
-        return;
-      }
+    if(
+      !key ||
+      normalized.indexOf(key) >= 0
+    ){
+      return;
+    }
 
-      normalized.push(key);
-      result.push(text);
-    });
+    normalized.push(key);
+    result.push(text);
+  });
+
+  return result;
+}
 
     return result;
   }
