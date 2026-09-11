@@ -15089,17 +15089,18 @@ if(completionButton){
     global.addEventListener(
       'storage',
       function(event){
-        if([
-          'safetyDatabase',
-          'safetyPermits',
-          'testerSafetyPermits',
-          'riskAssessments',
-          'riskAssessmentResults',
-          'safetyProvisions',
-          'safetyQuizzes',
-          'safetyTBM',
-          'safetyViolations'
-        ].indexOf(event.key) >= 0){
+       if([
+  'safetyDatabase',
+  'safetyPermits',
+  'testerSafetyPermits',
+  'riskAssessments',
+  'riskAssessmentResults',
+  'safetyProvisions',
+  'safetyQuizzes',
+  'testerSafetyTBM',
+  'safetyTBM',
+  'safetyViolations'
+].indexOf(event.key) >= 0){
           setTimeout(
             refreshFromCache,
             100
