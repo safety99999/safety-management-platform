@@ -1784,10 +1784,9 @@ button{cursor:pointer;}
 <div class="welcome-principle">
   AI가 평가 초안 제공, 평가자는 현장조건 확인해 최종판단 진행
 </div>
-
   </div>
 
-    <div class="mode-grid">
+  <div class="mode-grid">
     <button
       type="button"
       class="mode-card"
@@ -6140,12 +6139,6 @@ function selectStartMode(mode){
   var recentSection = getElement('recentHistorySection');
   if(todaySection) todaySection.style.display = 'block';
   if(recentSection) recentSection.style.display = 'block';
-
-  var workList = getElement('todayWorkList');
-  if(workList){
-    workList.scrollIntoView({ behavior:'smooth', block:'start' });
-  }
-}
 
   var workList = getElement('todayWorkList');
   if(workList){
