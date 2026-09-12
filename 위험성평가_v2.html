@@ -2696,7 +2696,7 @@ function isPublicTesterSession(){
   var session =
     readApplicationSession();
 
-  return Boolean(
+  return (
     session &&
     session.environment === 'test' &&
     session.accessMode ===
@@ -2705,6 +2705,173 @@ function isPublicTesterSession(){
       'tester'
   );
 }
+
+/*
+ * localStorage quota 방어 패치
+ * - 기존 저장 로직은 그대로 두고 setItem만 안전하게 감쌉니다.
+ */
+function isQuotaExceededError(error){
+  if(!error){
+    return false;
+  }
+
+  var message =
+    String(error.message || '')
+      .toLowerCase();
+
+  return (
+    error.name === 'QuotaExceededError' ||
+    error.code === 22 ||
+    error.code === 1014 ||
+    message.indexOf('quota') >= 0 ||
+    message.indexOf('exceeded') >= 0
+  );
+}
+
+function trimArrayStorageKey(
+  key,
+  maxCount
+){
+  try{
+    var raw =
+      localStorage.getItem(key);
+
+    if(!raw){
+      return;
+    }
+
+    var list =
+      JSON.parse(raw);
+
+    if(
+      !Array.isArray(list) ||
+      list.length <= maxCount
+    ){
+      return;
+    }
+
+    localStorage.setItem(
+      key,
+      JSON.stringify(
+        list.slice(-maxCount)
+      )
+    );
+  }catch(_error){}
+}
+
+function pruneRiskAssessmentStorage(){
+  /*
+   * 테스터/평가 관련 대용량 키 우선 정리
+   */
+  trimArrayStorageKey(
+    'testerSafetyPermits',
+    80
+  );
+  trimArrayStorageKey(
+    'riskAssessments',
+    80
+  );
+  trimArrayStorageKey(
+    'riskAssessmentResults',
+    80
+  );
+  trimArrayStorageKey(
+    'workCompletionReports',
+    80
+  );
+
+  [
+    'tbm-v2-draft',
+    'pendingSafetyInfoSelection'
+  ].forEach(function(key){
+    try{
+      localStorage.removeItem(key);
+    }catch(_error){}
+  });
+}
+
+function installSafeLocalStoragePatch(){
+  if(
+    window.__RA_SAFE_SETITEM_PATCHED__ === true
+  ){
+    return;
+  }
+
+  if(
+    typeof Storage === 'undefined' ||
+    !Storage.prototype
+  ){
+    return;
+  }
+
+  var originalSetItem =
+    Storage.prototype.setItem;
+
+  Storage.prototype.setItem =
+    function(key, value){
+      /*
+       * sessionStorage는 기존 동작 유지
+       */
+      if(this !== window.localStorage){
+        return originalSetItem.apply(
+          this,
+          arguments
+        );
+      }
+
+      try{
+        return originalSetItem.apply(
+          this,
+          arguments
+        );
+      }catch(error){
+        if(!isQuotaExceededError(error)){
+          throw error;
+        }
+
+        pruneRiskAssessmentStorage();
+
+        try{
+          return originalSetItem.apply(
+            this,
+            arguments
+          );
+        }catch(errorAfterPrune){
+          if(
+            !window.__RA_QUOTA_ALERT_SHOWN__
+          ){
+            window.__RA_QUOTA_ALERT_SHOWN__ =
+              true;
+
+            if(
+              typeof showAlertDialog ===
+              'function'
+            ){
+              showAlertDialog({
+                icon:'⚠️',
+                title:'저장공간 부족',
+                message:
+                  '모바일 브라우저 저장공간이 가득 찼습니다.\n' +
+                  '테스터 임시 데이터를 정리한 뒤 다시 시도해 주세요.'
+              });
+            }else{
+              alert(
+                '모바일 브라우저 저장공간이 가득 찼습니다.\n' +
+                '테스터 임시 데이터를 정리한 뒤 다시 시도해 주세요.'
+              );
+            }
+          }
+
+          throw errorAfterPrune;
+        }
+      }
+    };
+
+  window.__RA_SAFE_SETITEM_PATCHED__ =
+    true;
+}
+
+installSafeLocalStoragePatch();
 
 function getPermitStorageKey(){
   return isPublicTesterSession()
