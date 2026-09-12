@@ -5595,16 +5595,9 @@ function statusClass(code){
     if(
       targetDate > today()
     ){
-      state.preworkFilter =
-        filter === 'danger'
-          ? 'high'
-          : filter === 'wait'
-            ? 'incomplete'
-            : filter === 'done'
-              ? 'complete'
-              : 'all';
+      state.preworkFilter = 'all';
 
-      state.preworkSearch = 'all';
+    state.preworkSearch = '';
 
       openSheet(
         '📅 예정 작업 사전 준비',
@@ -8650,14 +8643,10 @@ function standardWorkCard(
   if(
     targetDate > today()
   ){
-    state.preworkFilter =
-      filter === 'danger'
-        ? 'high'
-        : filter === 'wait'
-          ? 'incomplete'
-          : filter === 'done'
-            ? 'complete'
-            : 'all';
+   
+    state.preworkFilter = 'all';
+
+    state.preworkSearch = '';
 
     state.preworkSearch = '';
 
