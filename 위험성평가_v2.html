@@ -1813,36 +1813,40 @@ button{cursor:pointer;}
     </button>
   </div>
 
-  <div class="list-heading">
-    <span>📅 오늘 작업 목록</span>
-    <span id="todayWorkCount">0건</span>
+  <div id="todaySection">
+    <div class="list-heading">
+      <span>📅 오늘 작업 목록</span>
+      <span id="todayWorkCount">0건</span>
+    </div>
+
+    <div class="factory-tabs" id="factoryTabs">
+      <button type="button" class="factory-tab active" data-factory="전체">전체</button>
+      <button type="button" class="factory-tab" data-factory="1공장">1공장</button>
+      <button type="button" class="factory-tab" data-factory="2공장">2공장</button>
+      <button type="button" class="factory-tab" data-factory="기타">기타</button>
+    </div>
+
+    <select class="company-filter" id="companyFilter" aria-label="협력사 필터">
+      <option value="">🏢 전체 협력사</option>
+    </select>
+
+    <div id="todayWorkList"></div>
   </div>
 
-  <div class="factory-tabs" id="factoryTabs">
-    <button type="button" class="factory-tab active" data-factory="전체">전체</button>
-    <button type="button" class="factory-tab" data-factory="1공장">1공장</button>
-    <button type="button" class="factory-tab" data-factory="2공장">2공장</button>
-    <button type="button" class="factory-tab" data-factory="기타">기타</button>
+  <div id="recentHistorySection">
+    <div class="list-heading">
+      <span>📂 최근 평가 이력</span>
+
+      <button
+        type="button"
+        class="small-button secondary"
+        onclick="openHistoryScreen()">
+        전체 보기 ›
+      </button>
+    </div>
+
+    <div id="recentHistoryList"></div>
   </div>
-
-  <select class="company-filter" id="companyFilter" aria-label="협력사 필터">
-    <option value="">🏢 전체 협력사</option>
-  </select>
-
-  <div id="todayWorkList"></div>
-
-  <div class="list-heading">
-    <span>📂 최근 평가 이력</span>
-
-    <button
-      type="button"
-      class="small-button secondary"
-      onclick="openHistoryScreen()">
-      전체 보기 ›
-    </button>
-  </div>
-
-  <div id="recentHistoryList"></div>
 </section>
 
 <!-- 1단계: 기본정보 -->
@@ -6117,6 +6121,31 @@ function selectStartMode(mode){
     goToStep(1);
     return;
   }
+
+  if(mode === 'upcoming'){
+    // 예정 작업 목록 표시, 오늘 작업과 최근 이력 숨김
+    var todaySection = getElement('todaySection');
+    var recentSection = getElement('recentHistorySection');
+    if(todaySection) todaySection.style.display = 'none';
+    if(recentSection) recentSection.style.display = 'none';
+    var workList = getElement('upcomingWorkList');
+    if(workList){
+      workList.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+    return;
+  }
+
+  // database 모드 (오늘 작업)
+  var todaySection = getElement('todaySection');
+  var recentSection = getElement('recentHistorySection');
+  if(todaySection) todaySection.style.display = 'block';
+  if(recentSection) recentSection.style.display = 'block';
+
+  var workList = getElement('todayWorkList');
+  if(workList){
+    workList.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+}
 
   var workList = getElement('todayWorkList');
   if(workList){
