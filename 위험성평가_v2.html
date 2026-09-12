@@ -1782,8 +1782,12 @@ button{cursor:pointer;}
     </div>
 
 <div class="welcome-principle">
-  AI가 평가 초안을 제공, 평가자가 현장조건을 확인하여 최종판단
+  AI가 평가 초안을 제공하며, 평가자가 현장조건을 확인해 최종 판단합니다.
 </div>
+
+
+    <div class="welcome-version">
+      v2 · schema 35
     </div>
   </div>
 
@@ -1793,7 +1797,9 @@ button{cursor:pointer;}
       class="mode-card"
       onclick="selectStartMode('database')">
       <span class="mode-icon">📋</span>
-    <span class="mode-title">오늘 작업 평가</span>
+    <span class="mode-title">오늘 작업 선택</span>
+      <span class="mode-desc">
+        오늘 작업의 평가 상태를 확인하고 선택
       </span>
     </button>
 
@@ -1803,6 +1809,8 @@ button{cursor:pointer;}
       onclick="selectStartMode('new')">
       <span class="mode-icon">✏️</span>
       <span class="mode-title">신규 평가</span>
+      <span class="mode-desc">
+        작업정보를 직접 입력하여 시작
       </span>
     </button>
   </div>
