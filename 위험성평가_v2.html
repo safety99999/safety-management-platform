@@ -2692,73 +2692,19 @@ function readApplicationSession(){
   }
 }
 
-<script>
 function isPublicTesterSession(){
   var session =
     readApplicationSession();
 
-  return (
+  return Boolean(
     session &&
     session.environment === 'test' &&
-    session.accessMode === 'tester' &&
-    session.role === 'tester'
+    session.accessMode ===
+      'tester' &&
+    session.role ===
+      'tester'
   );
 }
-
-function isQuotaExceededError(error){
-  if(!error){ return false; }
-  var m = String(error.message || '').toLowerCase();
-  return (
-    error.name === 'QuotaExceededError' ||
-    error.code === 22 ||
-    error.code === 1014 ||
-    m.indexOf('quota') >= 0 ||
-    m.indexOf('exceeded') >= 0
-  );
-}
-
-function pruneTesterStorageForQuota(){
-  var KEYS_TO_TRIM = [
-    'testerSafetyPermits',
-    'riskAssessments',
-    'riskAssessmentResults',
-    'workCompletionReports'
-  ];
-
-  KEYS_TO_TRIM.forEach(function(key){
-    try{
-      var arr = JSON.parse(localStorage.getItem(key) || '[]');
-      if(Array.isArray(arr) && arr.length > 80){
-        localStorage.setItem(key, JSON.stringify(arr.slice(-80)));
-      }
-    }catch(_e){}
-  });
-
-  ['tbm-v2-draft','pendingSafetyInfoSelection'].forEach(function(key){
-    try{ localStorage.removeItem(key); }catch(_e){}
-  });
-}
-
-function safeSetItem(key, value){
-  var text = (typeof value === 'string') ? value : JSON.stringify(value);
-
-  try{
-    localStorage.setItem(key, text);
-    return { ok:true };
-  }catch(error){
-    if(!isQuotaExceededError(error)){ throw error; }
-
-    pruneTesterStorageForQuota();
-
-    try{
-      localStorage.setItem(key, text);
-      return { ok:true, pruned:true };
-    }catch(error2){
-      return { ok:false, quota:true, error:error2 };
-    }
-  }
-}
-</script>
 
 function getPermitStorageKey(){
   return isPublicTesterSession()
@@ -8392,25 +8338,21 @@ async function saveAssessmentToFirestore(){
   };
 }
 
+
+
+
 function saveAssessmentToLocalStorage(){
-  // ... existing code ...
+  var records = getStoredAssessments();
+  var saveObject = buildAssessmentSaveObject(false);
 
-  var saveResult = safeSetItem(
-    'riskAssessments',
-    assessments
-  );
+  var existingIndex = records.findIndex(function(record){
+    return record.riskId === saveObject.riskId;
+  });
 
-  if(!saveResult.ok){
-    showAlertDialog({
-      icon:'⚠️',
-      title:'저장공간 부족',
-      message:
-        '모바일 브라우저 저장공간이 가득 찼습니다.\n' +
-        '테스터 임시 데이터를 정리한 뒤 다시 시도해 주세요.'
-    });
-    throw new Error(
-      'Quota exceeded: riskAssessments'
-    );
+  if(existingIndex >= 0){
+    records[existingIndex] = saveObject;
+  } else {
+    records.unshift(saveObject);
   }
 
   localStorage.setItem('riskAssessments', JSON.stringify(records));
