@@ -1795,33 +1795,27 @@ button{cursor:pointer;}
   <button
     type="button"
     class="mode-card"
-    onclick="selectStartMode('today')">
+    onclick="window.__riskListMode='today'; selectStartMode('database');">
     <span class="mode-icon">📋</span>
     <span class="mode-title">오늘작업 위험성평가</span>
-    <span class="mode-desc">
     </span>
   </button>
 
   <button
     type="button"
     class="mode-card"
-    onclick="selectStartMode('scheduled')">
+    onclick="window.__riskListMode='scheduled'; selectStartMode('database');">
     <span class="mode-icon">📅</span>
     <span class="mode-title">예정작업 위험성평가</span>
-    <span class="mode-desc">
     </span>
   </button>
 
   <button
     type="button"
     class="mode-card"
-    onclick="selectStartMode('new')">
+    onclick="window.__riskListMode='new'; selectStartMode('new');">
     <span class="mode-icon">✏️</span>
     <span class="mode-title">신규평가</span>
-    <span class="mode-desc">
-    </span>
-  </button>
-</div>
 
 <div class="list-heading">
   <span id="workListTitle">📅 오늘 작업 목록</span>
@@ -6121,7 +6115,13 @@ function renderTodayWorkList(){
 // 34. 시작 모드 및 외부 데이터 연동
 // ═══════════════════════════════════════════════════════
 
-function selectStartMode(mode){
+  var titleEl = document.getElementById('workListTitle');
+  if(titleEl){
+    titleEl.textContent =
+      window.__riskListMode === 'scheduled'
+        ? '📅 예정 작업 목록'
+        : '📅 오늘 작업 목록';
+  }
   if(mode === 'today'){
     var titleEl = document.getElementById('workListTitle');
     if(titleEl) titleEl.textContent = '📅 오늘 작업 목록';
