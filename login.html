@@ -1101,6 +1101,17 @@ function clearApplicationSession(){
   sessionStorage.removeItem(
     "adminMode"
   );
+
+  try{
+    localStorage.removeItem(
+      "appSession"
+    );
+  }catch(error){
+    console.warn(
+      "[세션] localStorage 정리 실패:",
+      error
+    );
+  }
 }
 
 /*
@@ -1108,9 +1119,12 @@ function clearApplicationSession(){
  * 세션 키를 같은 형식으로 저장합니다.
  */
 function saveApplicationSession(session){
+  var serializedSession =
+    JSON.stringify(session);
+
   sessionStorage.setItem(
     "appSession",
-    JSON.stringify(session)
+    serializedSession
   );
 
   sessionStorage.setItem(
@@ -1131,6 +1145,18 @@ function saveApplicationSession(session){
   }else{
     sessionStorage.removeItem(
       "adminMode"
+    );
+  }
+
+  try{
+    localStorage.setItem(
+      "appSession",
+      serializedSession
+    );
+  }catch(error){
+    console.warn(
+      "[세션] localStorage 저장 실패:",
+      error
     );
   }
 }
