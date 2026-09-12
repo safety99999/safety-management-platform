@@ -1791,36 +1791,34 @@ button{cursor:pointer;}
     </div>
   </div>
 
-<div class="mode-grid">
-  <button
-    type="button"
-    class="mode-card"
-    onclick="window.__riskListMode='today'; selectStartMode('database');">
-    <span class="mode-icon">📋</span>
-    <span class="mode-title">오늘작업 위험성평가</span>
-    </span>
-  </button>
+  <div class="mode-grid">
+    <button
+      type="button"
+      class="mode-card"
+      onclick="selectStartMode('database')">
+      <span class="mode-icon">📋</span>
+    <span class="mode-title">오늘 작업 선택</span>
+      <span class="mode-desc">
+        오늘 작업의 평가 상태를 확인하고 선택
+      </span>
+    </button>
 
-  <button
-    type="button"
-    class="mode-card"
-    onclick="window.__riskListMode='scheduled'; selectStartMode('database');">
-    <span class="mode-icon">📅</span>
-    <span class="mode-title">예정작업 위험성평가</span>
-    </span>
-  </button>
+    <button
+      type="button"
+      class="mode-card"
+      onclick="selectStartMode('new')">
+      <span class="mode-icon">✏️</span>
+      <span class="mode-title">신규 평가</span>
+      <span class="mode-desc">
+        작업정보를 직접 입력하여 시작
+      </span>
+    </button>
+  </div>
 
-  <button
-    type="button"
-    class="mode-card"
-    onclick="window.__riskListMode='new'; selectStartMode('new');">
-    <span class="mode-icon">✏️</span>
-    <span class="mode-title">신규평가</span>
-
-<div class="list-heading">
-  <span id="workListTitle">📅 오늘 작업 목록</span>
-  <span id="todayWorkCount">0건</span>
-</div>
+  <div class="list-heading">
+    <span>📅 오늘 작업 목록</span>
+    <span id="todayWorkCount">0건</span>
+  </div>
 
   <div class="factory-tabs" id="factoryTabs">
     <button type="button" class="factory-tab active" data-factory="전체">전체</button>
@@ -6115,27 +6113,16 @@ function renderTodayWorkList(){
 // 34. 시작 모드 및 외부 데이터 연동
 // ═══════════════════════════════════════════════════════
 
-  var titleEl = document.getElementById('workListTitle');
-  if(titleEl){
-    titleEl.textContent =
-      window.__riskListMode === 'scheduled'
-        ? '📅 예정 작업 목록'
-        : '📅 오늘 작업 목록';
-  }
-  if(mode === 'today'){
-    var titleEl = document.getElementById('workListTitle');
-    if(titleEl) titleEl.textContent = '📅 오늘 작업 목록';
-    return showTodayWorkList ? showTodayWorkList() : null;
-  }
-
-  if(mode === 'scheduled'){
-    var titleEl2 = document.getElementById('workListTitle');
-    if(titleEl2) titleEl2.textContent = '📅 예정 작업 목록';
-    return showScheduledWorkList ? showScheduledWorkList() : null;
-  }
-
+function selectStartMode(mode){
   if(mode === 'new'){
-    return startNewAssessment ? startNewAssessment() : null;
+    resetAssessment();
+    goToStep(1);
+    return;
+  }
+
+  var workList = getElement('todayWorkList');
+  if(workList){
+    workList.scrollIntoView({ behavior:'smooth', block:'start' });
   }
 }
 
