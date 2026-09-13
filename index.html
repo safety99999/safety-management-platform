@@ -2,274 +2,59 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>포스코퓨처엠 안전관리앱 | 대시보드</title>
+    <title>포스코퓨처엠 안전관리앱</title>
 
-    <!-- 📌 URL 공유 미리보기 (최적화) -->
+    <!-- 📌 URL 공유 미리보기 최적화 -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="포스코퓨처엠 안전관리 플랫폼 | 포항양극재공장">
+    <meta property="og:title" content="포스코퓨처엠 안전관리앱">
     <meta property="og:description"
-          content="포스코퓨처엠 포항양극재공장의 실시간 안전 현황, 위험 작업 관리 및 비상 대응 플랫폼입니다. 무사고 000일 달성 중.">
-    
-    <!-- 🌟 중요: 이 이미지는 둥근 테두리가 포함된 온전한 아이콘이 
-         흰색 배경의 사각형 캔버스 중앙에 위치하도록 새로 제작되어야 합니다. 
-         (예: /assets/images/safety-app-logo-for-sharing.png) -->
+              content="포스코퓨처엠 포항양극재공장 안전관리 플랫폼">
+
+    <!-- 🌟 핵심 수정: 여백이 포함된 공유 전용 이미지 URL로 변경하세요. -->
+    <!-- 예: <meta property="og:image" content="https://your-domain.com/assets/images/safety-app-logo-padded.png"> -->
     <meta property="og:image"
-          content="https://safety-management-platfo-5f413.firebaseapp.com/assets/images/safety-app-logo-for-sharing.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="1200">
-    
+          content="https://safety-management-platfo-5f413.firebaseapp.com/assets/images/safety-app-logo-padded.png">
+    <meta property="og:image:width" content="1024">
+    <meta property="og:image:height" content="1024">
+
     <meta property="og:url"
           content="https://safety-management-platfo-5f413.firebaseapp.com/">
-    <meta property="og:site_name" content="포스코퓨처엠 안전관리 플랫폼">
 
-    <!-- 📱 모바일 홈 화면 아이콘 (업데이트) -->
-    <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png?v=7">
-    <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32x32.png?v=7">
-    <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png?v=7">
-    <link rel="manifest" href="./assets/site.webmanifest?v=7">
+    <!-- 📱 모바일 홈 화면 아이콘 (원본 유지) -->
+    <link rel="apple-touch-icon"
+          href="./assets/images/safety-app-logo.png?v=6">
 
-    <!-- 🌐 브라우저 탭 아이콘 -->
+    <!-- 🌐 브라우저 탭 아이콘 (원본 유지) -->
     <link rel="icon"
           type="image/png"
-          href="./assets/images/safety-app-logo.png?v=7">
+          href="./assets/images/safety-app-logo.png?v=6">
 
     <style>
-        :root {
-            --primary-deep-blue: #0b1f3b;
-            --secondary-blue: #1a4d8a;
-            --accent-gold: #c5a059;
-            --text-light: #f0f4f8;
-            --text-dark: #333333;
-            --bg-white: #ffffff;
-            --bg-light-gray: #f4f7f9;
-            --success-green: #28a745;
-            --warning-orange: #ffc107;
-            --danger-red: #dc3545;
-        }
-
-        * {
-            box-sizing: border-box;
+        body, html {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #0b1f3b;
         }
 
-        body, html {
-            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        iframe {
             width: 100%;
             height: 100%;
-            overflow-x: hidden;
-            background-color: var(--bg-light-gray);
-            color: var(--text-dark);
+            border: none;
         }
+    </style>
+</head>
 
-        /* 헤더 스타일 */
-        header {
-            background-color: var(--primary-deep-blue);
-            color: var(--text-light);
-            padding: 1rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+<body>
 
-        header .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    <iframe
+        src="./안전관리플랫폼_대시보드_V6_.html"
+        title="포스코퓨처엠 안전관리앱">
+    </iframe>
 
-        header .logo-img {
-            height: 35px; /* 기존 아이콘의 축소된 형태 가정 */
-            width: auto;
-        }
-
-        header h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        header .user-info {
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        header .user-info span {
-            opacity: 0.8;
-        }
-
-        /* 메인 대시보드 스타일 */
-        main {
-            padding: 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .card {
-            background-color: var(--bg-white);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s ease-in-out;
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 0.75rem;
-        }
-
-        .card-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--primary-deep-blue);
-        }
-
-        .card-icon {
-            font-size: 1.5rem;
-            color: var(--accent-gold);
-        }
-
-        /* 환영 섹션 */
-        .welcome-section {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, var(--secondary-blue), var(--primary-deep-blue));
-            color: var(--text-light);
-            padding: 2.5rem;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .welcome-section h2 {
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .welcome-section p {
-            opacity: 0.9;
-        }
-
-        .current-time {
-            text-align: right;
-            font-size: 1.2rem;
-        }
-
-        /* KPI 카드 */
-        .kpi-value {
-            font-size: 3rem;
-            font-weight: 700;
-            color: var(--secondary-blue);
-            line-height: 1;
-        }
-
-        .kpi-unit {
-            font-size: 1.2rem;
-            margin-left: 5px;
-            color: var(--text-dark);
-            opacity: 0.7;
-        }
-
-        .kpi-status {
-            margin-top: 0.5rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .status-safe { color: var(--success-green); }
-        .status-warning { color: var(--warning-orange); }
-        .status-danger { color: var(--danger-red); }
-
-        /* 공지사항 테이블 */
-        .notice-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .notice-table th, .notice-table td {
-            text-align: left;
-            padding: 0.75rem;
-            border-bottom: 1px solid #eee;
-            font-size: 0.95rem;
-        }
-
-        .notice-table th {
-            background-color: #f9f9f9;
-            color: var(--primary-deep-blue);
-        }
-
-        .notice-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .priority-high { color: var(--danger-red); font-weight: 700; }
-
-        /* 작업 현황 카드 */
-        .work-status-list {
-            list-style: none;
-        }
-
-        .work-status-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .work-status-item:last-child {
-            border-bottom: none;
-        }
-
-        .work-location {
-            font-weight: 500;
-        }
-
-        .work-count {
-            background-color: var(--secondary-blue);
-            color: var(--text-light);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-        }
-
-        /* 푸터 스타일 */
-        footer {
-            background-color: #e9ecef;
-            color: #6c757d;
-            text-align: center;
-            padding: 1.5rem;
-            margin-top: 2rem;
-            font-size: 0.85rem;
-        }
-
-        /* 반응형 조정 */
-        @media (max-width: 768px) {
-            header {
-                padding: 0.75rem 1rem;
-            }
-            header h1 {
-                font-size: 1.1rem;
-            }
-            header .logo-img {
-                height: 30px;
+</body>
+</html>
