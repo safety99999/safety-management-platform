@@ -1348,44 +1348,6 @@ button{touch-action:manipulation}
   .nav-badge{
     top:-2px;
   }
- 
-  .user-only{
-    display:none
-  }
-  
-  .nav-tab.user-only[data-role="user"],
-  .nav-tab.user-only[data-role="tester"]{
-    display:inline-flex
-  }
-  
-  .settings-group{
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    padding:20px
-  }
-  
-  .settings-button{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:16px;
-    background:white;
-    border:1px solid #e0e0e0;
-    border-radius:8px;
-    cursor:pointer;
-    font-size:14px;
-    font-weight:600
-  }
-  
-  .settings-button:hover{
-    background:#f5f5f5;
-    border-color:#999
-  }
-  
-  .settings-icon{
-    font-size:20px
-  } 
 }
 
 /* ───────────────────────────────────────
@@ -1673,14 +1635,14 @@ button{touch-action:manipulation}
           </div>
         </div>
 
-                <button
+        <button
           type="button"
           class="icon-btn"
-          id="darkModeButton"
-          aria-label="다크모드"
-          title="다크모드 전환"
+          id="userMenuButton"
+          aria-label="사용자 메뉴"
+          title="사용자 메뉴"
         >
-          🌙
+          ⋮
         </button>
       </div>
     </div>
@@ -1703,13 +1665,10 @@ button{touch-action:manipulation}
       <button type="button" class="chip" data-date-mode="yesterday">어제</button>
       <button type="button" class="chip active" data-date-mode="today">오늘</button>
       <button type="button" class="chip" id="upcomingButton" data-date-mode="upcoming" disabled>예정 없음</button>
-           <span class="chip-calendar-wrap">
+      <span class="chip-calendar-wrap">
         <button type="button" class="chip" id="calendarButton">📅</button>
         <input type="date" class="dashboard-date-picker" id="datePicker">
       </span>
-            <button type="button" class="chip" id="dailyReportButton">
-        <span>📄</span><span>리포트</span>
-      </button>
     </div>
 
     <section class="sec">
@@ -2050,37 +2009,10 @@ button{touch-action:manipulation}
         <div class="sets-l"><span>📱</span><span class="sets-name">버전</span></div>
         <span class="sets-r">v8.0</span>
       </div>
-      </div>
+    </div>
   </main>
 </section>
 
-<!-- 일반사용자/테스터 설정 페이지 -->
-<section class="page" id="pageUserSettings">
-  <header class="hero">
-    <div class="hero-top">
-      <div class="hero-brand">
-        <span class="hero-logo">⚙️</span>
-        <div class="hero-brand-text">
-          <div class="hero-brand-en">SETTINGS</div>
-          <div class="hero-brand-ko">설정</div>
-        </div>
-      </div>
-      <div class="hero-clock"><div class="hero-date">Dashboard</div><div class="hero-time">v8.0</div></div>
-    </div>
-  </header>
-  <main class="main">
-    <div class="settings-group">
-      <button type="button" class="settings-button reset-data-btn" id="userResetDataButton">
-        <span class="settings-icon">🔄</span>
-        <span class="settings-label">내 테스트 자료 초기화</span>
-      </button>
-      <button type="button" class="settings-button logout-btn" id="userLogoutButton">
-        <span class="settings-icon">🚪</span>
-        <span class="settings-label">로그아웃</span>
-      </button>
-    </div>
-  </main>
-</section>
 <nav class="botnav">
   <button type="button" class="nav-tab active" data-tab="home">
     <span class="nav-ti">🏠</span><span class="nav-tl">홈</span>
@@ -2088,10 +2020,11 @@ button{touch-action:manipulation}
 <button type="button" class="nav-tab insp-tab" id="inspectionRegisterButton">
   <span class="nav-ti">📋</span><span class="nav-tl">안전점검</span>
 </button>
-  <button type="button" class="nav-tab admin-only" data-tab="settings">
-    <span class="nav-ti">⚙️</span><span class="nav-tl">설정</span>
+  <button type="button" class="nav-tab" data-tab="inspect">
+    <span class="nav-ti">📊</span><span class="nav-tl">점검현황</span>
+    <span class="nav-badge" id="inspectionBadge" hidden>0</span>
   </button>
-  <button type="button" class="nav-tab user-only" data-tab="user-settings">
+  <button type="button" class="nav-tab admin-only" data-tab="settings">
     <span class="nav-ti">⚙️</span><span class="nav-tl">설정</span>
   </button>
 </nav>
@@ -14141,6 +14074,15 @@ async function completeCurrentWork(){
         );
     }
 
+    var userMenuButton =
+      byId(
+        'userMenuButton'
+      );
+
+    if(userMenuButton){
+      userMenuButton.hidden =
+        false;
+
       userMenuButton.title =
         global.isAdminUser()
           ? '관리자 메뉴'
@@ -17496,60 +17438,6 @@ workDatabase: {
   }
 
 })();
-
-// 역할별 네비게이션 탭 초기화
-function initializeNavigation(){
- 
-// 다크모드 버튼 초기화
-function initializeDarkMode(){
-  var darkModeButton = document.getElementById('darkModeButton');
-  if(!darkModeButton) return;
-  
-  // 저장된 다크모드 상태 확인
-  var isDarkMode = localStorage.getItem('darkMode') === 'true';
-  if(isDarkMode){
-    document.documentElement.style.colorScheme = 'dark';
-  }
-  
-  // 다크모드 버튼 클릭 이벤트
-  darkModeButton.addEventListener('click', function(){
-    var isDark = document.documentElement.style.colorScheme === 'dark';
-    if(isDark){
-      document.documentElement.style.colorScheme = 'light';
-      localStorage.setItem('darkMode', 'false');
-    } else {
-      document.documentElement.style.colorScheme = 'dark';
-      localStorage.setItem('darkMode', 'true');
-    }
-  });
-}
-
-initializeDarkMode(); 
-  var userRole = session.role || 'guest';
-  
-  // 관리자 설정 탭
-  var adminTab = document.querySelector('[data-tab="settings"]');
-  if(adminTab){
-    if(userRole === 'admin'){
-      adminTab.style.display = 'inline-flex';
-    } else {
-      adminTab.style.display = 'none';
-    }
-  }
-  
-  // 일반사용자/테스터 설정 탭
-  var userTab = document.querySelector('[data-tab="user-settings"]');
-  if(userTab){
-    if(userRole === 'user' || userRole === 'tester'){
-      userTab.style.display = 'inline-flex';
-    } else {
-      userTab.style.display = 'none';
-    }
-  }
-}
-
-// 네비게이션 초기화 호출
-initializeNavigation();  
 </script>
 <!-- ⬆️ 여기까지 추가 (</body> 앞에) ⬆️ -->
 <script>
