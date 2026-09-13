@@ -1782,8 +1782,13 @@ button{cursor:pointer;}
     </div>
 
 <div class="welcome-principle">
-  AI가 평가 초안 제공, 평가자는 현장조건 확인해 최종판단 진행
+  AI가 평가 초안을 제공하며, 평가자가 현장조건을 확인해 최종 판단합니다.
 </div>
+
+
+    <div class="welcome-version">
+      v2 · schema 35
+    </div>
   </div>
 
   <div class="mode-grid">
@@ -1792,15 +1797,10 @@ button{cursor:pointer;}
       class="mode-card"
       onclick="selectStartMode('database')">
       <span class="mode-icon">📋</span>
-      <span class="mode-title">오늘 작업 평가</span>
-    </button>
-
-    <button
-      type="button"
-      class="mode-card"
-      onclick="selectStartMode('upcoming')">
-      <span class="mode-icon">📅</span>
-      <span class="mode-title">예정 작업 평가</span>
+    <span class="mode-title">오늘 작업 선택</span>
+      <span class="mode-desc">
+        오늘 작업의 평가 상태를 확인하고 선택
+      </span>
     </button>
 
     <button
@@ -1809,44 +1809,42 @@ button{cursor:pointer;}
       onclick="selectStartMode('new')">
       <span class="mode-icon">✏️</span>
       <span class="mode-title">신규 평가</span>
+      <span class="mode-desc">
+        작업정보를 직접 입력하여 시작
+      </span>
     </button>
   </div>
 
-  <div id="todaySection">
-    <div class="list-heading">
-      <span>📅 오늘 작업 목록</span>
-      <span id="todayWorkCount">0건</span>
-    </div>
-
-    <div class="factory-tabs" id="factoryTabs">
-      <button type="button" class="factory-tab active" data-factory="전체">전체</button>
-      <button type="button" class="factory-tab" data-factory="1공장">1공장</button>
-      <button type="button" class="factory-tab" data-factory="2공장">2공장</button>
-      <button type="button" class="factory-tab" data-factory="기타">기타</button>
-    </div>
-
-    <select class="company-filter" id="companyFilter" aria-label="협력사 필터">
-      <option value="">🏢 전체 협력사</option>
-    </select>
-
-    <div id="todayWorkList"></div>
+  <div class="list-heading">
+    <span>📅 오늘 작업 목록</span>
+    <span id="todayWorkCount">0건</span>
   </div>
 
-<div id="upcomingWorkList" style="display:none;"></div>
-  <div id="recentHistorySection">
-    <div class="list-heading">
-      <span>📂 최근 평가 이력</span>
-
-      <button
-        type="button"
-        class="small-button secondary"
-        onclick="openHistoryScreen()">
-        전체 보기 ›
-      </button>
-    </div>
-
-    <div id="recentHistoryList"></div>
+  <div class="factory-tabs" id="factoryTabs">
+    <button type="button" class="factory-tab active" data-factory="전체">전체</button>
+    <button type="button" class="factory-tab" data-factory="1공장">1공장</button>
+    <button type="button" class="factory-tab" data-factory="2공장">2공장</button>
+    <button type="button" class="factory-tab" data-factory="기타">기타</button>
   </div>
+
+  <select class="company-filter" id="companyFilter" aria-label="협력사 필터">
+    <option value="">🏢 전체 협력사</option>
+  </select>
+
+  <div id="todayWorkList"></div>
+
+  <div class="list-heading">
+    <span>📂 최근 평가 이력</span>
+
+    <button
+      type="button"
+      class="small-button secondary"
+      onclick="openHistoryScreen()">
+      전체 보기 ›
+    </button>
+  </div>
+
+  <div id="recentHistoryList"></div>
 </section>
 
 <!-- 1단계: 기본정보 -->
@@ -2860,18 +2858,7 @@ var riskDatabaseState = {
 var currentStep = 0;
 var currentFactory = '전체';
 var todayWorks = [];
-var upcomingWorks = [];
 var currentSearchResults = [];
-
-function today(){
-  var date = new Date();
-  var parts = new Intl.DateTimeFormat('en-CA',{
-    timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'
-  }).formatToParts(date);
-  var values = {};
-  parts.forEach(function(part){ values[part.type] = part.value; });
-  return values.year + '-' + values.month + '-' + values.day;
-}
 var currentHistoryRecord = null;
 var assessmentSubmitting = false;
 var databaseLoadPromise = null;
@@ -5919,17 +5906,16 @@ function isValidManagementWork(
 }
 
 
-
-function loadUpcomingWorkList(){
-  var todayDate = today();
+function loadTodayWorkList(){
+  var today = formatDateKST(new Date());
 
   try {
     var raw = localStorage.getItem('safetyDatabase');
     if(!raw){
-      upcomingWorks = [];
+      todayWorks = [];
     } else {
       var database = JSON.parse(raw);
-      upcomingWorks =
+      todayWorks =
         (
           database.workHistory ||
           []
@@ -5940,18 +5926,18 @@ function loadUpcomingWorkList(){
             ) &&
             String(
               work.date || ''
-            ).trim() > todayDate
+            ).trim() === today
           );
         });
 
     }
   } catch(error){
-    console.warn('예정 작업 목록 로드 실패:', error);
-    upcomingWorks = [];
+    console.warn('오늘 작업 목록 로드 실패:', error);
+    todayWorks = [];
   }
 
   renderCompanyOptions();
-  renderUpcomingWorkList();
+  renderTodayWorkList();
 }
 
 function getWorkFactory(work){
@@ -5997,9 +5983,8 @@ function getStoredAssessments(){
   }
 }
 
-
-function renderUpcomingWorkList(){
-  var container = getElement('upcomingWorkList');
+function renderTodayWorkList(){
+  var container = getElement('todayWorkList');
   if(!container){ return; }
 
   var company = getInputValue('companyFilter');
@@ -6010,7 +5995,7 @@ function renderUpcomingWorkList(){
     if(record.workId){ assessmentMap[record.workId] = record; }
   });
 
-  var filtered = upcomingWorks.filter(function(work){
+  var filtered = todayWorks.filter(function(work){
     if(currentFactory !== '전체' && getWorkFactory(work) !== currentFactory){
       return false;
     }
@@ -6020,11 +6005,13 @@ function renderUpcomingWorkList(){
     return true;
   });
 
+  setText('todayWorkCount', filtered.length + '건');
+
   if(filtered.length === 0){
     container.innerHTML =
       '<div class="empty-state">' +
-        '<div class="empty-state-icon">📭</div>' +
-        '<div class="empty-state-text">예정 작업이 없습니다.</div>' +
+        '<div class="empty-state-icon">📋</div>' +
+        '<div class="empty-state-text">해당하는 작업이 없습니다.<br>신규 평가로 직접 시작하세요.</div>' +
       '</div>';
     return;
   }
@@ -6032,7 +6019,7 @@ function renderUpcomingWorkList(){
   var html = '';
 
   filtered.forEach(function(work){
-    if(
+        if(
       !work.workId &&
       (
         !work.date ||
@@ -6041,6 +6028,7 @@ function renderUpcomingWorkList(){
     ){
       return;
     }
+
 
     var workId =
       String(
@@ -6059,13 +6047,14 @@ function renderUpcomingWorkList(){
       return;
     }
 
+
     var existing = assessmentMap[workId];
     var originalRisk = work.risk || '';
     var isHighRisk = originalRisk === '고위험' || originalRisk === '매우고위험';
 
     var workName = String(work.workName || work.workNameFull || '-')
       .trim()
-      .replace(/^["'""'']+|["'""'']+$/g, '')
+      .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '')
       .substring(0, 50);
 
     var location = '';
@@ -6120,7 +6109,6 @@ function renderUpcomingWorkList(){
     });
   });
 }
-
 // ═══════════════════════════════════════════════════════
 // 34. 시작 모드 및 외부 데이터 연동
 // ═══════════════════════════════════════════════════════
@@ -6131,30 +6119,6 @@ function selectStartMode(mode){
     goToStep(1);
     return;
   }
-
-if(mode === 'upcoming'){
-  // 예정 작업 목록 표시, 오늘 작업과 최근 이력 숨김
-  var todaySection = getElement('todaySection');
-  var recentSection = getElement('recentHistorySection');
-  if(todaySection) todaySection.style.display = 'none';
-  if(recentSection) recentSection.style.display = 'none';
-  
-  // DB에서 예정 작업 로드
-  loadUpcomingWorkList();
-  
-  var workList = getElement('upcomingWorkList');
-  if(workList){
-    workList.style.display = 'block';
-    workList.scrollIntoView({ behavior:'smooth', block:'start' });
-  }
-  return;
-}
-
-  // database 모드 (오늘 작업)
-  var todaySection = getElement('todaySection');
-  var recentSection = getElement('recentHistorySection');
-  if(todaySection) todaySection.style.display = 'block';
-  if(recentSection) recentSection.style.display = 'block';
 
   var workList = getElement('todayWorkList');
   if(workList){
