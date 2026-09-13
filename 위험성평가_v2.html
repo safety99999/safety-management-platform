@@ -1832,6 +1832,7 @@ button{cursor:pointer;}
     <div id="todayWorkList"></div>
   </div>
 
+<div id="upcomingWorkList" style="display:none;"></div>
   <div id="recentHistorySection">
     <div class="list-heading">
       <span>📂 최근 평가 이력</span>
@@ -2859,7 +2860,18 @@ var riskDatabaseState = {
 var currentStep = 0;
 var currentFactory = '전체';
 var todayWorks = [];
+var upcomingWorks = [];
 var currentSearchResults = [];
+
+function today(){
+  var date = new Date();
+  var parts = new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'
+  }).formatToParts(date);
+  var values = {};
+  parts.forEach(function(part){ values[part.type] = part.value; });
+  return values.year + '-' + values.month + '-' + values.day;
+}
 var currentHistoryRecord = null;
 var assessmentSubmitting = false;
 var databaseLoadPromise = null;
@@ -5907,16 +5919,17 @@ function isValidManagementWork(
 }
 
 
-function loadTodayWorkList(){
-  var today = formatDateKST(new Date());
+
+function loadUpcomingWorkList(){
+  var todayDate = today();
 
   try {
     var raw = localStorage.getItem('safetyDatabase');
     if(!raw){
-      todayWorks = [];
+      upcomingWorks = [];
     } else {
       var database = JSON.parse(raw);
-      todayWorks =
+      upcomingWorks =
         (
           database.workHistory ||
           []
@@ -5927,18 +5940,18 @@ function loadTodayWorkList(){
             ) &&
             String(
               work.date || ''
-            ).trim() === today
+            ).trim() > todayDate
           );
         });
 
     }
   } catch(error){
-    console.warn('오늘 작업 목록 로드 실패:', error);
-    todayWorks = [];
+    console.warn('예정 작업 목록 로드 실패:', error);
+    upcomingWorks = [];
   }
 
   renderCompanyOptions();
-  renderTodayWorkList();
+  renderUpcomingWorkList();
 }
 
 function getWorkFactory(work){
@@ -5984,8 +5997,9 @@ function getStoredAssessments(){
   }
 }
 
-function renderTodayWorkList(){
-  var container = getElement('todayWorkList');
+
+function renderUpcomingWorkList(){
+  var container = getElement('upcomingWorkList');
   if(!container){ return; }
 
   var company = getInputValue('companyFilter');
@@ -5996,7 +6010,7 @@ function renderTodayWorkList(){
     if(record.workId){ assessmentMap[record.workId] = record; }
   });
 
-  var filtered = todayWorks.filter(function(work){
+  var filtered = upcomingWorks.filter(function(work){
     if(currentFactory !== '전체' && getWorkFactory(work) !== currentFactory){
       return false;
     }
@@ -6006,13 +6020,11 @@ function renderTodayWorkList(){
     return true;
   });
 
-  setText('todayWorkCount', filtered.length + '건');
-
   if(filtered.length === 0){
     container.innerHTML =
       '<div class="empty-state">' +
-        '<div class="empty-state-icon">📋</div>' +
-        '<div class="empty-state-text">해당하는 작업이 없습니다.<br>신규 평가로 직접 시작하세요.</div>' +
+        '<div class="empty-state-icon">📭</div>' +
+        '<div class="empty-state-text">예정 작업이 없습니다.</div>' +
       '</div>';
     return;
   }
@@ -6020,7 +6032,7 @@ function renderTodayWorkList(){
   var html = '';
 
   filtered.forEach(function(work){
-        if(
+    if(
       !work.workId &&
       (
         !work.date ||
@@ -6029,7 +6041,6 @@ function renderTodayWorkList(){
     ){
       return;
     }
-
 
     var workId =
       String(
@@ -6048,14 +6059,13 @@ function renderTodayWorkList(){
       return;
     }
 
-
     var existing = assessmentMap[workId];
     var originalRisk = work.risk || '';
     var isHighRisk = originalRisk === '고위험' || originalRisk === '매우고위험';
 
     var workName = String(work.workName || work.workNameFull || '-')
       .trim()
-      .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '')
+      .replace(/^["'""'']+|["'""'']+$/g, '')
       .substring(0, 50);
 
     var location = '';
@@ -6110,6 +6120,18 @@ function renderTodayWorkList(){
     });
   });
 }
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-work-action]').forEach(function(button){
+    button.addEventListener('click', function(event){
+      event.stopPropagation();
+      var workId = button.getAttribute('data-work-id');
+      var action = button.getAttribute('data-work-action');
+      startAssessmentFromWork(workId, action === 'reassess');
+    });
+  });
+}
 // ═══════════════════════════════════════════════════════
 // 34. 시작 모드 및 외부 데이터 연동
 // ═══════════════════════════════════════════════════════
@@ -6121,18 +6143,23 @@ function selectStartMode(mode){
     return;
   }
 
-  if(mode === 'upcoming'){
-    // 예정 작업 목록 표시, 오늘 작업과 최근 이력 숨김
-    var todaySection = getElement('todaySection');
-    var recentSection = getElement('recentHistorySection');
-    if(todaySection) todaySection.style.display = 'none';
-    if(recentSection) recentSection.style.display = 'none';
-    var workList = getElement('upcomingWorkList');
-    if(workList){
-      workList.scrollIntoView({ behavior:'smooth', block:'start' });
-    }
-    return;
+if(mode === 'upcoming'){
+  // 예정 작업 목록 표시, 오늘 작업과 최근 이력 숨김
+  var todaySection = getElement('todaySection');
+  var recentSection = getElement('recentHistorySection');
+  if(todaySection) todaySection.style.display = 'none';
+  if(recentSection) recentSection.style.display = 'none';
+  
+  // DB에서 예정 작업 로드
+  loadUpcomingWorkList();
+  
+  var workList = getElement('upcomingWorkList');
+  if(workList){
+    workList.style.display = 'block';
+    workList.scrollIntoView({ behavior:'smooth', block:'start' });
   }
+  return;
+}
 
   // database 모드 (오늘 작업)
   var todaySection = getElement('todaySection');
