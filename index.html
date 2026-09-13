@@ -3,19 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>P-FM 안전관리 대시보드</title>
 
-    <!-- 📌 메일 및 메신저(카카오톡, 슬랙 등) 공유 시 미리보기 카드 및 로고 표시 설정 -->
+    <!-- 📌 메일 및 메신저 공유 미리보기 -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="P-FM 안전관리 대시보드">
     <meta property="og:description" content="포스코퓨처엠 포항양극재공장 안전관리 플랫폼">
-    <meta property="og:image" content="https://safety-management-platfo-5f413.firebaseapp.com/assets/images/safety-app-logo.png">
-    <meta property="og:url" content="https://safety-management-platfo-5f413.firebaseapp.com/">
+    <meta property="og:image"
+          content="https://safety-management-platfo-5f413.firebaseapp.com/assets/images/safety-app-logo.png">
+    <meta property="og:url"
+          content="https://safety-management-platfo-5f413.firebaseapp.com/">
 
-    <!-- 모바일 홈 화면 추가 시 앱 아이콘 설정 -->
-    <link rel="apple-touch-icon" href="./assets/images/safety-app-logo.png?v=3">
-    <link rel="icon" type="image/png" href="./assets/images/safety-app-logo.png?v=3">
-    
+    <!-- 📱 웹 브라우저 아이콘 -->
+    <link rel="icon"
+          type="image/png"
+          sizes="192x192"
+          href="./icons/icon-192.png">
+
+    <!-- 🍎 iPhone 홈 화면 아이콘 -->
+    <link rel="apple-touch-icon"
+          sizes="180x180"
+          href="./icons/apple-touch-icon.png">
+
+    <!-- 📲 PWA 설정 -->
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- 모바일 브라우저 테마 색상 -->
+    <meta name="theme-color" content="#0B4F9C">
+
     <style>
         body, html {
             margin: 0;
@@ -25,6 +41,7 @@
             overflow: hidden;
             background-color: #0b1f3b;
         }
+
         iframe {
             width: 100%;
             height: 100%;
@@ -32,8 +49,14 @@
         }
     </style>
 </head>
+
 <body>
-    <!-- 대시보드 화면 연동 -->
-    <iframe src="./안전관리플랫폼_대시보드_V6_.html" title="P-FM 안전관리 앱"></iframe>
+
+    <!-- 기존 대시보드 -->
+    <iframe
+        src="./안전관리플랫폼_대시보드_V6_.html"
+        title="P-FM 안전관리 앱">
+    </iframe>
+
 </body>
 </html>
