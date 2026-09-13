@@ -14141,15 +14141,6 @@ async function completeCurrentWork(){
         );
     }
 
-    var userMenuButton =
-      byId(
-        'userMenuButton'
-      );
-
-    if(userMenuButton){
-      userMenuButton.hidden =
-        false;
-
       userMenuButton.title =
         global.isAdminUser()
           ? '관리자 메뉴'
@@ -17508,6 +17499,32 @@ workDatabase: {
 
 // 역할별 네비게이션 탭 초기화
 function initializeNavigation(){
+ 
+// 다크모드 버튼 초기화
+function initializeDarkMode(){
+  var darkModeButton = document.getElementById('darkModeButton');
+  if(!darkModeButton) return;
+  
+  // 저장된 다크모드 상태 확인
+  var isDarkMode = localStorage.getItem('darkMode') === 'true';
+  if(isDarkMode){
+    document.documentElement.style.colorScheme = 'dark';
+  }
+  
+  // 다크모드 버튼 클릭 이벤트
+  darkModeButton.addEventListener('click', function(){
+    var isDark = document.documentElement.style.colorScheme === 'dark';
+    if(isDark){
+      document.documentElement.style.colorScheme = 'light';
+      localStorage.setItem('darkMode', 'false');
+    } else {
+      document.documentElement.style.colorScheme = 'dark';
+      localStorage.setItem('darkMode', 'true');
+    }
+  });
+}
+
+initializeDarkMode(); 
   var userRole = session.role || 'guest';
   
   // 관리자 설정 탭
