@@ -4,8 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P-FM 안전관리 대시보드</title>
+    <style>
+      /* 상단 브랜드 로고 및 텍스트 스타일 */
+      .hero-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hero-logo-img {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        object-fit: cover;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      }
+      .hero-brand-text {
+        display: flex;
+        flex-direction: column;
+      }
+      .hero-brand-en {
+        font-size: 11px;
+        font-weight: 600;
+        color: #666;
+        letter-spacing: 0.5px;
+      }
+      .hero-brand-ko {
+        font-size: 15px;
+        font-weight: 700;
+        color: #111;
+      }
+    </style>
 </head>
 <body style="margin:0; padding:0;">
-    <iframe src="./안전관리앱_대시보드_V6_.html" style="width:100%; height:100vh; border:none;"></iframe>
+    <!-- 
+      만약 iframe 내부 대시보드 파일(안전관리앱_대시보드_V6_.html)이 아니라 
+      이 index 파일 자체에서 상단 헤더를 구성하신다면 아래 구조를 활용하실 수 있습니다.
+    -->
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fff; border-bottom: 1px solid #eee;">
+      <div class="hero-brand">
+        <!-- 깃허브에 업로드한 로고 이미지 연동 -->
+        <img src="./assets/images/safety-app-logo.png" alt="포스코퓨처엠 SAFETY APP" class="hero-logo-img">
+        
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">POSCO FUTURE M</div>
+          <div class="hero-brand-ko">안전관리</div> <!-- 📌 깔끔하게 "안전관리"만 출력 -->
+        </div>
+      </div>
+    </header>
+
+    <!-- 메인 대시보드 연결 iframe -->
+    <iframe src="./안전관리앱_대시보드_V6_.html" style="width:100%; height:calc(100vh - 65px); border:none;"></iframe>
 </body>
 </html>
