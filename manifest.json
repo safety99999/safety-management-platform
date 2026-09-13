@@ -1,0 +1,22 @@
+{
+  "name": "포스코퓨처엠 안전관리 대시보드",
+  "short_name": "P-FM 안전관리",
+  "description": "포스코퓨처엠 포항양극재공장 안전관리 플랫폼",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B1F3B",
+  "theme_color": "#0B4F9C",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
