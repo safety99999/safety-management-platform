@@ -1348,6 +1348,44 @@ button{touch-action:manipulation}
   .nav-badge{
     top:-2px;
   }
+ 
+  .user-only{
+    display:none
+  }
+  
+  .nav-tab.user-only[data-role="user"],
+  .nav-tab.user-only[data-role="tester"]{
+    display:inline-flex
+  }
+  
+  .settings-group{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding:20px
+  }
+  
+  .settings-button{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:16px;
+    background:white;
+    border:1px solid #e0e0e0;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:600
+  }
+  
+  .settings-button:hover{
+    background:#f5f5f5;
+    border-color:#999
+  }
+  
+  .settings-icon{
+    font-size:20px
+  } 
 }
 
 /* ───────────────────────────────────────
@@ -2009,6 +2047,34 @@ button{touch-action:manipulation}
         <div class="sets-l"><span>📱</span><span class="sets-name">버전</span></div>
         <span class="sets-r">v8.0</span>
       </div>
+      </div>
+  </main>
+</section>
+
+<!-- 일반사용자/테스터 설정 페이지 -->
+<section class="page" id="pageUserSettings">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">
+        <span class="hero-logo">⚙️</span>
+        <div class="hero-brand-text">
+          <div class="hero-brand-en">SETTINGS</div>
+          <div class="hero-brand-ko">설정</div>
+        </div>
+      </div>
+      <div class="hero-clock"><div class="hero-date">Dashboard</div><div class="hero-time">v8.0</div></div>
+    </div>
+  </header>
+  <main class="main">
+    <div class="settings-group">
+      <button type="button" class="settings-button reset-data-btn" id="userResetDataButton">
+        <span class="settings-icon">🔄</span>
+        <span class="settings-label">내 테스트 자료 초기화</span>
+      </button>
+      <button type="button" class="settings-button logout-btn" id="userLogoutButton">
+        <span class="settings-icon">🚪</span>
+        <span class="settings-label">로그아웃</span>
+      </button>
     </div>
   </main>
 </section>
@@ -2025,6 +2091,9 @@ button{touch-action:manipulation}
     <span class="nav-badge" id="inspectionBadge" hidden>0</span>
   </button>
   <button type="button" class="nav-tab admin-only" data-tab="settings">
+    <span class="nav-ti">⚙️</span><span class="nav-tl">설정</span>
+  </button>
+  <button type="button" class="nav-tab user-only" data-tab="user-settings">
     <span class="nav-ti">⚙️</span><span class="nav-tl">설정</span>
   </button>
 </nav>
@@ -17438,6 +17507,34 @@ workDatabase: {
   }
 
 })();
+
+// 역할별 네비게이션 탭 초기화
+function initializeNavigation(){
+  var userRole = session.role || 'guest';
+  
+  // 관리자 설정 탭
+  var adminTab = document.querySelector('[data-tab="settings"]');
+  if(adminTab){
+    if(userRole === 'admin'){
+      adminTab.style.display = 'inline-flex';
+    } else {
+      adminTab.style.display = 'none';
+    }
+  }
+  
+  // 일반사용자/테스터 설정 탭
+  var userTab = document.querySelector('[data-tab="user-settings"]');
+  if(userTab){
+    if(userRole === 'user' || userRole === 'tester'){
+      userTab.style.display = 'inline-flex';
+    } else {
+      userTab.style.display = 'none';
+    }
+  }
+}
+
+// 네비게이션 초기화 호출
+initializeNavigation();  
 </script>
 <!-- ⬆️ 여기까지 추가 (</body> 앞에) ⬆️ -->
 <script>
