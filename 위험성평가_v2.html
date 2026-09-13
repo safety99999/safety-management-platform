@@ -6121,17 +6121,6 @@ function renderUpcomingWorkList(){
   });
 }
 
-  container.innerHTML = html;
-
-  container.querySelectorAll('[data-work-action]').forEach(function(button){
-    button.addEventListener('click', function(event){
-      event.stopPropagation();
-      var workId = button.getAttribute('data-work-id');
-      var action = button.getAttribute('data-work-action');
-      startAssessmentFromWork(workId, action === 'reassess');
-    });
-  });
-}
 // ═══════════════════════════════════════════════════════
 // 34. 시작 모드 및 외부 데이터 연동
 // ═══════════════════════════════════════════════════════
