@@ -1782,7 +1782,7 @@ button{cursor:pointer;}
     </div>
 
 <div class="welcome-principle">
-  AI가 평가 초안 제공, 평가자는 현장조건을 확인해 최종 판단
+  AI가 평가 초안을 제공하며, 평가자가 현장조건을 확인해 최종 판단합니다.
 </div>
 
 
@@ -2815,6 +2815,7 @@ function createEmptyAssessment(){
     riskId:'', workId:'', permitNo:'', linkedPermitNo:'', safeinfoNo:'',
     date:'', assessor:'', workName:'', location:'', detailLocation:'',
     company:'', workers:'', workType:'', workDescription:'',
+    workDbPlanText:'', workDbSafetyText:'',
     workProfile:{group:'common',subtype:'',stage:'general',conditions:{}},
     referencedRAD:[],
     referencedJSAs:[],
@@ -5053,6 +5054,71 @@ function buildDatabaseMeasures(searchResults, workProfile){
 // 25. 대책 카테고리 분류
 // ═══════════════════════════════════════════════════════
 
+function buildWorkDbMeasures(assessmentData, workProfile){
+  var sourceTexts = [
+    String(assessmentData && assessmentData.workDbPlanText || '').trim(),
+    String(assessmentData && assessmentData.workDbSafetyText || '').trim()
+  ].filter(Boolean);
+
+  if(sourceTexts.length === 0){
+    return [];
+  }
+
+  var measureMap = new Map();
+  var sourceDocumentKey =
+    'workdb:' + String(assessmentData.workId || assessmentData.riskId || 'unknown');
+
+  sourceTexts.forEach(function(sourceText){
+    parseMeasureText(sourceText).forEach(function(parsedMeasure){
+      if(!parsedMeasure || !parsedMeasure.text){ return; }
+      if(isIncompleteMeasureText(parsedMeasure.text)){ return; }
+
+      var exclusionReason = getMeasureExclusionReason(parsedMeasure.text, workProfile);
+      if(exclusionReason){ return; }
+
+      var meaningKey = getMeasureMeaningKey(parsedMeasure.text);
+      if(!meaningKey){ return; }
+
+      if(measureMap.has(meaningKey)){
+        var existing = measureMap.get(meaningKey);
+        addUniqueText(existing.originalTexts, parsedMeasure.text);
+        addUniqueText(existing.sourceDocumentKeys, sourceDocumentKey);
+        existing.originalCount = existing.originalTexts.length;
+        existing.refCount = existing.sourceDocumentKeys.length;
+        return;
+      }
+
+      measureMap.set(meaningKey, {
+        text: getCanonicalMeasureText(meaningKey, parsedMeasure.text),
+        meaningKey: meaningKey,
+        category: '',
+        templateCategory: '',
+        source: 'WRK',
+        standardCode: '',
+        isCoreTemplate: false,
+        corePriority: 0,
+        selected: false,
+        fieldConfirmed: false,
+        hasPrimary: true,
+        totalRelevance: 58,
+        originalTexts: [parsedMeasure.text],
+        sourceDocumentKeys: [sourceDocumentKey],
+        sources: [{
+          documentKey: sourceDocumentKey,
+          workName: assessmentData.workName || '',
+          originalText: parsedMeasure.text,
+          relevance: 58,
+          classCode: 'WORK_DB'
+        }],
+        refCount: 1,
+        originalCount: 1
+      });
+    });
+  });
+
+  return Array.from(measureMap.values());
+}
+
 function classifyMeasure(measure){
   if(measure.templateCategory){ return measure.templateCategory; }
 
@@ -5112,10 +5178,13 @@ function sortMeasures(measures){
 }
 
 function buildFinalMeasures(searchResults, workProfile){
-  var coreMeasures = createCoreMeasures(workProfile);
+    var coreMeasures = createCoreMeasures(workProfile);
   var databaseMeasures = buildDatabaseMeasures(searchResults, workProfile);
+  var workDbMeasures = buildWorkDbMeasures(riskData, workProfile);
 
-  var combined = mergeMeasureObjects(coreMeasures.concat(databaseMeasures));
+  var combined = mergeMeasureObjects(
+    coreMeasures.concat(databaseMeasures, workDbMeasures)
+  );
 
   var grouped = {
     essential: [], engineering: [], administrative: [], ppe: []
@@ -5187,8 +5256,9 @@ function buildFinalMeasures(searchResults, workProfile){
   });
 
   console.log('[적용대책 구성]', {
-    coreCount: coreMeasures.length,
+        coreCount: coreMeasures.length,
     databaseMeasureCount: databaseMeasures.length,
+    workDbMeasureCount: workDbMeasures.length,
     essential: selected.essential.length,
     engineering: selected.engineering.length,
     administrative: selected.administrative.length,
@@ -6574,11 +6644,25 @@ function startAssessmentFromWork(
       work.workerCountRaw ||
       '';
 
-    riskData.workDescription =
+        riskData.workDescription =
       String(
         work.workNameFull ||
         work.safety ||
         work.workDescription ||
+        ''
+      ).trim();
+
+    riskData.workDbPlanText =
+      String(
+        work.requiredWorkPlan ||
+        work.workPlan ||
+        ''
+      ).trim();
+
+    riskData.workDbSafetyText =
+      String(
+        work.safety ||
+        work.safetyMeasures ||
         ''
       ).trim();
 
