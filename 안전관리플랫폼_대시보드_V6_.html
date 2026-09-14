@@ -10827,7 +10827,83 @@ function standardWorkCard(
     var lastOperatingDepartment = '';
     var lastRequestingDepartment = '';
 
-    var previousRecord = null;
+        var previousRecord = null;
+
+    var normalizedRows = rows;
+
+    if(rows.length >= 2){
+      var firstRow =
+        Array.isArray(rows[0])
+          ? rows[0]
+          : [];
+
+      var secondRow =
+        Array.isArray(rows[1])
+          ? rows[1]
+          : [];
+
+      var isNewUploadFormat =
+        parseDateValue(firstRow[2]) === '' &&
+        parseDateValue(secondRow[2]) !== '';
+
+      if(isNewUploadFormat){
+        normalizedRows =
+          rows.slice(1)
+            .map(function(sourceColumns){
+              function pick(index){
+                return index >= 0
+                  ? (sourceColumns[index] || '')
+                  : '';
+              }
+
+              var mapped =
+                new Array(30).fill('');
+
+              mapped[0] = pick(2);
+              mapped[1] = pick(0);
+              mapped[2] = pick(3);
+              mapped[3] = pick(4);
+              mapped[4] = pick(6);
+              mapped[5] = pick(5);
+              mapped[6] = pick(7);
+              mapped[7] = pick(9);
+              mapped[8] = pick(8);
+              mapped[9] = pick(10);
+              mapped[10] = pick(11);
+              mapped[11] = pick(12);
+              mapped[13] = pick(13);
+              mapped[14] = pick(12);
+              mapped[19] = pick(14);
+              mapped[20] = pick(15);
+
+              var riskType =
+                normalizeImportedValue(
+                  pick(1)
+                )
+                  .replace(/\s+/g,'')
+                  .toUpperCase();
+
+              if(
+                /고위험|HIGH|H/.test(
+                  riskType
+                )
+              ){
+                mapped[25] = 'Y';
+              }
+
+              return mapped;
+            })
+            .filter(function(mapped){
+              return mapped.some(
+                function(value){
+                  return Boolean(
+                    clean(value)
+                  );
+                }
+              );
+            });
+      }
+    }
 
     function splitContact(value){
       var raw =
@@ -10876,7 +10952,7 @@ function standardWorkCard(
       };
     }
 
-    rows.forEach(
+        normalizedRows.forEach(
       function(columns,index){
         var parsedDate =
           parseDateValue(
