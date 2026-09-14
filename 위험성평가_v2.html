@@ -2113,6 +2113,7 @@ button{cursor:pointer;}
       /
       <span id="totalAvailableMeasures">0</span>개
       <span id="userMeasureProgress"></span>
+      <span id="workDbMeasureProgress"></span>
     </div>
   </div>
 
@@ -5682,9 +5683,17 @@ function renderMeasureProgress(){
 
   var availableCount = essential.total + engineering.total +
     administrative.total + protectiveEquipment.total;
-
+  
   var userCount = riskData.userMeasures.length;
-
+  var allMeasures = CATEGORY_ORDER.reduce(function(list, category){
+    return list.concat(riskData.measuresByCategory[category] || []);
+  }, []);
+  var workDbCount = allMeasures.filter(function(measure){
+    return (measure.sources || []).some(function(source){
+      return source && source.classCode === 'WORK_DB';
+    });
+  }).length;
+  
   setText('essentialProgress', essential.selected + '/' + essential.total);
   setText('engineeringProgress', engineering.selected + '/' + engineering.total);
   setText('administrativeProgress', administrative.selected + '/' + administrative.total);
@@ -5692,6 +5701,7 @@ function renderMeasureProgress(){
   setText('totalSelectedMeasures', selectedCount);
   setText('totalAvailableMeasures', availableCount);
   setText('userMeasureProgress', userCount > 0 ? (' + 추가 ' + userCount + '개') : '');
+  setText('workDbMeasureProgress', workDbCount > 0 ? (' + WORK_DB ' + workDbCount + '개') : '');
 
   riskData.stats = {
     totalMeasures: availableCount,
@@ -5700,7 +5710,8 @@ function renderMeasureProgress(){
     engineeringSelected: engineering.selected,
     administrativeSelected: administrative.selected,
     ppeSelected: protectiveEquipment.selected,
-    userMeasures: userCount
+    userMeasures: userCount,
+    workDbMeasures: workDbCount
   };
 
   progress.style.display = 'block';
