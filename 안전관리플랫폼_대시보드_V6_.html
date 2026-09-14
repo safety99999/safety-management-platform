@@ -1675,7 +1675,6 @@ button{touch-action:manipulation}
       <div class="sec-hdr">
         <div class="sec-title" id="workStatusTitle">📈 오늘 작업 현황</div>
         <button type="button" class="sec-more" id="refreshButton">↻ 새로고침</button>
-        <button type="button" class="sec-more" id="applyButton">Apply</button>
       </div>
 
       <div class="status-highlight">
@@ -1733,8 +1732,6 @@ button{touch-action:manipulation}
       </button>
     </div>
 
-
-    
     <section class="sec">
       <div class="sec-hdr"><div class="sec-title">⚡ 빠른 실행</div></div>
     </section>
@@ -2260,7 +2257,6 @@ button{touch-action:manipulation}
     confirmCallback:null,
     lastSyncAt:0,
     completionTarget:null
-    
   };
 
   global.DashboardV8 = {
@@ -5472,64 +5468,6 @@ setTimeout(function(){
         }
       });
 
-    if(
-      selectedWorkDate() ===
-        today() &&
-      state.serverStatusCounts
-    ){
-      counts.total =
-        Number(
-          state.serverStatusCounts.total ||
-          0
-        );
-      counts.wait =
-        Number(
-          state.serverStatusCounts.wait ||
-          0
-        );
-      counts.run =
-        Number(
-          state.serverStatusCounts.run ||
-          0
-        );
-      counts.stop =
-        Number(
-          state.serverStatusCounts.stop ||
-          0
-        );
-      counts.done =
-        Number(
-          state.serverStatusCounts.done ||
-          0
-        );
-    }else if(
-      selectedWorkDate() ===
-      today()
-    ){
-      setText(
-        'cntTotal',
-        '-'
-      );
-      setText(
-        'cntWait',
-        '-'
-      );
-      setText(
-        'cntRun',
-        '-'
-      );
-      setText(
-        'cntStop',
-        '-'
-      );
-      setText(
-        'cntDone',
-        '-'
-      );
-
-      return;
-    }
-
     setText(
       'cntTotal',
       counts.total
@@ -7121,10 +7059,14 @@ function statusClass(code){
       var approved =
         approvedTodayPermits();
 
-if(!approved.length){
-  navigate(targetUrl);
-  return;
-}
+      if(!approved.length){
+        showToast(
+          '오늘 승인된 안전작업허가서가 없습니다.',
+          'warning'
+        );
+
+        return;
+      }
 
       if(approved.length === 1){
         var permit =
@@ -8402,7 +8344,16 @@ function standardWorkCard(
      * TBM은 허가완료 이후 사용할 수 있습니다.
      * 작업중지·작업종료 상태에서는 기존 TBM 조회를 허용합니다.
      */
-
+    var canUseTbm =
+      [
+        'approved',
+        'tbmCompleted',
+        'inProgress',
+        'stopped',
+        'completed'
+      ].indexOf(
+        permitCode
+      ) >= 0;
 
     /*
      * TBM 제출 완료 후 작업중 상태에서만
@@ -14259,7 +14210,8 @@ async function completeCurrentWork(){
       ];
 
       /*
-       * ...
+       * 관리자·일반 사용자는 허가서만
+       * Firestore에서 실시간으로 갱신합니다.
        */
       if(
         !global.isPublicTester() &&
@@ -14276,22 +14228,7 @@ async function completeCurrentWork(){
         );
       }
 
-      if(
-        !global.isPublicTester() &&
-        global.DashboardFirebase &&
-        typeof global
-          .DashboardFirebase
-          .loadDashboardStats ===
-            'function'
-      ){
-        promises.push(
-          global
-            .DashboardFirebase
-            .loadDashboardStats()
-        );
-      }
-
-          var results =
+      var results =
         await Promise.allSettled(
           promises
         );
@@ -14306,24 +14243,7 @@ async function completeCurrentWork(){
         throw workResult.reason;
       }
 
-      var statsResult =
-        results.length > 2
-          ? results[2]
-          : null;
-
-      if(
-        statsResult &&
-        statsResult.status ===
-          'fulfilled'
-      ){
-        state.serverStatusCounts =
-          statsResult.value;
-      }else{
-        state.serverStatusCounts =
-          null;
-      }
-
-      refreshFromCache();  
+      refreshFromCache();
 
       var syncedAt =
         new Date();
@@ -15576,7 +15496,6 @@ import {
   initializeFirestore,
   collection,
   doc,
-  getDoc,
   getDocs,
   getCountFromServer,
   writeBatch,
@@ -15684,19 +15603,6 @@ const PUBLIC_WORK_COLLECTION =
       .collections.publicWorkSchedule
   ) ||
   'test_publicWorkSchedule';
-
-const DASHBOARD_STATS_COLLECTION =
-  (
-    window.APP_CONFIG &&
-    window.APP_CONFIG
-      .collections &&
-    window.APP_CONFIG
-      .collections.dashboardStats
-  ) ||
-  'test_dashboardStats';
-
-const DASHBOARD_STATS_DOC_ID =
-  'today';
 
 function waitForAuth(){
   if(auth.currentUser){
@@ -16062,50 +15968,6 @@ async function loadPermits(
   );
 
   return synchronized;
-}
-
-async function loadDashboardStats(){
-  var user =
-    await waitForAuth();
-
-  validateUser(
-    user,
-    false
-  );
-
-  var reference =
-    doc(
-      db,
-      DASHBOARD_STATS_COLLECTION,
-      DASHBOARD_STATS_DOC_ID
-    );
-
-  var snapshot =
-    await getDoc(reference);
-
-  if(!snapshot.exists()){
-    return null;
-  }
-
-  var data =
-    snapshot.data() || {};
-
-  return {
-    date:
-      String(data.date || ''),
-    wait:
-      Number(data.wait || 0),
-    run:
-      Number(data.run || 0),
-    stop:
-      Number(data.stop || 0),
-    done:
-      Number(data.done || 0),
-    total:
-      Number(data.total || 0),
-    updatedAt:
-      data.updatedAt || null
-  };
 }
 
 
@@ -17046,9 +16908,6 @@ window.DashboardFirebase = {
   loadPermits:
     loadPermits,
 
-  loadDashboardStats:
-    loadDashboardStats,
-
   loadWorkDatabase:
     loadWorkDatabase,
 
@@ -17064,6 +16923,8 @@ window.DashboardFirebase = {
   logout:
     logoutFirebaseUser
 };
+
+
 
 
 window.dispatchEvent(
@@ -17117,44 +16978,12 @@ console.log(
           .DashboardFirebase
           .loadPermits(true)
       );
-
-      if(
-        typeof window
-          .DashboardFirebase
-          .loadDashboardStats ===
-            'function'
-      ){
-        promises.push(
-          window
-            .DashboardFirebase
-            .loadDashboardStats()
-        );
-      }
     }
 
     var results =
       await Promise.allSettled(
         promises
       );
-
-    var statsResult =
-      results.length > 2
-        ? results[2]
-        : null;
-
-    if(
-      statsResult &&
-      statsResult.status ===
-        'fulfilled'
-    ){
-      window.DashboardV8
-        .state.serverStatusCounts =
-          statsResult.value;
-    }else{
-      window.DashboardV8
-        .state.serverStatusCounts =
-          null;
-    }
 
     window.DashboardV8
       .refresh();
