@@ -14285,11 +14285,14 @@ async function completeCurrentWork(){
           .loadPermits ===
             'function'
       ){
-        promises.push(
+                promises.push(
           global
             .DashboardFirebase
             .loadPermits(true)
         );
+        promises.push(global.DashboardFirebase.loadRiskResults());
+        promises.push(global.DashboardFirebase.loadTbmResults());
+        promises.push(global.DashboardFirebase.loadQuizResults());
       }
 
       var results =
@@ -16969,8 +16972,245 @@ window.DashboardFirebase = {
   waitForAuth:
     waitForAuth,
 
-  loadPermits:
+    loadPermits:
     loadPermits,
+
+  loadRiskResults:
+    async function(){
+      var session =
+        readSession();
+
+      if(
+        session &&
+        session.role === 'tester'
+      ){
+        return [];
+      }
+
+      var user =
+        await waitForAuth();
+
+      validateUser(
+        user,
+        false
+      );
+
+      var snapshot =
+        await getDocs(
+          collection(
+            db,
+            getCollectionName(
+              'riskAssessmentResults'
+            )
+          )
+        );
+
+      var cloud = [];
+
+      snapshot.forEach(
+        function(documentSnapshot){
+          var record =
+            documentSnapshot.data() ||
+            {};
+
+          record.riskId =
+            record.riskId ||
+            documentSnapshot.id;
+
+          cloud.push(record);
+        }
+      );
+
+      cloud.sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      });
+
+      localStorage.setItem(
+        'riskAssessments',
+        JSON.stringify(cloud)
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:'riskAssessments',
+              source:
+                'firestore-authoritative-sync',
+              serverCount:
+                cloud.length,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+
+      return cloud;
+    },
+
+
+
+
+    loadTbmResults:
+    async function(){
+      var session =
+        readSession();
+
+      if(
+        session &&
+        session.role === 'tester'
+      ){
+        return [];
+      }
+
+      var user =
+        await waitForAuth();
+
+      validateUser(
+        user,
+        false
+      );
+
+      var snapshot =
+        await getDocs(
+          collection(
+            db,
+            getCollectionName(
+              'safetyTBM'
+            )
+          )
+        );
+
+      var cloud = [];
+
+      snapshot.forEach(
+        function(documentSnapshot){
+          var record =
+            documentSnapshot.data() ||
+            {};
+
+          record.tbmNo =
+            record.tbmNo ||
+            documentSnapshot.id;
+
+          cloud.push(record);
+        }
+      );
+
+      cloud.sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      });
+
+      localStorage.setItem(
+        'safetyTBM',
+        JSON.stringify(cloud)
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:'safetyTBM',
+              source:
+                'firestore-authoritative-sync',
+              serverCount:
+                cloud.length,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+
+      return cloud;
+    },
+
+    loadQuizResults:
+    async function(){
+      var session =
+        readSession();
+
+      if(
+        session &&
+        session.role === 'tester'
+      ){
+        return [];
+      }
+
+      var user =
+        await waitForAuth();
+
+      validateUser(
+        user,
+        false
+      );
+
+      var snapshot =
+        await getDocs(
+          collection(
+            db,
+            getCollectionName(
+              'safetyQuizzes'
+            )
+          )
+        );
+
+      var cloud = [];
+
+      snapshot.forEach(
+        function(documentSnapshot){
+          var record =
+            documentSnapshot.data() ||
+            {};
+
+          record.quizId =
+            record.quizId ||
+            documentSnapshot.id;
+
+          cloud.push(record);
+        }
+      );
+
+      cloud.sort(function(first,second){
+        return (
+          recordTime(second) -
+          recordTime(first)
+        );
+      });
+
+      localStorage.setItem(
+        'safetyQuizzes',
+        JSON.stringify(cloud)
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'app-data-changed',
+          {
+            detail:{
+              key:'safetyQuizzes',
+              source:
+                'firestore-authoritative-sync',
+              serverCount:
+                cloud.length,
+              timestamp:
+                Date.now()
+            }
+          }
+        )
+      );
+
+      return cloud;
+    },
 
   loadWorkDatabase:
     loadWorkDatabase,
@@ -17037,11 +17277,14 @@ console.log(
         window.isPublicTester()
       )
     ){
-      promises.push(
+            promises.push(
         window
           .DashboardFirebase
           .loadPermits(true)
       );
+      promises.push(window.DashboardFirebase.loadRiskResults());
+      promises.push(window.DashboardFirebase.loadTbmResults());
+      promises.push(window.DashboardFirebase.loadQuizResults());
     }
 
     var results =
