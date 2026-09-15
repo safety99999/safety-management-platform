@@ -5221,6 +5221,18 @@ if(
       };
     }
 
+        if(
+            permitCode ===
+        '__disabled_approved__'
+    ){
+      return {
+        code:'inProgress',
+        label:'累诀吝',
+        permit:permit,
+        tbm:tbm
+      };
+    }
+
     if(
       permitCode ===
         'inProgress' ||
@@ -7892,6 +7904,18 @@ if(
       return {
         code:'completed',
         label:'작업종료',
+        permit:permit,
+        tbm:tbm
+      };
+    }
+
+        if(
+            permitCode ===
+        '__disabled_approved__'
+    ){
+      return {
+        code:'inProgress',
+        label:'累诀吝',
         permit:permit,
         tbm:tbm
       };
@@ -15671,15 +15695,14 @@ const PUBLIC_WORK_COLLECTION =
   ) ||
   'test_publicWorkSchedule';
 
-function waitForAuth(){
+async function waitForAuth(){
   if(auth.currentUser){
-    return Promise.resolve(
-      auth.currentUser
-    );
-  }
+        return auth.currentUser;
+    }
 
-  return new Promise(
-    function(resolve){
+  var observedUser =
+    await new Promise(
+      function(resolve){
       let completed = false;
       let unsubscribe =
         function(){};
@@ -15715,11 +15738,33 @@ function waitForAuth(){
               error
             );
 
-            resolve(null);
+                        resolve(null);
           }
         );
     }
   );
+
+  if(observedUser){
+    return observedUser;
+  }
+
+  for(
+    var attempt = 0;
+    attempt < 8;
+    attempt += 1
+  ){
+    await new Promise(
+      function(resolve){
+        setTimeout(resolve,250);
+      }
+    );
+
+    if(auth.currentUser){
+      return auth.currentUser;
+    }
+  }
+
+  return null;
 }
 
 function readSession(){
