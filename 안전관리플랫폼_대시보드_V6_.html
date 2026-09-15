@@ -17321,7 +17321,7 @@ console.log(
 
 <script>
 (function(){
-    function prefersLongSyncDelay(){
+  function prefersLongSyncDelay(){
     try{
       var parameters =
         new URLSearchParams(
@@ -17337,93 +17337,6 @@ console.log(
     }catch(error){
       return false;
     }
-  }
-
-  function shouldShowDiagSync(){
-    try{
-      var parameters =
-        new URLSearchParams(
-          window.location.search ||
-          ''
-        );
-
-      return (
-        parameters.get(
-          'diagSync'
-        ) === '1'
-      );
-    }catch(error){
-      return false;
-    }
-  }
-
-  function readCount(key){
-    try{
-      var parsed = JSON.parse(
-        localStorage.getItem(key) ||
-        '[]'
-      );
-
-      return Array.isArray(parsed)
-        ? parsed.length
-        : -1;
-    }catch(error){
-      return -1;
-    }
-  }
-
-  function renderDiagSyncPanel(summary){
-    var panel =
-      document.getElementById(
-        'diag-sync-panel'
-      );
-
-    if(!panel){
-      panel =
-        document.createElement('pre');
-
-      panel.id =
-        'diag-sync-panel';
-
-      panel.style.position =
-        'fixed';
-      panel.style.left = '8px';
-      panel.style.right = '8px';
-      panel.style.bottom = '8px';
-      panel.style.zIndex =
-        '2147483647';
-      panel.style.maxHeight =
-        '45vh';
-      panel.style.overflow =
-        'auto';
-      panel.style.margin = '0';
-      panel.style.padding =
-        '10px 12px';
-      panel.style.fontSize =
-        '12px';
-      panel.style.lineHeight =
-        '1.45';
-      panel.style.whiteSpace =
-        'pre-wrap';
-      panel.style.background =
-        'rgba(0,0,0,0.86)';
-      panel.style.color =
-        '#7CFFB2';
-      panel.style.border =
-        '1px solid rgba(124,255,178,0.4)';
-      panel.style.borderRadius =
-        '8px';
-
-      document.body.appendChild(panel);
-    }
-
-    panel.textContent =
-      '[diagSync]\n' +
-      JSON.stringify(
-        summary,
-        null,
-        2
-      );
   }
 
    async function sync(){
@@ -17473,7 +17386,7 @@ console.log(
         promises
       );
 
-        var hasCloudSyncFailure =
+    var hasCloudSyncFailure =
       results.slice(1).some(
         function(result){
           return (
@@ -17483,58 +17396,6 @@ console.log(
           );
         }
       );
-
-    if(shouldShowDiagSync()){
-      renderDiagSyncPanel({
-        timestamp:
-          new Date().toISOString(),
-        href: window.location.href,
-        isTester:
-          Boolean(
-            window.isPublicTester &&
-            window.isPublicTester()
-          ),
-        syncStatuses: {
-          workDatabase:
-            results[0] &&
-            results[0].status,
-          permits:
-            results[1] &&
-            results[1].status,
-          risks:
-            results[2] &&
-            results[2].status,
-          tbm:
-            results[3] &&
-            results[3].status,
-          quizzes:
-            results[4] &&
-            results[4].status
-        },
-        cacheCounts: {
-          safetyPermits:
-            readCount(
-              'safetyPermits'
-            ),
-          riskAssessments:
-            readCount(
-              'riskAssessments'
-            ),
-          safetyTBM:
-            readCount(
-              'safetyTBM'
-            ),
-          safetyQuizzes:
-            readCount(
-              'safetyQuizzes'
-            )
-        },
-        appSession:
-          sessionStorage.getItem(
-            'appSession'
-          )
-      });
-    }
 
     if(
       hasCloudSyncFailure &&
