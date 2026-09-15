@@ -8214,14 +8214,40 @@ function uniqueTexts(values){
     return true;
   }
 
-  async function initializePermit(){
-    if(!state.permitNo){
-      renderInitializationFailure(
-        '허가번호가 없습니다. 대시보드의 TBM 시작 버튼에서 다시 진입하세요.'
-      );
 
-      return false;
-    }
+  function resolvePermitNoFromWorkId(workId){
+  var target = clean(workId);
+  if(!target){ return ''; }
+
+  var permits = readArray(permitStorageKey())
+    .filter(function(record){
+      var linked = clean(
+        (record && (
+          record.workId ||
+          record.sourceWorkId ||
+          (record.workflowLink && record.workflowLink.workId)
+        )) || ''
+      );
+      return linked === target && clean(record && record.permitNo);
+    })
+    .sort(function(a,b){
+      return recordTime(b) - recordTime(a);
+    });
+
+  if(!permits.length){ return ''; }
+  return clean(permits[0].permitNo);
+}
+  async function initializePermit(){
+if(!state.permitNo && state.workId){
+  state.permitNo = resolvePermitNoFromWorkId(state.workId);
+}
+
+if(!state.permitNo){
+  renderInitializationFailure(
+    '허가서 번호가 없습니다. 대시보드에서 TBM 버튼으로 다시 진입하거나 permitNo를 포함해 열어주세요.'
+  );
+  return false;
+}
 
     state.loading = true;
 
