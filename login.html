@@ -1101,33 +1101,17 @@ function clearApplicationSession(){
   sessionStorage.removeItem(
     "adminMode"
   );
-}
 
-/*
- * 관리자/사용자 로그인 시 강제 동기화를 위해
- * 로컬 캐시를 초기화하고 플래그를 남깁니다.
- */
-function prepareForcedSyncOnLogin(){
-  [
-    "safetyPermits",
-    "safetyTBM",
-    "riskAssessments",
-    "safetyQuizzes",
-    "permitsLastSync",
-    "workDbLastSync"
-  ].forEach(function(key){
-    localStorage.removeItem(key);
-  });
-
-  sessionStorage.setItem(
-    "forceFullSyncOnLogin",
-    "true"
-  );
-
-  sessionStorage.setItem(
-    "forceFullSyncAt",
-    String(Date.now())
-  );
+  try{
+    localStorage.removeItem(
+      "appSession"
+    );
+  }catch(error){
+    console.warn(
+      "[세션] localStorage 정리 실패:",
+      error
+    );
+  }
 }
 
 /*
@@ -1135,9 +1119,12 @@ function prepareForcedSyncOnLogin(){
  * 세션 키를 같은 형식으로 저장합니다.
  */
 function saveApplicationSession(session){
+  var serializedSession =
+    JSON.stringify(session);
+
   sessionStorage.setItem(
     "appSession",
-    JSON.stringify(session)
+    serializedSession
   );
 
   sessionStorage.setItem(
@@ -1158,6 +1145,18 @@ function saveApplicationSession(session){
   }else{
     sessionStorage.removeItem(
       "adminMode"
+    );
+  }
+
+  try{
+    localStorage.setItem(
+      "appSession",
+      serializedSession
+    );
+  }catch(error){
+    console.warn(
+      "[세션] localStorage 저장 실패:",
+      error
     );
   }
 }
@@ -1251,7 +1250,7 @@ $form.addEventListener(
        */
       await auth.setPersistence(
         firebase.auth.Auth.Persistence
-          .LOCAL
+          .SESSION
       );
 
       /*
@@ -1405,11 +1404,8 @@ $form.addEventListener(
         }
       );
 
-      prepareForcedSyncOnLogin();
-
       window.location.replace(
-        "안전관리플랫폼_대시보드_V6_.html?forceSync=1&t=" +
-        Date.now()
+        "안전관리플랫폼_대시보드_V6_.html"
       );
 
       return;
