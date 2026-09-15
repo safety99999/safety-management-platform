@@ -42,7 +42,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>포항양극재 출입자 안전퀴즈</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="./device-frame.css?v=3">
+<link rel="stylesheet" href="styles/device-frame.css?v=3">
 <style>
 /* ═══════════════════════════════════════
    포항양극재 안전퀴즈 v2.0
@@ -594,6 +594,22 @@ body{
 .info-val{color:var(--ink);font-weight:800;text-align:right;
   max-width:60%;word-break:break-word;letter-spacing:-.01em;}
 
+/* ═══ QR 코드 ═══ */
+.qr-box{
+  background:var(--card);border-radius:var(--r);padding:20px;
+  text-align:center;margin-bottom:14px;box-shadow:var(--sh);
+}
+.qr-title{
+  font-size:13px;font-weight:800;color:var(--sub);
+  margin-bottom:12px;letter-spacing:.03em;text-transform:uppercase;
+}
+.qr-placeholder{
+  width:180px;height:180px;background:var(--sunk);
+  border:2px dashed var(--line);border-radius:12px;
+  margin:0 auto;display:grid;place-items:center;
+  color:var(--faint);font-size:13px;font-weight:600;
+}
+
 /* ═══ 다음 앱 이동 섹션 ═══ */
 .next-app-section{
   background:var(--tint);border:2px solid var(--posco);
@@ -613,7 +629,7 @@ body{
   text-align:center;line-height:1.6;font-weight:600;
   margin-bottom:14px;
 }
-.nas-btn-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+.nas-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .nas-btn{
   padding:14px 10px;border:none;border-radius:12px;
   font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;
@@ -666,49 +682,6 @@ body{
   background:linear-gradient(135deg,#0B7A5F,var(--done));
   color:#fff;box-shadow:0 4px 14px rgba(14,138,107,.28);
 }
-
-/* ═══ 안전교육 플래시카드 ═══ */
-.education-card{
-  background:var(--card);border-radius:var(--r);padding:16px;
-  margin-bottom:12px;box-shadow:var(--sh);
-}
-.education-progress{
-  font-size:13px;font-weight:800;color:var(--sub);margin-bottom:8px;
-}
-.education-progress-bar{
-  width:100%;height:8px;background:var(--sunk);
-  border-radius:999px;overflow:hidden;border:1px solid var(--line);
-  margin-bottom:10px;
-}
-.education-progress-fill{
-  height:100%;width:0%;
-  background:linear-gradient(135deg,var(--deep),var(--bright));
-  transition:width .2s ease;
-}
-.education-title{
-  font-size:18px;font-weight:800;color:var(--ink);margin-bottom:10px;
-}
-.education-image-wrap{
-  width:100%;aspect-ratio:16/10;background:var(--sunk);
-  border:1px solid var(--line);border-radius:12px;
-  display:flex;align-items:center;justify-content:center;overflow:hidden;
-}
-.education-image{
-  width:100%;height:100%;object-fit:contain;display:block;
-}
-.education-desc{
-  margin-top:10px;font-size:13px;font-weight:600;color:var(--body);
-}
-
-.education-badge{
-  margin-top:8px;
-  background:var(--done-bg);color:var(--done);
-  border:1px solid rgba(14,138,107,.35);
-  border-radius:10px;padding:8px 10px;
-  font-size:12px;font-weight:800;
-  display:none;
-}
-.education-badge.show{display:block;}
 
 /* ═══ TOAST (2026-09-01 UX 개선: 상단 → 하단) ═══ */
 .toast-wrap{
@@ -917,67 +890,14 @@ body{
       • 개인정보 및 방문 정보 입력<br>
       • 13개 안전 문항 응시<br>
       • 합격 시 안전서약 및 서명<br>
-      • 제출 완료 후 별도 시스템에서 출입 절차 진행
+      • 출입증 발급 (QR 코드)
     </div>
-    <div class="education-badge" id="edu-complete-badge">✅ 안전교육 완료 (이어보기 저장됨)<br><span id="edu-complete-time"></span></div>
   </div>
 
-  <button class="btn-primary" style="width:100%;padding:17px;font-size:16px;margin-bottom:10px;" 
-          onclick="goToScreen('screen-education')">
-    📚 안전교육 시작
+  <button class="btn-primary" style="width:100%;padding:17px;font-size:16px;" 
+          onclick="goToScreen('screen-info')">
+    ✏️ 응시 시작하기
   </button>
-  <button class="btn-secondary" style="width:100%;padding:14px;font-size:14px;" 
-          onclick="goToInfoWithEducationCheck()">
-    ✏️ 퀴즈 바로 응시
-  </button>
-</div>
-
-<!-- ══════════════════════════════════════
-     SCREEN 1-2: 안전교육 안내
-     ══════════════════════════════════════ -->
-<div class="screen" id="screen-education">
-  <div class="info-box">
-    <div class="info-box-t">📚 안전교육 순서</div>
-    <div class="info-box-b">
-      • 출입자 기본 안전교육 (슬라이드 0~17)<br>
-      • 핵심 보강 (안전준수/보호구/비상대응)<br>
-      • 11대 안전철칙 (표지 + 0~11)<br>
-      • 교육 완료 후 퀴즈 응시
-    </div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="goToScreen('screen-welcome')">← 이전</button>
-    <button class="btn-primary" style="flex:2;" onclick="startEducation()">플래시카드 시작 →</button>
-  </div>
-  <div class="btn-row">
-    <button class="btn-secondary" style="width:100%;" onclick="resetEducationProgress()">↺ 교육 처음부터 다시보기</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════
-     SCREEN 1-3: 플래시카드
-     ══════════════════════════════════════ -->
-<div class="screen" id="screen-flashcard">
-  <div class="education-card">
-    <div class="education-progress" id="edu-progress">1 / 36</div>
-    <div class="education-progress-bar"><div class="education-progress-fill" id="edu-progress-fill"></div></div>
-    <div class="education-title" id="edu-title">안전교육</div>
-    <div class="education-image-wrap">
-      <img id="edu-image" class="education-image" src="" alt="안전교육 이미지">
-    </div>
-    <div class="education-desc" id="edu-desc"></div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn-secondary" id="btn-edu-prev" onclick="prevEducationCard()">← 이전 카드</button>
-    <button class="btn-primary" id="btn-edu-next" onclick="nextEducationCard()">다음 카드 →</button>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn-success" id="btn-edu-complete" style="width:100%;display:none;"
-            onclick="completeEducation()">✅ 안전교육 완료하고 퀴즈로 이동</button>
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -1213,7 +1133,7 @@ body{
     <div class="danger-box-t">⚠️ 최종 확인</div>
     <div class="danger-box-b">
       제출 후 수정이 불가합니다<br>
-      출입증 발급은 별도 시스템에서 진행됩니다
+      서명 완료 시 출입증이 발급됩니다
     </div>
   </div>
 
@@ -1232,7 +1152,8 @@ body{
   <div class="complete-hero">
     <div class="complete-ico">✅</div>
     <div class="complete-title">제출 완료!</div>
-    <div class="complete-sub">안전교육을 완료하셨습니다.<br>출입 절차는 별도 시스템에서 진행됩니다.<br>안전한 작업 되시기 바랍니다.</div>
+    <div class="complete-sub">안전교육을 완료하셨습니다.
+안전한 작업 되시기 바랍니다.</div>
   </div>
 
   <!-- 퀴즈 ID -->
@@ -1273,6 +1194,14 @@ body{
     </div>
   </div>
 
+  <!-- QR 코드 -->
+  <div class="qr-box">
+    <div class="qr-title">📱 출입증 QR 코드</div>
+    <div class="qr-placeholder" id="qr-code">
+      QR 코드 영역
+    </div>
+  </div>
+
   <!-- 다음 앱 이동 (v2.0 신규) -->
   <div class="next-app-section" id="nextAppSection">
     <div class="nas-title">📌 다음 단계</div>
@@ -1284,6 +1213,10 @@ body{
       <button class="nas-btn primary" onclick="goToRiskAssessment()">
         <span class="nas-btn-ico">🤖</span>
         <span>위험성평가</span>
+      </button>
+      <button class="nas-btn secondary" onclick="goToPermit()">
+        <span class="nas-btn-ico">🔐</span>
+        <span>작업허가서</span>
       </button>
     </div>
   </div>
@@ -1343,12 +1276,6 @@ var quizMode = 'full';
 var wrongQuestionIndices = [];
 var currentQuizQuestions = [];
 var pledgeAgreed = false;
-
-// 안전교육 플래시카드 상태
-var educationCards = [];
-var currentEducationIndex = 0;
-var educationCompleted = false;
-var educationCompletedAt = '';
 
 // 합격 기준
 var PASSING_RATIO = 0.8;
@@ -1431,7 +1358,7 @@ var questions = [
   },
   {
     category: 'TBM',
-    question: '7. 작업 전 현장(    ),\n작업 중 위험요인(    ) 확인,\n급박한 위험 시 작업(    ) 사용, 괄호 안의 적절한 단어는?',
+    question: '7. 작업 전 현장(    ),\ 작업 중 위험요인(    ) 확인,\ 급박한 위험 시 작업(    ) 사용, 괄호 안에 알맞은 단어는 무엇인가?',
 
     options: [
       '① 시작 - TBM - 중지권',
@@ -1591,10 +1518,6 @@ window.addEventListener('DOMContentLoaded', function(){
   initTheme();
   setupThemeSync();
   initSignaturePad();
-  educationCards = buildEducationCards();
-  restoreEducationState();
-  updateEducationBadge();
-  updateTopTitle('screen-welcome');
   
   // ⭐ v2.0: URL에서 workId 감지
   var params = new URLSearchParams(window.location.search);
@@ -1751,208 +1674,16 @@ function showWorkInfoBanner(work){
 }
 
 // ═══════════════════════════════════════════════════
-// 안전교육 플래시카드
-// ═══════════════════════════════════════════════════
-function buildEducationCards(){
-  var cards = [];
-
-  for(var i=0; i<=17; i++){
-    cards.push({
-      title: '출입자 기본 안전교육',
-      desc: '출입자 기본 안전교육 슬라이드 ' + i,
-      image: '안전교육/출입자 안전교육/슬라이드' + i + '.JPG'
-    });
-  }
-
-  cards.push(
-    { title: '핵심 보강', desc: '안전 준수사항', image: '안전교육/출입자 안전교육/안전준수사항.jpg' },
-    { title: '핵심 보강', desc: '출입자 안전보호구 기준', image: '안전교육/출입자 안전교육/출입자안전보호구.jpg' },
-    { title: '핵심 보강', desc: '비상상황 체계도', image: '안전교육/출입자 안전교육/비상상황체계도.jpg' },
-    { title: '핵심 보강', desc: '비상대피로 및 AED 위치도', image: '안전교육/출입자 안전교육/비상대피로,AED위치도.jpg' },
-    { title: '핵심 보강', desc: '비상 집결지', image: '안전교육/출입자 안전교육/비상집결지.jpg' }
-  );
-
-  cards.push({
-    title: '11대 안전철칙',
-    desc: '11대 안전철칙 표지',
-    image: '안전교육/11대 안전철칙/11대 안전철칙.jpg'
-  });
-
-  for(var j=0; j<=11; j++){
-    cards.push({
-      title: '11대 안전철칙',
-      desc: '안전철칙 카드 ' + j,
-      image: '안전교육/11대 안전철칙/' + j + '.png'
-    });
-  }
-
-  return cards;
-}
-
-function startEducation(){
-  if(!educationCards.length){
-    educationCards = buildEducationCards();
-  }
-  if(educationCompleted){
-    currentEducationIndex = educationCards.length - 1;
-  } else if(currentEducationIndex < 0 || currentEducationIndex >= educationCards.length){
-    currentEducationIndex = 0;
-  }
-  goToScreen('screen-flashcard');
-  renderEducationCard();
-}
-
-function renderEducationCard(){
-  if(!educationCards.length) return;
-
-  var card = educationCards[currentEducationIndex];
-  var total = educationCards.length;
-
-  setTxt('edu-progress', (currentEducationIndex + 1) + ' / ' + total);
-  var progressFillEl = document.getElementById('edu-progress-fill');
-  if(progressFillEl){
-    progressFillEl.style.width = (((currentEducationIndex + 1) / total) * 100) + '%';
-  }
-  setTxt('edu-title', card.title);
-  setTxt('edu-desc', card.desc);
-
-  var imgEl = document.getElementById('edu-image');
-  if(imgEl){
-    imgEl.onerror = function(){
-      setTxt('edu-desc', card.desc + ' (이미지 로드 실패: ' + card.image + ')');
-      this.onerror = null;
-    };
-    imgEl.src = encodeURI(card.image);
-    imgEl.alt = card.title + ' - ' + card.desc;
-  }
-
-  var prevBtn = document.getElementById('btn-edu-prev');
-  var nextBtn = document.getElementById('btn-edu-next');
-  var completeBtn = document.getElementById('btn-edu-complete');
-
-  if(prevBtn) prevBtn.disabled = currentEducationIndex === 0;
-  if(nextBtn) nextBtn.style.display = currentEducationIndex === total - 1 ? 'none' : 'block';
-  if(completeBtn) completeBtn.style.display = currentEducationIndex === total - 1 ? 'block' : 'none';
-
-  preloadEducationImages(currentEducationIndex);
-  saveEducationState();
-}
-
-function preloadEducationImages(startIndex){
-  [1,2].forEach(function(step){
-    var nextIndex = startIndex + step;
-    if(nextIndex < educationCards.length){
-      var pre = new Image();
-      pre.src = encodeURI(educationCards[nextIndex].image);
-    }
-  });
-}
-
-function nextEducationCard(){
-  if(currentEducationIndex >= educationCards.length - 1) return;
-  currentEducationIndex++;
-  renderEducationCard();
-}
-
-function prevEducationCard(){
-  if(currentEducationIndex <= 0) return;
-  currentEducationIndex--;
-  renderEducationCard();
-}
-
-function completeEducation(){
-  educationCompleted = true;
-  educationCompletedAt = new Date().toISOString();
-  saveEducationState();
-  updateEducationBadge();
-  showToast('안전교육을 완료했습니다. 퀴즈를 진행하세요.', 'success');
-  goToScreen('screen-info');
-}
-
-function saveEducationState(){
-  try{
-    localStorage.setItem('visitorSafetyEducationState', JSON.stringify({
-      index: currentEducationIndex,
-      completed: educationCompleted,
-      completedAt: educationCompletedAt
-    }));
-  }catch(e){}
-}
-
-function restoreEducationState(){
-  try{
-    var raw = localStorage.getItem('visitorSafetyEducationState');
-    if(!raw) return;
-    var state = JSON.parse(raw);
-    if(typeof state.index === 'number') currentEducationIndex = state.index;
-    educationCompleted = !!state.completed;
-    educationCompletedAt = state.completedAt || '';
-  }catch(e){}
-}
-
-function updateEducationBadge(){
-  var badge = document.getElementById('edu-complete-badge');
-  var timeEl = document.getElementById('edu-complete-time');
-  if(!badge) return;
-
-  if(educationCompleted){
-    badge.classList.add('show');
-    if(timeEl) timeEl.textContent = educationCompletedAt ? ('완료 시각: ' + fmtDateTime(educationCompletedAt)) : '';
-  } else {
-    badge.classList.remove('show');
-    if(timeEl) timeEl.textContent = '';
-  }
-}
-
-function resetEducationProgress(){
-  showCustomConfirm({
-    icon: '↺',
-    title: '교육 진행 초기화',
-    message: '안전교육 진행기록을 초기화하고\n처음부터 다시 보시겠습니까?',
-    okText: '초기화',
-    okType: 'warn'
-  }, function(ok){
-    if(!ok) return;
-    currentEducationIndex = 0;
-    educationCompleted = false;
-    educationCompletedAt = '';
-    saveEducationState();
-    updateEducationBadge();
-    showToast('교육 진행이 초기화되었습니다.', 'info');
-    startEducation();
-  });
-}
-
-function goToInfoWithEducationCheck(){
-  if(educationCompleted){
-    goToScreen('screen-info');
-    return;
-  }
-
-  showCustomConfirm({
-    icon: '📚',
-    title: '안전교육 먼저 진행 권장',
-    message: '안전교육을 먼저 완료하면\n퀴즈 합격에 도움이 됩니다.\n\n지금 바로 응시하시겠습니까?',
-    okText: '바로 응시',
-    okType: 'warn'
-  }, function(ok){
-    if(ok) goToScreen('screen-info');
-    else goToScreen('screen-education');
-  });
-}
-
-// ═══════════════════════════════════════════════════
 // 화면 전환
 // ═══════════════════════════════════════════════════
 function goToScreen(screenId){
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById(screenId).classList.add('active');
-  updateTopTitle(screenId);
   
   // 진행 바 표시
   var progressWrap = document.getElementById('progressWrap');
   var showProgress = ['screen-info', 'screen-site', 'screen-date', 'screen-quiz', 'screen-pledge'];
-  var hideProgress = ['screen-welcome', 'screen-education', 'screen-flashcard', 'screen-result', 'screen-complete'];
+  var hideProgress = ['screen-welcome', 'screen-result', 'screen-complete'];
   
   if(showProgress.indexOf(screenId) >= 0){
     progressWrap.style.display = 'block';
@@ -1962,22 +1693,6 @@ function goToScreen(screenId){
   }
   
   window.scrollTo(0, 0);
-}
-
-function updateTopTitle(screenId){
-  var titleMap = {
-    'screen-welcome': '🏭 출입자 안전퀴즈',
-    'screen-education': '📚 안전교육 안내',
-    'screen-flashcard': '🧠 안전교육 플래시카드',
-    'screen-info': '📋 개인정보 입력',
-    'screen-site': '🏢 방문 위치 선택',
-    'screen-date': '📅 방문 기간 선택',
-    'screen-quiz': '❓ 안전퀴즈 응시',
-    'screen-result': '📊 퀴즈 결과',
-    'screen-pledge': '✍️ 안전서약 및 서명',
-    'screen-complete': '✅ 제출 완료'
-  };
-  setTxt('topTitle', titleMap[screenId] || '🏭 출입자 안전퀴즈');
 }
 
 function updateProgress(screenId){
@@ -2055,12 +1770,6 @@ function validateDateAndNext(){
   
   if(!dateStart || !dateEnd){
     showToast('방문 기간을 모두 선택해주세요', 'danger');
-    return;
-  }
-
-  if(!educationCompleted){
-    showToast('안전교육을 먼저 완료해주세요', 'warn');
-    goToScreen('screen-education');
     return;
   }
   
@@ -2394,8 +2103,6 @@ function executeSubmit(){
       status: userData.passed ? '합격' : '불합격',
       answers: userData.answers,
       signature: userData.signature,
-      educationCompleted: educationCompleted,
-      educationCompletedAt: educationCompletedAt || '',
       completedAt: now.toISOString(),
       createdAt: now.toISOString(),
       schemaVersion: 2                  // ⭐ v2.0
@@ -2454,6 +2161,15 @@ function goToRiskAssessment(){
   setTimeout(function(){ window.location.href = url; }, 500);
 }
 
+function goToPermit(){
+  var url = '안전작업허가서_v2.html';
+  if(userData.workId){
+    url += '?workId=' + encodeURIComponent(userData.workId);
+  }
+  showToast('🔐 작업허가서로 이동합니다', 'info');
+  setTimeout(function(){ window.location.href = url; }, 500);
+}
+
 // ═══════════════════════════════════════════════════
 // 홈 / 뒤로가기
 // ═══════════════════════════════════════════════════
@@ -2461,7 +2177,7 @@ function goHome(){
   var activeScreen = document.querySelector('.screen.active');
   var screenId = activeScreen ? activeScreen.id : '';
   
-  var midScreens = ['screen-education', 'screen-flashcard', 'screen-info', 'screen-site', 'screen-date', 'screen-quiz', 'screen-pledge'];
+  var midScreens = ['screen-info', 'screen-site', 'screen-date', 'screen-quiz', 'screen-pledge'];
   
   if(midScreens.indexOf(screenId) >= 0){
     showCustomConfirm({
@@ -2484,7 +2200,6 @@ function goBack(){
   var screenId = activeScreen ? activeScreen.id : '';
   
   var flow = {
-    'screen-education': 'screen-welcome',
     'screen-info': 'screen-welcome',
     'screen-site': 'screen-info',
     'screen-date': 'screen-site',
@@ -2493,8 +2208,6 @@ function goBack(){
   
   if(flow[screenId]){
     goToScreen(flow[screenId]);
-  } else if(screenId === 'screen-flashcard'){
-    goToScreen('screen-education');
   } else if(screenId === 'screen-quiz'){
     showCustomConfirm({
       icon: '⚠️',
@@ -2538,18 +2251,6 @@ function fmtDate(d){
   return y + '-' + m + '-' + day;
 }
 
-function fmtDateTime(iso){
-  if(!iso) return '';
-  var d = new Date(iso);
-  if(isNaN(d.getTime())) return '';
-  var y = d.getFullYear();
-  var m = String(d.getMonth() + 1).padStart(2, '0');
-  var day = String(d.getDate()).padStart(2, '0');
-  var hh = String(d.getHours()).padStart(2, '0');
-  var mm = String(d.getMinutes()).padStart(2, '0');
-  return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
-}
-
 function getVal(id){
   var el = document.getElementById(id);
   return el ? (el.value || '').trim() : '';
@@ -2591,4 +2292,3 @@ function showToast(msg, type){
 </div><!-- /.phone-frame -->
 </body>
 </html>
-
