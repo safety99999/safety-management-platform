@@ -15987,9 +15987,16 @@ async function loadPermits(
         );
       });
 
-  saveLocalPermits(
-    synchronized
-  );
+    if(
+    synchronized.length ||
+    !cached.length
+  ){
+    saveLocalPermits(
+      synchronized
+    );
+  }else{
+    synchronized = cached;
+  }
 
   window.dispatchEvent(
     new CustomEvent(
@@ -17109,10 +17116,34 @@ window.DashboardFirebase = {
         );
       });
 
-      localStorage.setItem(
-        'safetyTBM',
-        JSON.stringify(cloud)
-      );
+            var existingTbm = [];
+
+      try{
+        existingTbm =
+          JSON.parse(
+            localStorage.getItem(
+              'safetyTBM'
+            ) || '[]'
+          );
+
+        if(!Array.isArray(existingTbm)){
+          existingTbm = [];
+        }
+      }catch(error){
+        existingTbm = [];
+      }
+
+      if(
+        cloud.length ||
+        !existingTbm.length
+      ){
+        localStorage.setItem(
+          'safetyTBM',
+          JSON.stringify(cloud)
+        );
+      }else{
+        cloud = existingTbm;
+      }
 
       window.dispatchEvent(
         new CustomEvent(
