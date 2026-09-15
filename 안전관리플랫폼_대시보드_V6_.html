@@ -17276,6 +17276,24 @@ console.log(
 
 <script>
 (function(){
+  function prefersLongSyncDelay(){
+    try{
+      var parameters =
+        new URLSearchParams(
+          window.location.search ||
+          ''
+        );
+
+      return (
+        parameters.get(
+          'forceSync'
+        ) === '1'
+      );
+    }catch(error){
+      return false;
+    }
+  }
+
    async function sync(){
     if(
       !window.DashboardFirebase ||
@@ -17318,10 +17336,34 @@ console.log(
       promises.push(window.DashboardFirebase.loadQuizResults());
     }
 
-    var results =
+        var results =
       await Promise.allSettled(
         promises
       );
+
+    var hasCloudSyncFailure =
+      results.slice(1).some(
+        function(result){
+          return (
+            result &&
+            result.status ===
+              'rejected'
+          );
+        }
+      );
+
+    if(
+      hasCloudSyncFailure &&
+      !sync.retryScheduled
+    ){
+      sync.retryScheduled =
+        true;
+
+      sync.initialSyncStarted =
+        false;
+
+      setTimeout(sync,1500);
+    }
 
     window.DashboardV8
       .refresh();
@@ -17380,12 +17422,22 @@ console.log(
   ){
     document.addEventListener(
       'DOMContentLoaded',
-      function(){
-        setTimeout(sync,300);
+            function(){
+        setTimeout(
+          sync,
+          prefersLongSyncDelay()
+            ? 1600
+            : 300
+        );
       }
     );
   }else{
-    setTimeout(sync,300);
+    setTimeout(
+      sync,
+      prefersLongSyncDelay()
+        ? 1600
+        : 300
+    );
   }
 })();
 </script>
