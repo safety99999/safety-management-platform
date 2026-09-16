@@ -463,6 +463,30 @@ button{
   }
 }
 
+@media(min-width:768px){
+  .phone-frame{
+    display:block!important;
+    width:480px!important;
+    height:820px!important;
+    max-height:calc(100vh - 40px)!important;
+  }
+
+  .phone-screen{
+    width:100%!important;
+    height:100%!important;
+    border-radius:40px!important;
+    overflow:hidden!important;
+  }
+
+  .phone-frame .app{
+    max-width:100%!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:100%!important;
+    overflow-y:auto!important;
+  }
+}
+
 @media print{
   @page{
     size:A4;
@@ -502,7 +526,7 @@ button{
   }
 }
 </style>
-<link rel="stylesheet" href="./device-frame.css">
+<link rel="stylesheet" href="./device-frame.css?v=3">
 </head>
 
 <body>
