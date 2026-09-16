@@ -7,7 +7,7 @@
 (function(global){
   'use strict';
 
-  var VERSION = '1.2.0';
+  var VERSION = '1.3.2';
 
   // ─── 세션 판별 ─────────────────────────
   function readSession(){
@@ -74,11 +74,15 @@
     
     // 조직·회사
     company: 'TEST 협력사',
+    contractorCompany: 'TEST 도급사',
+    subcontractorCompany: 'TEST 수급사',
     department: 'TEST부서',
     team: 'TEST팀',
+    position: 'TEST 담당',
     
     // 연락처
     phone: '010-0000-0000',
+    officePhone: '054-000-0000',
     email: 'test@test.co.kr',
     
     // 작업 정보
@@ -107,6 +111,7 @@
     // 기타
     permitNo: '',
     workOrderNo: 'WO-TEST-001',
+    emergencyProc: '비상 시 작업중지 후 현장 통제 및 즉시 보고',
     remark: 'TEST 비고'
   };
 
@@ -127,10 +132,14 @@
     
     // 조직
     { pattern: /(company|회사|협력사|업체)/i, value: 'company' },
+    { pattern: /(contractor|도급|원청)/i, value: 'contractorCompany' },
+    { pattern: /(subcontractor|수급|하청)/i, value: 'subcontractorCompany' },
+    { pattern: /(position|직책|직위)/i, value: 'position' },
     { pattern: /(department|부서|소속)/i, value: 'department' },
     { pattern: /(team|팀)/i, value: 'team' },
     
     // 연락처
+    { pattern: /(safety.*manager.*phone|안전.*담당.*전화|안전관리자.*전화)/i, value: 'officePhone' },
     { pattern: /(phone|tel|mobile|hp|contact|전화|연락처|휴대폰|핸드폰)/i, value: 'phone' },
     { pattern: /(email|e-mail|mail|메일|이메일)/i, value: 'email' },
     
@@ -147,7 +156,9 @@
     { pattern: /(measure|대책|안전.*조치|조치)/i, value: 'measure' },
     { pattern: /(opinion|의견|종합.*의견)/i, value: 'opinion' },
     { pattern: /(reason|사유|이유)/i, value: 'reason' },
-    { pattern: /(participants|참여자|명단)/i, value: 'participants' },
+    { pattern: /(participants|participant|attendee|참여자|참석자|참여 인원|참석 인원|명단)/i, value: 'participants' },
+    { pattern: /(confirm.*name|확인자|확인.*성명|참여자.*확인|attendee.*name)/i, value: 'name' },
+    { pattern: /(emergency.*proc|비상.*조치|비상.*대응|응급.*조치)/i, value: 'emergencyProc' },
     { pattern: /(remark|비고|메모)/i, value: 'remark' },
     
     // 가스 측정
@@ -330,6 +341,23 @@
   }
 
   // ─── 서명 캔버스 자동 렌더링 ─────────
+  function isLikelySignatureCanvas(canvas){
+    if(!canvas || canvas.tagName !== 'CANVAS') return false;
+
+    var idClass = ((canvas.id || '') + ' ' + (canvas.className || '')).toLowerCase();
+    if(/chart|graph|qr|barcode|map|video|camera|preview|thumbnail/.test(idClass)){
+      return false;
+    }
+
+    var width = Number(canvas.width || canvas.offsetWidth || 0);
+    var height = Number(canvas.height || canvas.offsetHeight || 0);
+    if(width < 120 || height < 40) return false;
+
+    if(canvas.closest('[aria-hidden="true"], [hidden]')) return false;
+
+    return true;
+  }
+
   function drawTestSignature(canvas, label){
     if(!canvas || canvas.dataset.testerAutofilled === 'true') return false;
     
@@ -391,36 +419,42 @@
       'canvas[id*="signature"]'
     ];
     
-    selectors.forEach(function(sel){
-      try{
-        document.querySelectorAll(sel).forEach(function(canvas){
-          if(canvas.tagName !== 'CANVAS') return;
-          
-          // 근처 label에서 이름 추출
-          var label = 'TEST';
-          var parent = canvas.closest('.form-group, .sig-wrap, .signature-wrap');
-          if(parent){
-            var labelEl = parent.querySelector('label, .f-label, .sig-label');
-            if(labelEl){
-              var text = labelEl.textContent.replace(/[*<>]/g, '').trim();
-              if(text.length > 0 && text.length < 20){
-                label = 'TEST ' + text.split(/[·\s]/)[0];
-              }
+    function drawFromNodeList(nodeList){
+      nodeList.forEach(function(canvas){
+        if(!isLikelySignatureCanvas(canvas)) return;
+
+        // 근처 label에서 이름 추출
+        var label = 'TEST';
+        var parent = canvas.closest('.form-group, .sig-wrap, .signature-wrap, .attendee-row, .participant-row, tr, li, .card');
+        if(parent){
+          var labelEl = parent.querySelector('label, .f-label, .sig-label, .name, .title');
+          if(labelEl){
+            var text = labelEl.textContent.replace(/[*<>]/g, '').trim();
+            if(text.length > 0 && text.length < 30){
+              label = 'TEST ' + text.split(/[·\s]/)[0];
             }
           }
-          
-          // 근처 이름 input에서 이름 가져오기
-          var nameInput = parent && parent.querySelector('input[type="text"]');
-          if(nameInput && nameInput.value){
-            label = nameInput.value;
-          }
-          
-          if(drawTestSignature(canvas, label)){
-            count++;
-          }
-        });
+        }
+
+        // 근처 이름 input에서 이름 가져오기
+        var nameInput = parent && parent.querySelector('input[type="text"], input[type="search"], input:not([type])');
+        if(nameInput && nameInput.value){
+          label = nameInput.value;
+        }
+
+        if(drawTestSignature(canvas, label)){
+          count++;
+        }
+      });
+    }
+
+    selectors.forEach(function(sel){
+      try{
+        drawFromNodeList(document.querySelectorAll(sel));
       }catch(e){}
     });
+
+    // 주의: 전체 canvas fallback은 레이아웃/차트 캔버스 오작동 가능성으로 비활성
     
     return count;
   }
@@ -497,6 +531,46 @@
     });
   }
 
+  // ─── TBM 참여자 확인 누락 보강 ─────────
+  function fillParticipantConfirmations(){
+    var count = 0;
+
+    // 참여/참석 확인 체크박스
+    document.querySelectorAll('input[type="checkbox"]').forEach(function(el){
+      if(el.disabled || el.readOnly || el.checked) return;
+
+      var label = '';
+      if(el.id){
+        var labelEl = document.querySelector('label[for="' + el.id + '"]');
+        if(labelEl) label = labelEl.textContent;
+      }
+      var wrapper = el.closest('label, tr, li, .row, .item, .card, .participant-row, .attendee-row');
+      if(wrapper) label += ' ' + wrapper.textContent;
+
+      var key = ((el.id || '') + ' ' + (el.name || '') + ' ' + label).toLowerCase();
+      if(/참여|참석|출석|tbm|attendee|participant|확인/.test(key)){
+        el.checked = true;
+        el.classList.add('tester-autofilled');
+        try{ el.dispatchEvent(new Event('change', { bubbles: true })); }catch(e){}
+        count++;
+      }
+    });
+
+    // 참여자 영역 내 빈 텍스트 입력값 채움
+    document.querySelectorAll('[id*="participant" i], [class*="participant" i], [id*="attendee" i], [class*="attendee" i], [id*="tbm" i], [class*="tbm" i]').forEach(function(box){
+      box.querySelectorAll('input:not([type="hidden"]), textarea').forEach(function(el){
+        if(el.disabled || el.readOnly) return;
+        if(String(el.value || '').trim()) return;
+
+        if(fillField(el)){
+          count++;
+        }
+      });
+    });
+
+    return count;
+  }
+
   // ─── 성명/연락처 누락 방지 보강 ────────
   function fillCriticalIdentityFields(){
     var count = 0;
@@ -543,6 +617,7 @@
       textareas: 0,
       selects: 0,
       signatures: 0,
+      participant: 0,
       critical: 0,
       total: 0
     };
@@ -582,10 +657,13 @@
     // 6️⃣ 커스텀 토글 버튼
     fillToggleButtons();
 
-    // 7️⃣ 성명/전화/이메일 누락 필드 보강
+    // 7️⃣ TBM 참여자 확인 누락 보강
+    stats.participant = fillParticipantConfirmations();
+
+    // 8️⃣ 성명/전화/이메일 누락 필드 보강
     stats.critical = fillCriticalIdentityFields();
     
-    stats.total = stats.inputs + stats.textareas + stats.selects + stats.signatures + stats.critical;
+    stats.total = stats.inputs + stats.textareas + stats.selects + stats.signatures + stats.participant + stats.critical;
     
     console.log(
       '%c[TesterAutofill v' + VERSION + '] ✅ 자동 채움 완료',
