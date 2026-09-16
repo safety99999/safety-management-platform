@@ -130,6 +130,17 @@
     { pattern: /(worker.*name|작업자.*이름)/i, value: 'worker' },
     { pattern: /(name|이름|성명)/i, value: 'name' },
     
+    // 연락처 (조직 키워드보다 우선)
+    // 예: contractor-email, subcontractor-phone 같은 필드가
+    // 회사명으로 잘못 매칭되는 문제 방지
+    { pattern: /(contractor.*email|도급.*이메일|원청.*이메일)/i, value: 'email' },
+    { pattern: /(subcontractor.*email|수급.*이메일|하청.*이메일)/i, value: 'email' },
+    { pattern: /(contractor.*(phone|tel|mobile|contact)|도급.*(연락처|전화|휴대폰)|원청.*(연락처|전화|휴대폰))/i, value: 'phone' },
+    { pattern: /(subcontractor.*(phone|tel|mobile|contact)|수급.*(연락처|전화|휴대폰)|하청.*(연락처|전화|휴대폰))/i, value: 'phone' },
+    { pattern: /(safety.*manager.*phone|안전.*담당.*전화|안전관리자.*전화)/i, value: 'officePhone' },
+    { pattern: /(phone|tel|mobile|hp|contact|전화|연락처|휴대폰|핸드폰)/i, value: 'phone' },
+    { pattern: /(email|e-mail|mail|메일|이메일)/i, value: 'email' },
+    
     // 조직
     { pattern: /(company|회사|협력사|업체)/i, value: 'company' },
     { pattern: /(contractor|도급|원청)/i, value: 'contractorCompany' },
@@ -137,11 +148,6 @@
     { pattern: /(position|직책|직위)/i, value: 'position' },
     { pattern: /(department|부서|소속)/i, value: 'department' },
     { pattern: /(team|팀)/i, value: 'team' },
-    
-    // 연락처
-    { pattern: /(safety.*manager.*phone|안전.*담당.*전화|안전관리자.*전화)/i, value: 'officePhone' },
-    { pattern: /(phone|tel|mobile|hp|contact|전화|연락처|휴대폰|핸드폰)/i, value: 'phone' },
-    { pattern: /(email|e-mail|mail|메일|이메일)/i, value: 'email' },
     
     // 작업
     { pattern: /(work-name|workname|작업명)/i, value: 'workName' },
