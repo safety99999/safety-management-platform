@@ -464,11 +464,26 @@ button{
 }
 
 @media(min-width:768px){
+  body{
+    min-height:100vh;
+    margin:0;
+    padding:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(ellipse at center,#e5e8ec 0%,#c8ccd2 60%,#a8adb4 100%)!important;
+  }
+
   .phone-frame{
     display:block!important;
+    position:relative!important;
     width:480px!important;
     height:820px!important;
     max-height:calc(100vh - 40px)!important;
+    padding:12px!important;
+    border-radius:52px!important;
+    background:#1a1a1a!important;
+    box-shadow:0 40px 80px rgba(0,0,0,.30),0 20px 40px rgba(0,0,0,.20),inset 0 0 0 2px #2a2a2a!important;
   }
 
   .phone-screen{
@@ -476,6 +491,7 @@ button{
     height:100%!important;
     border-radius:40px!important;
     overflow:hidden!important;
+    background:var(--bg)!important;
   }
 
   .phone-frame .app{
@@ -483,9 +499,12 @@ button{
     width:100%!important;
     height:100%!important;
     min-height:100%!important;
+    margin:0!important;
     overflow-y:auto!important;
+    overflow-x:hidden!important;
   }
 }
+
 
 @media print{
   @page{
