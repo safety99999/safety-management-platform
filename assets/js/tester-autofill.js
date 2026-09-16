@@ -180,6 +180,24 @@
     return global.TESTER_AUTOFILL_CONFIG || {};
   }
 
+  // 안전정보제공서 계열 누락 방지용 하드 매핑
+  function getHardMappedValue(el){
+    var id = String(el && el.id || '').toLowerCase();
+    if(!id) return null;
+
+    var fixed = {
+      'contractor-phone': SAMPLE_DATA.phone,
+      'contractor-email': SAMPLE_DATA.email,
+      'sub-phone': SAMPLE_DATA.phone,
+      'sub-email': SAMPLE_DATA.email,
+      'send-email': SAMPLE_DATA.email
+    };
+
+    return Object.prototype.hasOwnProperty.call(fixed, id)
+      ? fixed[id]
+      : null;
+  }
+
   // ─── 값 채우기 (빈 필드만) ─────────────
   function fillIfBlank(el, value){
     if(!el) return false;
@@ -290,7 +308,13 @@
     // hidden 필드는 skip
     if(el.type === 'hidden') return false;
     
-    // 1️⃣ 커스텀 config 우선 매칭
+    // 1️⃣ 하드 매핑 (페이지별 ID 누락 방지)
+    var hardMapped = getHardMappedValue(el);
+    if(hardMapped){
+      return fillIfBlank(el, hardMapped);
+    }
+
+    // 2️⃣ 커스텀 config 우선 매칭
     var customConfig = getCustomConfig();
     if(customConfig[el.id]){
       return fillIfBlank(el, customConfig[el.id]);
@@ -299,21 +323,21 @@
       return fillIfBlank(el, customConfig[el.name]);
     }
     
-    // 2️⃣ 필드 타입별 매칭
+    // 3️⃣ 필드 타입별 매칭
     var fieldType = detectFieldType(el);
     if(fieldType && SAMPLE_DATA[fieldType]){
       return fillIfBlank(el, SAMPLE_DATA[fieldType]);
     }
     
-    // 3️⃣ input 타입 기반 처리 (date, email 등)
+    // 4️⃣ input 타입 기반 처리 (date, email 등)
     if(fillByInputType(el)) return true;
     
-    // 4️⃣ textarea에 기본값
+    // 5️⃣ textarea에 기본값
     if(el.tagName === 'TEXTAREA'){
       return fillIfBlank(el, 'TEST 입력값');
     }
     
-    // 5️⃣ 그 외 텍스트 input
+    // 6️⃣ 그 외 텍스트 input
     if(el.tagName === 'INPUT' && (!el.type || el.type === 'text')){
       return fillIfBlank(el, 'TEST');
     }
