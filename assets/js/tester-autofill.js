@@ -7,7 +7,7 @@
 (function(global){
   'use strict';
 
-  var VERSION = '1.0.0';
+  var VERSION = '1.2.0';
 
   // ─── 세션 판별 ─────────────────────────
   function readSession(){
@@ -22,11 +22,23 @@
 
   function isTester(){
     var session = readSession();
+    if(!session) return false;
+
+    var inTestEnv = session.environment === 'test';
+    var accessMode = String(session.accessMode || '').toLowerCase();
+    var role = String(session.role || '').toLowerCase();
+
+    var allowedAccessMode =
+      accessMode === 'tester' ||
+      accessMode === 'admin';
+
+    var allowedRole =
+      role === 'tester' ||
+      role === 'admin';
+
     return Boolean(
-      session &&
-      session.environment === 'test' &&
-      session.accessMode === 'tester' &&
-      session.role === 'tester'
+      inTestEnv &&
+      (allowedAccessMode || allowedRole)
     );
   }
 
@@ -119,8 +131,8 @@
     { pattern: /(team|팀)/i, value: 'team' },
     
     // 연락처
-    { pattern: /(phone|tel|전화|연락처|휴대폰)/i, value: 'phone' },
-    { pattern: /(email|메일|이메일)/i, value: 'email' },
+    { pattern: /(phone|tel|mobile|hp|contact|전화|연락처|휴대폰|핸드폰)/i, value: 'phone' },
+    { pattern: /(email|e-mail|mail|메일|이메일)/i, value: 'email' },
     
     // 작업
     { pattern: /(work-name|workname|작업명)/i, value: 'workName' },
@@ -160,6 +172,11 @@
     
     el.value = value;
     el.classList.add('tester-autofilled');
+
+    // 이벤트 트리거 (양방향 바인딩/검증 로직 반영)
+    try{ el.dispatchEvent(new Event('input', { bubbles: true })); }catch(e){}
+    try{ el.dispatchEvent(new Event('change', { bubbles: true })); }catch(e){}
+    try{ el.dispatchEvent(new Event('blur', { bubbles: true })); }catch(e){}
     
     // 시각적 피드백
     el.style.transition = 'background 0.3s';
@@ -177,6 +194,9 @@
     var id = (el.id || '').toLowerCase();
     var name = (el.name || '').toLowerCase();
     var placeholder = (el.placeholder || '').toLowerCase();
+    var ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    var title = (el.title || '').toLowerCase();
+    var dataLabel = (el.getAttribute('data-label') || '').toLowerCase();
     var label = '';
     
     // 근처 label 텍스트 확인
@@ -189,7 +209,7 @@
     var parentLabel = el.closest('label');
     if(parentLabel) label += ' ' + parentLabel.textContent.toLowerCase();
     
-    var combined = id + ' ' + name + ' ' + placeholder + ' ' + label;
+    var combined = id + ' ' + name + ' ' + placeholder + ' ' + ariaLabel + ' ' + title + ' ' + dataLabel + ' ' + label;
     
     // 패턴 매칭
     for(var i = 0; i < FIELD_PATTERNS.length; i++){
@@ -477,10 +497,44 @@
     });
   }
 
+  // ─── 성명/연락처 누락 방지 보강 ────────
+  function fillCriticalIdentityFields(){
+    var count = 0;
+
+    document.querySelectorAll('input:not([type="hidden"])').forEach(function(el){
+      if(el.disabled || el.readOnly) return;
+      if(String(el.value || '').trim()) return;
+
+      var key = [
+        el.id || '',
+        el.name || '',
+        el.placeholder || '',
+        el.getAttribute('aria-label') || '',
+        el.title || ''
+      ].join(' ').toLowerCase();
+
+      if(/성명|이름|name/.test(key)){
+        if(fillIfBlank(el, SAMPLE_DATA.name)) count++;
+        return;
+      }
+
+      if(/전화|연락처|휴대폰|핸드폰|phone|tel|mobile|hp|contact/.test(key)){
+        if(fillIfBlank(el, SAMPLE_DATA.phone)) count++;
+        return;
+      }
+
+      if(/이메일|메일|email|e-mail|mail/.test(key)){
+        if(fillIfBlank(el, SAMPLE_DATA.email)) count++;
+      }
+    });
+
+    return count;
+  }
+
   // ─── 메인 실행 함수 ─────────────────
   function runAutofill(){
     if(!isTester()){
-      console.log('[TesterAutofill] 테스터 세션 아님 · 건너뜀');
+      console.log('[TesterAutofill] 테스트 대상 세션(테스터/관리자) 아님 · 건너뜀');
       return { skipped: true };
     }
     
@@ -489,6 +543,7 @@
       textareas: 0,
       selects: 0,
       signatures: 0,
+      critical: 0,
       total: 0
     };
     
@@ -526,8 +581,11 @@
     
     // 6️⃣ 커스텀 토글 버튼
     fillToggleButtons();
+
+    // 7️⃣ 성명/전화/이메일 누락 필드 보강
+    stats.critical = fillCriticalIdentityFields();
     
-    stats.total = stats.inputs + stats.textareas + stats.selects + stats.signatures;
+    stats.total = stats.inputs + stats.textareas + stats.selects + stats.signatures + stats.critical;
     
     console.log(
       '%c[TesterAutofill v' + VERSION + '] ✅ 자동 채움 완료',
@@ -615,6 +673,10 @@
       var stats = runAutofill();
       if(stats && !stats.skipped){
         showBadge(stats);
+
+        // 동적 렌더링/후처리로 늦게 생기는 입력창 보강
+        setTimeout(runAutofill, 700);
+        setTimeout(runAutofill, 1600);
       }
     }, delay);
   }
