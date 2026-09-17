@@ -15542,19 +15542,21 @@ if(completionButton){
 
       return result;
     };
+function startApp(){
+  initialize();
 
-  if(
-    document.readyState ===
-      'loading'
-  ){
-    document.addEventListener(
-      'DOMContentLoaded',
-      initialize
-    );
-  }else{
-    initialize();
+  // 모바일 인증 복구 지연 대응
+  setTimeout(function(){
     forceFirstSyncForAuthenticatedUser();
-  }
+  }, 600);
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', startApp);
+}else{
+  startApp();
+}
+
 
 })(window);
 </script>
