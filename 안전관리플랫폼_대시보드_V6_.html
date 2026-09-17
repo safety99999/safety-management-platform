@@ -2903,7 +2903,19 @@ button{touch-action:manipulation}
 
     return session;
   }
+function readAppSessionRaw(){
+  var raw =
+    readAppSessionRaw() ||
+    localStorage.getItem('appSession');
 
+  if(raw && !sessionStorage.getItem('appSession')){
+    try{
+      sessionStorage.setItem('appSession', raw);
+    }catch(_e){}
+  }
+
+  return raw;
+}
   var appSession =
     validateSession();
 
@@ -14394,6 +14406,41 @@ async function completeCurrentWork(){
         : '캐시'
     );
   }
+ async function forceFirstSyncForAuthenticatedUser(){
+  try{
+    if(
+      !(global.isAuthenticatedUser && global.isAuthenticatedUser()) ||
+      !global.DashboardFirebase
+    ){
+      return;
+    }
+
+    var session =
+      global.APP_SESSION || {};
+
+    var uid =
+      session.uid || 'unknown';
+
+    var syncKey =
+      'firstCloudSyncDone:' + uid;
+
+    if(sessionStorage.getItem(syncKey) === '1'){
+      return;
+    }
+
+    await Promise.allSettled([
+      global.DashboardFirebase.loadPermits(true),
+      global.DashboardFirebase.loadRiskResults(),
+      global.DashboardFirebase.loadTbmResults(),
+      global.DashboardFirebase.loadQuizResults()
+    ]);
+
+    sessionStorage.setItem(syncKey, '1');
+    refreshFromCache();
+  }catch(error){
+    console.warn('[Dashboard] 초기 강제 동기화 실패:', error);
+  }
+} 
   function withTimeout(
     promise,
     timeoutMs,
@@ -14475,23 +14522,16 @@ async function completeCurrentWork(){
        * Firestore에서 실시간으로 갱신합니다.
        */
       if(
-        !global.isPublicTester() &&
-        global.DashboardFirebase &&
-        typeof global
-          .DashboardFirebase
-          .loadPermits ===
-            'function'
-      ){
-                promises.push(
-          global
-            .DashboardFirebase
-            .loadPermits(true)
-        );
-        promises.push(global.DashboardFirebase.loadRiskResults());
-        promises.push(global.DashboardFirebase.loadTbmResults());
-        promises.push(global.DashboardFirebase.loadQuizResults());
-      }
-
+  global.isAuthenticatedUser &&
+  global.isAuthenticatedUser() &&
+  global.DashboardFirebase &&
+  typeof global.DashboardFirebase.loadPermits === 'function'
+){
+  promises.push(global.DashboardFirebase.loadPermits(true));
+  promises.push(global.DashboardFirebase.loadRiskResults());
+  promises.push(global.DashboardFirebase.loadTbmResults());
+  promises.push(global.DashboardFirebase.loadQuizResults());
+}
       var results =
         await Promise.allSettled(
           promises
@@ -15513,6 +15553,7 @@ if(completionButton){
     );
   }else{
     initialize();
+    forceFirstSyncForAuthenticatedUser();
   }
 
 })(window);
@@ -17539,20 +17580,20 @@ console.log(
      * 관리자·일반 사용자만 허가서를 동기화합니다.
      */
     if(
-      !(
-        window.isPublicTester &&
-        window.isPublicTester()
-      )
-    ){
-            promises.push(
-        window
-          .DashboardFirebase
-          .loadPermits(true)
-      );
-      promises.push(window.DashboardFirebase.loadRiskResults());
-      promises.push(window.DashboardFirebase.loadTbmResults());
-      promises.push(window.DashboardFirebase.loadQuizResults());
-    }
+  window.isAuthenticatedUser &&
+  window.isAuthenticatedUser() &&
+  window.DashboardFirebase &&
+  typeof window.DashboardFirebase.loadPermits === 'function'
+){
+  promises.push(
+    window
+      .DashboardFirebase
+      .loadPermits(true)
+  );
+  promises.push(window.DashboardFirebase.loadRiskResults());
+  promises.push(window.DashboardFirebase.loadTbmResults());
+  promises.push(window.DashboardFirebase.loadQuizResults());
+}
 
         var results =
       await Promise.allSettled(
