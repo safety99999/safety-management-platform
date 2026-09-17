@@ -16705,10 +16705,16 @@ async function loadWorkDatabase(
   var user =
     await waitForAuth();
 
-  validateUser(
-    user,
-    false
-  );
+  var session =
+    validateUser(
+      user,
+      false
+    );
+
+  var bypassLocalCache =
+    session &&
+    session.role ===
+      'admin';
 
   var cacheTtl =
     30 * 60 * 1000;
@@ -16722,6 +16728,7 @@ async function loadWorkDatabase(
 
   if(
     force !== true &&
+    !bypassLocalCache &&
     lastSync > 0 &&
     Date.now() - lastSync <
       cacheTtl
