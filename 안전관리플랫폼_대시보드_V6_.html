@@ -2974,39 +2974,27 @@ function readAppSessionRaw(){
     }
   }
 
-  async function readWorkDatabase(){
+  function readWorkDatabase(){
     try{
-      // 테스트 모드이고 Firestore 접근이 비활성화된 경우 localStorage 사용
-      if(global.isPublicTester() && !appConfig.testerMode.allowFirestoreAccess){
-        var database = JSON.parse(
-          localStorage.getItem('safetyDatabase') || '{}'
+      var database =
+        JSON.parse(
+          localStorage.getItem(
+            'safetyDatabase'
+          ) || '{}'
         );
-        return Array.isArray(database.workHistory) ? database.workHistory : [];
-      }
 
-      // Firestore에서 읽기
-      if(!window.db || !window.getDocs){
-        console.warn('[Dashboard] Firestore 미초기화');
-        return [];
-      }
-
-      var q = window.query(
-        window.collection(window.db, 'works')
-      );
-
-      var snapshot = await window.getDocs(q);
-      var works = [];
-
-      snapshot.forEach(function(doc){
-        works.push(
-          Object.assign({}, doc.data(), { id: doc.id })
-        );
-      });
-
-      return works;
+      return Array.isArray(
+        database.workHistory
+      )
+        ? database.workHistory
+        : [];
 
     }catch(error){
-      console.error('[Dashboard] 작업DB 로드 실패:', error);
+      console.error(
+        '[Dashboard v8] 작업DB 파싱 실패:',
+        error
+      );
+
       return [];
     }
   }
@@ -4008,110 +3996,94 @@ function readAppSessionRaw(){
   }
 
   function loadAllData(){
-    (async function(){
-      state.allWorks =
-        (await readWorkDatabase())
-          .map(function(work){
-            return Object.assign(
-              {},
-              work,
-              {
-                workId:
-                  makeWorkId(work),
-                workName:
-                  workName(work),
-                locationDisplay:
-                  workLocation(work),
-                companyDisplay:
-                  workCompany(work),
-                departmentDisplay:
-                  workDepartment(work),
-                riskLevel:
-                  workRiskLevel(work)
-              }
-            );
-          })
-          .filter(function(work){
-            return isValidWorkRecord(
-              work
-            );
-          });
-
-      state.permits =
-        uniqueRecords(
-          readArray(
-            storagePermitKey()
-          ),
-          function(record){
-            return record.permitNo;
-          }
-        );
-
-      state.risks =
-        uniqueRecords(
-          readArray(
-            'riskAssessments'
-          ).concat(
-            readArray(
-              'riskAssessmentResults'
-            )
-          ),
-          function(record){
-            return record.riskId;
-          }
-        );
-
-      state.safetyInfos =
-        uniqueRecords(
-          readArray(
-            'safetyProvisions'
-          ),
-          function(record){
-            return (
-              record.safeinfoNo ||
-              record.id
-            );
-          }
-        );
-
-      state.quizzes =
-        readArray(
-          'safetyQuizzes'
-        );
-
-      state.tbms =
-        readArray(
-          global.isPublicTester()
-            ? 'testerSafetyTBM'
-            : 'safetyTBM'
-        );
-
-      state.violations =
-        readArray(
-          'safetyViolations'
-        );
-
-      setText(
-        'databaseCount',
-        state.allWorks.length +
-        '건'
-      );
-
-      // 관리자/사용자인 경우 실시간 리스너 설정
-      if(!global.isPublicTester() && window.db && window.onSnapshot){
-        try{
-          window.onSnapshot(
-            window.collection(window.db, 'works'),
-            function(snapshot){
-              console.log('[Dashboard] 작업DB 실시간 업데이트 감지');
-              loadAllData(); // 데이터 다시 로드
+    state.allWorks =
+      readWorkDatabase()
+        .map(function(work){
+          return Object.assign(
+            {},
+            work,
+            {
+              workId:
+                makeWorkId(work),
+              workName:
+                workName(work),
+              locationDisplay:
+                workLocation(work),
+              companyDisplay:
+                workCompany(work),
+              departmentDisplay:
+                workDepartment(work),
+              riskLevel:
+                workRiskLevel(work)
             }
           );
-        }catch(error){
-          console.warn('[Dashboard] 실시간 리스너 설정 실패:', error);
+        })
+        .filter(function(work){
+          return isValidWorkRecord(
+            work
+          );
+        });
+
+    state.permits =
+      uniqueRecords(
+        readArray(
+          storagePermitKey()
+        ),
+        function(record){
+          return record.permitNo;
         }
-      }
-    })();
+      );
+
+    state.risks =
+      uniqueRecords(
+        readArray(
+          'riskAssessments'
+        ).concat(
+          readArray(
+            'riskAssessmentResults'
+          )
+        ),
+        function(record){
+          return record.riskId;
+        }
+      );
+
+    state.safetyInfos =
+      uniqueRecords(
+        readArray(
+          'safetyProvisions'
+        ),
+        function(record){
+          return (
+            record.safeinfoNo ||
+            record.id
+          );
+        }
+      );
+
+    state.quizzes =
+      readArray(
+        'safetyQuizzes'
+      );
+
+state.tbms =
+  readArray(
+    global.isPublicTester()
+      ? 'testerSafetyTBM'
+      : 'safetyTBM'
+  );
+
+
+    state.violations =
+      readArray(
+        'safetyViolations'
+      );
+
+    setText(
+      'databaseCount',
+      state.allWorks.length +
+      '건'
+    );
   }
 
   function buildIndex(
