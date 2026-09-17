@@ -115,7 +115,7 @@ body{
   min-height:100vh;
   overflow-x:hidden;
   padding-bottom:max(24px,env(safe-area-inset-bottom));
-  background:linear-gradient(135deg,#003c7e 0%,#0067b1 44%,var(--bg) 44%,var(--bg) 100%);
+  background:var(--bg);
   background-attachment:fixed;
   color:var(--ink);
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -124,7 +124,7 @@ body{
 }
 
 [data-theme="dark"] body{
-  background:linear-gradient(135deg,#0a1b2e 0%,#12283f 44%,var(--bg) 44%,var(--bg) 100%);
+  background:var(--bg);
   background-attachment:fixed;
 }
 
@@ -1829,7 +1829,7 @@ button{cursor:pointer;}
   </div>
 
   <select class="company-filter" id="companyFilter" aria-label="협력사 필터">
-    <option value="">🏢 전체 협력사</option>
+  <option value="" selected>🏢 전체 협력사</option>
   </select>
 
   <div id="todayWorkList"></div>
