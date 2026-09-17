@@ -33,7 +33,7 @@
     testerMode:{
       storage:'localStorage',
       allowSelfApproval:true,
-      allowFirestoreAccess:false
+      allowFirestoreAccess:true
     }
   });
   console.log('%c[APP MODE] TEST','background:#dc3545;color:#fff;padding:4px 12px;border-radius:4px;font-weight:800');
@@ -49,6 +49,9 @@
     session =
       JSON.parse(
         sessionStorage.getItem(
+          'appSession'
+        ) ||
+        localStorage.getItem(
           'appSession'
         ) || 'null'
       );
@@ -92,6 +95,9 @@
     session =
       JSON.parse(
         sessionStorage.getItem(
+          'appSession'
+        ) ||
+        localStorage.getItem(
           'appSession'
         ) || 'null'
       );
@@ -17727,6 +17733,9 @@ function initAutoDeploy() {
     session =
       JSON.parse(
         sessionStorage.getItem(
+          'appSession'
+        ) ||
+        localStorage.getItem(
           'appSession'
         ) || 'null'
       );
