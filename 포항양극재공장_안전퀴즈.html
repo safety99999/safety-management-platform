@@ -42,7 +42,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>포항양극재 출입자 안전퀴즈</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="styles/device-frame.css?v=3">
+<link rel="stylesheet" href="device-frame.css?v=3">
 <style>
 /* ═══════════════════════════════════════
    포항양극재 안전퀴즈 v2.0
@@ -595,20 +595,6 @@ body{
   max-width:60%;word-break:break-word;letter-spacing:-.01em;}
 
 /* ═══ QR 코드 ═══ */
-.qr-box{
-  background:var(--card);border-radius:var(--r);padding:20px;
-  text-align:center;margin-bottom:14px;box-shadow:var(--sh);
-}
-.qr-title{
-  font-size:13px;font-weight:800;color:var(--sub);
-  margin-bottom:12px;letter-spacing:.03em;text-transform:uppercase;
-}
-.qr-placeholder{
-  width:180px;height:180px;background:var(--sunk);
-  border:2px dashed var(--line);border-radius:12px;
-  margin:0 auto;display:grid;place-items:center;
-  color:var(--faint);font-size:13px;font-weight:600;
-}
 
 /* ═══ 다음 앱 이동 섹션 ═══ */
 .next-app-section{
@@ -890,7 +876,6 @@ body{
       • 개인정보 및 방문 정보 입력<br>
       • 13개 안전 문항 응시<br>
       • 합격 시 안전서약 및 서명<br>
-      • 출입증 발급 (QR 코드)
     </div>
   </div>
 
@@ -910,9 +895,9 @@ body{
      SCREEN 1.5: 플래시카드 교육
      ══════════════════════════════════════ -->
 <div class="screen" id="screen-flashcard">
-  <div style="display:flex;flex-direction:column;gap:16px;height:100%;">
+  <div style="display:flex;flex-direction:column;gap:16px;height:100%;justify-content:center;">
     <!-- 플래시카드 이미지 영역 -->
-    <div id="flashcard-container" style="flex:1;overflow:hidden;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,.1);">
+    <div id="flashcard-container" style="height:42%;min-height:240px;max-height:360px;overflow:hidden;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,.1);">
       <img id="flashcard-image" src="" style="width:100%;height:100%;object-fit:cover;">
     </div>
     
@@ -1181,7 +1166,7 @@ body{
     <div class="danger-box-t">⚠️ 최종 확인</div>
     <div class="danger-box-b">
       제출 후 수정이 불가합니다<br>
-      서명 완료 시 출입증이 발급됩니다
+      서명 완료 후 출입 관련 절차는 별도 시스템에서 진행됩니다
     </div>
   </div>
 
@@ -1242,13 +1227,7 @@ body{
     </div>
   </div>
 
-  <!-- QR 코드 -->
-  <div class="qr-box">
-    <div class="qr-title">📱 출입증 QR 코드</div>
-    <div class="qr-placeholder" id="qr-code">
-      QR 코드 영역
-    </div>
-  </div>
+  
 
   <!-- 다음 앱 이동 (v2.0 신규) -->
   <div class="next-app-section" id="nextAppSection">
@@ -1270,7 +1249,7 @@ body{
   </div>
 
   <div class="btn-row" style="margin-top:14px;">
-    <button class="btn-secondary" onclick="downloadPDF()">📄 PDF</button>
+    <button class="btn-secondary" onclick="copyQuizLink()">퀴즈 링크 복사</button>
     <button class="btn-primary" style="flex:2;" onclick="goHome()">
       🏠 대시보드
     </button>
@@ -2113,7 +2092,7 @@ function submitForm(){
   });
 }
 
-function executeSubmit(){
+async function executeSubmit(){
   try{
     var canvas = document.getElementById('signature-pad');
     userData.signature = canvas.toDataURL();
@@ -2153,11 +2132,41 @@ function executeSubmit(){
       signature: userData.signature,
       completedAt: now.toISOString(),
       createdAt: now.toISOString(),
-      schemaVersion: 2                  // ⭐ v2.0
+      schemaVersion: 2,                 // 猸?v2.0
+      firestoreSaved: false,
+      syncPending: true,
+      syncStatus: 'pending',
+      syncError: ''
     };
     
     existingQuizzes.push(quizData);
     localStorage.setItem('safetyQuizzes', JSON.stringify(existingQuizzes));
+
+    var remoteSaveResult = { success:false, reason:'remote-save-not-enabled' };
+    if(typeof window.saveQuizResultRemote === 'function'){
+      try{
+        remoteSaveResult = await window.saveQuizResultRemote(quizData);
+      }catch(remoteError){
+        console.warn('[Quiz] Firestore save error:', remoteError);
+        remoteSaveResult = { success:false, reason:'remote-save-failed', error: String(remoteError && remoteError.message || remoteError || '') };
+      }
+    }
+
+    quizData.firestoreSaved = !!(remoteSaveResult && remoteSaveResult.success === true);
+    quizData.syncPending = !quizData.firestoreSaved;
+    quizData.syncStatus = quizData.firestoreSaved ? 'synced' : 'local-only';
+    quizData.syncError = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.reason ? remoteSaveResult.reason : 'remote-save-failed');
+    quizData.remoteCollection = remoteSaveResult && remoteSaveResult.collection ? remoteSaveResult.collection : '';
+    quizData.publicCollection = remoteSaveResult && remoteSaveResult.publicCollection ? remoteSaveResult.publicCollection : '';
+
+    var storedQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var quizIndex = storedQuizzes.findIndex(function(item){
+      return item && item.quizId === quizId;
+    });
+    if(quizIndex >= 0){
+      storedQuizzes[quizIndex] = quizData;
+      localStorage.setItem('safetyQuizzes', JSON.stringify(storedQuizzes));
+    }
     
     // 이벤트 발행 (workId 포함)
     try{
@@ -2291,6 +2300,45 @@ function downloadPDF(){
 // ═══════════════════════════════════════════════════
 // UTIL
 // ═══════════════════════════════════════════════════
+function buildQuizLink(){
+  var baseUrl = new URL(window.location.origin + window.location.pathname);
+  var currentParams = new URLSearchParams(window.location.search || '');
+  var workId = (userData && userData.workId) ? userData.workId : (currentParams.get('workId') || '');
+  var batch = currentParams.get('batch') || '';
+
+  if(workId){
+    baseUrl.searchParams.set('workId', workId);
+  }
+  if(batch){
+    baseUrl.searchParams.set('batch', batch);
+  }
+  return baseUrl.toString();
+}
+
+async function copyQuizLink(){
+  var quizUrl = buildQuizLink();
+  var copyText = '포스코퓨처엠 포항양극재공장 출입자안전퀴즈\n' + quizUrl;
+
+  try{
+    await navigator.clipboard.writeText(copyText);
+    showToast('복사 완료', 'success');
+  }catch(e){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = copyText;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('복사 완료', 'success');
+    }catch(copyErr){
+      showToast('복사 실패', 'danger');
+    }
+  }
+}
+
 function fmtDate(d){
   d = d || new Date();
   var y = d.getFullYear();
@@ -2420,6 +2468,101 @@ function nextFlashcard(){
 document.addEventListener('DOMContentLoaded', function(){
   initFlashcard();
 });
+</script>
+
+<script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, initializeFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU',
+  authDomain: 'safety-management-platfo-5f413.firebaseapp.com',
+  projectId: 'safety-management-platfo-5f413',
+  storageBucket: 'safety-management-platfo-5f413.firebasestorage.app',
+  messagingSenderId: '96226952530',
+  appId: '1:96226952530:web:07e7cb286dc4e120cea68b',
+  measurementId: 'G-KNK5ECRCX5'
+};
+
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+let db;
+
+try{
+  db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
+}catch(_e){
+  db = getFirestore(app);
+}
+
+const privateCollection = (typeof window.getCollectionName === 'function')
+  ? window.getCollectionName('safetyQuizResults')
+  : 'safetyQuizResults';
+const publicCollection = (typeof window.getCollectionName === 'function')
+  ? window.getCollectionName('safetyQuizResults_public')
+  : 'safetyQuizResults_public';
+
+function waitForUser(timeoutMs){
+  return new Promise(function(resolve){
+    const timeoutId = setTimeout(function(){ resolve(null); }, timeoutMs || 4000);
+    const off = onAuthStateChanged(auth, function(user){
+      clearTimeout(timeoutId);
+      off();
+      resolve(user || null);
+    }, function(){
+      clearTimeout(timeoutId);
+      off();
+      resolve(null);
+    });
+  });
+}
+
+async function ensureAuthUser(){
+  if(auth.currentUser) return auth.currentUser;
+  try{ await signInAnonymously(auth); }catch(_e){}
+  return await waitForUser(4000);
+}
+
+window.saveQuizResultRemote = async function(record){
+  try{
+    const user = await ensureAuthUser();
+    if(!user || !record || !record.quizId){
+      return { success:false, reason:'firebase-auth-or-record-invalid', collection:privateCollection, publicCollection:publicCollection };
+    }
+
+    const payload = {
+      ...record,
+      uid: user.uid,
+      updatedAt: new Date().toISOString(),
+      firestoreSaved: true,
+      syncPending: false,
+      syncStatus: 'synced'
+    };
+
+    await setDoc(doc(db, privateCollection, record.quizId), {
+      ...payload,
+      createdAtTs: serverTimestamp(),
+      updatedAtTs: serverTimestamp()
+    }, { merge:true });
+
+    await setDoc(doc(db, publicCollection, record.quizId), {
+      quizId: record.quizId,
+      workId: record.workId || '',
+      name: record.name || '',
+      company: record.company || '',
+      score: record.score || 0,
+      totalQuestions: record.totalQuestions || 0,
+      passed: !!record.passed,
+      completedAt: record.completedAt || new Date().toISOString(),
+      updatedAtTs: serverTimestamp()
+    }, { merge:true });
+
+    return { success:true, collection:privateCollection, publicCollection:publicCollection };
+  }catch(error){
+    console.warn('[Quiz] Firestore sync failed:', error);
+    return { success:false, reason:'firestore-save-failed', error:String(error && error.message || error || ''), collection:privateCollection, publicCollection:publicCollection };
+  }
+};
 </script>
 
 </div><!-- /.phone-screen -->
