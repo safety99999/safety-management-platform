@@ -732,6 +732,134 @@ body{
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
 }
+
+/* ═══════════════════════════════════════
+   안전교육 플래시카드
+   T(1)~T(14) 세로형 이미지 전체 표시
+   ═══════════════════════════════════════ */
+#screen-flashcard{
+  padding:0 !important;
+  overflow:hidden !important;
+}
+
+#screen-flashcard.active{
+  height:calc(100vh - 56px);
+  box-sizing:border-box;
+  overflow:hidden;
+}
+
+#screen-flashcard .flashcard-layout{
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:6px 8px 8px;
+  box-sizing:border-box;
+}
+
+/* 이미지 영역: 남는 화면을 최대한 사용 */
+#screen-flashcard #flashcard-container{
+  flex:1 1 auto;
+  min-height:0;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  border-radius:10px;
+  background:#f5f6f7;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+/* 세로형 T 이미지가 잘리지 않도록 전체 표시 */
+#screen-flashcard #flashcard-image{
+  display:block;
+  width:auto !important;
+  height:100% !important;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain !important;
+  object-position:center center;
+}
+
+/* 진행번호 / 제목 */
+#screen-flashcard .flashcard-info{
+  flex:0 0 auto;
+  text-align:center;
+  padding:0 4px;
+}
+
+#screen-flashcard .flashcard-progress{
+  font-size:13px;
+  color:#888;
+  font-weight:600;
+  margin-bottom:2px;
+}
+
+#screen-flashcard .flashcard-title{
+  font-size:17px;
+  font-weight:800;
+  color:#333;
+  line-height:1.3;
+}
+
+/* T 이미지 자체에 내용이 있으므로 설명 영역은 숨김 */
+#screen-flashcard .flashcard-desc{
+  display:none !important;
+}
+
+/* 이전 / 다음만 표시 */
+#screen-flashcard .flashcard-nav{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+#screen-flashcard .flashcard-nav button{
+  width:100%;
+  padding:12px 8px;
+  font-size:16px;
+}
+
+/* 26/26 마지막 카드에서만 표시 */
+#screen-flashcard .flashcard-start-btn{
+  display:none;
+  width:100%;
+  padding:14px 10px;
+  font-size:16px;
+  font-weight:800;
+}
+
+#screen-flashcard .flashcard-start-btn.show{
+  display:block;
+}
+
+@media(max-width:767px){
+  #screen-flashcard.active{
+    height:calc(100vh - 56px);
+  }
+
+  #screen-flashcard #flashcard-container{
+    flex:1 1 auto;
+    min-height:0;
+  }
+
+  #screen-flashcard #flashcard-image{
+    height:100% !important;
+    width:auto !important;
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain !important;
+  }
+}
+
+@media(min-width:768px){
+  #screen-flashcard.active{
+    height:calc(100vh - 56px);
+  }
+}
 </style>
 <script>
 /* ═══════════════════════════════════════════════════
@@ -792,7 +920,7 @@ body{
   <div class="topnav-r">
     <div class="workid-badge" id="workidBadge"></div>
     <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="테마">🌙</button>
-    <button class="home-btn" onclick="goHome()" aria-label="홈">🏠</button>
+    <button class="home-btn" onclick="goMenu()" aria-label="메뉴" title="메뉴">🏠</button>
   </div>
 </nav>
 
@@ -839,7 +967,7 @@ body{
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
     <button class="btn-secondary" style="padding:17px;font-size:16px;" 
-            onclick="goToScreen('screen-flashcard')">
+            onclick="startFlashcard()">
       📚 안전교육
     </button>
     <button class="btn-primary" style="padding:17px;font-size:16px;" 
@@ -853,41 +981,37 @@ body{
      SCREEN 1.5: 플래시카드 교육
      ══════════════════════════════════════ -->
 <div class="screen" id="screen-flashcard">
-  <div style="display:flex;flex-direction:column;gap:16px;height:100%;justify-content:center;">
+  <div class="flashcard-layout">
+
     <!-- 플래시카드 이미지 영역 -->
-    <div id="flashcard-container" style="height:42%;min-height:240px;max-height:360px;overflow:hidden;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,.1);">
-      <img id="flashcard-image" src="" style="width:100%;height:100%;object-fit:cover;">
+    <div id="flashcard-container">
+      <img id="flashcard-image" src="" alt="안전교육 이미지">
     </div>
-    
+
     <!-- 카드 정보 -->
-    <div style="text-align:center;">
-      <div style="font-size:14px;color:#888;font-weight:600;margin-bottom:8px;">
-        <span id="flashcard-progress">1</span> / <span id="flashcard-total">11</span>
+    <div class="flashcard-info">
+      <div class="flashcard-progress">
+        <span id="flashcard-progress">1</span> / <span id="flashcard-total">26</span>
       </div>
-      <div id="flashcard-title" style="font-size:16px;font-weight:800;color:#333;line-height:1.4;"></div>
-      <div id="flashcard-desc" style="font-size:13px;color:#666;margin-top:8px;line-height:1.5;"></div>
+      <div id="flashcard-title" class="flashcard-title"></div>
+      <div id="flashcard-desc" class="flashcard-desc"></div>
     </div>
-    
-    <!-- 네비게이션 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button class="btn-secondary" id="flashcard-prev" onclick="prevFlashcard()" style="padding:14px;">
+
+    <!-- 이전 / 다음 -->
+    <div class="flashcard-nav">
+      <button class="btn-secondary" id="flashcard-prev" onclick="prevFlashcard()">
         ◀ 이전
       </button>
-      <button class="btn-secondary" id="flashcard-next" onclick="nextFlashcard()" style="padding:14px;">
+      <button class="btn-secondary" id="flashcard-next" onclick="nextFlashcard()">
         다음 ▶
       </button>
     </div>
-    
-    <!-- 완료 버튼 -->
-    <button class="btn-primary" id="flashcard-complete" onclick="goToScreen('screen-info')" 
-            style="width:100%;padding:14px;display:none;">
-      ✅ 교육 완료 → 응시 시작
+
+    <!-- 26/26에서만 표시 -->
+    <button class="btn-primary flashcard-start-btn" id="flashcard-start" onclick="startQuizFromEducation()">
+      📝 안전퀴즈 응시 시작
     </button>
-    
-    <!-- 돌아가기 -->
-    <button class="btn-secondary" style="width:100%;padding:14px;" onclick="goToScreen('screen-welcome')">
-      ← 메뉴로 돌아가기
-    </button>
+
   </div>
 </div>
 
@@ -915,7 +1039,7 @@ body{
 
     <div class="form-group">
       <label class="f-label">전화번호<span class="req">*</span></label>
-      <input class="f-input" type="tel" id="input-phone" placeholder="010-1234-5678">
+      <input class="f-input" type="tel" id="input-phone" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" oninput="formatPhoneInput(this)">
     </div>
 
     <div class="form-group">
@@ -1684,9 +1808,33 @@ function updateProgress(screenId){
 }
 
 // ═══════════════════════════════════════════════════
+// 전화번호 자동 하이픈
+// ═══════════════════════════════════════════════════
+function formatPhoneNumber(value){
+  var digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+
+  if(digits.indexOf('02') === 0){
+    if(digits.length <= 2) return digits;
+    if(digits.length <= 6) return digits.slice(0,2) + '-' + digits.slice(2);
+    return digits.slice(0,2) + '-' + digits.slice(2, digits.length - 4) + '-' + digits.slice(-4);
+  }
+
+  if(digits.length <= 3) return digits;
+  if(digits.length <= 7) return digits.slice(0,3) + '-' + digits.slice(3);
+  return digits.slice(0,3) + '-' + digits.slice(3, 7) + '-' + digits.slice(7);
+}
+
+function formatPhoneInput(el){
+  if(!el) return;
+  el.value = formatPhoneNumber(el.value);
+}
+
+// ═══════════════════════════════════════════════════
 // 검증 & 이동
 // ═══════════════════════════════════════════════════
 function validateAndNext(nextScreen){
+  formatPhoneInput(document.getElementById('input-phone'));
+
   var name = getVal('input-name');
   var company = getVal('input-company');
   var phone = getVal('input-phone');
@@ -2180,6 +2328,28 @@ function hasValidDashboardSession(){
   }
 }
 
+function goMenu(){
+  var activeScreen = document.querySelector('.screen.active');
+  var screenId = activeScreen ? activeScreen.id : '';
+
+  // 안전교육/시작화면에서는 확인 없이 메뉴로 이동
+  if(screenId === 'screen-welcome' || screenId === 'screen-flashcard'){
+    goToScreen('screen-welcome');
+    return;
+  }
+
+  // 퀴즈 작성 중에는 입력 내용이 사라지므로 확인 후 메뉴 이동
+  showCustomConfirm({
+    icon: '🏠',
+    title: '메뉴로 이동',
+    message: '현재 진행 중인 내용이 사라집니다.\n메뉴로 이동하시겠습니까?',
+    okText: '메뉴로 이동',
+    okType: 'warn'
+  }, function(ok){
+    if(ok) goToScreen('screen-welcome');
+  });
+}
+
 function goHome(){
   if(!hasValidDashboardSession()){
     showCustomAlert({
@@ -2347,21 +2517,55 @@ function showToast(msg, type){
    플래시카드 로직
    ═══════════════════════════════════════ */
 var flashcardData = [
+  /* ① 추가 안전교육 T(1) ~ T(14) */
+  {title: "T(1) 안전교육", desc: ""},
+  {title: "T(2) 안전교육", desc: ""},
+  {title: "T(3) 안전교육", desc: ""},
+  {title: "T(4) 안전교육", desc: ""},
+  {title: "T(5) 안전교육", desc: ""},
+  {title: "T(6) 안전교육", desc: ""},
+  {title: "T(7) 안전교육", desc: ""},
+  {title: "T(8) 안전교육", desc: ""},
+  {title: "T(9) 안전교육", desc: ""},
+  {title: "T(10) 안전교육", desc: ""},
+  {title: "T(11) 안전교육", desc: ""},
+  {title: "T(12) 안전교육", desc: ""},
+  {title: "T(13) 안전교육", desc: ""},
+  {title: "T(14) 안전교육", desc: ""},
+
+  /* ② 기존 11대 안전철칙 */
   {title: "🎓 11대 안전철칙", desc: "안전한 작업을 위한 필수 철칙 교육"},
-  {title: "1️⃣ 가동설비 점근 금지", desc: "설비가 가동 중일 때는 절대 접근 금지! 신체 접촉 및 깨임, 감갇, 절단 등 중대 재해 위험!"},
-  {title: "2️⃣ 추락위험 구간", desc: "안전대 필수 착용 - 생명을 지키는 기본적인 안전수칙!"},
-  {title: "3️⃣ 폭발·인화성 물질", desc: "화기 취급 금지 - 불꽃, 용접, 증엄, 열단 등 중대 재해 위험!"},
-  {title: "4️⃣ 중량물·중장비", desc: "작업반경 내 진입 금지 - 낙하, 협착, 종돌 사고의 위험이 됩니다."},
-  {title: "5️⃣ 산소·유해가스", desc: "측정과 환기 없이 밀폐공간에 진입 금지!"},
-  {title: "6️⃣ 전원차단·검전", desc: "전기작업 전에 반드시 전원을 차단하고 검전하세요!"},
-  {title: "7️⃣ 작업 전 현장 TBM", desc: "소통과 확인이 안전의 시작! 작업 전 반드시 실시하세요!"},
-  {title: "8️⃣ 수리작업시 ILS 절차", desc: "에너지원을 차단하고 ILS 절차를 준수하세요!"},
-  {title: "9️⃣ 규정에 맞는 안전보호구", desc: "정확한 착용, 올바른 사용이 안전의 기본입니다!"},
-  {title: "🔟 손과 발 절대 터치금지", desc: "기본수칙 준수가 나와 동료의 생명을 지킵니다!"},
-  {title: "1️⃣1️⃣ 안전위치 확인 후 가동", desc: "작업자 안전위치 확인 후 가동 - 사고 예방의 필수 요소!"}
+  {title: "1. 가동설비 점근 금지", desc: "설비가 가동 중일 때는 절대 접근 금지! 신체 접촉 및 깨임, 감갇, 절단 등 중대 재해 위험!"},
+  {title: "2. 추락위험 구간", desc: "안전대 필수 착용 - 생명을 지키는 기본적인 안전수칙!"},
+  {title: "3. 폭발·인화성 물질", desc: "화기 취급 금지 - 불꽃, 용접, 증엄, 열단 등 중대 재해 위험!"},
+  {title: "4. 중량물·중장비", desc: "작업반경 내 진입 금지 - 낙하, 협착, 종돌 사고의 위험이 됩니다."},
+  {title: "5. 산소·유해가스", desc: "측정과 환기 없이 밀폐공간에 진입 금지!"},
+  {title: "6. 전원차단·검전", desc: "전기작업 전에 반드시 전원을 차단하고 검전하세요!"},
+  {title: "7. 작업 전 현장 TBM", desc: "소통과 확인이 안전의 시작! 작업 전 반드시 실시하세요!"},
+  {title: "8. 수리작업시 ILS 절차", desc: "에너지원을 차단하고 ILS 절차를 준수하세요!"},
+  {title: "9. 규정에 맞는 안전보호구", desc: "정확한 착용, 올바른 사용이 안전의 기본입니다!"},
+  {title: "10. 손과 발 절대 터치금지", desc: "기본수칙 준수가 나와 동료의 생명을 지킵니다!"},
+  {title: "11. 안전위치 확인 후 가동", desc: "작업자 안전위치 확인 후 가동 - 사고 예방의 필수 요소!"}
 ];
 
 var flashcardImages = [
+  /* ① T(1) ~ T(14) */
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(1).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(2).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(3).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(4).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(5).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(6).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(7).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(8).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(9).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(10).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(11).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(12).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(13).png",
+  "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/T%20(14).png",
+
+  /* ② 기존 11대 안전철칙 */
   "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/Rules_0.png",
   "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/Rules_1.png",
   "https://raw.githubusercontent.com/safety99999/safety-management-platform/main/assets/images/Rules_2.png",
@@ -2400,14 +2604,28 @@ function updateFlashcard(){
   var imgEl = document.getElementById('flashcard-image');
   if(imgEl) imgEl.src = img;
   
-  // 버튼 활성화/비활성화
+  // 이전 / 다음 버튼 활성화·비활성화
   var prevBtn = document.getElementById('flashcard-prev');
   var nextBtn = document.getElementById('flashcard-next');
-  var completeBtn = document.getElementById('flashcard-complete');
-  
+  var startBtn = document.getElementById('flashcard-start');
+
+  var isLast = (idx === flashcardData.length - 1);
+
   if(prevBtn) prevBtn.disabled = (idx === 0);
-  if(nextBtn) nextBtn.disabled = (idx === flashcardData.length - 1);
-  if(completeBtn) completeBtn.style.display = (idx === flashcardData.length - 1) ? 'block' : 'none';
+  if(nextBtn) nextBtn.disabled = isLast;
+  if(startBtn) startBtn.classList.toggle('show', isLast);
+}
+
+function startFlashcard(){
+  flashcardIndex = 0;
+  updateFlashcard();
+  goToScreen('screen-flashcard');
+}
+
+function startQuizFromEducation(){
+  // 26/26에서만 호출되지만 안전하게 마지막 카드인지 확인
+  if(flashcardIndex !== flashcardData.length - 1) return;
+  goToScreen('screen-info');
 }
 
 function prevFlashcard(){
