@@ -596,48 +596,6 @@ body{
 
 /* ═══ QR 코드 ═══ */
 
-/* ═══ 다음 앱 이동 섹션 ═══ */
-.next-app-section{
-  background:var(--tint);border:2px solid var(--posco);
-  border-radius:var(--r);padding:18px 16px;margin-bottom:14px;
-}
-[data-theme="dark"] .next-app-section{
-  background:var(--tint);border-color:var(--bright);
-}
-.nas-title{
-  font-size:12px;font-weight:800;color:var(--posco);
-  letter-spacing:.5px;text-transform:uppercase;
-  margin-bottom:8px;text-align:center;
-}
-[data-theme="dark"] .nas-title{color:var(--bright);}
-.nas-desc{
-  font-size:13px;color:var(--body);
-  text-align:center;line-height:1.6;font-weight:600;
-  margin-bottom:14px;
-}
-.nas-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.nas-btn{
-  padding:14px 10px;border:none;border-radius:12px;
-  font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;gap:5px;
-  transition:.15s;line-height:1.3;
-}
-.nas-btn:active{transform:scale(.97);}
-.nas-btn-ico{font-size:22px;line-height:1;}
-.nas-btn.primary{
-  background:linear-gradient(135deg,var(--deep),var(--bright));
-  color:#fff;
-  box-shadow:0 4px 12px rgba(0,60,126,.25);
-}
-.nas-btn.secondary{
-  background:var(--card);
-  color:var(--posco);
-  border:2px solid var(--posco);
-}
-[data-theme="dark"] .nas-btn.secondary{
-  color:var(--bright);border-color:var(--bright);
-}
-
 /* ═══ 버튼 ═══ */
 .btn-row{display:flex;gap:10px;margin-top:14px;}
 .btn-primary,.btn-secondary,.btn-warn,.btn-success{
@@ -1227,32 +1185,17 @@ body{
     </div>
   </div>
 
-  
 
-  <!-- 다음 앱 이동 (v2.0 신규) -->
-  <div class="next-app-section" id="nextAppSection">
-    <div class="nas-title">📌 다음 단계</div>
-    <div class="nas-desc" id="nasDesc">
-      안전퀴즈 완료 후<br>
-      <strong>위험성평가</strong>를 진행하세요.
-    </div>
-    <div class="nas-btn-grid">
-      <button class="nas-btn primary" onclick="goToRiskAssessment()">
-        <span class="nas-btn-ico">🤖</span>
-        <span>위험성평가</span>
-      </button>
-      <button class="nas-btn secondary" onclick="goToPermit()">
-        <span class="nas-btn-ico">🔐</span>
-        <span>작업허가서</span>
-      </button>
-    </div>
-  </div>
-
-  <div class="btn-row" style="margin-top:14px;">
+  <div class="btn-row" style="margin-top:14px;" id="completeActionRow">
     <button class="btn-secondary" onclick="copyQuizLink()">퀴즈 링크 복사</button>
-    <button class="btn-primary" style="flex:2;" onclick="goHome()">
+    <button class="btn-primary" style="flex:2;" id="completeHomeButton" onclick="goHome()">
       🏠 대시보드
     </button>
+  </div>
+
+  <div class="info-box" id="externalCloseNotice" style="display:none;margin-top:14px;">
+    <div class="info-box-t">✅ 안전교육이 정상적으로 접수되었습니다</div>
+    <div class="info-box-b">이 창은 닫으셔도 됩니다. 참여해주셔서 감사합니다.</div>
   </div>
 </div>
 
@@ -2132,6 +2075,7 @@ async function executeSubmit(){
       signature: userData.signature,
       completedAt: now.toISOString(),
       createdAt: now.toISOString(),
+      environment: 'test',
       schemaVersion: 2,                 // 猸?v2.0
       firestoreSaved: false,
       syncPending: true,
@@ -2192,6 +2136,13 @@ async function executeSubmit(){
     setTxt('final-score', userData.score + '/' + questions.length + ' (' + 
            (userData.passed ? '합격' : '불합격') + ')');
     
+    if(!hasValidDashboardSession()){
+      var homeBtn = document.getElementById('completeHomeButton');
+      if(homeBtn) homeBtn.style.display = 'none';
+      var notice = document.getElementById('externalCloseNotice');
+      if(notice) notice.style.display = 'block';
+    }
+
     goToScreen('screen-complete');
     showToast('✅ 제출 완료! 퀴즈 ID: ' + quizId, 'success');
     
@@ -2207,30 +2158,39 @@ async function executeSubmit(){
 }
 
 // ═══════════════════════════════════════════════════
-// ⭐ v2.0: 다음 앱 이동
-// ═══════════════════════════════════════════════════
-function goToRiskAssessment(){
-  var url = '위험성평가_v2.html';
-  if(userData.workId){
-    url += '?workId=' + encodeURIComponent(userData.workId);
-  }
-  showToast('🤖 위험성평가로 이동합니다', 'info');
-  setTimeout(function(){ window.location.href = url; }, 500);
-}
-
-function goToPermit(){
-  var url = '안전작업허가서_v2.html';
-  if(userData.workId){
-    url += '?workId=' + encodeURIComponent(userData.workId);
-  }
-  showToast('🔐 작업허가서로 이동합니다', 'info');
-  setTimeout(function(){ window.location.href = url; }, 500);
-}
-
-// ═══════════════════════════════════════════════════
 // 홈 / 뒤로가기
+//  - 대시보드 로그인 세션이 있는 내부 사용자만
+//    대시보드로 이동합니다. 외부 공유링크로 들어온
+//    방문자(세션 없음)는 대시보드 이동을 시도하지 않고
+//    안내 문구만 표시합니다.
 // ═══════════════════════════════════════════════════
+function hasValidDashboardSession(){
+  try{
+    var raw = sessionStorage.getItem('appSession') ||
+               localStorage.getItem('appSession');
+    if(!raw) return false;
+    var session = JSON.parse(raw);
+    return Boolean(
+      session &&
+      session.environment === 'test' &&
+      (session.role === 'admin' || session.role === 'user' || session.role === 'tester')
+    );
+  }catch(e){
+    return false;
+  }
+}
+
 function goHome(){
+  if(!hasValidDashboardSession()){
+    showCustomAlert({
+      icon: '✅',
+      title: '제출이 완료되었습니다',
+      message: '이 창은 닫으셔도 됩니다.\n참여해주셔서 감사합니다.',
+      okType: 'success'
+    });
+    return;
+  }
+
   var activeScreen = document.querySelector('.screen.active');
   var screenId = activeScreen ? activeScreen.id : '';
   
@@ -2495,12 +2455,15 @@ try{
   db = getFirestore(app);
 }
 
+/*
+ * 대시보드(안전관리플랫폼_대시보드_V6_.html)는
+ * getCollectionName('safetyQuizzes') 컬렉션을 읽습니다.
+ * 컬렉션명을 반드시 통일해야 제출 결과가
+ * 대시보드에 반영됩니다.
+ */
 const privateCollection = (typeof window.getCollectionName === 'function')
-  ? window.getCollectionName('safetyQuizResults')
-  : 'safetyQuizResults';
-const publicCollection = (typeof window.getCollectionName === 'function')
-  ? window.getCollectionName('safetyQuizResults_public')
-  : 'safetyQuizResults_public';
+  ? window.getCollectionName('safetyQuizzes')
+  : 'safetyQuizzes';
 
 function waitForUser(timeoutMs){
   return new Promise(function(resolve){
@@ -2527,12 +2490,13 @@ window.saveQuizResultRemote = async function(record){
   try{
     const user = await ensureAuthUser();
     if(!user || !record || !record.quizId){
-      return { success:false, reason:'firebase-auth-or-record-invalid', collection:privateCollection, publicCollection:publicCollection };
+      return { success:false, reason:'firebase-auth-or-record-invalid', collection:privateCollection };
     }
 
     const payload = {
       ...record,
       uid: user.uid,
+      environment: 'test',
       updatedAt: new Date().toISOString(),
       firestoreSaved: true,
       syncPending: false,
@@ -2545,22 +2509,10 @@ window.saveQuizResultRemote = async function(record){
       updatedAtTs: serverTimestamp()
     }, { merge:true });
 
-    await setDoc(doc(db, publicCollection, record.quizId), {
-      quizId: record.quizId,
-      workId: record.workId || '',
-      name: record.name || '',
-      company: record.company || '',
-      score: record.score || 0,
-      totalQuestions: record.totalQuestions || 0,
-      passed: !!record.passed,
-      completedAt: record.completedAt || new Date().toISOString(),
-      updatedAtTs: serverTimestamp()
-    }, { merge:true });
-
-    return { success:true, collection:privateCollection, publicCollection:publicCollection };
+    return { success:true, collection:privateCollection };
   }catch(error){
     console.warn('[Quiz] Firestore sync failed:', error);
-    return { success:false, reason:'firestore-save-failed', error:String(error && error.message || error || ''), collection:privateCollection, publicCollection:publicCollection };
+    return { success:false, reason:'firestore-save-failed', error:String(error && error.message || error || ''), collection:privateCollection };
   }
 };
 </script>
@@ -2569,4 +2521,3 @@ window.saveQuizResultRemote = async function(record){
 </div><!-- /.phone-frame -->
 </body>
 </html>
-
