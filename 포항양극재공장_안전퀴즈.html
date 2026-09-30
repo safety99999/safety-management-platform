@@ -975,6 +975,11 @@ body{
       ✏️ 응시 시작
     </button>
   </div>
+
+  <button class="btn-secondary" style="width:100%;padding:15px;margin-top:10px;" 
+          onclick="copyQuizLink()">
+    🔗 이 퀴즈 링크 복사 (수급인에게 전달)
+  </button>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -2430,8 +2435,18 @@ function downloadPDF(){
 // ═══════════════════════════════════════════════════
 // UTIL
 // ═══════════════════════════════════════════════════
+/*
+ * ⚠️ 실제 운영 도메인(GitHub Pages)로 고정합니다.
+ * firebaseapp.com 등 테스트용 도메인에서 열었더라도
+ * 항상 이 주소를 기준으로 링크가 만들어집니다.
+ * 저장소/파일 경로가 다르면 이 한 줄만 수정하면 됩니다.
+ */
+var PRODUCTION_QUIZ_URL =
+  'https://safety99999.github.io/safety-management-platform/' +
+  encodeURIComponent('포항양극재공장_안전퀴즈.html');
+
 function buildQuizLink(){
-  var baseUrl = new URL(window.location.origin + window.location.pathname);
+  var baseUrl = new URL(PRODUCTION_QUIZ_URL);
   var currentParams = new URLSearchParams(window.location.search || '');
   var workId = (userData && userData.workId) ? userData.workId : (currentParams.get('workId') || '');
   var batch = currentParams.get('batch') || '';
@@ -2446,23 +2461,29 @@ function buildQuizLink(){
 }
 
 async function copyQuizLink(){
+  /*
+   * 링크만 단독으로 복사합니다.
+   * (제목 문구를 함께 복사하면 브라우저 주소창에 붙여넣을 때
+   *  한 덩어리 텍스트가 되어 정상 URL로 인식되지 않습니다.
+   *  카카오톡 등 메신저에 붙여넣을 때는 URL만 보내도
+   *  자동으로 미리보기 카드가 생성됩니다.)
+   */
   var quizUrl = buildQuizLink();
-  var copyText = '포스코퓨처엠 포항양극재공장 출입자안전퀴즈\n' + quizUrl;
 
   try{
-    await navigator.clipboard.writeText(copyText);
-    showToast('복사 완료', 'success');
+    await navigator.clipboard.writeText(quizUrl);
+    showToast('퀴즈 링크가 복사되었습니다', 'success');
   }catch(e){
     try{
       var ta = document.createElement('textarea');
-      ta.value = copyText;
+      ta.value = quizUrl;
       ta.style.position = 'fixed';
       ta.style.left = '-9999px';
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      showToast('복사 완료', 'success');
+      showToast('퀴즈 링크가 복사되었습니다', 'success');
     }catch(copyErr){
       showToast('복사 실패', 'danger');
     }
