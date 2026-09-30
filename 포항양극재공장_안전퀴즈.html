@@ -1029,6 +1029,8 @@ body{
     <div class="info-box-b">모든 항목은 필수 입력입니다</div>
   </div>
 
+  <div id="exemptionBanner" style="display:none;"></div>
+
   <div class="form-section">
     <div class="form-section-title">👤 응시자 정보</div>
     
@@ -1055,7 +1057,7 @@ body{
 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goToScreen('screen-welcome')">← 이전</button>
-    <button class="btn-primary" style="flex:2;" onclick="validateAndNext('screen-site')">
+    <button class="btn-primary" style="flex:2;" id="infoNextButton" onclick="validateAndNext('screen-site')">
       다음 →
     </button>
   </div>
@@ -1145,7 +1147,7 @@ body{
 
   <div class="btn-row">
     <button class="btn-secondary" onclick="goToScreen('screen-site')">← 이전</button>
-    <button class="btn-primary" style="flex:2;" onclick="validateDateAndNext()">
+    <button class="btn-primary" style="flex:2;" id="dateSubmitButton" onclick="validateDateAndNext()">
       🎯 퀴즈 시작
     </button>
   </div>
@@ -1366,7 +1368,10 @@ var userData = {
   passed: false,
   signature: null,
   quizId: '',
-  workId: ''           // ⭐ v2.0 신규
+  workId: '',          // ⭐ v2.0 신규
+  examExempted: false, // ⭐ 3개월 이내 합격자 면제 여부
+  exemptedFromQuizId: '',
+  exemptedLastPassedAt: ''
 };
 
 var currentQuestionIndex = 0;
@@ -1790,6 +1795,15 @@ function goToScreen(screenId){
   } else if(hideProgress.indexOf(screenId) >= 0){
     progressWrap.style.display = 'none';
   }
+
+  if(screenId === 'screen-date'){
+    var dateSubmitButton = document.getElementById('dateSubmitButton');
+    if(dateSubmitButton){
+      dateSubmitButton.textContent = userData.examExempted
+        ? '✅ 면제 · 방문 등록'
+        : '🎯 퀴즈 시작';
+    }
+  }
   
   window.scrollTo(0, 0);
 }
@@ -1837,7 +1851,7 @@ function formatPhoneInput(el){
 // ═══════════════════════════════════════════════════
 // 검증 & 이동
 // ═══════════════════════════════════════════════════
-function validateAndNext(nextScreen){
+async function validateAndNext(nextScreen){
   formatPhoneInput(document.getElementById('input-phone'));
 
   var name = getVal('input-name');
@@ -1853,8 +1867,91 @@ function validateAndNext(nextScreen){
   userData.company = company;
   userData.phone = phone;
   userData.purpose = getVal('input-purpose');
-  
+
+  // 매번 재확인 (전화번호를 바꿔 다시 진행할 수 있으므로 초기화)
+  userData.examExempted = false;
+  userData.exemptedFromQuizId = '';
+  userData.exemptedLastPassedAt = '';
+  renderExemptionBanner(null);
+
+  var nextButton = document.getElementById('infoNextButton');
+  var originalLabel = nextButton ? nextButton.textContent : '';
+
+  if(nextButton){
+    nextButton.disabled = true;
+    nextButton.textContent = '확인 중...';
+  }
+
+  try{
+    if(typeof window.checkQuizExemption === 'function'){
+      var result = await window.checkQuizExemption(phone);
+
+      if(result && result.exempt){
+        userData.examExempted = true;
+        userData.exemptedFromQuizId = result.quizId || '';
+        userData.exemptedLastPassedAt = result.lastPassedAt || '';
+        renderExemptionBanner(result);
+      }
+    }
+  }catch(error){
+    console.warn('[Quiz] 면제 확인 실패:', error);
+  }finally{
+    if(nextButton){
+      nextButton.disabled = false;
+      nextButton.textContent = originalLabel || '다음 →';
+    }
+  }
+
   goToScreen(nextScreen);
+}
+
+/*
+ * 최근 3개월 이내 합격 이력이 있으면 퀴즈·서명 단계를
+ * 건너뛸 수 있다는 안내 배너를 표시합니다.
+ * 원하면 "그래도 다시 응시" 버튼으로 강제로 다시 볼 수 있습니다.
+ */
+function renderExemptionBanner(result){
+  var banner = document.getElementById('exemptionBanner');
+  if(!banner) return;
+
+  if(!result || !result.exempt){
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+    return;
+  }
+
+  var lastDateLabel = '';
+  try{
+    var d = new Date(result.lastPassedAt);
+    if(Number.isFinite(d.getTime())){
+      lastDateLabel = fmtDate(d);
+    }
+  }catch(e){}
+
+  banner.innerHTML =
+    '<div style="background:var(--done-bg);border-left:4px solid var(--done);' +
+      'border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:12px;">' +
+      '<div style="font-size:13px;font-weight:800;color:var(--done);margin-bottom:5px;">' +
+        '✅ 최근 합격 이력 확인됨' +
+      '</div>' +
+      '<div style="font-size:13px;color:var(--body);font-weight:600;line-height:1.55;">' +
+        (lastDateLabel ? lastDateLabel + ' 합격 이력이 있어 ' : '최근 ') +
+        '안전퀴즈 응시와 서명이 <strong>면제</strong>됩니다.<br>' +
+        '방문 위치·기간만 입력하시면 됩니다.' +
+      '</div>' +
+      '<button type="button" class="sig-clear" style="margin-top:10px;" ' +
+        'onclick="forceRetakeQuiz()">그래도 다시 응시하기</button>' +
+    '</div>';
+
+  banner.style.display = 'block';
+}
+
+function forceRetakeQuiz(){
+  userData.examExempted = false;
+  userData.exemptedFromQuizId = '';
+  userData.exemptedLastPassedAt = '';
+  renderExemptionBanner(null);
+  showToast('안전퀴즈를 다시 응시합니다', 'info');
 }
 
 function selectSite(siteName, element){
@@ -1903,6 +2000,12 @@ function validateDateAndNext(){
   
   userData.dateStart = dateStart;
   userData.dateEnd = dateEnd;
+
+  if(userData.examExempted){
+    submitExemptedVisit();
+    return;
+  }
+
   startQuiz('full');
 }
 
@@ -2310,6 +2413,130 @@ async function executeSubmit(){
   }
 }
 
+/*
+ * 3개월 이내 합격 이력이 확인된 방문자의 방문 기록을 저장합니다.
+ * 13문항 응시와 서명을 요구하지 않고, 이전 합격 이력을 참조해
+ * 오늘 방문 사실만 기록합니다.
+ */
+async function submitExemptedVisit(){
+  try{
+    var now = new Date();
+    var dateStr = now.getFullYear() +
+                 String(now.getMonth() + 1).padStart(2, '0') +
+                 String(now.getDate()).padStart(2, '0');
+
+    var existingQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var todayCount = existingQuizzes.filter(function(q){
+      return q.quizId && q.quizId.startsWith('QZ-' + dateStr);
+    }).length;
+    var seq = String(todayCount + 1).padStart(3, '0');
+    var quizId = 'QZ-' + dateStr + '-' + seq;
+
+    var quizData = {
+      quizId: quizId,
+      workId: userData.workId || '',
+      respondent: userData.name,
+      respondentCompany: userData.company,
+      name: userData.name,
+      company: userData.company,
+      phone: userData.phone,
+      purpose: userData.purpose || '',
+      site: userData.site,
+      dateStart: userData.dateStart,
+      dateEnd: userData.dateEnd,
+      date: userData.dateStart,
+      score: null,
+      totalQuestions: questions.length,
+      passed: true,
+      completed: true,
+      status: '합격(면제)',
+      statusCode: 'exempted',
+      examExempted: true,
+      exemptedFromQuizId: userData.exemptedFromQuizId || '',
+      exemptedLastPassedAt: userData.exemptedLastPassedAt || '',
+      answers: [],
+      signature: null,
+      completedAt: now.toISOString(),
+      createdAt: now.toISOString(),
+      environment: 'test',
+      schemaVersion: 2,
+      firestoreSaved: false,
+      syncPending: true,
+      syncStatus: 'pending',
+      syncError: ''
+    };
+
+    existingQuizzes.push(quizData);
+    localStorage.setItem('safetyQuizzes', JSON.stringify(existingQuizzes));
+
+    var remoteSaveResult = { success:false, reason:'remote-save-not-enabled' };
+    if(typeof window.saveQuizResultRemote === 'function'){
+      try{
+        remoteSaveResult = await window.saveQuizResultRemote(quizData);
+      }catch(remoteError){
+        console.warn('[Quiz] Firestore save error:', remoteError);
+        remoteSaveResult = { success:false, reason:'remote-save-failed', error: String(remoteError && remoteError.message || remoteError || '') };
+      }
+    }
+
+    quizData.firestoreSaved = !!(remoteSaveResult && remoteSaveResult.success === true);
+    quizData.syncPending = !quizData.firestoreSaved;
+    quizData.syncStatus = quizData.firestoreSaved ? 'synced' : 'local-only';
+    quizData.syncError = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.reason ? remoteSaveResult.reason : 'remote-save-failed');
+
+    var storedQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var quizIndex = storedQuizzes.findIndex(function(item){
+      return item && item.quizId === quizId;
+    });
+    if(quizIndex >= 0){
+      storedQuizzes[quizIndex] = quizData;
+      localStorage.setItem('safetyQuizzes', JSON.stringify(storedQuizzes));
+    }
+
+    try{
+      window.dispatchEvent(new CustomEvent('app-data-changed', {
+        detail: {
+          key: 'safetyQuizzes',
+          workId: userData.workId,
+          timestamp: Date.now()
+        }
+      }));
+    }catch(e){}
+
+    console.log('✅ 안전퀴즈 면제 방문 저장 완료:', quizId, 'workId:', userData.workId);
+
+    userData.quizId = quizId;
+    userData.passed = true;
+    userData.score = null;
+
+    setTxt('final-quiz-id', quizId);
+    setTxt('final-name', userData.name);
+    setTxt('final-company', userData.company);
+    setTxt('final-site', userData.site);
+    setTxt('final-date', userData.dateStart + ' ~ ' + userData.dateEnd);
+    setTxt('final-score', '면제 (최근 합격 이력 확인)');
+
+    if(!hasValidDashboardSession()){
+      var homeBtn = document.getElementById('completeHomeButton');
+      if(homeBtn) homeBtn.style.display = 'none';
+      var notice = document.getElementById('externalCloseNotice');
+      if(notice) notice.style.display = 'block';
+    }
+
+    goToScreen('screen-complete');
+    showToast('✅ 최근 합격 이력으로 응시가 면제되었습니다', 'success');
+
+  }catch(error){
+    console.error('❌ 면제 방문 저장 실패:', error);
+    showCustomAlert({
+      icon: '❌',
+      title: '저장 실패',
+      message: '저장 중 오류가 발생했습니다.\n\n' + error.message,
+      okType: 'danger'
+    });
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // 홈 / 뒤로가기
 //  - 대시보드 로그인 세션이 있는 내부 사용자만
@@ -2672,7 +2899,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script type="module">
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, initializeFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, initializeFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB7xLsGrG_tTH6ZQ1-Hz1HTQ1GPDq8sfzU',
@@ -2704,6 +2931,21 @@ const privateCollection = (typeof window.getCollectionName === 'function')
   ? window.getCollectionName('safetyQuizzes')
   : 'safetyQuizzes';
 
+/*
+ * 3개월 이내 합격 면제 조회용 인덱스 컬렉션입니다.
+ * 문서 ID = 숫자만 남긴 전화번호이며, 개인정보(이름·서명 등)는
+ * 저장하지 않고 면제 판정에 필요한 최소 정보만 담습니다.
+ */
+const exemptionCollection = (typeof window.getCollectionName === 'function')
+  ? window.getCollectionName('safetyQuizExemptions')
+  : 'safetyQuizExemptions';
+
+const EXEMPTION_WINDOW_DAYS = 90;
+
+function normalizePhoneKey(phone){
+  return String(phone || '').replace(/\D/g, '');
+}
+
 function waitForUser(timeoutMs){
   return new Promise(function(resolve){
     const timeoutId = setTimeout(function(){ resolve(null); }, timeoutMs || 4000);
@@ -2724,6 +2966,57 @@ async function ensureAuthUser(){
   try{ await signInAnonymously(auth); }catch(_e){}
   return await waitForUser(4000);
 }
+
+/*
+ * 전화번호로 최근 3개월 이내 합격 이력을 조회합니다.
+ * 반환값은 면제 여부 판단에 필요한 최소 정보만 포함합니다.
+ * (이름·서명 등 개인정보는 이 컬렉션에 애초에 저장하지 않습니다)
+ */
+window.checkQuizExemption = async function(phone){
+  const phoneKey = normalizePhoneKey(phone);
+
+  if(!phoneKey){
+    return { exempt:false, reason:'invalid-phone' };
+  }
+
+  try{
+    const user = await ensureAuthUser();
+    if(!user){
+      return { exempt:false, reason:'firebase-auth-failed' };
+    }
+
+    const snapshot = await getDoc(doc(db, exemptionCollection, phoneKey));
+
+    if(!snapshot.exists()){
+      return { exempt:false, reason:'no-record' };
+    }
+
+    const data = snapshot.data() || {};
+    const lastPassedAt = data.lastPassedAt || '';
+    const lastPassedTime = new Date(lastPassedAt).getTime();
+
+    if(!Number.isFinite(lastPassedTime)){
+      return { exempt:false, reason:'invalid-record' };
+    }
+
+    const withinWindow =
+      (Date.now() - lastPassedTime) <=
+      (EXEMPTION_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+    if(!withinWindow){
+      return { exempt:false, reason:'expired', lastPassedAt:lastPassedAt };
+    }
+
+    return {
+      exempt:true,
+      lastPassedAt:lastPassedAt,
+      quizId:data.quizId || ''
+    };
+  }catch(error){
+    console.warn('[Quiz] Exemption lookup failed:', error);
+    return { exempt:false, reason:'lookup-failed' };
+  }
+};
 
 window.saveQuizResultRemote = async function(record){
   try{
@@ -2747,6 +3040,33 @@ window.saveQuizResultRemote = async function(record){
       createdAtTs: serverTimestamp(),
       updatedAtTs: serverTimestamp()
     }, { merge:true });
+
+    /*
+     * 실제로 13문항을 풀어 합격한 경우에만 면제 인덱스를 갱신합니다.
+     * 면제로 건너뛴 방문(examExempted)은 3개월 시계를 연장하지
+     * 않습니다 — 최초 실합격일 기준으로만 면제 기간을 계산합니다.
+     */
+    const phoneKey = normalizePhoneKey(record.phone);
+
+    if(
+      record.passed === true &&
+      record.examExempted !== true &&
+      phoneKey
+    ){
+      try{
+        await setDoc(doc(db, exemptionCollection, phoneKey), {
+          phoneKey:phoneKey,
+          passed:true,
+          lastPassedAt:record.completedAt || new Date().toISOString(),
+          quizId:record.quizId,
+          environment:'test',
+          updatedAt:new Date().toISOString(),
+          updatedAtTs:serverTimestamp()
+        }, { merge:true });
+      }catch(indexError){
+        console.warn('[Quiz] Exemption index update failed:', indexError);
+      }
+    }
 
     return { success:true, collection:privateCollection };
   }catch(error){
