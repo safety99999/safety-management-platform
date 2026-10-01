@@ -3010,6 +3010,16 @@ function openEduLightbox(){
   var img = document.getElementById('eduLightboxImage');
   if(!overlay || !img) return;
 
+  /*
+   * device-frame.css의 .phone-screen{contain:layout}이
+   * PC에서 position:fixed 자식의 기준 박스를 바꿔버려서,
+   * 라이트박스가 폰 프레임 안에서만 뜨는 문제를 막기 위해
+   * body 바로 아래로 옮겨버립니다.
+   */
+  if(overlay.parentNode !== document.body){
+    document.body.appendChild(overlay);
+  }
+
   img.src = flashcardImages[flashcardIndex];
   resetEduLightboxZoom();
   updateEduLightboxNav();
@@ -3049,7 +3059,21 @@ function toggleEduLightboxZoom(){
   if(!img) return;
 
   eduLightboxZoomed = !eduLightboxZoomed;
-  img.style.transform = eduLightboxZoomed ? 'scale(2.2)' : 'scale(1)';
+
+  if(eduLightboxZoomed){
+    var rect = img.getBoundingClientRect();
+    var targetWidth = window.innerWidth * 0.94;
+    var targetHeight = window.innerHeight * 0.9;
+    var scale = Math.min(
+      targetWidth / rect.width,
+      targetHeight / rect.height
+    );
+    scale = Math.max(1.4, Math.min(scale, 3));
+    img.style.transform = 'scale(' + scale.toFixed(2) + ')';
+  }else{
+    img.style.transform = 'scale(1)';
+  }
+
   img.classList.toggle('zoomed', eduLightboxZoomed);
 }
 
