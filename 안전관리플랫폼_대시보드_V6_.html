@@ -2168,6 +2168,10 @@ button{touch-action:manipulation}
         <div class="sets-l"><span>🛡️</span><span class="sets-name">위험성평가 DB 관리</span></div>
         <span class="sets-r">이동 ›</span>
       </div>
+      <div class="sets-item" id="quizReportButton">
+        <div class="sets-l"><span>📋</span><span class="sets-name">출입자 퀴즈 리포트</span></div>
+        <span class="sets-r">이동 ›</span>
+      </div>
       <div class="sets-item" id="refreshDataButton">
         <div class="sets-l"><span>🔄</span><span class="sets-name">데이터 새로고침</span></div>
         <span class="sets-r" id="syncStatusText">캐시</span>
@@ -9983,6 +9987,691 @@ function standardWorkCard(
 
 
 
+  /* =====================================================
+   * 출입자 안전퀴즈 리포트 (관리자 전용)
+   * ===================================================== */
+
+  var quizReportState = {
+    dateMode:'today',      // today | week | all
+    resultFilter:'all',    // all | passed | failed | exempted
+    search:''
+  };
+
+  function maskPhoneNumber(phone){
+    var digits =
+      clean(phone).replace(/\D/g,'');
+
+    if(digits.length < 7){
+      return clean(phone) || '-';
+    }
+
+    return (
+      digits.slice(0,3) +
+      '-****-' +
+      digits.slice(-4)
+    );
+  }
+
+  function quizReportResultCode(record){
+    record = record || {};
+
+    if(
+      record.examExempted === true ||
+      record.statusCode === 'exempted'
+    ){
+      return 'exempted';
+    }
+
+    return record.passed === true
+      ? 'passed'
+      : 'failed';
+  }
+
+  function quizReportResultLabel(code){
+    return (
+      {
+        passed:'🟢 합격',
+        failed:'🔴 불합격',
+        exempted:'🟡 면제'
+      }[code] || '-'
+    );
+  }
+
+  function quizReportDateInRange(record){
+    if(quizReportState.dateMode === 'all'){
+      return true;
+    }
+
+    var recordDate =
+      clean(
+        record.completedAt ||
+        record.createdAt
+      ).slice(0,10);
+
+    if(!recordDate){
+      return false;
+    }
+
+    if(quizReportState.dateMode === 'today'){
+      return recordDate === today();
+    }
+
+    if(quizReportState.dateMode === 'week'){
+      var weekAgo = new Date();
+
+      weekAgo.setDate(
+        weekAgo.getDate() - 6
+      );
+
+      var weekAgoStr =
+        formatDate(weekAgo);
+
+      return (
+        recordDate >= weekAgoStr &&
+        recordDate <= today()
+      );
+    }
+
+    return true;
+  }
+
+  function quizReportSearchText(record){
+    return [
+      record.name,
+      record.company,
+      record.site,
+      record.purpose
+    ]
+      .join(' ')
+      .toLowerCase();
+  }
+
+  function matchesQuizReportFilter(record){
+    if(!quizReportDateInRange(record)){
+      return false;
+    }
+
+    if(
+      quizReportState.resultFilter !== 'all' &&
+      quizReportResultCode(record) !==
+        quizReportState.resultFilter
+    ){
+      return false;
+    }
+
+    var keyword =
+      clean(
+        quizReportState.search
+      ).toLowerCase();
+
+    if(
+      keyword &&
+      quizReportSearchText(record)
+        .indexOf(keyword) < 0
+    ){
+      return false;
+    }
+
+    return true;
+  }
+
+  function filteredQuizReportRecords(){
+    return (state.quizzes || [])
+      .filter(matchesQuizReportFilter)
+      .sort(function(a,b){
+        return (
+          recordTime(b) -
+          recordTime(a)
+        );
+      });
+  }
+
+  function quizReportSummaryHtml(records){
+    var passed =
+      records.filter(function(r){
+        return (
+          quizReportResultCode(r) ===
+          'passed'
+        );
+      }).length;
+
+    var failed =
+      records.filter(function(r){
+        return (
+          quizReportResultCode(r) ===
+          'failed'
+        );
+      }).length;
+
+    var exempted =
+      records.filter(function(r){
+        return (
+          quizReportResultCode(r) ===
+          'exempted'
+        );
+      }).length;
+
+    return (
+      '<div class="insp-sum" style="margin:0 0 10px">' +
+        '<div class="isp"><div class="isp-v">' +
+          records.length +
+        '</div><div class="isp-l">전체</div></div>' +
+        '<div class="isp"><div class="isp-v g">' +
+          passed +
+        '</div><div class="isp-l">합격</div></div>' +
+        '<div class="isp"><div class="isp-v r">' +
+          failed +
+        '</div><div class="isp-l">불합격</div></div>' +
+        '<div class="isp"><div class="isp-v o">' +
+          exempted +
+        '</div><div class="isp-l">면제</div></div>' +
+      '</div>'
+    );
+  }
+
+  function quizReportFilterBarHtml(){
+    var dateOptions = [
+      ['today','오늘'],
+      ['week','이번주'],
+      ['all','전체']
+    ];
+
+    var resultOptions = [
+      ['all','전체'],
+      ['passed','합격'],
+      ['failed','불합격'],
+      ['exempted','면제']
+    ];
+
+    return (
+      '<div class="prework-filterbar" style="margin-bottom:7px">' +
+        dateOptions.map(function(option){
+          return (
+            '<button type="button" class="prework-filter ' +
+              (
+                quizReportState.dateMode ===
+                  option[0]
+                  ? 'active'
+                  : ''
+              ) +
+              '" data-quiz-report-date="' +
+              option[0] +
+            '">' +
+              option[1] +
+            '</button>'
+          );
+        }).join('') +
+      '</div>' +
+
+      '<div class="prework-filterbar" style="margin-bottom:9px">' +
+        resultOptions.map(function(option){
+          return (
+            '<button type="button" class="prework-filter ' +
+              (
+                quizReportState.resultFilter ===
+                  option[0]
+                  ? 'active'
+                  : ''
+              ) +
+              '" data-quiz-report-result="' +
+              option[0] +
+            '">' +
+              option[1] +
+            '</button>'
+          );
+        }).join('') +
+      '</div>' +
+
+      '<input type="search" class="prework-search" ' +
+        'id="quizReportSearchInput" ' +
+        'placeholder="이름·업체 검색" value="' +
+        escapeHtml(quizReportState.search) +
+      '">'
+    );
+  }
+
+  function quizReportCard(record){
+    var code =
+      quizReportResultCode(record);
+
+    var statusClassName =
+      code === 'passed'
+        ? 'done'
+        : code === 'failed'
+          ? 'stop'
+          : 'wait';
+
+    return (
+      '<article class="work-item compact" ' +
+        'data-quiz-report-open="' +
+        escapeHtml(record.quizId) +
+      '">' +
+
+        '<div class="wi-top">' +
+          '<span class="wi-status ' +
+            statusClassName +
+          '">' +
+            quizReportResultLabel(code) +
+          '</span>' +
+
+          '<span style="margin-left:auto;color:var(--faint);' +
+            'font-size:10.5px;font-weight:700">' +
+            escapeHtml(
+              formatDateTime(
+                record.completedAt ||
+                record.createdAt
+              )
+            ) +
+          '</span>' +
+        '</div>' +
+
+        '<div class="wi-name">' +
+          escapeHtml(
+            record.name ||
+            '이름 미입력'
+          ) +
+        '</div>' +
+
+        '<div class="wi-meta">' +
+          '<span>🏢 ' +
+            escapeHtml(
+              record.company || '-'
+            ) +
+          '</span>' +
+
+          '<span>📍 ' +
+            escapeHtml(
+              record.site || '-'
+            ) +
+          '</span>' +
+
+          '<span>📞 ' +
+            escapeHtml(
+              maskPhoneNumber(
+                record.phone
+              )
+            ) +
+          '</span>' +
+        '</div>' +
+
+        '<div style="margin-top:6px;color:var(--sub);' +
+          'font-size:11px;font-weight:700">' +
+          (
+            code === 'exempted'
+              ? '면제 (최근 3개월 이내 합격 이력)'
+              : '점수 ' +
+                (
+                  record.score !== undefined &&
+                  record.score !== null
+                    ? record.score +
+                      '/' +
+                      (record.totalQuestions || 13)
+                    : '-'
+                )
+          ) +
+        '</div>' +
+
+      '</article>'
+    );
+  }
+
+  function renderQuizReportList(){
+    var records =
+      filteredQuizReportRecords();
+
+    var html =
+      quizReportSummaryHtml(records) +
+      quizReportFilterBarHtml() +
+      '<button type="button" class="wi-btn secondary" ' +
+        'style="margin:10px 0" ' +
+        'id="quizReportExportButton">' +
+        '⬇️ CSV 다운로드 (' +
+        records.length +
+        '건)' +
+      '</button>';
+
+    if(!records.length){
+      html +=
+        '<div class="empty">' +
+          '<div class="empty-ico">📭</div>' +
+          '<div class="empty-txt">' +
+            '조건에 맞는 응시 기록이 없습니다.' +
+          '</div>' +
+        '</div>';
+    }else{
+      html +=
+        records
+          .map(quizReportCard)
+          .join('');
+    }
+
+    return html;
+  }
+
+  function renderQuizReportSheet(){
+    var body = byId('sheetBody');
+
+    if(!body){
+      return;
+    }
+
+    body.innerHTML =
+      renderQuizReportList();
+
+    var exportButton =
+      byId('quizReportExportButton');
+
+    if(exportButton){
+      exportButton.addEventListener(
+        'click',
+        exportQuizReportCsv
+      );
+    }
+  }
+
+  function openQuizReportDetail(quizId){
+    var record =
+      (state.quizzes || []).find(
+        function(item){
+          return (
+            clean(item.quizId) ===
+            clean(quizId)
+          );
+        }
+      );
+
+    if(!record){
+      showToast(
+        '응시 기록을 찾을 수 없습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    var code =
+      quizReportResultCode(record);
+
+    var cardClassName =
+      code === 'passed'
+        ? 'approved'
+        : code === 'failed'
+          ? 'rejected'
+          : 'pending';
+
+    var html =
+      '<button type="button" class="permit-menu-back" ' +
+        'data-quiz-report-back="1" style="margin-bottom:10px">' +
+        '‹ 목록으로' +
+      '</button>' +
+
+      '<div class="permit-integrated-card ' +
+        cardClassName +
+      '">' +
+
+        '<div class="permit-integrated-top">' +
+          '<span class="permit-integrated-status">' +
+            quizReportResultLabel(code) +
+          '</span>' +
+
+          '<span class="permit-integrated-no">' +
+            escapeHtml(
+              record.quizId || '-'
+            ) +
+          '</span>' +
+        '</div>' +
+
+        '<div class="permit-integrated-name">' +
+          escapeHtml(
+            record.name ||
+            '이름 미입력'
+          ) +
+        '</div>' +
+
+        '<div class="permit-integrated-meta">' +
+          '🏢 ' +
+          escapeHtml(
+            record.company || '-'
+          ) +
+          '<br>📞 ' +
+          escapeHtml(
+            clean(record.phone) || '-'
+          ) +
+          '<br>📍 ' +
+          escapeHtml(
+            record.site || '-'
+          ) +
+          '<br>📅 방문기간 ' +
+          escapeHtml(
+            (record.dateStart || '-') +
+            ' ~ ' +
+            (record.dateEnd || '-')
+          ) +
+          '<br>🕒 응시일시 ' +
+          escapeHtml(
+            formatDateTime(
+              record.completedAt ||
+              record.createdAt
+            )
+          ) +
+          (
+            record.purpose
+              ? '<br>📝 목적 ' +
+                escapeHtml(
+                  record.purpose
+                )
+              : ''
+          ) +
+        '</div>' +
+
+      '</div>' +
+
+      (
+        code === 'exempted'
+          ? '<div class="prework-summary">' +
+              '최근 3개월 이내 합격 이력(이전 퀴즈ID: ' +
+              escapeHtml(
+                record.exemptedFromQuizId ||
+                '-'
+              ) +
+              ')으로 응시가 면제된 방문입니다.' +
+            '</div>'
+          : '<div class="prework-summary">' +
+              '점수 ' +
+              (
+                record.score !== undefined &&
+                record.score !== null
+                  ? record.score +
+                    ' / ' +
+                    (record.totalQuestions || 13)
+                  : '-'
+              ) +
+            '</div>'
+      ) +
+
+      (
+        record.signature
+          ? (
+              '<div class="notice-edit" style="margin:0 0 12px">' +
+                '<div class="notice-edit-title">✍️ 서명</div>' +
+                '<img src="' +
+                  record.signature +
+                  '" alt="서명" style="width:100%;' +
+                  'border:1px solid var(--line);' +
+                  'border-radius:10px;background:#fff">' +
+              '</div>'
+            )
+          : '<div class="prework-summary">' +
+              '서명 이미지가 없습니다 (면제 응시).' +
+            '</div>'
+      );
+
+    byId('sheetBody').innerHTML = html;
+
+    setText(
+      'sheetTitle',
+      '응시 상세'
+    );
+  }
+
+  function exportQuizReportCsv(){
+    var records =
+      filteredQuizReportRecords();
+
+    if(!records.length){
+      showToast(
+        '내보낼 응시 기록이 없습니다.',
+        'warning'
+      );
+
+      return;
+    }
+
+    var headers = [
+      '퀴즈ID','이름','업체','전화번호',
+      '방문위치','방문시작','방문종료',
+      '결과','점수','총문항','응시일시','워크ID'
+    ];
+
+    function csvCell(value){
+      var text =
+        String(
+          value === undefined ||
+          value === null
+            ? ''
+            : value
+        );
+
+      if(/[",\n]/.test(text)){
+        text =
+          '"' +
+          text.replace(/"/g,'""') +
+          '"';
+      }
+
+      return text;
+    }
+
+    var rows =
+      records.map(function(record){
+        var code =
+          quizReportResultCode(record);
+
+        return [
+          record.quizId || '',
+          record.name || '',
+          record.company || '',
+          clean(record.phone) || '',
+          record.site || '',
+          record.dateStart || '',
+          record.dateEnd || '',
+          code === 'passed'
+            ? '합격'
+            : code === 'failed'
+              ? '불합격'
+              : '면제',
+          record.score !== undefined &&
+          record.score !== null
+            ? record.score
+            : '',
+          record.totalQuestions || '',
+          record.completedAt ||
+          record.createdAt || '',
+          record.workId || ''
+        ].map(csvCell).join(',');
+      });
+
+    var csvContent =
+      '\uFEFF' +
+      [headers.map(csvCell).join(',')]
+        .concat(rows)
+        .join('\r\n');
+
+    var blob =
+      new Blob(
+        [csvContent],
+        {
+          type:'text/csv;charset=utf-8'
+        }
+      );
+
+    var url =
+      URL.createObjectURL(blob);
+
+    var anchor =
+      document.createElement('a');
+
+    anchor.href = url;
+
+    anchor.download =
+      '출입자_안전퀴즈_리포트_' +
+      today() +
+      '.csv';
+
+    document.body.appendChild(
+      anchor
+    );
+
+    anchor.click();
+    anchor.remove();
+
+    setTimeout(function(){
+      URL.revokeObjectURL(url);
+    },1000);
+
+    showToast(
+      'CSV 파일을 다운로드했습니다.',
+      'success'
+    );
+  }
+
+  async function openQuizReport(){
+    if(!global.isAdminUser()){
+      showToast(
+        '관리자만 사용할 수 있습니다.',
+        'danger'
+      );
+
+      return;
+    }
+
+    quizReportState = {
+      dateMode:'today',
+      resultFilter:'all',
+      search:''
+    };
+
+    openSheet(
+      '📋 출입자 퀴즈 리포트',
+      '<div class="empty">' +
+        '<div class="empty-ico">⏳</div>' +
+        '<div class="empty-txt">' +
+          '최신 응시 기록을 불러오는 중입니다.' +
+        '</div>' +
+      '</div>'
+    );
+
+    try{
+      if(
+        global.DashboardFirebase &&
+        typeof global.DashboardFirebase
+          .loadQuizResults ===
+            'function'
+      ){
+        await global.DashboardFirebase
+          .loadQuizResults();
+      }
+    }catch(error){
+      console.warn(
+        '[Dashboard] 퀴즈 리포트 동기화 실패:',
+        error
+      );
+    }
+
+    loadAllData();
+    renderQuizReportSheet();
+  }
+
   /* DASHBOARD V8 PART 3 END */
   /* =====================================================
    * 공지·테마
@@ -14778,6 +15467,17 @@ function bindEvents(){
         }
       );
 
+    var quizReportButton =
+      byId('quizReportButton');
+
+    if(quizReportButton){
+      quizReportButton
+        .addEventListener(
+          'click',
+          openQuizReport
+        );
+    }
+
     byId('permitWorkflowButton')
       .addEventListener(
         'click',
@@ -15178,6 +15878,24 @@ byId('inspectionRegisterButton')
             return;
           }
 
+          /*
+           * 출입자 안전퀴즈는 특정 작업과 묶이지 않는
+           * 단독(개별) 기능입니다. 오늘 작업 목록에서
+           * 대상을 고르게 하지 않고 퀴즈 앱 시작화면으로
+           * 바로 이동합니다. 링크 공유는 퀴즈 앱 자체의
+           * "링크 복사" 버튼으로 처리합니다.
+           */
+          if(
+            quickAppType ===
+              'quiz'
+          ){
+            navigate(
+              QUICK_URLS.quiz
+            );
+
+            return;
+          }
+
           quickAction(
             quickAppType
           );
@@ -15214,6 +15932,58 @@ byId('inspectionRegisterButton')
               .preworkFilter;
 
           rerenderPreworkSheet();
+          return;
+        }
+
+        var quizReportOpen =
+          event.target.closest(
+            '[data-quiz-report-open]'
+          );
+
+        if(quizReportOpen){
+          openQuizReportDetail(
+            quizReportOpen.dataset
+              .quizReportOpen
+          );
+
+          return;
+        }
+
+        var quizReportBack =
+          event.target.closest(
+            '[data-quiz-report-back]'
+          );
+
+        if(quizReportBack){
+          renderQuizReportSheet();
+          return;
+        }
+
+        var quizReportDate =
+          event.target.closest(
+            '[data-quiz-report-date]'
+          );
+
+        if(quizReportDate){
+          quizReportState.dateMode =
+            quizReportDate.dataset
+              .quizReportDate;
+
+          renderQuizReportSheet();
+          return;
+        }
+
+        var quizReportResult =
+          event.target.closest(
+            '[data-quiz-report-result]'
+          );
+
+        if(quizReportResult){
+          quizReportState.resultFilter =
+            quizReportResult.dataset
+              .quizReportResult;
+
+          renderQuizReportSheet();
           return;
         }
 
@@ -15394,6 +16164,36 @@ if(completionButton){
               input.setSelectionRange(
                 position,
                 position
+              );
+            }catch(error){}
+          }
+        }
+
+        if(
+          event.target.id ===
+          'quizReportSearchInput'
+        ){
+          quizReportState.search =
+            event.target.value;
+
+          var quizReportPosition =
+            event.target
+              .selectionStart;
+
+          renderQuizReportSheet();
+
+          var quizReportInput =
+            byId(
+              'quizReportSearchInput'
+            );
+
+          if(quizReportInput){
+            quizReportInput.focus();
+
+            try{
+              quizReportInput.setSelectionRange(
+                quizReportPosition,
+                quizReportPosition
               );
             }catch(error){}
           }
