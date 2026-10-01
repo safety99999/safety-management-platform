@@ -14,7 +14,7 @@
   }catch(e){}
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
 <!-- ═══════════════════════════════════════════════════
      🧪 APP MODE 시스템 (2026-09-01 통일)
@@ -772,15 +772,19 @@ body{
   box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
-/* 세로형 T 이미지가 잘리지 않도록 전체 표시 */
+/* 세로형 T 이미지가 잘리지 않도록 전체 표시
+ * (가로·세로 중 더 넉넉한 축을 object-fit이 알아서 선택하도록
+ *  양쪽 모두 100%로 두고 contain에 맡깁니다. 가로모드/PC처럼
+ *  너비가 넉넉한 경우에도 이미지가 더 커질 수 있습니다.) */
 #screen-flashcard #flashcard-image{
   display:block;
-  width:auto !important;
+  width:100% !important;
   height:100% !important;
   max-width:100%;
   max-height:100%;
   object-fit:contain !important;
   object-position:center center;
+  cursor:zoom-in;
 }
 
 /* 진행번호 / 제목 */
@@ -848,7 +852,7 @@ body{
 
   #screen-flashcard #flashcard-image{
     height:100% !important;
-    width:auto !important;
+    width:100% !important;
     max-width:100%;
     max-height:100%;
     object-fit:contain !important;
@@ -859,6 +863,71 @@ body{
   #screen-flashcard.active{
     height:calc(100vh - 56px);
   }
+
+  /*
+   * 안전교육 화면이 활성화된 동안에는 PC에서 480px 고정
+   * 폰 프레임을 벗어나 훨씬 넓게 보여줍니다.
+   * (body.edu-wide-mode는 JS가 교육 화면 진입/이탈 시 토글)
+   */
+  body.edu-wide-mode .phone-frame{
+    width:min(1000px,92vw);
+    height:min(920px,92vh);
+  }
+}
+
+/* ═══════════════════════════════════════
+   안전교육 이미지 확대보기(라이트박스)
+   ═══════════════════════════════════════ */
+.edu-lightbox-overlay{
+  position:fixed;inset:0;z-index:9000;
+  background:rgba(6,10,16,.92);
+  opacity:0;pointer-events:none;
+  display:flex;flex-direction:column;
+  transition:opacity .2s ease;
+}
+.edu-lightbox-overlay.active{
+  opacity:1;pointer-events:auto;
+}
+.edu-lightbox-top{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;
+}
+.edu-lightbox-hint{
+  color:rgba(255,255,255,.75);font-size:12px;font-weight:700;
+}
+.edu-lightbox-close{
+  width:40px;height:40px;border:0;border-radius:50%;
+  background:rgba(255,255,255,.14);color:#fff;font-size:20px;
+  display:grid;place-items:center;cursor:pointer;flex-shrink:0;
+}
+.edu-lightbox-stage{
+  flex:1 1 auto;min-height:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:pinch-zoom pan-x pan-y;
+}
+.edu-lightbox-stage img{
+  max-width:96%;max-height:96%;
+  object-fit:contain;
+  transition:transform .15s ease;
+  will-change:transform;
+  cursor:zoom-in;
+}
+.edu-lightbox-stage img.zoomed{
+  cursor:zoom-out;
+}
+.edu-lightbox-nav{
+  flex:0 0 auto;
+  display:flex;gap:10px;justify-content:center;
+  padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+}
+.edu-lightbox-nav button{
+  padding:12px 22px;border:0;border-radius:12px;
+  background:rgba(255,255,255,.14);color:#fff;
+  font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;
+}
+.edu-lightbox-nav button:disabled{
+  opacity:.35;cursor:not-allowed;
 }
 </style>
 <script>
@@ -990,7 +1059,7 @@ body{
 
     <!-- 플래시카드 이미지 영역 -->
     <div id="flashcard-container">
-      <img id="flashcard-image" src="" alt="안전교육 이미지">
+      <img id="flashcard-image" src="" alt="안전교육 이미지" onclick="openEduLightbox()">
     </div>
 
     <!-- 카드 정보 -->
@@ -1333,6 +1402,21 @@ body{
 </div><!-- /.app -->
 
 <!-- 커스텀 확인 다이얼로그 -->
+<!-- 안전교육 이미지 확대보기(라이트박스) -->
+<div class="edu-lightbox-overlay" id="eduLightboxOverlay">
+  <div class="edu-lightbox-top">
+    <div class="edu-lightbox-hint">핀치·더블탭으로 확대 / 드래그로 이동</div>
+    <button class="edu-lightbox-close" id="eduLightboxClose" aria-label="닫기">×</button>
+  </div>
+  <div class="edu-lightbox-stage" id="eduLightboxStage">
+    <img id="eduLightboxImage" src="" alt="안전교육 이미지 확대">
+  </div>
+  <div class="edu-lightbox-nav">
+    <button id="eduLightboxPrev">◀ 이전</button>
+    <button id="eduLightboxNext">다음 ▶</button>
+  </div>
+</div>
+
 <div class="custom-confirm-overlay" id="customConfirmOverlay">
   <div class="custom-confirm-modal">
     <div class="custom-confirm-icon" id="customConfirmIcon">⚠️</div>
@@ -1804,6 +1888,8 @@ function goToScreen(screenId){
         : '🎯 퀴즈 시작';
     }
   }
+
+  document.body.classList.toggle('edu-wide-mode', screenId === 'screen-flashcard');
   
   window.scrollTo(0, 0);
 }
@@ -2766,20 +2852,20 @@ function showToast(msg, type){
    ═══════════════════════════════════════ */
 var flashcardData = [
   /* ① 추가 안전교육 T(1) ~ T(14) */
-  {title: "안전 준수사항", desc: ""},
-  {title: "안전보건경영방침/ 환경경영방침", desc: ""},
-  {title: "비상집결지 안내", desc: ""},
-  {title: "비상대피로", desc: ""},
-  {title: "11대 안전철칙 및 항목 외 위반사항 세부기준", desc: ""},
-  {title: "비상상황체계도", desc: ""},
-  {title: "안전보호구 착용 기준(1)", desc: ""},
-  {title: "안전보호구 착용 기준(2)", desc: ""},
-  {title: "화재/폭발 예방 안전기준", desc: ""},
-  {title: "질식 재해 예방 안전기준", desc: ""},
-  {title: "떨어짐 재해 예방 안전기준", desc: ""},
-  {title: "ILS (LOCK OUT/TAG OUT)", desc: ""},
-  {title: "유해화학물질 및 특별관리물질 고지", desc: ""},
-  {title: "안전신문고 / 작업중지권", desc: ""},
+  {title: "T(1) 안전교육", desc: ""},
+  {title: "T(2) 안전교육", desc: ""},
+  {title: "T(3) 안전교육", desc: ""},
+  {title: "T(4) 안전교육", desc: ""},
+  {title: "T(5) 안전교육", desc: ""},
+  {title: "T(6) 안전교육", desc: ""},
+  {title: "T(7) 안전교육", desc: ""},
+  {title: "T(8) 안전교육", desc: ""},
+  {title: "T(9) 안전교육", desc: ""},
+  {title: "T(10) 안전교육", desc: ""},
+  {title: "T(11) 안전교육", desc: ""},
+  {title: "T(12) 안전교육", desc: ""},
+  {title: "T(13) 안전교육", desc: ""},
+  {title: "T(14) 안전교육", desc: ""},
 
   /* ② 기존 11대 안전철칙 */
   {title: "🎓 11대 안전철칙", desc: "안전한 작업을 위한 필수 철칙 교육"},
@@ -2889,6 +2975,141 @@ function nextFlashcard(){
     updateFlashcard();
   }
 }
+
+/* ═══════════════════════════════════════
+   안전교육 이미지 확대보기(라이트박스)
+   - 라이트박스가 열려있는 동안만 핀치줌을 허용하고
+     닫으면 원래(줌 금지) 뷰포트로 되돌립니다.
+   - 더블탭/더블클릭으로도 빠르게 확대·축소할 수 있습니다.
+   ═══════════════════════════════════════ */
+var ORIGINAL_VIEWPORT_CONTENT =
+  'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover';
+var ZOOMABLE_VIEWPORT_CONTENT =
+  'width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover';
+var eduLightboxZoomed = false;
+
+function setViewportZoomable(zoomable){
+  var meta = document.getElementById('viewportMeta');
+  if(!meta) return;
+  meta.setAttribute(
+    'content',
+    zoomable ? ZOOMABLE_VIEWPORT_CONTENT : ORIGINAL_VIEWPORT_CONTENT
+  );
+}
+
+function updateEduLightboxNav(){
+  var prevBtn = document.getElementById('eduLightboxPrev');
+  var nextBtn = document.getElementById('eduLightboxNext');
+  if(prevBtn) prevBtn.disabled = (flashcardIndex === 0);
+  if(nextBtn) nextBtn.disabled = (flashcardIndex === flashcardData.length - 1);
+}
+
+function resetEduLightboxZoom(){
+  var img = document.getElementById('eduLightboxImage');
+  if(!img) return;
+  eduLightboxZoomed = false;
+  img.style.transform = 'scale(1)';
+  img.classList.remove('zoomed');
+}
+
+function openEduLightbox(){
+  var overlay = document.getElementById('eduLightboxOverlay');
+  var img = document.getElementById('eduLightboxImage');
+  if(!overlay || !img) return;
+
+  img.src = flashcardImages[flashcardIndex];
+  resetEduLightboxZoom();
+  updateEduLightboxNav();
+
+  overlay.classList.add('active');
+  setViewportZoomable(true);
+}
+
+function closeEduLightbox(){
+  var overlay = document.getElementById('eduLightboxOverlay');
+  if(overlay) overlay.classList.remove('active');
+  setViewportZoomable(false);
+}
+
+function eduLightboxGo(direction){
+  if(direction === 'prev' && flashcardIndex > 0){
+    flashcardIndex--;
+  }else if(direction === 'next' && flashcardIndex < flashcardData.length - 1){
+    flashcardIndex++;
+  }else{
+    return;
+  }
+
+  updateFlashcard();
+
+  var img = document.getElementById('eduLightboxImage');
+  if(img){
+    img.src = flashcardImages[flashcardIndex];
+    resetEduLightboxZoom();
+  }
+
+  updateEduLightboxNav();
+}
+
+function toggleEduLightboxZoom(){
+  var img = document.getElementById('eduLightboxImage');
+  if(!img) return;
+
+  eduLightboxZoomed = !eduLightboxZoomed;
+  img.style.transform = eduLightboxZoomed ? 'scale(2.2)' : 'scale(1)';
+  img.classList.toggle('zoomed', eduLightboxZoomed);
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var overlay = document.getElementById('eduLightboxOverlay');
+  var closeBtn = document.getElementById('eduLightboxClose');
+  var prevBtn = document.getElementById('eduLightboxPrev');
+  var nextBtn = document.getElementById('eduLightboxNext');
+  var lightboxImg = document.getElementById('eduLightboxImage');
+
+  if(closeBtn){
+    closeBtn.addEventListener('click', closeEduLightbox);
+  }
+
+  if(prevBtn){
+    prevBtn.addEventListener('click', function(){ eduLightboxGo('prev'); });
+  }
+
+  if(nextBtn){
+    nextBtn.addEventListener('click', function(){ eduLightboxGo('next'); });
+  }
+
+  if(overlay){
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay){
+        closeEduLightbox();
+      }
+    });
+  }
+
+  if(lightboxImg){
+    lightboxImg.addEventListener('dblclick', toggleEduLightboxZoom);
+
+    // 더블클릭 이벤트가 잘 안 잡히는 모바일 기기를 위한 더블탭 감지
+    var lastTap = 0;
+    lightboxImg.addEventListener('touchend', function(){
+      var now = Date.now();
+      if(now - lastTap < 320){
+        toggleEduLightboxZoom();
+      }
+      lastTap = now;
+    });
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      var activeOverlay = document.getElementById('eduLightboxOverlay');
+      if(activeOverlay && activeOverlay.classList.contains('active')){
+        closeEduLightbox();
+      }
+    }
+  });
+});
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function(){
