@@ -9993,7 +9993,7 @@ function standardWorkCard(
 
   var quizReportState = {
     dateMode:'today',      // today | week | all
-    resultFilter:'all',    // all | passed | failed | exempted
+    resultFilter:'all',    // all | passed | failed
     search:''
   };
 
@@ -10015,13 +10015,6 @@ function standardWorkCard(
   function quizReportResultCode(record){
     record = record || {};
 
-    if(
-      record.examExempted === true ||
-      record.statusCode === 'exempted'
-    ){
-      return 'exempted';
-    }
-
     return record.passed === true
       ? 'passed'
       : 'failed';
@@ -10031,8 +10024,7 @@ function standardWorkCard(
     return (
       {
         passed:'🟢 합격',
-        failed:'🔴 불합격',
-        exempted:'🟡 면제'
+        failed:'🔴 불합격'
       }[code] || '-'
     );
   }
@@ -10143,16 +10135,9 @@ function standardWorkCard(
         );
       }).length;
 
-    var exempted =
-      records.filter(function(r){
-        return (
-          quizReportResultCode(r) ===
-          'exempted'
-        );
-      }).length;
-
     return (
-      '<div class="insp-sum" style="margin:0 0 10px">' +
+      '<div class="insp-sum" style="margin:0 0 10px;' +
+        'grid-template-columns:repeat(3,1fr)">' +
         '<div class="isp"><div class="isp-v">' +
           records.length +
         '</div><div class="isp-l">전체</div></div>' +
@@ -10162,13 +10147,17 @@ function standardWorkCard(
         '<div class="isp"><div class="isp-v r">' +
           failed +
         '</div><div class="isp-l">불합격</div></div>' +
-        '<div class="isp"><div class="isp-v o">' +
-          exempted +
-        '</div><div class="isp-l">면제</div></div>' +
       '</div>'
     );
   }
 
+  /*
+   * 날짜·결과 칩과 검색창은 "정적" 영역입니다.
+   * 검색창 자체는 입력 중에 다시 그리지 않아야
+   * 한글 입력(조합 중) 글자가 중복 입력되는 문제가
+   * 생기지 않습니다. 목록/요약만 별도 컨테이너로
+   * 분리해서 입력할 때마다 그 부분만 갱신합니다.
+   */
   function quizReportFilterBarHtml(){
     var dateOptions = [
       ['today','오늘'],
@@ -10179,8 +10168,7 @@ function standardWorkCard(
     var resultOptions = [
       ['all','전체'],
       ['passed','합격'],
-      ['failed','불합격'],
-      ['exempted','면제']
+      ['failed','불합격']
     ];
 
     return (
@@ -10294,20 +10282,26 @@ function standardWorkCard(
           '</span>' +
         '</div>' +
 
-        '<div style="margin-top:6px;color:var(--sub);' +
+        '<div style="margin-top:4px;color:var(--posco);' +
+          'font-size:11px;font-weight:800">' +
+          '🗓 출입가능 기간 ' +
+          escapeHtml(
+            (record.dateStart || '-') +
+            ' ~ ' +
+            (record.dateEnd || '-')
+          ) +
+        '</div>' +
+
+        '<div style="margin-top:3px;color:var(--sub);' +
           'font-size:11px;font-weight:700">' +
+          '점수 ' +
           (
-            code === 'exempted'
-              ? '면제 (최근 3개월 이내 합격 이력)'
-              : '점수 ' +
-                (
-                  record.score !== undefined &&
-                  record.score !== null
-                    ? record.score +
-                      '/' +
-                      (record.totalQuestions || 13)
-                    : '-'
-                )
+            record.score !== undefined &&
+            record.score !== null
+              ? record.score +
+                '/' +
+                (record.totalQuestions || 13)
+              : '-'
           ) +
         '</div>' +
 
@@ -10315,13 +10309,18 @@ function standardWorkCard(
     );
   }
 
-  function renderQuizReportList(){
+  /*
+   * 요약 카드 + CSV 버튼 + 목록만 담당합니다.
+   * 검색어가 바뀔 때마다 이 함수의 결과만
+   * #quizReportResultsContainer 안에 다시 그립니다.
+   * (검색창 input 요소 자체는 다시 그리지 않습니다)
+   */
+  function renderQuizReportResultsHtml(){
     var records =
       filteredQuizReportRecords();
 
     var html =
       quizReportSummaryHtml(records) +
-      quizReportFilterBarHtml() +
       '<button type="button" class="wi-btn secondary" ' +
         'style="margin:10px 0" ' +
         'id="quizReportExportButton">' +
@@ -10348,16 +10347,7 @@ function standardWorkCard(
     return html;
   }
 
-  function renderQuizReportSheet(){
-    var body = byId('sheetBody');
-
-    if(!body){
-      return;
-    }
-
-    body.innerHTML =
-      renderQuizReportList();
-
+  function bindQuizReportExportButton(){
     var exportButton =
       byId('quizReportExportButton');
 
@@ -10367,6 +10357,46 @@ function standardWorkCard(
         exportQuizReportCsv
       );
     }
+  }
+
+  /*
+   * 결과 영역만 다시 그립니다 (검색 입력 중 호출).
+   * 검색창 DOM은 그대로 유지되므로 한글 조합 중
+   * 글자가 중복 입력되는 문제가 생기지 않습니다.
+   */
+  function rerenderQuizReportResults(){
+    var container =
+      byId('quizReportResultsContainer');
+
+    if(!container){
+      return;
+    }
+
+    container.innerHTML =
+      renderQuizReportResultsHtml();
+
+    bindQuizReportExportButton();
+  }
+
+  /*
+   * 필터 칩·검색창을 포함한 시트 전체를 새로 그립니다.
+   * (시트를 처음 열 때, 날짜·결과 칩을 바꿀 때만 사용합니다.
+   *  검색어 입력 중에는 rerenderQuizReportResults만 사용합니다)
+   */
+  function renderQuizReportSheet(){
+    var body = byId('sheetBody');
+
+    if(!body){
+      return;
+    }
+
+    body.innerHTML =
+      quizReportFilterBarHtml() +
+      '<div id="quizReportResultsContainer">' +
+        renderQuizReportResultsHtml() +
+      '</div>';
+
+    bindQuizReportExportButton();
   }
 
   function openQuizReportDetail(quizId){
@@ -10441,7 +10471,7 @@ function standardWorkCard(
           escapeHtml(
             record.site || '-'
           ) +
-          '<br>📅 방문기간 ' +
+          '<br>🗓 출입가능 기간 ' +
           escapeHtml(
             (record.dateStart || '-') +
             ' ~ ' +
@@ -10466,28 +10496,17 @@ function standardWorkCard(
 
       '</div>' +
 
-      (
-        code === 'exempted'
-          ? '<div class="prework-summary">' +
-              '최근 3개월 이내 합격 이력(이전 퀴즈ID: ' +
-              escapeHtml(
-                record.exemptedFromQuizId ||
-                '-'
-              ) +
-              ')으로 응시가 면제된 방문입니다.' +
-            '</div>'
-          : '<div class="prework-summary">' +
-              '점수 ' +
-              (
-                record.score !== undefined &&
-                record.score !== null
-                  ? record.score +
-                    ' / ' +
-                    (record.totalQuestions || 13)
-                  : '-'
-              ) +
-            '</div>'
-      ) +
+      '<div class="prework-summary">' +
+        '점수 ' +
+        (
+          record.score !== undefined &&
+          record.score !== null
+            ? record.score +
+              ' / ' +
+              (record.totalQuestions || 13)
+            : '-'
+        ) +
+      '</div>' +
 
       (
         record.signature
@@ -16176,27 +16195,12 @@ if(completionButton){
           quizReportState.search =
             event.target.value;
 
-          var quizReportPosition =
-            event.target
-              .selectionStart;
-
-          renderQuizReportSheet();
-
-          var quizReportInput =
-            byId(
-              'quizReportSearchInput'
-            );
-
-          if(quizReportInput){
-            quizReportInput.focus();
-
-            try{
-              quizReportInput.setSelectionRange(
-                quizReportPosition,
-                quizReportPosition
-              );
-            }catch(error){}
-          }
+          /*
+           * 결과 영역만 갱신합니다. 검색창 자체는
+           * 다시 그리지 않으므로 한글 입력 중
+           * 글자가 중복되는 문제가 없습니다.
+           */
+          rerenderQuizReportResults();
         }
       }
     );
