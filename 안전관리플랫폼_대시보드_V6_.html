@@ -10218,7 +10218,11 @@ function standardWorkCard(
     );
   }
 
-  function quizReportCard(record){
+function quizReportCard(record){
+    var isExempted =
+      record.examExempted === true ||
+      record.statusCode === 'exempted';
+
     var code =
       quizReportResultCode(record);
 
@@ -10236,11 +10240,15 @@ function standardWorkCard(
       '">' +
 
         '<div class="wi-top">' +
-          '<span class="wi-status ' +
-            statusClassName +
-          '">' +
-            quizReportResultLabel(code) +
-          '</span>' +
+          (
+            isExempted
+              ? ''
+              : '<span class="wi-status ' +
+                  statusClassName +
+                '">' +
+                  quizReportResultLabel(code) +
+                '</span>'
+          ) +
 
           '<span style="margin-left:auto;color:var(--faint);' +
             'font-size:10.5px;font-weight:700">' +
@@ -10292,18 +10300,22 @@ function standardWorkCard(
           ) +
         '</div>' +
 
-        '<div style="margin-top:3px;color:var(--sub);' +
-          'font-size:11px;font-weight:700">' +
-          '점수 ' +
-          (
-            record.score !== undefined &&
-            record.score !== null
-              ? record.score +
-                '/' +
-                (record.totalQuestions || 13)
-              : '-'
-          ) +
-        '</div>' +
+        (
+          isExempted
+            ? ''
+            : '<div style="margin-top:3px;color:var(--sub);' +
+                'font-size:11px;font-weight:700">' +
+                '점수 ' +
+                (
+                  record.score !== undefined &&
+                  record.score !== null
+                    ? record.score +
+                      '/' +
+                      (record.totalQuestions || 13)
+                    : '-'
+                ) +
+              '</div>'
+        ) +
 
       '</article>'
     );
@@ -10419,15 +10431,19 @@ function standardWorkCard(
       return;
     }
 
+    var isExempted =
+      record.examExempted === true ||
+      record.statusCode === 'exempted';
+
     var code =
       quizReportResultCode(record);
 
     var cardClassName =
-      code === 'passed'
-        ? 'approved'
-        : code === 'failed'
-          ? 'rejected'
-          : 'pending';
+      isExempted
+        ? 'pending'
+        : code === 'passed'
+          ? 'approved'
+          : 'rejected';
 
     var html =
       '<button type="button" class="permit-menu-back" ' +
@@ -10441,7 +10457,7 @@ function standardWorkCard(
 
         '<div class="permit-integrated-top">' +
           '<span class="permit-integrated-status">' +
-            quizReportResultLabel(code) +
+            (isExempted ? '방문 기록' : quizReportResultLabel(code)) +
           '</span>' +
 
           '<span class="permit-integrated-no">' +
