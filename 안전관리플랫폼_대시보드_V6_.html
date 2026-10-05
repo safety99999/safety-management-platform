@@ -2472,6 +2472,42 @@ window.FirestoreSyncGuard = (function(){
       }
   };
 })();
+
+/*
+ * localStorage는 "다음에 더 빨리 보여주기 위한 보너스 캐시"일
+ * 뿐입니다. 기기의 저장공간 상태에 따라 이 쓰기 자체가 실패할
+ * 수 있는데(특히 Safari는 "The quota has been exceeded."라는
+ * QuotaExceededError를 더 쉽게 던집니다), 캐싱이 실패했다고
+ * 해서 방금 서버에서 정상적으로 받아온 데이터까지 통째로
+ * 버려서는 안 됩니다. 이 페이지의 모든 localStorage.setItem은
+ * 이 헬퍼를 거쳐, 실패를 조용히 삼키고 호출부에는 성공 여부만
+ * 알려줍니다 (data는 그대로 메모리에 남아 화면에 쓰입니다).
+ */
+window.safeLocalStorageSet =
+  function(key, value){
+    try{
+      localStorage.setItem(
+        key,
+        value
+      );
+
+      return true;
+
+    }catch(error){
+      console.warn(
+        '[localStorage] 저장 실패 (서버/메모리 데이터는 정상 사용됨):',
+        key,
+        '-',
+        (
+          error &&
+          error.message
+        ) ||
+        error
+      );
+
+      return false;
+    }
+  };
 </script>
 
 <script>
@@ -10942,6 +10978,16 @@ function quizReportCard(record){
     var guard =
       global.FirestoreSyncGuard;
 
+    /*
+     * loadAllData()는 localStorage만 읽기 때문에,
+     * 캐시 쓰기가 실패해도(저장공간 부족 등) 방금 서버에서
+     * 받아온 데이터를 그대로 화면에 반영하기 위한
+     * override입니다. loadAllData() 호출 "이후"에
+     * 다시 덮어써야 효과가 있습니다.
+     */
+    var quizStateOverride =
+      null;
+
     if(
       !bypassCooldown &&
       guard &&
@@ -10995,6 +11041,15 @@ function quizReportCard(record){
           ) +
           '건 수신';
 
+        if(
+          Array.isArray(
+            cloudRecords
+          )
+        ){
+          quizStateOverride =
+            cloudRecords;
+        }
+
       }else{
         quizReportSyncInfo.status =
           'unavailable';
@@ -11021,6 +11076,18 @@ function quizReportCard(record){
     }
 
     loadAllData();
+
+    /*
+     * loadAllData()가 localStorage에서 다시 읽어온 값으로
+     * state.quizzes를 덮어쓴 뒤이므로, 이제 서버에서 방금
+     * 받아온 데이터로 한 번 더 확실히 덮어씁니다. 캐시 쓰기가
+     * 실패했어도(저장공간 부족 등) 이 세션에서는 정확한
+     * 데이터가 보이도록 보장합니다.
+     */
+    if(quizStateOverride){
+      state.quizzes =
+        quizStateOverride;
+    }
 
     quizReportSyncInfo.localCountAfter =
       (state.quizzes || []).length;
@@ -16792,6 +16859,61 @@ if(completionButton){
     );
   }
 
+  /*
+   * 방금 서버/정적 JSON에서 받아온 작업DB를, localStorage
+   * 저장 성공 여부와 무관하게 화면(state.allWorks)에
+   * 즉시 반영합니다.
+   *
+   * loadAllData()는 localStorage만 읽기 때문에, 캐시 쓰기가
+   * 실패(QuotaExceededError 등)하면 화면은 계속 예전 캐시
+   * 건수를 보여주게 됩니다. 이 함수는 그 간극을 메워서,
+   * "이번 세션 동안은" 최소한 방금 받아온 정확한 데이터를
+   * 보여주도록 합니다 (새로고침하면 다시 예전 캐시로 돌아갈
+   * 수 있으나, 그건 저장공간 문제가 따로 해결돼야 할 부분).
+   */
+  global.DashboardV8.applyWorkSnapshot =
+    function(works){
+      if(!Array.isArray(works)){
+        return;
+      }
+
+      state.allWorks =
+        works
+          .map(function(work){
+            return Object.assign(
+              {},
+              work,
+              {
+                workId:
+                  makeWorkId(work),
+                workName:
+                  workName(work),
+                locationDisplay:
+                  workLocation(work),
+                companyDisplay:
+                  workCompany(work),
+                departmentDisplay:
+                  workDepartment(work),
+                riskLevel:
+                  workRiskLevel(work)
+              }
+            );
+          })
+          .filter(function(work){
+            return isValidWorkRecord(
+              work
+            );
+          });
+
+      setText(
+        'databaseCount',
+        state.allWorks.length +
+        '건'
+      );
+
+      applyDateFilter();
+    };
+
   global.DashboardV8.openSheet =
     openSheet;
 
@@ -17011,58 +17133,99 @@ if(document.readyState === 'loading'){
     var syncedAt =
       new Date().toISOString();
 
-    localStorage.setItem(
-      'safetyDatabase',
-      JSON.stringify({
-        metadata:{
-          version:
-            '8.2-static',
-          schemaVersion:
-            Number(
+    /*
+     * 캐시 쓰기 실패 여부와 무관하게, 받아온 데이터는
+     * 그대로 사용합니다. 쓰기 성공 여부는 cacheSaved에
+     * 기록해 로그로만 남깁니다.
+     */
+    var storageSetter =
+      global.safeLocalStorageSet ||
+      function(key, value){
+        try{
+          localStorage.setItem(
+            key,
+            value
+          );
+          return true;
+        }catch(error){
+          console.warn(
+            '[Dashboard Static DB] localStorage 저장 실패:',
+            key,
+            error
+          );
+          return false;
+        }
+      };
+
+    var cacheSaved =
+      storageSetter(
+        'safetyDatabase',
+        JSON.stringify({
+          metadata:{
+            version:
+              '8.2-static',
+            schemaVersion:
+              Number(
+                payload &&
+                payload.schemaVersion ||
+                1
+              ),
+            sourceType:
+              'github-static-json',
+            source:
+              result.source ||
+              'static',
+            filename:
+              result.filename ||
+              'work-database.test.json',
+            sha256:
+              result.sha256 || '',
+            lastUpdate:
+              syncedAt,
+            exportedAt:
               payload &&
-              payload.schemaVersion ||
-              1
-            ),
-          sourceType:
-            'github-static-json',
-          source:
-            result.source ||
-            'static',
-          filename:
-            result.filename ||
-            'work-database.test.json',
-          sha256:
-            result.sha256 || '',
-          lastUpdate:
-            syncedAt,
-          exportedAt:
-            payload &&
-            payload.exportedAt ||
-            '',
-          totalCount:
-            works.length,
-          readonly:
-            true,
-          staticSnapshot:
-            true,
-          publicTesterData:
-            Boolean(
-              session &&
-              session.role ===
-                'tester'
-            )
-        },
+              payload.exportedAt ||
+              '',
+            totalCount:
+              works.length,
+            readonly:
+              true,
+            staticSnapshot:
+              true,
+            publicTesterData:
+              Boolean(
+                session &&
+                session.role ===
+                  'tester'
+              )
+          },
 
-        workHistory:
-          works
-      })
-    );
+          workHistory:
+            works
+        })
+      );
 
-    localStorage.setItem(
-      'workDbLastSync',
-      String(Date.now())
-    );
+    if(cacheSaved){
+      storageSetter(
+        'workDbLastSync',
+        String(Date.now())
+      );
+    }else{
+      console.warn(
+        '[Dashboard Static DB] 작업DB를 기기에 캐싱하지 못했습니다 ' +
+        '(저장공간 부족으로 추정). 이번 화면에는 방금 받은 ' +
+        works.length +
+        '건을 그대로 표시하지만, 새로고침하면 예전 캐시로 ' +
+        '되돌아갈 수 있습니다.'
+      );
+    }
 
+    /*
+     * 캐시 저장 성공 여부와 무관하게, 방금 받아온 데이터를
+     * 화면에 직접 반영합니다. refresh()는 localStorage만
+     * 읽으므로, 캐시 쓰기가 실패한 경우를 위해
+     * applyWorkSnapshot으로 한 번 더 확실히 덮어씁니다.
+     */
     if(
       global.DashboardV8 &&
       typeof global.DashboardV8
@@ -17071,6 +17234,18 @@ if(document.readyState === 'loading'){
     ){
       global.DashboardV8
         .refresh();
+    }
+
+    if(
+      global.DashboardV8 &&
+      typeof global.DashboardV8
+        .applyWorkSnapshot ===
+          'function'
+    ){
+      global.DashboardV8
+        .applyWorkSnapshot(
+          works
+        );
     }
 
     console.log(
@@ -17198,6 +17373,29 @@ try{
 }
 
 
+
+/*
+ * 이 모듈 스크립트에서는 페이지 상단에서 정의한
+ * window.safeLocalStorageSet을 그대로 사용합니다
+ * (ES 모듈은 전역 스코프를 공유하지 않으므로 window를
+ * 통해 접근합니다). 혹시 못 불러온 경우를 대비해
+ * 안전하게 폴백합니다.
+ */
+var safeLocalStorageSet =
+  window.safeLocalStorageSet ||
+  function(key, value){
+    try{
+      localStorage.setItem(key, value);
+      return true;
+    }catch(error){
+      console.warn(
+        '[Dashboard Firebase] localStorage 저장 실패:',
+        key,
+        error
+      );
+      return false;
+    }
+  };
 
 const PERMIT_COLLECTION =
   (
@@ -17438,12 +17636,12 @@ function localPermits(){
 function saveLocalPermits(
   records
 ){
-  localStorage.setItem(
+  safeLocalStorageSet(
     'safetyPermits',
     JSON.stringify(records)
   );
 
-  localStorage.setItem(
+  safeLocalStorageSet(
     'permitsLastSync',
     String(Date.now())
   );
@@ -18167,7 +18365,7 @@ async function loadWorkDatabase(
   var syncedAt =
     new Date().toISOString();
 
-  localStorage.setItem(
+  safeLocalStorageSet(
     'safetyDatabase',
     JSON.stringify({
       metadata:{
@@ -18189,7 +18387,7 @@ async function loadWorkDatabase(
     })
   );
 
-  localStorage.setItem(
+  safeLocalStorageSet(
     'workDbLastSync',
     String(Date.now())
   );
@@ -18638,7 +18836,7 @@ window.DashboardFirebase = {
         );
       });
 
-      localStorage.setItem(
+      safeLocalStorageSet(
         'riskAssessments',
         JSON.stringify(cloud)
       );
@@ -18740,7 +18938,7 @@ window.DashboardFirebase = {
         cloud.length ||
         !existingTbm.length
       ){
-        localStorage.setItem(
+        safeLocalStorageSet(
           'safetyTBM',
           JSON.stringify(cloud)
         );
@@ -18821,7 +19019,7 @@ window.DashboardFirebase = {
         );
       });
 
-      localStorage.setItem(
+      safeLocalStorageSet(
         'safetyQuizzes',
         JSON.stringify(cloud)
       );
