@@ -10141,6 +10141,24 @@ function standardWorkCard(
     triedAt:''
   };
 
+  /*
+   * 퀴즈 리포트 화면 전용 데이터입니다. 의도적으로
+   * state.quizzes와 분리했습니다.
+   *
+   * state.quizzes는 loadAllData()가 호출될 때마다
+   * localStorage를 다시 읽어서 통째로 덮어씁니다.
+   * loadQuizResults()는 캐시 쓰기 성공 여부와 무관하게
+   * 'app-data-changed' 이벤트를 쏘는데, 그 리스너가
+   * 100ms 뒤 refreshFromCache() → loadAllData()를 실행해
+   * state.quizzes를 다시 localStorage 값으로 덮어씁니다.
+   * 기기가 localStorage에 쓰지 못하는 상태(저장공간 문제)
+   * 라면, 방금 화면에 반영했던 서버 데이터가 100ms 뒤
+   * 조용히 사라지는 경쟁 상태가 생깁니다. 리포트 화면은
+   * 이 변수만 보고 그리도록 해서 그 경쟁 상태를 원천
+   * 차단합니다.
+   */
+  var quizReportRecords = [];
+
   function maskPhoneNumber(phone){
     var digits =
       clean(phone).replace(/\D/g,'');
@@ -10252,7 +10270,7 @@ function standardWorkCard(
   }
 
   function filteredQuizReportRecords(){
-    return (state.quizzes || [])
+    return (quizReportRecords || [])
       .filter(matchesQuizReportFilter)
       .sort(function(a,b){
         return (
@@ -10698,7 +10716,7 @@ function quizReportCard(record){
 
   function openQuizReportDetail(quizId){
     var record =
-      (state.quizzes || []).find(
+      (quizReportRecords || []).find(
         function(item){
           return (
             clean(item.quizId) ===
@@ -10960,7 +10978,8 @@ function quizReportCard(record){
     bypassCooldown
   ){
     var localCountBefore =
-      (state.quizzes || []).length;
+      (quizReportRecords || [])
+        .length;
 
     quizReportSyncInfo = {
       status:'pending',
@@ -10977,16 +10996,6 @@ function quizReportCard(record){
 
     var guard =
       global.FirestoreSyncGuard;
-
-    /*
-     * loadAllData()는 localStorage만 읽기 때문에,
-     * 캐시 쓰기가 실패해도(저장공간 부족 등) 방금 서버에서
-     * 받아온 데이터를 그대로 화면에 반영하기 위한
-     * override입니다. loadAllData() 호출 "이후"에
-     * 다시 덮어써야 효과가 있습니다.
-     */
-    var quizStateOverride =
-      null;
 
     if(
       !bypassCooldown &&
@@ -11041,12 +11050,20 @@ function quizReportCard(record){
           ) +
           '건 수신';
 
+        /*
+         * quizReportRecords에 "즉시, 직접" 반영합니다.
+         * state.quizzes를 거치지 않으므로, 잠시 후
+         * 'app-data-changed' 이벤트가 유발하는
+         * loadAllData() 재호출(캐시 쓰기 실패 시
+         * state.quizzes를 다시 비우는 바로 그 호출)이
+         * 일어나더라도 이 값은 전혀 영향받지 않습니다.
+         */
         if(
           Array.isArray(
             cloudRecords
           )
         ){
-          quizStateOverride =
+          quizReportRecords =
             cloudRecords;
         }
 
@@ -11075,22 +11092,16 @@ function quizReportCard(record){
         String(error);
     }
 
+    /*
+     * 다른 화면(허가서 카드 등)이 쓰는 공용 state는
+     * 그대로 최신화해둡니다. 단, 이 결과가 quizReportRecords에
+     * 영향을 주지는 않습니다 — 위에서 이미 확정했습니다.
+     */
     loadAllData();
 
-    /*
-     * loadAllData()가 localStorage에서 다시 읽어온 값으로
-     * state.quizzes를 덮어쓴 뒤이므로, 이제 서버에서 방금
-     * 받아온 데이터로 한 번 더 확실히 덮어씁니다. 캐시 쓰기가
-     * 실패했어도(저장공간 부족 등) 이 세션에서는 정확한
-     * 데이터가 보이도록 보장합니다.
-     */
-    if(quizStateOverride){
-      state.quizzes =
-        quizStateOverride;
-    }
-
     quizReportSyncInfo.localCountAfter =
-      (state.quizzes || []).length;
+      (quizReportRecords || [])
+        .length;
 
     quizReportSyncInfo.triedAt =
       new Date().toLocaleString(
@@ -11131,11 +11142,24 @@ function quizReportCard(record){
      * 로컬에 있는 데이터로 즉시 화면을 채웁니다.
      * 쿨다운 중이 아니면 이어서 백그라운드로 동기화하고
      * 결과가 오면 다시 그립니다.
+     *
+     * 이번 세션에서 아직 한 번도 서버와 동기화한 적이
+     * 없을 때만(quizReportRecords가 비어있을 때만)
+     * state.quizzes(로컬 캐시)로 초기값을 채웁니다.
+     * 이미 한 번 동기화에 성공했다면, 그 결과를 그대로
+     * 유지합니다 — state.quizzes는 이후 다른 이벤트로
+     * 조용히 초기화될 수 있기 때문입니다.
      */
     loadAllData();
 
+    if(!quizReportRecords.length){
+      quizReportRecords =
+        (state.quizzes || [])
+          .slice();
+    }
+
     var localCount =
-      (state.quizzes || []).length;
+      quizReportRecords.length;
 
     quizReportSyncInfo = {
       status:'idle',
