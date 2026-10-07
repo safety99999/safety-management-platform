@@ -1437,6 +1437,69 @@ body{
 // 리디자인 + workId 흐름 통합
 // ═══════════════════════════════════════════════════
 
+/*
+ * localStorage는 "이 기기에서 빠르게 다시 보여주기 위한
+ * 보너스 캐시"일 뿐입니다. 서명 이미지가 포함된 응시
+ * 기록이 쌓이다 보면(특히 출입구에 고정해둔 공용 기기처럼
+ * 여러 방문자가 번갈아 쓰는 경우) 브라우저의 저장공간
+ * 한도(QuotaExceededError, 이른바 "The quota has been
+ * exceeded.")에 걸릴 수 있습니다. 이 쓰기가 실패했다고
+ * 해서 실제로 중요한 Firestore 서버 저장까지 막혀서는
+ * 안 되므로, 모든 localStorage 접근을 이 헬퍼로 감쌉니다.
+ */
+function safeLocalStorageSet(key, value){
+  try{
+    localStorage.setItem(key, value);
+    return true;
+  }catch(error){
+    console.warn(
+      '[Quiz] localStorage 저장 실패(서버 저장은 계속 진행):',
+      key,
+      '-',
+      (error && error.message) || error
+    );
+    return false;
+  }
+}
+
+function safeLocalStorageGetArray(key){
+  try{
+    var parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(error){
+    console.warn(
+      '[Quiz] localStorage 읽기 실패(빈 배열로 대체):',
+      key,
+      '-',
+      (error && error.message) || error
+    );
+    return [];
+  }
+}
+
+/*
+ * 공용 기기에서 방문자가 바뀔 때마다 서명 이미지까지
+ * 포함된 기록이 끝없이 쌓이는 것을 막기 위해, 로컬
+ * 캐시에는 최근 N건만 보관합니다. (서버 Firestore에는
+ * 전체 기록이 그대로 저장되므로 데이터가 사라지지는
+ * 않습니다 — 이건 이 기기의 로컬 캐시 크기만 제한하는
+ * 것입니다.)
+ */
+var MAX_LOCAL_QUIZ_HISTORY = 30;
+
+function trimQuizHistoryForLocalCache(quizzes){
+  if(
+    !Array.isArray(quizzes) ||
+    quizzes.length <= MAX_LOCAL_QUIZ_HISTORY
+  ){
+    return quizzes;
+  }
+
+  return quizzes.slice(
+    quizzes.length - MAX_LOCAL_QUIZ_HISTORY
+  );
+}
+
 // STATE
 var userData = {
   name: '',
@@ -2385,7 +2448,7 @@ async function executeSubmit(){
                  String(now.getMonth() + 1).padStart(2, '0') +
                  String(now.getDate()).padStart(2, '0');
     
-    var existingQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var existingQuizzes = safeLocalStorageGetArray('safetyQuizzes');
     var todayCount = existingQuizzes.filter(function(q){
       return q.quizId && q.quizId.startsWith('QZ-' + dateStr);
     }).length;
@@ -2422,8 +2485,20 @@ async function executeSubmit(){
       syncError: ''
     };
     
+    /*
+     * ⚠️ 중요: 로컬 캐싱(이 기기에만 저장)은 "보너스"일
+     * 뿐이고, 진짜 저장소는 바로 아래의 Firestore
+     * 서버 저장입니다. safeLocalStorageSet은 실패해도
+     * 예외를 던지지 않으므로, 이 기기의 저장공간이
+     * 부족하더라도 서버 저장 시도는 반드시 이어집니다.
+     */
     existingQuizzes.push(quizData);
-    localStorage.setItem('safetyQuizzes', JSON.stringify(existingQuizzes));
+    safeLocalStorageSet(
+      'safetyQuizzes',
+      JSON.stringify(
+        trimQuizHistoryForLocalCache(existingQuizzes)
+      )
+    );
 
     var remoteSaveResult = { success:false, reason:'remote-save-not-enabled' };
     if(typeof window.saveQuizResultRemote === 'function'){
@@ -2442,13 +2517,13 @@ async function executeSubmit(){
     quizData.remoteCollection = remoteSaveResult && remoteSaveResult.collection ? remoteSaveResult.collection : '';
     quizData.publicCollection = remoteSaveResult && remoteSaveResult.publicCollection ? remoteSaveResult.publicCollection : '';
 
-    var storedQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var storedQuizzes = safeLocalStorageGetArray('safetyQuizzes');
     var quizIndex = storedQuizzes.findIndex(function(item){
       return item && item.quizId === quizId;
     });
     if(quizIndex >= 0){
       storedQuizzes[quizIndex] = quizData;
-      localStorage.setItem('safetyQuizzes', JSON.stringify(storedQuizzes));
+      safeLocalStorageSet('safetyQuizzes', JSON.stringify(storedQuizzes));
     }
     
     // 이벤트 발행 (workId 포함)
@@ -2462,7 +2537,10 @@ async function executeSubmit(){
       }));
     }catch(e){}
     
-    console.log('✅ 안전퀴즈 저장 완료:', quizId, 'workId:', userData.workId);
+    console.log(
+      quizData.firestoreSaved ? '✅ 안전퀴즈 서버 저장 완료:' : '⚠️ 안전퀴즈 서버 저장 실패(로컬에만 보관):',
+      quizId, 'workId:', userData.workId, 'syncStatus:', quizData.syncStatus
+    );
     
     userData.quizId = quizId;
     
@@ -2483,7 +2561,31 @@ async function executeSubmit(){
     }
 
     goToScreen('screen-complete');
-    showToast('✅ 제출 완료! 퀴즈 ID: ' + quizId, 'success');
+
+    /*
+     * 실제로 서버(Firestore)까지 도착했는지를 기준으로
+     * 안내 문구를 다르게 보여줍니다. 로컬 캐싱 실패는
+     * safeLocalStorageSet이 조용히 흡수하므로, 여기까지
+     * 왔다는 건 최소한 코드가 끝까지 실행됐다는 뜻입니다.
+     * 다만 서버 저장이 실제로 실패했을 수는 있으므로
+     * (네트워크 문제 등) 그 경우엔 담당자 확인을
+     * 권하는 문구를 함께 보여줍니다.
+     */
+    if(quizData.firestoreSaved){
+      showToast('✅ 제출 완료! 퀴즈 ID: ' + quizId, 'success');
+    }else{
+      showCustomAlert({
+        icon: '⚠️',
+        title: '제출은 접수됐지만 서버 동기화 지연',
+        message:
+          '퀴즈 ID: ' + quizId + '\n\n' +
+          '응시 내용은 기록됐으나, 서버 동기화가 아직 ' +
+          '완료되지 않았습니다. 잠시 후 자동으로 다시 ' +
+          '시도되며, 계속 반복되면 담당자에게 퀴즈 ID를 ' +
+          '알려주세요.',
+        okType: 'warn'
+      });
+    }
     
   }catch(error){
     console.error('❌ 저장 실패:', error);
@@ -2508,7 +2610,7 @@ async function submitExemptedVisit(){
                  String(now.getMonth() + 1).padStart(2, '0') +
                  String(now.getDate()).padStart(2, '0');
 
-    var existingQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var existingQuizzes = safeLocalStorageGetArray('safetyQuizzes');
     var todayCount = existingQuizzes.filter(function(q){
       return q.quizId && q.quizId.startsWith('QZ-' + dateStr);
     }).length;
@@ -2549,8 +2651,18 @@ async function submitExemptedVisit(){
       syncError: ''
     };
 
+    /*
+     * ⚠️ 중요: 로컬 캐싱 실패가 서버 저장을 막지 않도록
+     * safeLocalStorageSet을 사용합니다 (executeSubmit과
+     * 동일한 이유).
+     */
     existingQuizzes.push(quizData);
-    localStorage.setItem('safetyQuizzes', JSON.stringify(existingQuizzes));
+    safeLocalStorageSet(
+      'safetyQuizzes',
+      JSON.stringify(
+        trimQuizHistoryForLocalCache(existingQuizzes)
+      )
+    );
 
     var remoteSaveResult = { success:false, reason:'remote-save-not-enabled' };
     if(typeof window.saveQuizResultRemote === 'function'){
@@ -2567,13 +2679,13 @@ async function submitExemptedVisit(){
     quizData.syncStatus = quizData.firestoreSaved ? 'synced' : 'local-only';
     quizData.syncError = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.reason ? remoteSaveResult.reason : 'remote-save-failed');
 
-    var storedQuizzes = JSON.parse(localStorage.getItem('safetyQuizzes') || '[]');
+    var storedQuizzes = safeLocalStorageGetArray('safetyQuizzes');
     var quizIndex = storedQuizzes.findIndex(function(item){
       return item && item.quizId === quizId;
     });
     if(quizIndex >= 0){
       storedQuizzes[quizIndex] = quizData;
-      localStorage.setItem('safetyQuizzes', JSON.stringify(storedQuizzes));
+      safeLocalStorageSet('safetyQuizzes', JSON.stringify(storedQuizzes));
     }
 
     try{
@@ -2586,7 +2698,10 @@ async function submitExemptedVisit(){
       }));
     }catch(e){}
 
-    console.log('✅ 안전퀴즈 면제 방문 저장 완료:', quizId, 'workId:', userData.workId);
+    console.log(
+      quizData.firestoreSaved ? '✅ 안전퀴즈 면제 방문 서버 저장 완료:' : '⚠️ 안전퀴즈 면제 방문 서버 저장 실패(로컬에만 보관):',
+      quizId, 'workId:', userData.workId, 'syncStatus:', quizData.syncStatus
+    );
 
     userData.quizId = quizId;
     userData.passed = true;
@@ -2607,7 +2722,22 @@ async function submitExemptedVisit(){
     }
 
     goToScreen('screen-complete');
-    showToast('✅ 최근 합격 이력으로 응시가 면제되었습니다', 'success');
+
+    if(quizData.firestoreSaved){
+      showToast('✅ 최근 합격 이력으로 응시가 면제되었습니다', 'success');
+    }else{
+      showCustomAlert({
+        icon: '⚠️',
+        title: '방문 기록은 접수됐지만 서버 동기화 지연',
+        message:
+          '퀴즈 ID: ' + quizId + '\n\n' +
+          '면제 방문 기록이 저장됐으나, 서버 동기화가 아직 ' +
+          '완료되지 않았습니다. 잠시 후 자동으로 다시 ' +
+          '시도되며, 계속 반복되면 담당자에게 퀴즈 ID를 ' +
+          '알려주세요.',
+        okType: 'warn'
+      });
+    }
 
   }catch(error){
     console.error('❌ 면제 방문 저장 실패:', error);
