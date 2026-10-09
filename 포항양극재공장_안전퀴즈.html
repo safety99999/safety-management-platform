@@ -1500,6 +1500,82 @@ function trimQuizHistoryForLocalCache(quizzes){
   );
 }
 
+function waitMs(ms){
+  return new Promise(function(resolve){
+    setTimeout(resolve, ms);
+  });
+}
+
+/*
+ * window.saveQuizResultRemote는 하단의 모듈 스크립트
+ * (Firebase SDK를 gstatic.com에서 불러온 뒤) 맨 마지막에
+ * 등록됩니다. 느린 모바일 네트워크에서는 그 로딩이 아직
+ * 끝나기 전에 방문자가 퀴즈를 다 풀고 제출을 눌렀을 수
+ * 있으므로, 잠깐 기다렸다가 다시 확인합니다.
+ */
+async function waitForRemoteSaveFunction(timeoutMs){
+  var start = Date.now();
+
+  while(typeof window.saveQuizResultRemote !== 'function'){
+    if(Date.now() - start > timeoutMs){
+      return false;
+    }
+
+    await waitMs(200);
+  }
+
+  return true;
+}
+
+/*
+ * Firestore 저장을 실제로 한 번 더 재시도합니다.
+ * (이전에는 "잠시 후 자동으로 다시 시도됩니다"라고
+ * 안내만 하고 실제 재시도 코드는 없었습니다 — 이 함수가
+ * 그 안내를 실제로 참이 되게 만듭니다.)
+ */
+async function attemptRemoteQuizSave(quizData){
+  var ready = await waitForRemoteSaveFunction(5000);
+
+  if(!ready){
+    return {
+      success:false,
+      reason:'remote-save-not-enabled'
+    };
+  }
+
+  var result = {
+    success:false,
+    reason:'remote-save-failed'
+  };
+
+  for(var attempt = 1; attempt <= 2; attempt++){
+    try{
+      result = await window.saveQuizResultRemote(quizData);
+    }catch(remoteError){
+      console.warn(
+        '[Quiz] Firestore save error (시도 ' + attempt + '회차):',
+        remoteError
+      );
+
+      result = {
+        success:false,
+        reason:'remote-save-failed',
+        error: String(remoteError && remoteError.message || remoteError || '')
+      };
+    }
+
+    if(result && result.success === true){
+      return result;
+    }
+
+    if(attempt === 1){
+      await waitMs(1500);
+    }
+  }
+
+  return result;
+}
+
 // STATE
 var userData = {
   name: '',
@@ -2500,15 +2576,8 @@ async function executeSubmit(){
       )
     );
 
-    var remoteSaveResult = { success:false, reason:'remote-save-not-enabled' };
-    if(typeof window.saveQuizResultRemote === 'function'){
-      try{
-        remoteSaveResult = await window.saveQuizResultRemote(quizData);
-      }catch(remoteError){
-        console.warn('[Quiz] Firestore save error:', remoteError);
-        remoteSaveResult = { success:false, reason:'remote-save-failed', error: String(remoteError && remoteError.message || remoteError || '') };
-      }
-    }
+    var remoteSaveResult =
+      await attemptRemoteQuizSave(quizData);
 
     quizData.firestoreSaved = !!(remoteSaveResult && remoteSaveResult.success === true);
     quizData.syncPending = !quizData.firestoreSaved;
@@ -2582,7 +2651,8 @@ async function executeSubmit(){
           '응시 내용은 기록됐으나, 서버 동기화가 아직 ' +
           '완료되지 않았습니다. 잠시 후 자동으로 다시 ' +
           '시도되며, 계속 반복되면 담당자에게 퀴즈 ID를 ' +
-          '알려주세요.',
+          '알려주세요.\n\n' +
+          '(진단 정보: ' + (quizData.syncError || 'unknown') + ')',
         okType: 'warn'
       });
     }
@@ -2664,15 +2734,8 @@ async function submitExemptedVisit(){
       )
     );
 
-    var remoteSaveResult = { success:false, reason:'remote-save-not-enabled' };
-    if(typeof window.saveQuizResultRemote === 'function'){
-      try{
-        remoteSaveResult = await window.saveQuizResultRemote(quizData);
-      }catch(remoteError){
-        console.warn('[Quiz] Firestore save error:', remoteError);
-        remoteSaveResult = { success:false, reason:'remote-save-failed', error: String(remoteError && remoteError.message || remoteError || '') };
-      }
-    }
+    var remoteSaveResult =
+      await attemptRemoteQuizSave(quizData);
 
     quizData.firestoreSaved = !!(remoteSaveResult && remoteSaveResult.success === true);
     quizData.syncPending = !quizData.firestoreSaved;
@@ -2734,7 +2797,8 @@ async function submitExemptedVisit(){
           '면제 방문 기록이 저장됐으나, 서버 동기화가 아직 ' +
           '완료되지 않았습니다. 잠시 후 자동으로 다시 ' +
           '시도되며, 계속 반복되면 담당자에게 퀴즈 ID를 ' +
-          '알려주세요.',
+          '알려주세요.\n\n' +
+          '(진단 정보: ' + (quizData.syncError || 'unknown') + ')',
         okType: 'warn'
       });
     }
@@ -3336,7 +3400,7 @@ function waitForUser(timeoutMs){
 async function ensureAuthUser(){
   if(auth.currentUser) return auth.currentUser;
   try{ await signInAnonymously(auth); }catch(_e){}
-  return await waitForUser(4000);
+  return await waitForUser(8000);
 }
 
 /*
