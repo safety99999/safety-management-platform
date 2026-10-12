@@ -2597,6 +2597,7 @@ async function executeSubmit(){
     quizData.syncPending = !quizData.firestoreSaved;
     quizData.syncStatus = quizData.firestoreSaved ? 'synced' : 'local-only';
     quizData.syncError = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.reason ? remoteSaveResult.reason : 'remote-save-failed');
+    quizData.syncErrorDetail = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.error ? remoteSaveResult.error : '');
     quizData.remoteCollection = remoteSaveResult && remoteSaveResult.collection ? remoteSaveResult.collection : '';
     quizData.publicCollection = remoteSaveResult && remoteSaveResult.publicCollection ? remoteSaveResult.publicCollection : '';
 
@@ -2666,7 +2667,13 @@ async function executeSubmit(){
           '완료되지 않았습니다. 잠시 후 자동으로 다시 ' +
           '시도되며, 계속 반복되면 담당자에게 퀴즈 ID를 ' +
           '알려주세요.\n\n' +
-          '(진단 정보: ' + (quizData.syncError || 'unknown') + ')',
+          '(진단 정보: ' + (quizData.syncError || 'unknown') +
+          (
+            quizData.syncErrorDetail
+              ? '\n상세: ' + quizData.syncErrorDetail
+              : ''
+          ) +
+          ')',
         okType: 'warn'
       });
     }
@@ -2755,6 +2762,7 @@ async function submitExemptedVisit(){
     quizData.syncPending = !quizData.firestoreSaved;
     quizData.syncStatus = quizData.firestoreSaved ? 'synced' : 'local-only';
     quizData.syncError = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.reason ? remoteSaveResult.reason : 'remote-save-failed');
+    quizData.syncErrorDetail = quizData.firestoreSaved ? '' : (remoteSaveResult && remoteSaveResult.error ? remoteSaveResult.error : '');
 
     var storedQuizzes = safeLocalStorageGetArray('safetyQuizzes');
     var quizIndex = storedQuizzes.findIndex(function(item){
@@ -2812,7 +2820,13 @@ async function submitExemptedVisit(){
           '완료되지 않았습니다. 잠시 후 자동으로 다시 ' +
           '시도되며, 계속 반복되면 담당자에게 퀴즈 ID를 ' +
           '알려주세요.\n\n' +
-          '(진단 정보: ' + (quizData.syncError || 'unknown') + ')',
+          '(진단 정보: ' + (quizData.syncError || 'unknown') +
+          (
+            quizData.syncErrorDetail
+              ? '\n상세: ' + quizData.syncErrorDetail
+              : ''
+          ) +
+          ')',
         okType: 'warn'
       });
     }
