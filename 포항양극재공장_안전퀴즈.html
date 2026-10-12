@@ -270,6 +270,17 @@ body{
 }
 
 .f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+/*
+ * 그리드 자식(.form-group)은 기본값이 min-width:auto라서,
+ * 안드로이드 Chrome의 <input type="date"> 내부 위젯처럼
+ * 자체 최소 너비를 가진 콘텐츠가 들어있으면 칸이 줄어들지
+ * 못하고 행 전체, 나아가 화면 전체가 옆으로 밀려 잘립니다
+ * (iOS Safari에서는 내부 위젯 최소 너비가 더 좁아서 잘 안
+ * 드러납니다). min-width:0으로 칸이 실제로 줄어들 수 있게
+ * 합니다.
+ */
+.f-row > .form-group{min-width:0;}
+.f-row .f-input,.f-row .f-select{min-width:0;}
 
 /* 자동 채움 필드 */
 .f-input.auto-filled{
@@ -720,6 +731,9 @@ body{
 .custom-confirm-buttons.single .custom-confirm-btn-cancel{display:none;}
 
 /* ═══ 반응형 ═══ */
+@media(max-width:400px){
+  .f-row{grid-template-columns:1fr;gap:14px;}
+}
 @media(max-width:360px){
   .topnav-title{font-size:14px;}
   .theme-btn{width:32px;height:32px;font-size:15px;}
