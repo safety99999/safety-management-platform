@@ -3426,9 +3426,41 @@ function waitForUser(timeoutMs){
 }
 
 async function ensureAuthUser(){
-  if(auth.currentUser) return auth.currentUser;
-  try{ await signInAnonymously(auth); }catch(_e){}
-  return await waitForUser(8000);
+  var user = auth.currentUser;
+
+  if(!user){
+    try{
+      var credential = await signInAnonymously(auth);
+      user = credential && credential.user;
+    }catch(_e){}
+
+    if(!user){
+      user = await waitForUser(8000);
+    }
+  }
+
+  if(!user){
+    return null;
+  }
+
+  /*
+   * ⚠️ 중요: signInAnonymously가 resolve되거나
+   * onAuthStateChanged가 발화한 것은 "로그인된 사용자
+   * 객체가 생겼다"는 뜻일 뿐, 그 사용자의 ID 토큰이
+   * 발급되어 다음 Firestore 요청에 바로 실어 보낼 준비가
+   * 됐다는 보장은 아닙니다. 이 사이의 짧은 틈에서
+   * Firestore 쓰기를 시도하면 서버가 아직 인증 정보를
+   * 확인하지 못해 "Missing or insufficient permissions"를
+   * 반환하는 경우가 있습니다. getIdToken()을 명시적으로
+   * 기다려서 이 경쟁 상태를 없앱니다.
+   */
+  try{
+    await user.getIdToken(true);
+  }catch(tokenError){
+    console.warn('[Quiz] ID 토큰 갱신 실패(계속 진행):', tokenError);
+  }
+
+  return user;
 }
 
 /*
