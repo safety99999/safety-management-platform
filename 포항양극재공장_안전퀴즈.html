@@ -1065,6 +1065,11 @@ body{
 <div class="screen" id="screen-flashcard">
   <div class="flashcard-layout">
 
+    <div id="flashcardForcedNotice" class="warn-box" style="display:none;margin:0 2px 2px;">
+      <div class="warn-box-t">⚠️ 안전교육 이수 필요</div>
+      <div class="warn-box-b">최근 3개월 이내 합격 이력이 없어 안전퀴즈 응시 전 안전교육을 먼저 끝까지 봐주셔야 합니다.</div>
+    </div>
+
     <!-- 플래시카드 이미지 영역 -->
     <div id="flashcard-container">
       <img id="flashcard-image" src="" alt="안전교육 이미지" onclick="openEduLightbox()">
@@ -2138,7 +2143,17 @@ async function validateAndNext(nextScreen){
     }
   }
 
-  goToScreen(nextScreen);
+  /*
+   * 면제 대상(최근 3개월 이내 합격)이 아니면 — 처음 방문이든
+   * 면제 기간이 지난 재방문이든 — 안전퀴즈 응시 전에
+   * 안전교육을 반드시 먼저 이수하도록 강제합니다.
+   * 면제 대상이면 지금처럼 교육·퀴즈 모두 건너뜁니다.
+   */
+  if(userData.examExempted){
+    goToScreen(nextScreen);
+  }else{
+    startFlashcard(true, nextScreen);
+  }
 }
 
 /*
@@ -3169,16 +3184,33 @@ function updateFlashcard(){
   if(startBtn) startBtn.classList.toggle('show', isLast);
 }
 
-function startFlashcard(){
+var flashcardForced = false;
+var flashcardReturnScreen = 'screen-info';
+
+/*
+ * forced: true면 "응시 전 안전교육 필수 이수" 안내 배너를 띄우고,
+ * 끝까지 보면 returnScreen(기본값 'screen-info')으로 이어집니다.
+ * welcome 화면의 "📚 안전교육" 버튼처럼 인자 없이 호출하면
+ * 기존과 동일하게 선택적 미리보기로 동작합니다.
+ */
+function startFlashcard(forced, returnScreen){
   flashcardIndex = 0;
+  flashcardForced = Boolean(forced);
+  flashcardReturnScreen = returnScreen || 'screen-info';
   updateFlashcard();
+
+  var notice = document.getElementById('flashcardForcedNotice');
+  if(notice){
+    notice.style.display = flashcardForced ? 'block' : 'none';
+  }
+
   goToScreen('screen-flashcard');
 }
 
 function startQuizFromEducation(){
   // 26/26에서만 호출되지만 안전하게 마지막 카드인지 확인
   if(flashcardIndex !== flashcardData.length - 1) return;
-  goToScreen('screen-info');
+  goToScreen(flashcardReturnScreen || 'screen-info');
 }
 
 function prevFlashcard(){
@@ -3570,6 +3602,16 @@ window.saveQuizResultRemote = async function(record){
     return { success:false, reason:'firestore-save-failed', error:String(error && error.message || error || ''), collection:privateCollection };
   }
 };
+
+/*
+ * 페이지가 열리자마자(응시자가 아직 시작 화면/안전교육을
+ * 보고 있을 때) 미리 익명 로그인과 Firestore 연결을
+ * 준비해둡니다. 실제 제출은 퀴즈를 다 푼 1~2분 뒤에나
+ * 일어나므로, 그때쯤이면 이미 연결이 준비돼 있어
+ * "첫 요청만 실패하는" 문제를 줄여줍니다. 실패해도
+ * 조용히 넘어가고, 실제 제출 시점에 다시 시도됩니다.
+ */
+ensureAuthUser().catch(function(_e){});
 </script>
 
 </div><!-- /.phone-screen -->
