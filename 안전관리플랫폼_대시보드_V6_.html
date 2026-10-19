@@ -10177,6 +10177,13 @@ function standardWorkCard(
   function quizReportResultCode(record){
     record = record || {};
 
+    if(
+      record.examExempted === true ||
+      record.statusCode === 'exempted'
+    ){
+      return 'exempted';
+    }
+
     return record.passed === true
       ? 'passed'
       : 'failed';
@@ -10186,9 +10193,124 @@ function standardWorkCard(
     return (
       {
         passed:'🟢 합격',
-        failed:'🔴 불합격'
+        failed:'🔴 불합격',
+        exempted:'🔁 재방문(면제)'
       }[code] || '-'
     );
+  }
+
+  /*
+   * 퀴즈 앱(포항양극재공장_안전퀴즈.html)의
+   * EXEMPTION_WINDOW_DAYS와 반드시 같은 값으로 맞춰야
+   * 합니다. 퀴즈 앱 쪽 값이 바뀌면 여기도 같이 바꿔주세요.
+   */
+  var QUIZ_EXEMPTION_WINDOW_DAYS = 90;
+
+  function addDaysToDateValue(
+    value,
+    days
+  ){
+    var date =
+      new Date(value);
+
+    if(
+      !Number.isFinite(
+        date.getTime()
+      )
+    ){
+      return null;
+    }
+
+    date.setDate(
+      date.getDate() + days
+    );
+
+    return date;
+  }
+
+  /*
+   * 응시 기록 하나가 가진(또는 근거로 삼은) 면제 유효기간을
+   * 계산합니다.
+   *
+   * - 이번 응시 자체가 "면제"로 처리된 기록이면
+   *   (examExempted === true), 그 면제의 근거가 된
+   *   이전 합격일(exemptedLastPassedAt)부터 90일을 보여줍니다.
+   * - 이번 응시가 "실제로 13문항을 풀어 합격"한 기록이면,
+   *   이 합격 자체가 앞으로 90일간 재응시 면제를 부여하므로
+   *   그 기간을 보여줍니다.
+   * - 불합격이거나 날짜 정보가 없으면 null을 반환합니다.
+   */
+  function quizExemptionInfo(record){
+    record = record || {};
+
+    var isExemptedVisit =
+      record.examExempted === true ||
+      record.statusCode === 'exempted';
+
+    var basisValue =
+      isExemptedVisit
+        ? (
+            record.exemptedLastPassedAt ||
+            ''
+          )
+        : (
+            record.passed === true
+              ? (
+                  record.completedAt ||
+                  record.createdAt ||
+                  ''
+                )
+              : ''
+          );
+
+    if(!basisValue){
+      return null;
+    }
+
+    var basisDate =
+      new Date(basisValue);
+
+    if(
+      !Number.isFinite(
+        basisDate.getTime()
+      )
+    ){
+      return null;
+    }
+
+    var expiresDate =
+      addDaysToDateValue(
+        basisValue,
+        QUIZ_EXEMPTION_WINDOW_DAYS
+      );
+
+    if(!expiresDate){
+      return null;
+    }
+
+    return {
+      isExemptedVisit:
+        isExemptedVisit,
+      basisDate:
+        basisDate,
+      expiresDate:
+        expiresDate,
+      active:
+        Date.now() <=
+        expiresDate.getTime(),
+      basisLabel:
+        isExemptedVisit
+          ? '면제 근거(이전 합격일)'
+          : '이 합격으로 부여된 면제'
+    };
+  }
+
+  function formatExemptionDate(date){
+    if(!date){
+      return '-';
+    }
+
+    return formatDate(date);
   }
 
   function quizReportDateInRange(record){
@@ -10297,9 +10419,17 @@ function standardWorkCard(
         );
       }).length;
 
+    var exempted =
+      records.filter(function(r){
+        return (
+          quizReportResultCode(r) ===
+          'exempted'
+        );
+      }).length;
+
     return (
       '<div class="insp-sum" style="margin:0 0 10px;' +
-        'grid-template-columns:repeat(3,1fr)">' +
+        'grid-template-columns:repeat(4,1fr)">' +
         '<div class="isp"><div class="isp-v">' +
           records.length +
         '</div><div class="isp-l">전체</div></div>' +
@@ -10309,6 +10439,9 @@ function standardWorkCard(
         '<div class="isp"><div class="isp-v r">' +
           failed +
         '</div><div class="isp-l">불합격</div></div>' +
+        '<div class="isp"><div class="isp-v o">' +
+          exempted +
+        '</div><div class="isp-l">재방문</div></div>' +
       '</div>'
     );
   }
@@ -10330,7 +10463,8 @@ function standardWorkCard(
     var resultOptions = [
       ['all','전체'],
       ['passed','합격'],
-      ['failed','불합격']
+      ['failed','불합격'],
+      ['exempted','재방문']
     ];
 
     return (
@@ -10402,15 +10536,11 @@ function quizReportCard(record){
       '">' +
 
         '<div class="wi-top">' +
-          (
-            isExempted
-              ? ''
-              : '<span class="wi-status ' +
-                  statusClassName +
-                '">' +
-                  quizReportResultLabel(code) +
-                '</span>'
-          ) +
+          '<span class="wi-status ' +
+            statusClassName +
+          '">' +
+            quizReportResultLabel(code) +
+          '</span>' +
 
           '<span style="margin-left:auto;color:var(--faint);' +
             'font-size:10.5px;font-weight:700">' +
@@ -10464,7 +10594,41 @@ function quizReportCard(record){
 
         (
           isExempted
-            ? ''
+            ? (function(){
+                var exemption =
+                  quizExemptionInfo(record);
+
+                if(!exemption){
+                  return '';
+                }
+
+                return (
+                  '<div style="margin-top:3px;' +
+                    'color:' +
+                    (
+                      exemption.active
+                        ? 'var(--posco)'
+                        : 'var(--stop)'
+                    ) +
+                    ';font-size:11px;font-weight:700">' +
+                    '🛡️ 면제 유효기간 ' +
+                    escapeHtml(
+                      formatExemptionDate(
+                        exemption.basisDate
+                      ) +
+                      ' ~ ' +
+                      formatExemptionDate(
+                        exemption.expiresDate
+                      )
+                    ) +
+                    (
+                      exemption.active
+                        ? ' (유효)'
+                        : ' (만료)'
+                    ) +
+                  '</div>'
+                );
+              })()
             : '<div style="margin-top:3px;color:var(--sub);' +
                 'font-size:11px;font-weight:700">' +
                 '점수 ' +
@@ -10760,7 +10924,7 @@ function quizReportCard(record){
 
         '<div class="permit-integrated-top">' +
           '<span class="permit-integrated-status">' +
-            (isExempted ? '방문 기록' : quizReportResultLabel(code)) +
+            quizReportResultLabel(code) +
           '</span>' +
 
           '<span class="permit-integrated-no">' +
@@ -10827,6 +10991,45 @@ function quizReportCard(record){
         ) +
       '</div>' +
 
+      (function(){
+        var exemption =
+          quizExemptionInfo(record);
+
+        if(!exemption){
+          return '';
+        }
+
+        return (
+          '<div class="prework-summary" style="border-left-color:' +
+            (
+              exemption.active
+                ? 'var(--posco)'
+                : 'var(--stop)'
+            ) +
+          '">' +
+            '🛡️ ' +
+            escapeHtml(
+              exemption.basisLabel
+            ) +
+            ': ' +
+            escapeHtml(
+              formatExemptionDate(
+                exemption.basisDate
+              ) +
+              ' ~ ' +
+              formatExemptionDate(
+                exemption.expiresDate
+              )
+            ) +
+            (
+              exemption.active
+                ? ' (유효)'
+                : ' (만료)'
+            ) +
+          '</div>'
+        );
+      })() +
+
       (
         record.signature
           ? (
@@ -10868,7 +11071,8 @@ function quizReportCard(record){
     var headers = [
       '퀴즈ID','이름','업체','전화번호',
       '방문위치','방문시작','방문종료',
-      '결과','점수','총문항','응시일시','워크ID'
+      '결과','점수','총문항','응시일시','워크ID',
+      '면제유효기간'
     ];
 
     function csvCell(value){
@@ -10895,6 +11099,9 @@ function quizReportCard(record){
         var code =
           quizReportResultCode(record);
 
+        var exemption =
+          quizExemptionInfo(record);
+
         return [
           record.quizId || '',
           record.name || '',
@@ -10907,7 +11114,7 @@ function quizReportCard(record){
             ? '합격'
             : code === 'failed'
               ? '불합격'
-              : '면제',
+              : '재방문',
           record.score !== undefined &&
           record.score !== null
             ? record.score
@@ -10915,7 +11122,23 @@ function quizReportCard(record){
           record.totalQuestions || '',
           record.completedAt ||
           record.createdAt || '',
-          record.workId || ''
+          record.workId || '',
+          exemption
+            ? (
+                formatExemptionDate(
+                  exemption.basisDate
+                ) +
+                ' ~ ' +
+                formatExemptionDate(
+                  exemption.expiresDate
+                ) +
+                (
+                  exemption.active
+                    ? ' (유효)'
+                    : ' (만료)'
+                )
+              )
+            : ''
         ].map(csvCell).join(',');
       });
 
@@ -15848,6 +16071,30 @@ async function completeCurrentWork(){
 
       refreshFromCache();
 
+      /*
+       * refreshFromCache() → loadAllData()는 localStorage만
+       * 다시 읽기 때문에, 작업DB 캐싱이 실패한 기기에서는
+       * 방금 "정적 DB" 로더가 정확히 반영해둔 최신 작업DB가
+       * 예전 캐시로 다시 덮일 수 있습니다("순간적으로 맞는
+       * 건수가 떴다가 다시 틀린 건수로 돌아가는" 증상의
+       * 원인입니다). 이미 성공적으로 받아온 데이터
+       * (workResult.value)가 있다면 마지막에 한 번 더
+       * 확실히 반영합니다.
+       */
+      if(
+        workResult.status ===
+          'fulfilled' &&
+        global.DashboardV8 &&
+        typeof global.DashboardV8
+          .applyWorkSnapshot ===
+            'function'
+      ){
+        global.DashboardV8
+          .applyWorkSnapshot(
+            workResult.value
+          );
+      }
+
       var syncedAt =
         new Date();
 
@@ -19237,6 +19484,28 @@ console.log(
 
     window.DashboardV8
       .refresh();
+
+    /*
+     * refresh() → loadAllData()는 localStorage만 다시
+     * 읽기 때문에, 작업DB 캐싱이 실패한 기기(예: Safari
+     * 저장공간 한도)에서는 방금 받아온 최신 작업DB가
+     * 예전 캐시로 다시 덮일 수 있습니다. 이미 성공적으로
+     * 받아온 데이터(results[0].value)가 있다면 마지막에
+     * 한 번 더 확실히 반영합니다.
+     */
+    if(
+      results[0].status ===
+        'fulfilled' &&
+      window.DashboardV8 &&
+      typeof window.DashboardV8
+        .applyWorkSnapshot ===
+          'function'
+    ){
+      window.DashboardV8
+        .applyWorkSnapshot(
+          results[0].value
+        );
+    }
 
     if(
       results[0].status ===
